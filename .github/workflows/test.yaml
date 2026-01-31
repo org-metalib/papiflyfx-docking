@@ -2,8 +2,14 @@ name: Build Test
 
 run-name: ${{ github.actor }} is testing the project build
 
-#on: [push]
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches-ignore:
+      - main
 
 jobs:
   build-project:
@@ -24,4 +30,4 @@ jobs:
           cache: 'maven'
       - name: run `mvn package` (headless)
         run: |
-          ./mvnw -B -Dtestfx.headless=true -DskipTests=true package
+          ./mvnw -B -Dtestfx.headless=true package
