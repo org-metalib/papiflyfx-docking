@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  test-project-build:
+  test-project:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
