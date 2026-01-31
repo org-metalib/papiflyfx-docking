@@ -31,8 +31,8 @@ jobs:
         run: |
           ./mvnw -Pmaven-central-publishing,gpg-sign \
                  -Dstyle.color=always \
+                 -DskipTests -Darguments="-Dmaven.test.skip=true" \
                  -Dtestfx.headless=true \
-                 -DskipTests=true \
                  -s ./.mvn/settings.xml \
                  release:prepare \
                  release:perform \
