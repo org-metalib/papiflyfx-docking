@@ -24,4 +24,4 @@ jobs:
           cache: 'maven'
       - name: run `mvn package` (headless)
         run: |
-          ./mvnw -B -Dtestfx.headless=true -DskipTests=true package
+          ./mvnw -B -Dtestfx.headless=true package
