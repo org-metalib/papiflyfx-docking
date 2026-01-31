@@ -1,0 +1,96 @@
+{
+  "type": "dockSession",
+  "version": 1,
+  "layout": {
+    "type": "split",
+    "id": "df7c3192-56ab-4cf9-8734-ce7757afe6f6",
+    "orientation": "HORIZONTAL",
+    "dividerPosition": 0.8,
+    "first": {
+      "type": "split",
+      "id": "77b6ff68-afa5-4df5-b41e-3d3776d4d442",
+      "orientation": "HORIZONTAL",
+      "dividerPosition": 0.2,
+      "first": {
+        "type": "tabGroup",
+        "id": "eacd85ce-0a4f-46fe-a780-abe3bd2723a6",
+        "tabs": [
+          {
+            "type": "leaf",
+            "id": "feeeb466-9c53-472e-a7a2-6ee3f0ca582b",
+            "title": "Files",
+            "contentFactoryId": "files"
+          }
+        ],
+        "activeTabIndex": 0
+      },
+      "second": {
+        "type": "split",
+        "id": "0bcf5f8e-e5eb-40cd-a397-51c875912873",
+        "orientation": "VERTICAL",
+        "dividerPosition": 0.7,
+        "first": {
+          "type": "tabGroup",
+          "id": "ff2f6bb5-20cf-4c9c-a9a7-7cbeed73722a",
+          "tabs": [
+            {
+              "type": "leaf",
+              "id": "cb256708-0d8f-43b6-8c7f-babc4a6bba25",
+              "title": "Editor 1",
+              "contentFactoryId": "editor:Editor 1 - main.java"
+            }
+          ],
+          "activeTabIndex": 0
+        },
+        "second": {
+          "type": "tabGroup",
+          "id": "af10bda9-d5cf-4de7-b477-0eb0e9999aec",
+          "tabs": [
+            {
+              "type": "leaf",
+              "id": "9d1438df-b9e6-4634-8921-fd628f65f0d2",
+              "title": "Console",
+              "contentFactoryId": "console"
+            }
+          ],
+          "activeTabIndex": 0
+        }
+      }
+    },
+    "second": {
+      "type": "tabGroup",
+      "id": "f604bbaf-0562-48d5-83a8-bfd8843a9491",
+      "tabs": [
+        {
+          "type": "leaf",
+          "id": "623d6aed-9f28-4e90-be8e-962a6e3889a5",
+          "title": "Properties",
+          "contentFactoryId": "properties"
+        }
+      ],
+      "activeTabIndex": 0
+    }
+  },
+  "floating": [
+    {
+      "leaf": {
+        "type": "leaf",
+        "id": "299e4e87-98d2-417e-a7a0-3d6eccf4b5d6",
+        "title": "Editor 2",
+        "contentFactoryId": "editor:Editor 2 - utils.java"
+      },
+      "bounds": {
+        "x": 94.0,
+        "y": 163.0,
+        "width": 400.0,
+        "height": 328.0
+      },
+      "restoreHint": {
+        "parentId": "ff2f6bb5-20cf-4c9c-a9a7-7cbeed73722a",
+        "zone": "TAB_BAR",
+        "tabIndex": 1,
+        "splitPosition": 0.5
+      }
+    }
+  ]
+}

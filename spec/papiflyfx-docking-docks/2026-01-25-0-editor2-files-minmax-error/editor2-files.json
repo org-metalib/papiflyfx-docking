@@ -1,0 +1,76 @@
+{
+  "type": "split",
+  "id": "6d49e6e6-2672-45e2-ba38-643d10d185a0",
+  "orientation": "HORIZONTAL",
+  "dividerPosition": 0.8,
+  "first": {
+    "type": "split",
+    "id": "f98554fa-1e6c-4b6c-aad4-4d65072c84d8",
+    "orientation": "VERTICAL",
+    "dividerPosition": 0.7,
+    "first": {
+      "type": "split",
+      "id": "a61275cd-62fc-4c04-841d-53fb028ea087",
+      "orientation": "HORIZONTAL",
+      "dividerPosition": 0.3251675041876047,
+      "first": {
+        "type": "tabGroup",
+        "id": "6368370a-944c-4716-825c-462f9f153862",
+        "tabs": [
+          {
+            "type": "leaf",
+            "id": "cd6d8ed3-34c3-46d9-a21a-0be2934d7194",
+            "title": "Editor 1",
+            "contentFactoryId": "editor:Editor 1 - main.java"
+          }
+        ],
+        "activeTabIndex": 0
+      },
+      "second": {
+        "type": "tabGroup",
+        "id": "17e618d5-0bf4-4730-9afe-a160260927f1",
+        "tabs": [
+          {
+            "type": "leaf",
+            "id": "acecdfea-f5ef-4283-9266-9a6e417c7edd",
+            "title": "Editor 2",
+            "contentFactoryId": "editor:Editor 2 - utils.java"
+          },
+          {
+            "type": "leaf",
+            "id": "80597752-1e73-4d3f-a7ae-ab0d724bce10",
+            "title": "Files",
+            "contentFactoryId": "files"
+          }
+        ],
+        "activeTabIndex": 0
+      }
+    },
+    "second": {
+      "type": "tabGroup",
+      "id": "e9567bd8-e34e-4952-a9dc-7a7d6a096841",
+      "tabs": [
+        {
+          "type": "leaf",
+          "id": "859b2f5b-8287-4480-9d9f-93ab65163daa",
+          "title": "Console",
+          "contentFactoryId": "console"
+        }
+      ],
+      "activeTabIndex": 0
+    }
+  },
+  "second": {
+    "type": "tabGroup",
+    "id": "880824bd-0ffa-4c58-8f06-43f77e500f11",
+    "tabs": [
+      {
+        "type": "leaf",
+        "id": "48cabf10-f02d-4073-8f13-7f44f7d1c9a3",
+        "title": "Properties",
+        "contentFactoryId": "properties"
+      }
+    ],
+    "activeTabIndex": 0
+  }
+}

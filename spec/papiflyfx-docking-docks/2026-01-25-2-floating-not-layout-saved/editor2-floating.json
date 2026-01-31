@@ -1,0 +1,70 @@
+{
+  "type": "split",
+  "id": "08f65bd1-8ef0-47b1-8c11-b6fa0a5aca38",
+  "orientation": "HORIZONTAL",
+  "dividerPosition": 0.8,
+  "first": {
+    "type": "split",
+    "id": "733ecda0-82e6-4a3f-ad28-2ff519241402",
+    "orientation": "HORIZONTAL",
+    "dividerPosition": 0.2,
+    "first": {
+      "type": "tabGroup",
+      "id": "3e673563-ca25-4f29-99eb-3c8b9ff65db7",
+      "tabs": [
+        {
+          "type": "leaf",
+          "id": "8a055a91-9ab2-4468-baf9-73df208c2766",
+          "title": "Files",
+          "contentFactoryId": "files"
+        }
+      ],
+      "activeTabIndex": 0
+    },
+    "second": {
+      "type": "split",
+      "id": "290cc8c0-0cda-4131-86e4-5a8cea54181d",
+      "orientation": "VERTICAL",
+      "dividerPosition": 0.7,
+      "first": {
+        "type": "tabGroup",
+        "id": "d5de2bab-db80-4508-9a8c-b230ecc74979",
+        "tabs": [
+          {
+            "type": "leaf",
+            "id": "3ddefa36-3ed1-4f25-8f3c-c2f7e10196cb",
+            "title": "Editor 1",
+            "contentFactoryId": "editor:Editor 1 - main.java"
+          }
+        ],
+        "activeTabIndex": 0
+      },
+      "second": {
+        "type": "tabGroup",
+        "id": "ffef28e1-635c-4ebf-8b03-6460a3a6650f",
+        "tabs": [
+          {
+            "type": "leaf",
+            "id": "a88cc966-abbf-438b-a71c-10cd8e0773be",
+            "title": "Console",
+            "contentFactoryId": "console"
+          }
+        ],
+        "activeTabIndex": 0
+      }
+    }
+  },
+  "second": {
+    "type": "tabGroup",
+    "id": "55cade12-56e6-40e1-b704-9dfbf121019a",
+    "tabs": [
+      {
+        "type": "leaf",
+        "id": "99175306-105e-4ef0-bc98-c4c11f9e39bf",
+        "title": "Properties",
+        "contentFactoryId": "properties"
+      }
+    ],
+    "activeTabIndex": 0
+  }
+}
