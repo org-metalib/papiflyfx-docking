@@ -16,7 +16,8 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
-          java-version: '25.0.1.fx'
+          java-version: '25.0.1'
+          java-package: 'jdk+fx'
           cache: 'maven'
       - name: import GPG key
         run:
