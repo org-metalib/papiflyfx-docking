@@ -22,6 +22,6 @@ jobs:
           java-version: '25.0.1'
           java-package: 'jdk+fx'
           cache: 'maven'
-      - name: run `mvn package`
-        run:
-          ./mvnw -B package
+      - name: run `mvn package` (headless)
+        run: |
+          ./mvnw -B -Dtestfx.headless=true package

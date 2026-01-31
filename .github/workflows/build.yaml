@@ -31,6 +31,7 @@ jobs:
         run: |
           ./mvnw -Pmaven-central-publishing,gpg-sign \
                  -Dstyle.color=always \
+                 -Dtestfx.headless=true \
                  -s ./.mvn/settings.xml \
                  release:prepare \
                  release:perform \
