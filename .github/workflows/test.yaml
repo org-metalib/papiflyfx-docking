@@ -11,6 +11,10 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v3
+      - name: configure git identity
+        run: |
+          git config --global user.email "${GIT_CONFIG_USER_EMAIL}"
+          git config --global user.name "${GIT_CONFIG_USER_NAME}"
       - name: install java with maven
         uses: actions/setup-java@v3
         with:
