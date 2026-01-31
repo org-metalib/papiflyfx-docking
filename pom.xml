@@ -83,13 +83,6 @@
         </repository>
     </distributionManagement>
 
-    <scm>
-        <url>https://github.com/org-metalib/papiflyfx-docking</url>
-        <connection>scm:git:https://github.com/org-metalib/papiflyfx-docking.git</connection>
-        <developerConnection>scm:git:git@github.com:org-metalib/papiflyfx-docking.git</developerConnection>
-        <tag>HEAD</tag>
-    </scm>
-
     <build>
         <extensions>
             <extension>
@@ -275,4 +268,28 @@
             </properties>
         </profile>
     </profiles>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Igor Katrayev</name>
+            <email>ikatraev@gmail.com</email>
+            <organization>metalib.org</organization>
+            <organizationUrl>https://www.metalib.org/</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/org-metalib/papiflyfx-docking.git</connection>
+        <developerConnection>scm:git:https://github.com/org-metalib/papiflyfx-docking.git</developerConnection>
+        <url>https://github.com/org-metalib/papiflyfx-docking</url>
+        <tag>papiflyfx-docking-0.0.1</tag>
+    </scm>
 </project>
