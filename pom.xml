@@ -4,7 +4,7 @@
 
     <groupId>org.metalib.papifly.docking</groupId>
     <artifactId>papiflyfx-docking</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.4-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>papiflyfx-docking</name>
     <description>JavaFX docking and layout components.</description>
@@ -367,6 +367,6 @@
         <connection>scm:git:git://github.com/org-metalib/papiflyfx-docking.git</connection>
         <developerConnection>scm:git:https://github.com/org-metalib/papiflyfx-docking.git</developerConnection>
         <url>https://github.com/org-metalib/papiflyfx-docking</url>
-        <tag>v0.0.3</tag>
+        <tag>HEAD</tag>
     </scm>
 </project>
