@@ -6,6 +6,7 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
@@ -42,6 +43,15 @@ public class CodeEditor extends StackPane {
     private final Document document;
     private final Viewport viewport;
     private final SelectionModel selectionModel;
+    private final ChangeListener<Number> caretLineListener = (obs, oldValue, newValue) ->
+        cursorLine.set(newValue.intValue());
+    private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) ->
+        cursorColumn.set(newValue.intValue());
+    private final ChangeListener<Number> scrollOffsetListener = (obs, oldValue, newValue) ->
+        applyScrollOffset(newValue.doubleValue());
+
+    private boolean syncingScrollOffset;
+    private boolean disposed;
 
     /**
      * Creates an empty editor.
@@ -65,11 +75,11 @@ public class CodeEditor extends StackPane {
         getChildren().add(viewport);
 
         // Bind cursor properties to selection model
-        selectionModel.caretLineProperty().addListener((obs, o, n) -> cursorLine.set(n.intValue()));
-        selectionModel.caretColumnProperty().addListener((obs, o, n) -> cursorColumn.set(n.intValue()));
+        selectionModel.caretLineProperty().addListener(caretLineListener);
+        selectionModel.caretColumnProperty().addListener(caretColumnListener);
 
         // Bind vertical scroll offset
-        verticalScrollOffset.addListener((obs, o, n) -> viewport.setScrollOffset(n.doubleValue()));
+        verticalScrollOffset.addListener(scrollOffsetListener);
 
         // Input handlers
         setOnKeyPressed(this::handleKeyPressed);
@@ -189,8 +199,7 @@ public class CodeEditor extends StackPane {
         int offset = selectionModel.getCaretOffset(document);
         document.insert(offset, "\n");
         int newLine = selectionModel.getCaretLine() + 1;
-        selectionModel.moveCaret(newLine, 0);
-        viewport.ensureCaretVisible();
+        moveCaret(newLine, 0, false);
     }
 
     private void handleLeft(boolean shift) {
@@ -248,16 +257,22 @@ public class CodeEditor extends StackPane {
     }
 
     private void handleUndo() {
+        int beforeLength = document.length();
+        int beforeOffset = selectionModel.getCaretOffset(document);
         if (document.undo()) {
-            selectionModel.moveCaret(0, 0);
-            viewport.ensureCaretVisible();
+            int afterLength = document.length();
+            int targetOffset = Math.max(0, Math.min(beforeOffset + (afterLength - beforeLength), afterLength));
+            moveCaretToOffset(targetOffset);
         }
     }
 
     private void handleRedo() {
+        int beforeLength = document.length();
+        int beforeOffset = selectionModel.getCaretOffset(document);
         if (document.redo()) {
-            selectionModel.moveCaret(0, 0);
-            viewport.ensureCaretVisible();
+            int afterLength = document.length();
+            int targetOffset = Math.max(0, Math.min(beforeOffset + (afterLength - beforeLength), afterLength));
+            moveCaretToOffset(targetOffset);
         }
     }
 
@@ -314,7 +329,6 @@ public class CodeEditor extends StackPane {
     }
 
     private void handleScroll(ScrollEvent event) {
-        double lineHeight = viewport.getGlyphCache().getLineHeight();
         double delta = -event.getDeltaY() * SCROLL_LINE_FACTOR;
         double newOffset = viewport.getScrollOffset() + delta;
         setVerticalScrollOffset(newOffset);
@@ -324,12 +338,15 @@ public class CodeEditor extends StackPane {
     // --- Helpers ---
 
     private void moveCaret(int line, int col, boolean extendSelection) {
+        int safeLine = clampLine(line);
+        int safeColumn = clampColumn(safeLine, col);
         if (extendSelection) {
-            selectionModel.moveCaretWithSelection(line, col);
+            selectionModel.moveCaretWithSelection(safeLine, safeColumn);
         } else {
-            selectionModel.moveCaret(line, col);
+            selectionModel.moveCaret(safeLine, safeColumn);
         }
         viewport.ensureCaretVisible();
+        syncVerticalScrollOffsetFromViewport();
     }
 
     private void moveCaretRight(int chars, boolean extendSelection) {
@@ -346,6 +363,45 @@ public class CodeEditor extends StackPane {
         int col = document.getColumnForOffset(offset);
         selectionModel.moveCaret(line, col);
         viewport.ensureCaretVisible();
+        syncVerticalScrollOffsetFromViewport();
+    }
+
+    private void applyCaretState(int line, int column) {
+        int safeLine = clampLine(line);
+        int safeColumn = clampColumn(safeLine, column);
+        selectionModel.moveCaret(safeLine, safeColumn);
+        viewport.markDirty();
+    }
+
+    private int clampLine(int line) {
+        int maxLine = Math.max(0, document.getLineCount() - 1);
+        return Math.max(0, Math.min(line, maxLine));
+    }
+
+    private int clampColumn(int line, int column) {
+        int maxColumn = document.getLineText(line).length();
+        return Math.max(0, Math.min(column, maxColumn));
+    }
+
+    private void applyScrollOffset(double requestedOffset) {
+        if (syncingScrollOffset) {
+            return;
+        }
+        viewport.setScrollOffset(requestedOffset);
+        syncVerticalScrollOffsetFromViewport();
+    }
+
+    private void syncVerticalScrollOffsetFromViewport() {
+        double actualOffset = viewport.getScrollOffset();
+        if (Double.compare(verticalScrollOffset.get(), actualOffset) == 0) {
+            return;
+        }
+        syncingScrollOffset = true;
+        try {
+            verticalScrollOffset.set(actualOffset);
+        } finally {
+            syncingScrollOffset = false;
+        }
     }
 
     private void deleteSelectionIfAny() {
@@ -363,11 +419,12 @@ public class CodeEditor extends StackPane {
      * Captures current editor state into a serializable DTO.
      */
     public EditorStateData captureState() {
+        syncVerticalScrollOffsetFromViewport();
         return new EditorStateData(
             filePath.get(),
             cursorLine.get(),
             cursorColumn.get(),
-            verticalScrollOffset.get(),
+            viewport.getScrollOffset(),
             languageId.get(),
             foldedLines
         );
@@ -381,11 +438,10 @@ public class CodeEditor extends StackPane {
             return;
         }
         setFilePath(state.filePath());
-        setCursorLine(state.cursorLine());
-        setCursorColumn(state.cursorColumn());
-        setVerticalScrollOffset(state.verticalScrollOffset());
         setLanguageId(state.languageId());
         setFoldedLines(state.foldedLines());
+        applyCaretState(state.cursorLine(), state.cursorColumn());
+        setVerticalScrollOffset(state.verticalScrollOffset());
     }
 
     public String getFilePath() {
@@ -405,7 +461,7 @@ public class CodeEditor extends StackPane {
     }
 
     public void setCursorLine(int cursorLine) {
-        this.cursorLine.set(Math.max(0, cursorLine));
+        applyCaretState(cursorLine, selectionModel.getCaretColumn());
     }
 
     public IntegerProperty cursorLineProperty() {
@@ -417,7 +473,7 @@ public class CodeEditor extends StackPane {
     }
 
     public void setCursorColumn(int cursorColumn) {
-        this.cursorColumn.set(Math.max(0, cursorColumn));
+        applyCaretState(selectionModel.getCaretLine(), cursorColumn);
     }
 
     public IntegerProperty cursorColumnProperty() {
@@ -429,7 +485,12 @@ public class CodeEditor extends StackPane {
     }
 
     public void setVerticalScrollOffset(double verticalScrollOffset) {
-        this.verticalScrollOffset.set(Math.max(0.0, verticalScrollOffset));
+        double safeOffset = Math.max(0.0, verticalScrollOffset);
+        if (Double.compare(this.verticalScrollOffset.get(), safeOffset) == 0) {
+            applyScrollOffset(safeOffset);
+            return;
+        }
+        this.verticalScrollOffset.set(safeOffset);
     }
 
     public DoubleProperty verticalScrollOffsetProperty() {
@@ -454,5 +515,24 @@ public class CodeEditor extends StackPane {
 
     public void setFoldedLines(List<Integer> foldedLines) {
         this.foldedLines = foldedLines == null ? List.of() : List.copyOf(foldedLines);
+    }
+
+    /**
+     * Releases listeners and rendering resources associated with this editor.
+     */
+    public void dispose() {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        setOnKeyPressed(null);
+        setOnKeyTyped(null);
+        setOnMousePressed(null);
+        setOnMouseDragged(null);
+        setOnScroll(null);
+        selectionModel.caretLineProperty().removeListener(caretLineListener);
+        selectionModel.caretColumnProperty().removeListener(caretColumnListener);
+        verticalScrollOffset.removeListener(scrollOffsetListener);
+        viewport.dispose();
     }
 }

@@ -40,10 +40,23 @@ public class CodeEditorStateAdapter implements ContentStateAdapter {
     @Override
     public Node restore(LeafContentData content) {
         CodeEditor editor = new CodeEditor();
-        if (content == null || content.state() == null) {
-            return editor;
-        }
-        editor.applyState(EditorStateCodec.fromMap(content.state()));
+        editor.applyState(restoreState(content));
         return editor;
+    }
+
+    private EditorStateData restoreState(LeafContentData content) {
+        if (content == null || content.state() == null) {
+            return EditorStateData.empty();
+        }
+        int version = content.version();
+        if (version == VERSION) {
+            return EditorStateCodec.fromMap(content.state());
+        }
+        if (version == 0) {
+            // v0 used the same payload keys, but this branch is a dedicated migration hook.
+            return EditorStateCodec.fromMap(content.state());
+        }
+        // Unknown future/legacy versions fall back to a safe minimal editor state.
+        return EditorStateData.empty();
     }
 }

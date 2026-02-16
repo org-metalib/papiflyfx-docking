@@ -1,7 +1,7 @@
 # PapiflyFX Code - Progress Report
 
-**Date:** 2026-02-15
-**Status:** Phase 2 Complete (viewport and rendering)
+**Date:** 2026-02-16
+**Status:** Phase 2 complete; hardening work started (persistence/caret/lifecycle fixes)
 
 ## Summary
 - Specification and implementation plan were updated to target a separate module: `papiflyfx-docking-code`.
@@ -16,8 +16,15 @@
   - edit command primitives (`InsertEdit`, `DeleteEdit`, `ReplaceEdit`)
   - undo/redo and line/column mapping behavior
 - Unit tests now cover state codec and document core logic.
+- Follow-up hardening fixes were implemented for review findings:
+  - restored caret state now applies to runtime `SelectionModel`,
+  - undo/redo no longer resets caret to `0:0`,
+  - persisted scroll offset is synchronized with actual viewport clamp,
+  - version-aware state restore path added to `CodeEditorStateAdapter`,
+  - disposal hooks added to `CodeEditor` and `Viewport`.
 
 ## Update Log
+- **2026-02-16:** Applied Review 2 fixes: caret-state restore wiring, undo/redo caret behavior, scroll-state sync, adapter version-aware restore fallback, and disposal APIs (`CodeEditor.dispose`, `Viewport.dispose`). Added 7 new integration tests. Test suite now 99 passing.
 - **2026-02-15:** Completed Phase 2 viewport and rendering — `GlyphCache`, `RenderLine`, `SelectionModel`, `Viewport` (canvas-based virtualized renderer), full keyboard/mouse input in `CodeEditor`, headless FX test infrastructure. 92 tests passing.
 - **2026-02-14:** Completed Phase 1 core model implementation (`TextSource`, `LineIndex`, `Document`, edit commands) and added document-focused unit tests.
 - **2026-02-14:** Completed Phase 0 module bootstrap, integration starter classes, and initial codec test.
@@ -31,8 +38,8 @@
 | 3 | Incremental lexer pipeline | ⏳ Not started |
 | 4 | Gutter, markers, navigation | ⏳ Not started |
 | 5 | Theme composition and mapping | ⏳ Not started |
-| 6 | Persistence hardening/migration | ⏳ Not started |
-| 7 | Failure handling and disposal | ⏳ Not started |
+| 6 | Persistence hardening/migration | 🟡 In progress (version-aware restore hooks added) |
+| 7 | Failure handling and disposal | 🟡 In progress (`dispose()` hooks added for editor/viewport) |
 | 8 | Benchmarks and documentation hardening | ⏳ Not started |
 
 ## Implemented Files (Highlights)
@@ -67,6 +74,17 @@
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` (replaced placeholder with Document + Viewport + input handling)
 - `papiflyfx-docking-code/pom.xml` (added headless TestFX surefire config)
 
+### Post-Phase 2 Hardening (2026-02-16)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java`
+  - state application now drives caret model,
+  - undo/redo caret behavior improved,
+  - scroll offset synchronization with viewport clamp,
+  - disposal lifecycle hook.
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditorStateAdapter.java`
+  - version-aware restore path with safe fallback.
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/Viewport.java`
+  - disposal lifecycle hook and listener cleanup.
+
 ### Tests
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/state/EditorStateCodecTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/document/TextSourceTest.java`
@@ -79,12 +97,13 @@
 
 ## Validation Results
 - `mvn -pl papiflyfx-docking-code -am compile` -> ✅ success
-- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (92 tests, 0 failures)
+- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (99 tests, 0 failures)
 - `mvn -pl papiflyfx-docking-code test` -> expected failure without `-am` because local `papiflyfx-docking-docks` artifact is not pre-installed
 
 ## Notes / Known Issues
 - Existing project warning remains in parent build config: duplicate `maven-release-plugin` declaration in root `pom.xml` pluginManagement.
 - Lexer/syntax highlighting is pending Phase 3.
+- Gutter/markers/search/theme mapping are still pending MVP completion phases.
 
 ## Next Recommended Step
 1. Start Phase 3 by implementing the incremental lexer pipeline for syntax coloring.

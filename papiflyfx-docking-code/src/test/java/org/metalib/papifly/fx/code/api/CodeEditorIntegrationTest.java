@@ -2,19 +2,27 @@ package org.metalib.papifly.fx.code.api;
 
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.state.EditorStateCodec;
+import org.metalib.papifly.fx.code.state.EditorStateData;
+import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
 
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
@@ -137,7 +145,138 @@ class CodeEditorIntegrationTest {
         assertEquals("java", state.languageId());
     }
 
+    @Test
+    void applyStateMovesActualCaretModel() {
+        runOnFx(() -> {
+            editor.setText("line0\nline1\nline2");
+            editor.applyState(new EditorStateData("", 1, 3, 0.0, "plain-text", List.of()));
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(1, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(3, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+    }
+
+    @Test
+    void applyStateClampsCaretToDocumentBounds() {
+        runOnFx(() -> {
+            editor.setText("aa\nbbb");
+            editor.applyState(new EditorStateData("", 99, 99, 0.0, "plain-text", List.of()));
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(1, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(3, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+    }
+
+    @Test
+    void undoRedoShortcutKeepsCaretNearEditLocation() {
+        runOnFx(() -> {
+            editor.requestFocus();
+            editor.setText("abc");
+            editor.getDocument().insert(3, "d");
+            editor.getSelectionModel().moveCaret(0, 4);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        fireShortcut(KeyCode.Z, false);
+        assertEquals("abc", callOnFx(() -> editor.getText()));
+        assertEquals(3, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+
+        fireShortcut(KeyCode.Y, false);
+        assertEquals("abcd", callOnFx(() -> editor.getText()));
+        assertEquals(4, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+    }
+
+    @Test
+    void captureStateUsesActualViewportScrollOffset() {
+        runOnFx(() -> {
+            editor.setText(buildLines(100));
+            editor.applyCss();
+            editor.layout();
+            editor.setVerticalScrollOffset(100_000);
+            editor.applyCss();
+            editor.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        double actualOffset = callOnFx(() -> editor.getViewport().getScrollOffset());
+        EditorStateData state = callOnFx(() -> editor.captureState());
+        assertEquals(actualOffset, state.verticalScrollOffset(), 0.0001);
+    }
+
+    @Test
+    void disposeRemovesInputHandlers() {
+        runOnFx(() -> editor.dispose());
+        WaitForAsyncUtils.waitForFxEvents();
+        assertNull(callOnFx(editor::getOnKeyPressed));
+        assertNull(callOnFx(editor::getOnScroll));
+    }
+
+    @Test
+    void adapterRestoreVersionZeroMigratesState() {
+        CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
+        Map<String, Object> state = EditorStateCodec.toMap(
+            new EditorStateData("/tmp/demo.java", 0, 0, 0.0, "java", List.of(1, 3))
+        );
+
+        CodeEditor restored = callOnFx(() -> (CodeEditor) adapter.restore(
+            new LeafContentData(CodeEditorFactory.FACTORY_ID, "editor-1", 0, state)
+        ));
+
+        assertEquals("/tmp/demo.java", callOnFx(restored::getFilePath));
+        assertEquals("java", callOnFx(restored::getLanguageId));
+        assertEquals(List.of(1, 3), callOnFx(restored::getFoldedLines));
+        callOnFx(() -> {
+            restored.dispose();
+            return null;
+        });
+    }
+
+    @Test
+    void adapterRestoreUnknownVersionFallsBackToEmptyState() {
+        CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
+        Map<String, Object> state = EditorStateCodec.toMap(
+            new EditorStateData("/tmp/wrong.java", 0, 0, 0.0, "java", List.of(9))
+        );
+
+        CodeEditor restored = callOnFx(() -> (CodeEditor) adapter.restore(
+            new LeafContentData(CodeEditorFactory.FACTORY_ID, "editor-2", 99, state)
+        ));
+
+        assertEquals("", callOnFx(restored::getFilePath));
+        assertEquals("plain-text", callOnFx(restored::getLanguageId));
+        assertEquals(List.of(), callOnFx(restored::getFoldedLines));
+        callOnFx(() -> {
+            restored.dispose();
+            return null;
+        });
+    }
+
     // --- Helpers ---
+
+    private String buildLines(int count) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            if (i > 0) {
+                sb.append('\n');
+            }
+            sb.append("line").append(i);
+        }
+        return sb.toString();
+    }
+
+    private void fireShortcut(KeyCode keyCode, boolean shift) {
+        runOnFx(() -> editor.fireEvent(new KeyEvent(
+            KeyEvent.KEY_PRESSED,
+            "",
+            "",
+            keyCode,
+            shift,
+            true,
+            false,
+            false
+        )));
+        WaitForAsyncUtils.waitForFxEvents();
+    }
 
     private void runOnFx(Runnable action) {
         if (Platform.isFxApplicationThread()) {

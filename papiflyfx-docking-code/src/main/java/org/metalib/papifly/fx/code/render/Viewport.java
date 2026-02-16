@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.code.render;
 
+import javafx.beans.value.ChangeListener;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.Region;
@@ -30,10 +31,13 @@ public class Viewport extends Region {
     private final Canvas canvas;
     private final GlyphCache glyphCache;
     private final SelectionModel selectionModel;
+    private final ChangeListener<Number> caretLineListener = (obs, oldValue, newValue) -> markDirty();
+    private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) -> markDirty();
 
     private Document document;
     private double scrollOffset;
     private boolean dirty = true;
+    private boolean disposed;
 
     private int firstVisibleLine;
     private int visibleLineCount;
@@ -52,8 +56,8 @@ public class Viewport extends Region {
         getChildren().add(canvas);
 
         // Redraw on caret move
-        selectionModel.caretLineProperty().addListener((obs, o, n) -> markDirty());
-        selectionModel.caretColumnProperty().addListener((obs, o, n) -> markDirty());
+        selectionModel.caretLineProperty().addListener(caretLineListener);
+        selectionModel.caretColumnProperty().addListener(caretColumnListener);
     }
 
     /**
@@ -335,5 +339,19 @@ public class Viewport extends Region {
         }
         double totalHeight = document.getLineCount() * glyphCache.getLineHeight();
         return Math.max(0, totalHeight - getHeight());
+    }
+
+    /**
+     * Releases listeners and cached render data for this viewport.
+     */
+    public void dispose() {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        setDocument(null);
+        selectionModel.caretLineProperty().removeListener(caretLineListener);
+        selectionModel.caretColumnProperty().removeListener(caretColumnListener);
+        renderLines.clear();
     }
 }
