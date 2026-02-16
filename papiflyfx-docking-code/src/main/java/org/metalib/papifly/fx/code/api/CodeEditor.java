@@ -6,23 +6,30 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
-import javafx.geometry.Pos;
-import javafx.scene.control.Label;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.StackPane;
+import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.render.SelectionModel;
+import org.metalib.papifly.fx.code.render.Viewport;
 import org.metalib.papifly.fx.code.state.EditorStateData;
 
 import java.util.List;
 
 /**
- * Minimal code editor node scaffold.
+ * Canvas-based code editor component.
  * <p>
- * This class currently exposes editable state properties and a placeholder UI.
- * Rendering/editor behavior is added in later phases.
+ * Renders document text via a virtualized {@link Viewport} and handles
+ * keyboard/mouse input for editing, caret movement, and selection.
  */
 public class CodeEditor extends StackPane {
 
     private static final String DEFAULT_LANGUAGE = "plain-text";
-    private static final String DEFAULT_TITLE = "Code Editor";
+    private static final double SCROLL_LINE_FACTOR = 3.0;
 
     private final StringProperty filePath = new SimpleStringProperty(this, "filePath", "");
     private final IntegerProperty cursorLine = new SimpleIntegerProperty(this, "cursorLine", 0);
@@ -31,20 +38,326 @@ public class CodeEditor extends StackPane {
     private final StringProperty languageId = new SimpleStringProperty(this, "languageId", DEFAULT_LANGUAGE);
 
     private List<Integer> foldedLines = List.of();
-    private final Label placeholderLabel;
+
+    private final Document document;
+    private final Viewport viewport;
+    private final SelectionModel selectionModel;
 
     /**
-     * Creates an empty editor scaffold.
+     * Creates an empty editor.
      */
     public CodeEditor() {
-        placeholderLabel = new Label(DEFAULT_TITLE);
+        this(new Document());
+    }
+
+    /**
+     * Creates an editor with the given document.
+     */
+    public CodeEditor(Document document) {
+        this.document = document;
+        this.selectionModel = new SelectionModel();
+        this.viewport = new Viewport(selectionModel);
+        this.viewport.setDocument(document);
+
         setMinSize(0, 0);
         setPrefSize(640, 480);
-        setAlignment(Pos.CENTER);
-        getChildren().add(placeholderLabel);
+        setFocusTraversable(true);
+        getChildren().add(viewport);
 
-        filePath.addListener((obs, oldValue, newValue) -> updatePlaceholderText());
+        // Bind cursor properties to selection model
+        selectionModel.caretLineProperty().addListener((obs, o, n) -> cursorLine.set(n.intValue()));
+        selectionModel.caretColumnProperty().addListener((obs, o, n) -> cursorColumn.set(n.intValue()));
+
+        // Bind vertical scroll offset
+        verticalScrollOffset.addListener((obs, o, n) -> viewport.setScrollOffset(n.doubleValue()));
+
+        // Input handlers
+        setOnKeyPressed(this::handleKeyPressed);
+        setOnKeyTyped(this::handleKeyTyped);
+        setOnMousePressed(this::handleMousePressed);
+        setOnMouseDragged(this::handleMouseDragged);
+        setOnScroll(this::handleScroll);
     }
+
+    /**
+     * Returns the document model.
+     */
+    public Document getDocument() {
+        return document;
+    }
+
+    /**
+     * Convenience: sets document text content.
+     */
+    public void setText(String text) {
+        document.setText(text);
+        selectionModel.moveCaret(0, 0);
+        setVerticalScrollOffset(0);
+    }
+
+    /**
+     * Convenience: returns document text content.
+     */
+    public String getText() {
+        return document.getText();
+    }
+
+    /**
+     * Returns the viewport for direct access.
+     */
+    public Viewport getViewport() {
+        return viewport;
+    }
+
+    /**
+     * Returns the selection model.
+     */
+    public SelectionModel getSelectionModel() {
+        return selectionModel;
+    }
+
+    // --- Key handling ---
+
+    private void handleKeyTyped(KeyEvent event) {
+        String ch = event.getCharacter();
+        if (ch.isEmpty() || ch.charAt(0) < 32 || ch.charAt(0) == 127) {
+            return; // control characters handled by keyPressed
+        }
+        if (event.isControlDown() || event.isMetaDown()) {
+            return;
+        }
+        deleteSelectionIfAny();
+        int offset = selectionModel.getCaretOffset(document);
+        document.insert(offset, ch);
+        moveCaretRight(ch.length(), false);
+        event.consume();
+    }
+
+    private void handleKeyPressed(KeyEvent event) {
+        boolean shift = event.isShiftDown();
+        boolean shortcut = event.isControlDown() || event.isMetaDown();
+        KeyCode code = event.getCode();
+
+        switch (code) {
+            case BACK_SPACE -> { handleBackspace(); event.consume(); }
+            case DELETE -> { handleDelete(); event.consume(); }
+            case ENTER -> { handleEnter(); event.consume(); }
+            case LEFT -> { handleLeft(shift); event.consume(); }
+            case RIGHT -> { handleRight(shift); event.consume(); }
+            case UP -> { handleUp(shift); event.consume(); }
+            case DOWN -> { handleDown(shift); event.consume(); }
+            case HOME -> { handleHome(shift); event.consume(); }
+            case END -> { handleEnd(shift); event.consume(); }
+            case A -> { if (shortcut) { handleSelectAll(); event.consume(); } }
+            case Z -> {
+                if (shortcut && shift) { handleRedo(); event.consume(); }
+                else if (shortcut) { handleUndo(); event.consume(); }
+            }
+            case Y -> { if (shortcut) { handleRedo(); event.consume(); } }
+            case C -> { if (shortcut) { handleCopy(); event.consume(); } }
+            case X -> { if (shortcut) { handleCut(); event.consume(); } }
+            case V -> { if (shortcut) { handlePaste(); event.consume(); } }
+            default -> { /* no-op */ }
+        }
+    }
+
+    private void handleBackspace() {
+        if (selectionModel.hasSelection()) {
+            deleteSelectionIfAny();
+            return;
+        }
+        int offset = selectionModel.getCaretOffset(document);
+        if (offset > 0) {
+            document.delete(offset - 1, offset);
+            moveCaretToOffset(offset - 1);
+        }
+    }
+
+    private void handleDelete() {
+        if (selectionModel.hasSelection()) {
+            deleteSelectionIfAny();
+            return;
+        }
+        int offset = selectionModel.getCaretOffset(document);
+        if (offset < document.length()) {
+            document.delete(offset, offset + 1);
+        }
+    }
+
+    private void handleEnter() {
+        deleteSelectionIfAny();
+        int offset = selectionModel.getCaretOffset(document);
+        document.insert(offset, "\n");
+        int newLine = selectionModel.getCaretLine() + 1;
+        selectionModel.moveCaret(newLine, 0);
+        viewport.ensureCaretVisible();
+    }
+
+    private void handleLeft(boolean shift) {
+        int line = selectionModel.getCaretLine();
+        int col = selectionModel.getCaretColumn();
+        if (col > 0) {
+            moveCaret(line, col - 1, shift);
+        } else if (line > 0) {
+            int prevLineLen = document.getLineText(line - 1).length();
+            moveCaret(line - 1, prevLineLen, shift);
+        }
+    }
+
+    private void handleRight(boolean shift) {
+        int line = selectionModel.getCaretLine();
+        int col = selectionModel.getCaretColumn();
+        int lineLen = document.getLineText(line).length();
+        if (col < lineLen) {
+            moveCaret(line, col + 1, shift);
+        } else if (line < document.getLineCount() - 1) {
+            moveCaret(line + 1, 0, shift);
+        }
+    }
+
+    private void handleUp(boolean shift) {
+        int line = selectionModel.getCaretLine();
+        int col = selectionModel.getCaretColumn();
+        if (line > 0) {
+            int newCol = Math.min(col, document.getLineText(line - 1).length());
+            moveCaret(line - 1, newCol, shift);
+        }
+    }
+
+    private void handleDown(boolean shift) {
+        int line = selectionModel.getCaretLine();
+        int col = selectionModel.getCaretColumn();
+        if (line < document.getLineCount() - 1) {
+            int newCol = Math.min(col, document.getLineText(line + 1).length());
+            moveCaret(line + 1, newCol, shift);
+        }
+    }
+
+    private void handleHome(boolean shift) {
+        moveCaret(selectionModel.getCaretLine(), 0, shift);
+    }
+
+    private void handleEnd(boolean shift) {
+        int line = selectionModel.getCaretLine();
+        moveCaret(line, document.getLineText(line).length(), shift);
+    }
+
+    private void handleSelectAll() {
+        selectionModel.selectAll(document);
+        viewport.markDirty();
+    }
+
+    private void handleUndo() {
+        if (document.undo()) {
+            selectionModel.moveCaret(0, 0);
+            viewport.ensureCaretVisible();
+        }
+    }
+
+    private void handleRedo() {
+        if (document.redo()) {
+            selectionModel.moveCaret(0, 0);
+            viewport.ensureCaretVisible();
+        }
+    }
+
+    private void handleCopy() {
+        if (selectionModel.hasSelection()) {
+            ClipboardContent content = new ClipboardContent();
+            content.putString(selectionModel.getSelectedText(document));
+            Clipboard.getSystemClipboard().setContent(content);
+        }
+    }
+
+    private void handleCut() {
+        handleCopy();
+        deleteSelectionIfAny();
+    }
+
+    private void handlePaste() {
+        String text = Clipboard.getSystemClipboard().getString();
+        if (text != null && !text.isEmpty()) {
+            deleteSelectionIfAny();
+            int offset = selectionModel.getCaretOffset(document);
+            document.insert(offset, text);
+            // Move caret to end of pasted text
+            int newOffset = offset + text.length();
+            moveCaretToOffset(newOffset);
+        }
+    }
+
+    // --- Mouse handling ---
+
+    private void handleMousePressed(MouseEvent event) {
+        requestFocus();
+        int line = viewport.getLineAtY(event.getY());
+        int col = viewport.getColumnAtX(event.getX());
+        if (line >= 0) {
+            col = Math.min(col, document.getLineText(line).length());
+            if (event.isShiftDown()) {
+                selectionModel.moveCaretWithSelection(line, col);
+            } else {
+                selectionModel.moveCaret(line, col);
+            }
+            viewport.markDirty();
+        }
+    }
+
+    private void handleMouseDragged(MouseEvent event) {
+        int line = viewport.getLineAtY(event.getY());
+        int col = viewport.getColumnAtX(event.getX());
+        if (line >= 0) {
+            col = Math.min(col, document.getLineText(line).length());
+            selectionModel.moveCaretWithSelection(line, col);
+            viewport.markDirty();
+        }
+    }
+
+    private void handleScroll(ScrollEvent event) {
+        double lineHeight = viewport.getGlyphCache().getLineHeight();
+        double delta = -event.getDeltaY() * SCROLL_LINE_FACTOR;
+        double newOffset = viewport.getScrollOffset() + delta;
+        setVerticalScrollOffset(newOffset);
+        event.consume();
+    }
+
+    // --- Helpers ---
+
+    private void moveCaret(int line, int col, boolean extendSelection) {
+        if (extendSelection) {
+            selectionModel.moveCaretWithSelection(line, col);
+        } else {
+            selectionModel.moveCaret(line, col);
+        }
+        viewport.ensureCaretVisible();
+    }
+
+    private void moveCaretRight(int chars, boolean extendSelection) {
+        int offset = selectionModel.getCaretOffset(document);
+        // offset already advanced by insert, so we need to recalculate
+        int line = document.getLineForOffset(offset);
+        int col = document.getColumnForOffset(offset);
+        moveCaret(line, col, extendSelection);
+    }
+
+    private void moveCaretToOffset(int offset) {
+        offset = Math.max(0, Math.min(offset, document.length()));
+        int line = document.getLineForOffset(offset);
+        int col = document.getColumnForOffset(offset);
+        selectionModel.moveCaret(line, col);
+        viewport.ensureCaretVisible();
+    }
+
+    private void deleteSelectionIfAny() {
+        if (selectionModel.hasSelection()) {
+            int start = selectionModel.getSelectionStartOffset(document);
+            int end = selectionModel.getSelectionEndOffset(document);
+            document.delete(start, end);
+            moveCaretToOffset(start);
+        }
+    }
+
+    // --- State properties ---
 
     /**
      * Captures current editor state into a serializable DTO.
@@ -75,131 +388,71 @@ public class CodeEditor extends StackPane {
         setFoldedLines(state.foldedLines());
     }
 
-    /**
-     * Gets the file path.
-     */
     public String getFilePath() {
         return filePath.get();
     }
 
-    /**
-     * Sets the file path.
-     */
     public void setFilePath(String filePath) {
         this.filePath.set(filePath == null ? "" : filePath);
     }
 
-    /**
-     * File path property.
-     */
     public StringProperty filePathProperty() {
         return filePath;
     }
 
-    /**
-     * Gets the caret line.
-     */
     public int getCursorLine() {
         return cursorLine.get();
     }
 
-    /**
-     * Sets the caret line.
-     */
     public void setCursorLine(int cursorLine) {
         this.cursorLine.set(Math.max(0, cursorLine));
     }
 
-    /**
-     * Caret line property.
-     */
     public IntegerProperty cursorLineProperty() {
         return cursorLine;
     }
 
-    /**
-     * Gets the caret column.
-     */
     public int getCursorColumn() {
         return cursorColumn.get();
     }
 
-    /**
-     * Sets the caret column.
-     */
     public void setCursorColumn(int cursorColumn) {
         this.cursorColumn.set(Math.max(0, cursorColumn));
     }
 
-    /**
-     * Caret column property.
-     */
     public IntegerProperty cursorColumnProperty() {
         return cursorColumn;
     }
 
-    /**
-     * Gets vertical scroll offset.
-     */
     public double getVerticalScrollOffset() {
         return verticalScrollOffset.get();
     }
 
-    /**
-     * Sets vertical scroll offset.
-     */
     public void setVerticalScrollOffset(double verticalScrollOffset) {
         this.verticalScrollOffset.set(Math.max(0.0, verticalScrollOffset));
     }
 
-    /**
-     * Vertical scroll offset property.
-     */
     public DoubleProperty verticalScrollOffsetProperty() {
         return verticalScrollOffset;
     }
 
-    /**
-     * Gets language identifier.
-     */
     public String getLanguageId() {
         return languageId.get();
     }
 
-    /**
-     * Sets language identifier.
-     */
     public void setLanguageId(String languageId) {
         this.languageId.set(languageId == null || languageId.isBlank() ? DEFAULT_LANGUAGE : languageId);
     }
 
-    /**
-     * Language identifier property.
-     */
     public StringProperty languageIdProperty() {
         return languageId;
     }
 
-    /**
-     * Gets immutable folded lines snapshot.
-     */
     public List<Integer> getFoldedLines() {
         return foldedLines;
     }
 
-    /**
-     * Sets folded lines snapshot.
-     */
     public void setFoldedLines(List<Integer> foldedLines) {
         this.foldedLines = foldedLines == null ? List.of() : List.copyOf(foldedLines);
-    }
-
-    private void updatePlaceholderText() {
-        String path = getFilePath();
-        if (path == null || path.isBlank()) {
-            placeholderLabel.setText(DEFAULT_TITLE);
-            return;
-        }
-        placeholderLabel.setText(DEFAULT_TITLE + ": " + path);
     }
 }
