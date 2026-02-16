@@ -11,6 +11,7 @@ import org.metalib.papifly.fx.code.document.DocumentChangeListener;
 import org.metalib.papifly.fx.code.lexer.Token;
 import org.metalib.papifly.fx.code.lexer.TokenMap;
 import org.metalib.papifly.fx.code.lexer.TokenType;
+import org.metalib.papifly.fx.code.search.SearchMatch;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +40,8 @@ public class Viewport extends Region {
     private static final Color HEADLINE_COLOR = Color.web("#569cd6");
     private static final Color LIST_ITEM_COLOR = Color.web("#9cdcfe");
     private static final Color CODE_BLOCK_COLOR = Color.web("#d7ba7d");
+    private static final Color SEARCH_HIGHLIGHT_COLOR = Color.web("#623315");
+    private static final Color SEARCH_CURRENT_COLOR = Color.web("#9e6a03");
 
     private final Canvas canvas;
     private final GlyphCache glyphCache;
@@ -51,6 +54,8 @@ public class Viewport extends Region {
     private boolean dirty = true;
     private boolean disposed;
     private TokenMap tokenMap = TokenMap.empty();
+    private List<SearchMatch> searchMatches = List.of();
+    private int currentSearchMatchIndex = -1;
 
     private int firstVisibleLine;
     private int visibleLineCount;
@@ -121,6 +126,22 @@ public class Viewport extends Region {
      */
     public TokenMap getTokenMap() {
         return tokenMap;
+    }
+
+    /**
+     * Sets search match highlights to render.
+     */
+    public void setSearchMatches(List<SearchMatch> matches, int currentIndex) {
+        this.searchMatches = matches == null ? List.of() : matches;
+        this.currentSearchMatchIndex = currentIndex;
+        markDirty();
+    }
+
+    /**
+     * Returns the current search matches.
+     */
+    public List<SearchMatch> getSearchMatches() {
+        return searchMatches;
     }
 
     /**
@@ -265,6 +286,7 @@ public class Viewport extends Region {
 
         // Draw layers
         drawCurrentLineHighlight(gc, w);
+        drawSearchHighlights(gc, lineHeight, charWidth);
         drawSelection(gc, w, lineHeight, charWidth);
         drawText(gc, lineHeight, charWidth);
         drawCaret(gc, lineHeight, charWidth);
@@ -415,6 +437,24 @@ public class Viewport extends Region {
         };
     }
 
+    private void drawSearchHighlights(GraphicsContext gc, double lineHeight, double charWidth) {
+        if (searchMatches.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < searchMatches.size(); i++) {
+            SearchMatch match = searchMatches.get(i);
+            for (RenderLine rl : renderLines) {
+                if (rl.lineIndex() == match.line()) {
+                    double x = match.startColumn() * charWidth;
+                    double w = (match.endColumn() - match.startColumn()) * charWidth;
+                    gc.setFill(i == currentSearchMatchIndex ? SEARCH_CURRENT_COLOR : SEARCH_HIGHLIGHT_COLOR);
+                    gc.fillRect(x, rl.y(), w, lineHeight);
+                    break;
+                }
+            }
+        }
+    }
+
     private void drawCaret(GraphicsContext gc, double lineHeight, double charWidth) {
         int caretLine = selectionModel.getCaretLine();
         for (RenderLine rl : renderLines) {
@@ -449,5 +489,7 @@ public class Viewport extends Region {
         selectionModel.caretColumnProperty().removeListener(caretColumnListener);
         renderLines.clear();
         tokenMap = TokenMap.empty();
+        searchMatches = List.of();
+        currentSearchMatchIndex = -1;
     }
 }

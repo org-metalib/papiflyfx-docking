@@ -7,26 +7,37 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
+import javafx.geometry.Pos;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.gutter.GutterView;
+import org.metalib.papifly.fx.code.gutter.MarkerModel;
 import org.metalib.papifly.fx.code.lexer.IncrementalLexerPipeline;
 import org.metalib.papifly.fx.code.render.SelectionModel;
 import org.metalib.papifly.fx.code.render.Viewport;
+import org.metalib.papifly.fx.code.search.SearchController;
+import org.metalib.papifly.fx.code.search.SearchMatch;
+import org.metalib.papifly.fx.code.search.SearchModel;
 import org.metalib.papifly.fx.code.state.EditorStateData;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Canvas-based code editor component.
  * <p>
  * Renders document text via a virtualized {@link Viewport} and handles
  * keyboard/mouse input for editing, caret movement, and selection.
+ * Includes a line number gutter, marker lane, search/replace overlay,
+ * and go-to-line navigation.
  */
 public class CodeEditor extends StackPane {
 
@@ -44,8 +55,12 @@ public class CodeEditor extends StackPane {
     private final Document document;
     private final Viewport viewport;
     private final SelectionModel selectionModel;
-    private final ChangeListener<Number> caretLineListener = (obs, oldValue, newValue) ->
-        cursorLine.set(newValue.intValue());
+    private final GutterView gutterView;
+    private final MarkerModel markerModel;
+    private final SearchModel searchModel;
+    private final SearchController searchController;
+
+    private final ChangeListener<Number> caretLineListener;
     private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) ->
         cursorColumn.set(newValue.intValue());
     private final ChangeListener<Number> scrollOffsetListener = (obs, oldValue, newValue) ->
@@ -72,10 +87,38 @@ public class CodeEditor extends StackPane {
         this.viewport = new Viewport(selectionModel);
         this.viewport.setDocument(document);
 
+        // Gutter
+        this.markerModel = new MarkerModel();
+        this.gutterView = new GutterView(viewport.getGlyphCache());
+        this.gutterView.setDocument(document);
+        this.gutterView.setMarkerModel(markerModel);
+        this.markerModel.addChangeListener(gutterView::markDirty);
+        this.caretLineListener = (obs, oldValue, newValue) -> {
+            cursorLine.set(newValue.intValue());
+            gutterView.setActiveLineIndex(newValue.intValue());
+        };
+
+        // Search
+        this.searchModel = new SearchModel();
+        this.searchController = new SearchController(searchModel);
+        this.searchController.setDocument(document);
+        this.searchController.setOnNavigate(this::navigateToSearchMatch);
+        this.searchController.setOnClose(this::onSearchClosed);
+        this.searchController.setOnSearchChanged(this::onSearchResultsChanged);
+
+        // Layout: gutter left, viewport center, search overlay on top
+        BorderPane editorArea = new BorderPane();
+        editorArea.setLeft(gutterView);
+        editorArea.setCenter(viewport);
+
         setMinSize(0, 0);
         setPrefSize(640, 480);
         setFocusTraversable(true);
-        getChildren().add(viewport);
+        getChildren().add(editorArea);
+
+        // Search overlay anchored to top
+        StackPane.setAlignment(searchController, Pos.TOP_CENTER);
+        getChildren().add(searchController);
 
         // Bind cursor properties to selection model
         selectionModel.caretLineProperty().addListener(caretLineListener);
@@ -111,6 +154,7 @@ public class CodeEditor extends StackPane {
         document.setText(text);
         selectionModel.moveCaret(0, 0);
         setVerticalScrollOffset(0);
+        gutterView.recomputeWidth();
     }
 
     /**
@@ -134,9 +178,77 @@ public class CodeEditor extends StackPane {
         return selectionModel;
     }
 
+    /**
+     * Returns the gutter view.
+     */
+    public GutterView getGutterView() {
+        return gutterView;
+    }
+
+    /**
+     * Returns the marker model.
+     */
+    public MarkerModel getMarkerModel() {
+        return markerModel;
+    }
+
+    /**
+     * Returns the search model.
+     */
+    public SearchModel getSearchModel() {
+        return searchModel;
+    }
+
+    /**
+     * Returns the search controller (overlay UI).
+     */
+    public SearchController getSearchController() {
+        return searchController;
+    }
+
+    /**
+     * Opens the search/replace overlay. Shortcut: Ctrl/Cmd+F.
+     */
+    public void openSearch() {
+        String selectedText = selectionModel.hasSelection()
+            ? selectionModel.getSelectedText(document)
+            : null;
+        searchController.open(selectedText);
+    }
+
+    /**
+     * Opens a go-to-line dialog. Shortcut: Ctrl/Cmd+G.
+     */
+    public void goToLine() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Go to Line");
+        dialog.setHeaderText(null);
+        dialog.setContentText("Line number (1-" + document.getLineCount() + "):");
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(input -> {
+            try {
+                int lineNumber = Integer.parseInt(input.trim());
+                goToLine(lineNumber);
+            } catch (NumberFormatException ignored) {
+                // Invalid input, do nothing
+            }
+        });
+    }
+
+    /**
+     * Navigates to the specified 1-based line number.
+     */
+    public void goToLine(int lineNumber) {
+        int targetLine = Math.max(1, Math.min(lineNumber, document.getLineCount()));
+        moveCaret(targetLine - 1, 0, false);
+    }
+
     // --- Key handling ---
 
     private void handleKeyTyped(KeyEvent event) {
+        if (searchController.isOpen() && searchController.isFocusWithin()) {
+            return; // Let search field handle typed input
+        }
         String ch = event.getCharacter();
         if (ch.isEmpty() || ch.charAt(0) < 32 || ch.charAt(0) == 127) {
             return; // control characters handled by keyPressed
@@ -155,6 +267,33 @@ public class CodeEditor extends StackPane {
         boolean shift = event.isShiftDown();
         boolean shortcut = event.isControlDown() || event.isMetaDown();
         KeyCode code = event.getCode();
+
+        // Search and navigation shortcuts always active
+        if (shortcut && code == KeyCode.F) {
+            openSearch();
+            event.consume();
+            return;
+        }
+        if (shortcut && code == KeyCode.G) {
+            if (shift) {
+                // Ctrl+Shift+G: no-op or could be used for something else
+            } else {
+                goToLine();
+            }
+            event.consume();
+            return;
+        }
+        if (code == KeyCode.ESCAPE && searchController.isOpen()) {
+            searchController.close();
+            requestFocus();
+            event.consume();
+            return;
+        }
+
+        // If search is focused, don't process editing keys
+        if (searchController.isOpen() && searchController.isFocusWithin()) {
+            return;
+        }
 
         switch (code) {
             case BACK_SPACE -> { handleBackspace(); event.consume(); }
@@ -343,6 +482,22 @@ public class CodeEditor extends StackPane {
         event.consume();
     }
 
+    // --- Search navigation ---
+
+    private void navigateToSearchMatch(SearchMatch match) {
+        moveCaret(match.line(), match.startColumn(), false);
+        onSearchResultsChanged();
+    }
+
+    private void onSearchClosed() {
+        viewport.setSearchMatches(List.of(), -1);
+        requestFocus();
+    }
+
+    private void onSearchResultsChanged() {
+        viewport.setSearchMatches(searchModel.getMatches(), searchModel.getCurrentMatchIndex());
+    }
+
     // --- Helpers ---
 
     private void moveCaret(int line, int col, boolean extendSelection) {
@@ -355,6 +510,7 @@ public class CodeEditor extends StackPane {
         }
         viewport.ensureCaretVisible();
         syncVerticalScrollOffsetFromViewport();
+        syncGutterScroll();
     }
 
     private void moveCaretRight(int chars, boolean extendSelection) {
@@ -372,6 +528,7 @@ public class CodeEditor extends StackPane {
         selectionModel.moveCaret(line, col);
         viewport.ensureCaretVisible();
         syncVerticalScrollOffsetFromViewport();
+        syncGutterScroll();
     }
 
     private void applyCaretState(int line, int column) {
@@ -397,6 +554,7 @@ public class CodeEditor extends StackPane {
         }
         viewport.setScrollOffset(requestedOffset);
         syncVerticalScrollOffsetFromViewport();
+        syncGutterScroll();
     }
 
     private void syncVerticalScrollOffsetFromViewport() {
@@ -410,6 +568,10 @@ public class CodeEditor extends StackPane {
         } finally {
             syncingScrollOffset = false;
         }
+    }
+
+    private void syncGutterScroll() {
+        gutterView.setScrollOffset(viewport.getScrollOffset());
     }
 
     private void deleteSelectionIfAny() {

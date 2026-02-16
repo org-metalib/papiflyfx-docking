@@ -1,0 +1,187 @@
+package org.metalib.papifly.fx.code.gutter;
+
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.layout.Region;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.render.GlyphCache;
+
+/**
+ * Canvas-based gutter rendering line numbers and a marker lane.
+ * <p>
+ * Draws alongside the {@link org.metalib.papifly.fx.code.render.Viewport}
+ * and synchronizes scroll position with it.
+ */
+public class GutterView extends Region {
+
+    private static final Color GUTTER_BACKGROUND = Color.web("#1e1e1e");
+    private static final Color LINE_NUMBER_COLOR = Color.web("#858585");
+    private static final Color ACTIVE_LINE_NUMBER_COLOR = Color.web("#c6c6c6");
+    private static final Color MARKER_ERROR_COLOR = Color.web("#f44747");
+    private static final Color MARKER_WARNING_COLOR = Color.web("#cca700");
+    private static final Color MARKER_INFO_COLOR = Color.web("#75beff");
+    private static final Color MARKER_BREAKPOINT_COLOR = Color.web("#e51400");
+    private static final Color MARKER_BOOKMARK_COLOR = Color.web("#569cd6");
+
+    private static final double MARKER_LANE_WIDTH = 12;
+    private static final double LINE_NUMBER_RIGHT_PADDING = 8;
+
+    private final Canvas canvas;
+    private final GlyphCache glyphCache;
+
+    private Document document;
+    private MarkerModel markerModel;
+    private double scrollOffset;
+    private int activeLineIndex = -1;
+    private boolean dirty = true;
+    private double computedWidth;
+
+    public GutterView(GlyphCache glyphCache) {
+        this.glyphCache = glyphCache;
+        this.canvas = new Canvas();
+        getChildren().add(canvas);
+    }
+
+    /**
+     * Sets the document to display line numbers for.
+     */
+    public void setDocument(Document document) {
+        this.document = document;
+        recomputeWidth();
+        markDirty();
+    }
+
+    /**
+     * Sets the marker model for the marker lane.
+     */
+    public void setMarkerModel(MarkerModel markerModel) {
+        this.markerModel = markerModel;
+        markDirty();
+    }
+
+    /**
+     * Returns the current marker model.
+     */
+    public MarkerModel getMarkerModel() {
+        return markerModel;
+    }
+
+    /**
+     * Synchronizes scroll offset with the viewport.
+     */
+    public void setScrollOffset(double offset) {
+        this.scrollOffset = offset;
+        markDirty();
+    }
+
+    /**
+     * Sets the active (caret) line index for highlighting.
+     */
+    public void setActiveLineIndex(int lineIndex) {
+        if (this.activeLineIndex != lineIndex) {
+            this.activeLineIndex = lineIndex;
+            markDirty();
+        }
+    }
+
+    /**
+     * Returns the computed preferred width of the gutter.
+     */
+    public double getComputedWidth() {
+        return computedWidth;
+    }
+
+    /**
+     * Recomputes the gutter width based on total line count.
+     */
+    public void recomputeWidth() {
+        if (document == null) {
+            computedWidth = 0;
+            return;
+        }
+        int lineCount = document.getLineCount();
+        int digits = Math.max(2, String.valueOf(lineCount).length());
+        double charWidth = glyphCache.getCharWidth();
+        computedWidth = MARKER_LANE_WIDTH + (digits * charWidth) + LINE_NUMBER_RIGHT_PADDING;
+        setPrefWidth(computedWidth);
+        setMinWidth(computedWidth);
+        setMaxWidth(computedWidth);
+    }
+
+    public void markDirty() {
+        dirty = true;
+        requestLayout();
+    }
+
+    @Override
+    protected void layoutChildren() {
+        double w = getWidth();
+        double h = getHeight();
+        if (w != canvas.getWidth() || h != canvas.getHeight()) {
+            canvas.setWidth(w);
+            canvas.setHeight(h);
+            dirty = true;
+        }
+        if (dirty) {
+            dirty = false;
+            redraw();
+        }
+    }
+
+    private void redraw() {
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+        if (w <= 0 || h <= 0 || document == null) {
+            return;
+        }
+
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double lineHeight = glyphCache.getLineHeight();
+        double baseline = lineHeight * 0.8;
+        int totalLines = document.getLineCount();
+
+        // Clear
+        gc.setFill(GUTTER_BACKGROUND);
+        gc.fillRect(0, 0, w, h);
+
+        // Compute visible range
+        int firstLine = Math.max(0, (int) (scrollOffset / lineHeight));
+        int lastLine = Math.min(totalLines - 1, (int) ((scrollOffset + h) / lineHeight) + 1);
+
+        gc.setFont(glyphCache.getFont());
+
+        for (int line = firstLine; line <= lastLine; line++) {
+            double y = line * lineHeight - scrollOffset;
+
+            // Draw marker indicator
+            if (markerModel != null && markerModel.hasMarkers(line)) {
+                MarkerType type = markerModel.getHighestPriorityType(line);
+                if (type != null) {
+                    gc.setFill(markerColor(type));
+                    double markerSize = Math.min(lineHeight - 4, MARKER_LANE_WIDTH - 4);
+                    double markerX = (MARKER_LANE_WIDTH - markerSize) / 2;
+                    double markerY = y + (lineHeight - markerSize) / 2;
+                    gc.fillOval(markerX, markerY, markerSize, markerSize);
+                }
+            }
+
+            // Draw line number
+            String lineNum = String.valueOf(line + 1);
+            double textX = w - LINE_NUMBER_RIGHT_PADDING - (lineNum.length() * glyphCache.getCharWidth());
+            gc.setFill(line == activeLineIndex ? ACTIVE_LINE_NUMBER_COLOR : LINE_NUMBER_COLOR);
+            gc.fillText(lineNum, textX, y + baseline);
+        }
+    }
+
+    private Color markerColor(MarkerType type) {
+        return switch (type) {
+            case ERROR -> MARKER_ERROR_COLOR;
+            case WARNING -> MARKER_WARNING_COLOR;
+            case INFO -> MARKER_INFO_COLOR;
+            case BREAKPOINT -> MARKER_BREAKPOINT_COLOR;
+            case BOOKMARK -> MARKER_BOOKMARK_COLOR;
+        };
+    }
+}

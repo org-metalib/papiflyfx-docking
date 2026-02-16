@@ -1,7 +1,7 @@
 # PapiflyFX Code - Progress Report
 
 **Date:** 2026-02-16
-**Status:** Phase 3 complete; hardening work in progress (persistence/lifecycle/failure handling)
+**Status:** Phase 4 complete; hardening work in progress (persistence/lifecycle/failure handling)
 
 ## Summary
 - Specification and implementation plan were updated to target a separate module: `papiflyfx-docking-code`.
@@ -28,8 +28,23 @@
   - incremental re-lex engine with line-entry/exit state propagation,
   - debounced async lexer pipeline with revision-safe FX-thread token apply,
   - viewport token-aware rendering and editor language wiring.
+- Phase 4 gutter, markers, and navigation was implemented:
+  - line number gutter (`GutterView`) with dynamic width and active-line highlighting,
+  - marker lane with `MarkerModel` integration (error, warning, info, breakpoint, bookmark),
+  - search/replace model (`SearchModel`) supporting plain text and regex modes,
+  - search/replace UI overlay (`SearchController`) with navigation and mode toggles,
+  - go-to-line action via `Ctrl/Cmd+G` dialog and programmatic `goToLine(int)`,
+  - search highlight rendering in `Viewport` with current-match distinction,
+  - gutter scroll synchronization with viewport,
+  - keyboard shortcuts: `Ctrl/Cmd+F` (search), `Ctrl/Cmd+G` (go-to-line), `Escape` (close search).
 
 ## Update Log
+- **2026-02-16:** Completed Phase 4 gutter, markers, and navigation:
+  - Added `gutter/` package: `MarkerType`, `Marker`, `MarkerModel`, `GutterView`.
+  - Added `search/` package: `SearchMatch`, `SearchModel`, `SearchController`.
+  - Modified `Viewport` to render search match highlights with current-match distinction.
+  - Modified `CodeEditor` to integrate gutter (BorderPane layout), marker model, search controller (StackPane overlay), go-to-line dialog, and keyboard shortcuts (Ctrl+F, Ctrl+G, Escape).
+  - Added 36 new tests (15 MarkerModel, 16 SearchModel, 6 GutterView integration). Test suite now 158 passing.
 - **2026-02-16:** Applied Review 3 (Codex) fixes:
   - **HIGH** — Fixed `IncrementalLexerEngine` stale-lines bug: early-stop optimization now validates all remaining baseline lines text-match before copying tail; non-contiguous edits with unchanged line count no longer produce stale tokens.
   - **MEDIUM** — Fixed `MarkdownLexer` ordered list detection for numbers >= 10: replaced single-digit `startsWith(". ", 1)` check with arbitrary digit-span parser; marker length is now computed dynamically.
@@ -49,7 +64,7 @@
 | 1 | Document core and editing | ✅ Complete |
 | 2 | Viewport and rendering | ✅ Complete |
 | 3 | Incremental lexer pipeline | ✅ Complete |
-| 4 | Gutter, markers, navigation | ⏳ Not started |
+| 4 | Gutter, markers, navigation | ✅ Complete |
 | 5 | Theme composition and mapping | ⏳ Not started |
 | 6 | Persistence hardening/migration | 🟡 In progress (version-aware restore hooks added) |
 | 7 | Failure handling and disposal | 🟡 In progress (`dispose()` hooks added for editor/viewport) |
@@ -109,6 +124,19 @@
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/Viewport.java` (token-map rendering support)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/RenderLine.java` (tokenized line payload)
 
+### Phase 4 Source
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/gutter/MarkerType.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/gutter/Marker.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/gutter/MarkerModel.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/gutter/GutterView.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/search/SearchMatch.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/search/SearchModel.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/search/SearchController.java`
+
+### Phase 4 Modified
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` (gutter + search + go-to-line integration, BorderPane layout)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/Viewport.java` (search highlight rendering)
+
 ### Post-Phase 2 Hardening (2026-02-16)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java`
   - state application now drives caret model,
@@ -135,15 +163,18 @@
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerEngineTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerPipelineTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/MarkdownLexerTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/gutter/MarkerModelTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/gutter/GutterViewTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/search/SearchModelTest.java`
 
 ## Validation Results
 - `mvn -pl papiflyfx-docking-code -am compile` -> ✅ success
-- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (122 tests, 0 failures)
+- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (158 tests, 0 failures)
 - `mvn -pl papiflyfx-docking-code test` -> expected failure without `-am` because local `papiflyfx-docking-docks` artifact is not pre-installed
 
 ## Notes / Known Issues
 - Existing project warning remains in parent build config: duplicate `maven-release-plugin` declaration in root `pom.xml` pluginManagement.
-- Gutter/markers/search/theme mapping are still pending MVP completion phases.
+- Theme mapping and remaining hardening phases are still pending MVP completion.
 
 ## Next Recommended Step
-1. Start Phase 4 by implementing gutter, markers, and navigation/search features.
+1. Start Phase 5 by implementing theme composition and mapping (`CodeEditorTheme`, `CodeEditorThemeMapper`).
