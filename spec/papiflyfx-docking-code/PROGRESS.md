@@ -1,7 +1,7 @@
 # PapiflyFX Code - Progress Report
 
 **Date:** 2026-02-16
-**Status:** Phase 2 complete; hardening work started (persistence/caret/lifecycle fixes)
+**Status:** Phase 3 complete; hardening work in progress (persistence/lifecycle/failure handling)
 
 ## Summary
 - Specification and implementation plan were updated to target a separate module: `papiflyfx-docking-code`.
@@ -22,8 +22,15 @@
   - persisted scroll offset is synchronized with actual viewport clamp,
   - version-aware state restore path added to `CodeEditorStateAdapter`,
   - disposal hooks added to `CodeEditor` and `Viewport`.
+- Phase 3 incremental lexer pipeline was implemented:
+  - token model (`Token`, `TokenType`, `LexState`, `TokenMap`) and per-line cache,
+  - language lexers for Java, JSON, JavaScript, and plain-text fallback,
+  - incremental re-lex engine with line-entry/exit state propagation,
+  - debounced async lexer pipeline with revision-safe FX-thread token apply,
+  - viewport token-aware rendering and editor language wiring.
 
 ## Update Log
+- **2026-02-16:** Completed Phase 3 incremental lexer pipeline. Added lexer model/engine/pipeline, Java/JSON/JavaScript lexers, tokenized viewport rendering, and language-driven async syntax updates in `CodeEditor`. Added 14 Phase 3 tests (language lexers, incremental engine/pipeline, and editor integration). Test suite now 113 passing.
 - **2026-02-16:** Applied Review 2 fixes: caret-state restore wiring, undo/redo caret behavior, scroll-state sync, adapter version-aware restore fallback, and disposal APIs (`CodeEditor.dispose`, `Viewport.dispose`). Added 7 new integration tests. Test suite now 99 passing.
 - **2026-02-15:** Completed Phase 2 viewport and rendering — `GlyphCache`, `RenderLine`, `SelectionModel`, `Viewport` (canvas-based virtualized renderer), full keyboard/mouse input in `CodeEditor`, headless FX test infrastructure. 92 tests passing.
 - **2026-02-14:** Completed Phase 1 core model implementation (`TextSource`, `LineIndex`, `Document`, edit commands) and added document-focused unit tests.
@@ -35,7 +42,7 @@
 | 0 | Module bootstrap + integration skeleton | ✅ Complete |
 | 1 | Document core and editing | ✅ Complete |
 | 2 | Viewport and rendering | ✅ Complete |
-| 3 | Incremental lexer pipeline | ⏳ Not started |
+| 3 | Incremental lexer pipeline | ✅ Complete |
 | 4 | Gutter, markers, navigation | ⏳ Not started |
 | 5 | Theme composition and mapping | ⏳ Not started |
 | 6 | Persistence hardening/migration | 🟡 In progress (version-aware restore hooks added) |
@@ -74,6 +81,27 @@
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` (replaced placeholder with Document + Viewport + input handling)
 - `papiflyfx-docking-code/pom.xml` (added headless TestFX surefire config)
 
+### Phase 3 Source
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/TokenType.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/Token.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/LexState.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/LexResult.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/Lexer.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/LineTokens.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/TokenMap.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/PlainTextLexer.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/JavaLexer.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/JsonLexer.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/JavaScriptLexer.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/LexerRegistry.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerEngine.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerPipeline.java`
+
+### Phase 3 Modified
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` (async lexer pipeline integration + language listener wiring)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/Viewport.java` (token-map rendering support)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/RenderLine.java` (tokenized line payload)
+
 ### Post-Phase 2 Hardening (2026-02-16)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java`
   - state application now drives caret model,
@@ -94,16 +122,20 @@
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/render/RenderLineTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/render/ViewportTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/api/CodeEditorIntegrationTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/JavaLexerTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/JsonLexerTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/JavaScriptLexerTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerEngineTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerPipelineTest.java`
 
 ## Validation Results
 - `mvn -pl papiflyfx-docking-code -am compile` -> ✅ success
-- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (99 tests, 0 failures)
+- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (113 tests, 0 failures)
 - `mvn -pl papiflyfx-docking-code test` -> expected failure without `-am` because local `papiflyfx-docking-docks` artifact is not pre-installed
 
 ## Notes / Known Issues
 - Existing project warning remains in parent build config: duplicate `maven-release-plugin` declaration in root `pom.xml` pluginManagement.
-- Lexer/syntax highlighting is pending Phase 3.
 - Gutter/markers/search/theme mapping are still pending MVP completion phases.
 
 ## Next Recommended Step
-1. Start Phase 3 by implementing the incremental lexer pipeline for syntax coloring.
+1. Start Phase 4 by implementing gutter, markers, and navigation/search features.

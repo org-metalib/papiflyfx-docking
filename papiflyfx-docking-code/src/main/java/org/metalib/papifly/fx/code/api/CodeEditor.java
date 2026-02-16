@@ -15,6 +15,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.StackPane;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.lexer.IncrementalLexerPipeline;
 import org.metalib.papifly.fx.code.render.SelectionModel;
 import org.metalib.papifly.fx.code.render.Viewport;
 import org.metalib.papifly.fx.code.state.EditorStateData;
@@ -49,6 +50,8 @@ public class CodeEditor extends StackPane {
         cursorColumn.set(newValue.intValue());
     private final ChangeListener<Number> scrollOffsetListener = (obs, oldValue, newValue) ->
         applyScrollOffset(newValue.doubleValue());
+    private final ChangeListener<String> languageListener;
+    private final IncrementalLexerPipeline lexerPipeline;
 
     private boolean syncingScrollOffset;
     private boolean disposed;
@@ -80,6 +83,11 @@ public class CodeEditor extends StackPane {
 
         // Bind vertical scroll offset
         verticalScrollOffset.addListener(scrollOffsetListener);
+
+        this.lexerPipeline = new IncrementalLexerPipeline(document, viewport::setTokenMap);
+        this.languageListener = (obs, oldValue, newValue) -> lexerPipeline.setLanguageId(newValue);
+        languageId.addListener(languageListener);
+        lexerPipeline.setLanguageId(languageId.get());
 
         // Input handlers
         setOnKeyPressed(this::handleKeyPressed);
@@ -533,6 +541,8 @@ public class CodeEditor extends StackPane {
         selectionModel.caretLineProperty().removeListener(caretLineListener);
         selectionModel.caretColumnProperty().removeListener(caretColumnListener);
         verticalScrollOffset.removeListener(scrollOffsetListener);
+        languageId.removeListener(languageListener);
+        lexerPipeline.dispose();
         viewport.dispose();
     }
 }

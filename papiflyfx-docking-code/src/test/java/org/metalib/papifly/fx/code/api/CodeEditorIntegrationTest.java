@@ -8,6 +8,7 @@ import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.lexer.TokenType;
 import org.metalib.papifly.fx.code.state.EditorStateCodec;
 import org.metalib.papifly.fx.code.state.EditorStateData;
 import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
@@ -18,6 +19,7 @@ import org.testfx.util.WaitForAsyncUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -251,6 +253,24 @@ class CodeEditorIntegrationTest {
         });
     }
 
+    @Test
+    void syntaxTokensUpdateInViewportAfterLanguageSelection() {
+        runOnFx(() -> {
+            editor.setText("class Demo {}");
+            editor.setLanguageId("java");
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(waitForCondition(
+            () -> callOnFx(() -> editor.getViewport()
+                .getTokenMap()
+                .tokensForLine(0)
+                .stream()
+                .anyMatch(token -> token.type() == TokenType.KEYWORD)),
+            2_000
+        ));
+    }
+
     // --- Helpers ---
 
     private String buildLines(int count) {
@@ -276,6 +296,23 @@ class CodeEditorIntegrationTest {
             false
         )));
         WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    private boolean waitForCondition(BooleanSupplier condition, long timeoutMillis) {
+        long deadline = System.currentTimeMillis() + timeoutMillis;
+        while (System.currentTimeMillis() < deadline) {
+            if (condition.getAsBoolean()) {
+                return true;
+            }
+            WaitForAsyncUtils.waitForFxEvents();
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return condition.getAsBoolean();
     }
 
     private void runOnFx(Runnable action) {

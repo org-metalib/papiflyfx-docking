@@ -8,6 +8,9 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
+import org.metalib.papifly.fx.code.lexer.Token;
+import org.metalib.papifly.fx.code.lexer.TokenMap;
+import org.metalib.papifly.fx.code.lexer.TokenType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +30,12 @@ public class Viewport extends Region {
     private static final Color CURRENT_LINE_COLOR = Color.web("#2a2d2e");
     private static final Color SELECTION_COLOR = Color.web("#264f78");
     private static final Color CARET_COLOR = Color.web("#aeafad");
+    private static final Color KEYWORD_COLOR = Color.web("#569cd6");
+    private static final Color STRING_COLOR = Color.web("#ce9178");
+    private static final Color COMMENT_COLOR = Color.web("#6a9955");
+    private static final Color NUMBER_COLOR = Color.web("#b5cea8");
+    private static final Color BOOLEAN_COLOR = Color.web("#4ec9b0");
+    private static final Color NULL_COLOR = Color.web("#4ec9b0");
 
     private final Canvas canvas;
     private final GlyphCache glyphCache;
@@ -38,6 +47,7 @@ public class Viewport extends Region {
     private double scrollOffset;
     private boolean dirty = true;
     private boolean disposed;
+    private TokenMap tokenMap = TokenMap.empty();
 
     private int firstVisibleLine;
     private int visibleLineCount;
@@ -93,6 +103,21 @@ public class Viewport extends Region {
      */
     public SelectionModel getSelectionModel() {
         return selectionModel;
+    }
+
+    /**
+     * Sets syntax token map used for per-line rendering.
+     */
+    public void setTokenMap(TokenMap tokenMap) {
+        this.tokenMap = tokenMap == null ? TokenMap.empty() : tokenMap;
+        markDirty();
+    }
+
+    /**
+     * Returns current token map.
+     */
+    public TokenMap getTokenMap() {
+        return tokenMap;
     }
 
     /**
@@ -259,7 +284,12 @@ public class Viewport extends Region {
                 break;
             }
             double y = lineIdx * lineHeight - scrollOffset;
-            renderLines.add(new RenderLine(lineIdx, document.getLineText(lineIdx), y));
+            renderLines.add(new RenderLine(
+                lineIdx,
+                document.getLineText(lineIdx),
+                y,
+                tokenMap.tokensForLine(lineIdx)
+            ));
         }
     }
 
@@ -309,15 +339,73 @@ public class Viewport extends Region {
     }
 
     private void drawText(GraphicsContext gc, double lineHeight, double charWidth) {
-        gc.setFill(TEXT_COLOR);
         gc.setFont(glyphCache.getFont());
 
         // Text baseline offset (ascent from top)
         double baseline = lineHeight * 0.8;
 
         for (RenderLine rl : renderLines) {
-            gc.fillText(rl.text(), 0, rl.y() + baseline);
+            drawTokenizedLine(gc, rl, charWidth, baseline);
         }
+    }
+
+    private void drawTokenizedLine(GraphicsContext gc, RenderLine renderLine, double charWidth, double baseline) {
+        String text = renderLine.text();
+        List<Token> tokens = renderLine.tokens();
+        if (tokens.isEmpty()) {
+            gc.setFill(TEXT_COLOR);
+            gc.fillText(text, 0, renderLine.y() + baseline);
+            return;
+        }
+
+        int cursor = 0;
+        int textLength = text.length();
+        for (Token token : tokens) {
+            int start = Math.max(0, Math.min(token.startColumn(), textLength));
+            int end = Math.max(start, Math.min(token.endColumn(), textLength));
+            if (start > cursor) {
+                drawSegment(gc, text, cursor, start, renderLine.y(), charWidth, baseline, TEXT_COLOR);
+            }
+            if (end > start) {
+                drawSegment(gc, text, start, end, renderLine.y(), charWidth, baseline, tokenColor(token.type()));
+            }
+            cursor = Math.max(cursor, end);
+        }
+        if (cursor < textLength) {
+            drawSegment(gc, text, cursor, textLength, renderLine.y(), charWidth, baseline, TEXT_COLOR);
+        }
+    }
+
+    private void drawSegment(
+        GraphicsContext gc,
+        String text,
+        int startColumn,
+        int endColumn,
+        double y,
+        double charWidth,
+        double baseline,
+        Color color
+    ) {
+        if (endColumn <= startColumn) {
+            return;
+        }
+        gc.setFill(color);
+        gc.fillText(text.substring(startColumn, endColumn), startColumn * charWidth, y + baseline);
+    }
+
+    private Color tokenColor(TokenType tokenType) {
+        if (tokenType == null) {
+            return TEXT_COLOR;
+        }
+        return switch (tokenType) {
+            case KEYWORD -> KEYWORD_COLOR;
+            case STRING -> STRING_COLOR;
+            case COMMENT -> COMMENT_COLOR;
+            case NUMBER -> NUMBER_COLOR;
+            case BOOLEAN -> BOOLEAN_COLOR;
+            case NULL_LITERAL -> NULL_COLOR;
+            default -> TEXT_COLOR;
+        };
     }
 
     private void drawCaret(GraphicsContext gc, double lineHeight, double charWidth) {
@@ -353,5 +441,6 @@ public class Viewport extends Region {
         selectionModel.caretLineProperty().removeListener(caretLineListener);
         selectionModel.caretColumnProperty().removeListener(caretColumnListener);
         renderLines.clear();
+        tokenMap = TokenMap.empty();
     }
 }

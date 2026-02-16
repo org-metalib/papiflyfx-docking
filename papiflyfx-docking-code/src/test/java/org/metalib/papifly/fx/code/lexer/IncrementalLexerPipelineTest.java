@@ -1,0 +1,118 @@
+package org.metalib.papifly.fx.code.lexer;
+
+import org.junit.jupiter.api.Test;
+import org.metalib.papifly.fx.code.document.Document;
+
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class IncrementalLexerPipelineTest {
+
+    @Test
+    void appliesJavaTokensAsynchronously() {
+        Document document = new Document("class Demo {}");
+        AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
+        IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(document, applied::set, Runnable::run, 5);
+        try {
+            pipeline.setLanguageId("java");
+            assertTrue(waitFor(
+                () -> hasTokenType(applied.get(), 0, TokenType.KEYWORD),
+                Duration.ofSeconds(2)
+            ));
+        } finally {
+            pipeline.dispose();
+        }
+    }
+
+    @Test
+    void keepsLatestRevisionResultAfterRapidUpdates() {
+        Document document = new Document("class A {}");
+        AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
+        IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(document, applied::set, Runnable::run, 5);
+        try {
+            pipeline.setLanguageId("java");
+            document.setText("class B {}");
+            document.setText("const value = 1;");
+            pipeline.setLanguageId("javascript");
+
+            assertTrue(waitFor(() -> {
+                LineTokens line = applied.get().lineAt(0);
+                return line != null
+                    && "const value = 1;".equals(line.text())
+                    && hasTokenType(applied.get(), 0, TokenType.KEYWORD);
+            }, Duration.ofSeconds(2)));
+        } finally {
+            pipeline.dispose();
+        }
+    }
+
+    @Test
+    void unknownLanguageFallsBackToPlainText() {
+        Document document = new Document("class Demo {}");
+        AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
+        IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(document, applied::set, Runnable::run, 5);
+        try {
+            pipeline.setLanguageId("unknown-language");
+            assertTrue(waitFor(() -> {
+                LineTokens line = applied.get().lineAt(0);
+                return line != null && line.tokens().isEmpty();
+            }, Duration.ofSeconds(2)));
+
+            LineTokens line = applied.get().lineAt(0);
+            assertNotNull(line);
+            assertEquals("class Demo {}", line.text());
+        } finally {
+            pipeline.dispose();
+        }
+    }
+
+    @Test
+    void preservesEarliestDirtyLineAcrossRapidPendingRevisions() {
+        Document document = new Document("class A {}\nclass B {}");
+        AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
+        IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(document, applied::set, Runnable::run, 40);
+        try {
+            pipeline.setLanguageId("java");
+            assertTrue(waitFor(() -> hasTokenType(applied.get(), 0, TokenType.KEYWORD), Duration.ofSeconds(2)));
+
+            document.replace(0, 5, "clazz");
+            int lineOneStart = document.toOffset(1, 0);
+            document.insert(lineOneStart, "prefix ");
+
+            assertTrue(waitFor(
+                () -> !hasTokenType(applied.get(), 0, TokenType.KEYWORD),
+                Duration.ofSeconds(2)
+            ));
+        } finally {
+            pipeline.dispose();
+        }
+    }
+
+    private static boolean hasTokenType(TokenMap tokenMap, int line, TokenType type) {
+        if (tokenMap == null) {
+            return false;
+        }
+        return tokenMap.tokensForLine(line).stream().anyMatch(token -> token.type() == type);
+    }
+
+    private static boolean waitFor(BooleanSupplier condition, Duration timeout) {
+        long deadline = System.nanoTime() + timeout.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (condition.getAsBoolean()) {
+                return true;
+            }
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return condition.getAsBoolean();
+    }
+}

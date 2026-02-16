@@ -1,0 +1,225 @@
+package org.metalib.papifly.fx.code.lexer;
+
+import javafx.application.Platform;
+import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.document.DocumentChangeEvent;
+import org.metalib.papifly.fx.code.document.DocumentChangeListener;
+
+import java.util.Objects;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+
+/**
+ * Debounced asynchronous incremental lexer pipeline.
+ */
+public class IncrementalLexerPipeline implements AutoCloseable {
+
+    static final long DEFAULT_DEBOUNCE_MILLIS = 35;
+
+    private final Document document;
+    private final Consumer<TokenMap> tokenMapConsumer;
+    private final Consumer<Runnable> fxDispatcher;
+    private final ScheduledExecutorService worker;
+    private final long debounceMillis;
+    private final AtomicLong revision = new AtomicLong();
+    private final Object lock = new Object();
+    private final DocumentChangeListener documentChangeListener = this::onDocumentChanged;
+
+    private volatile TokenMap tokenMap = TokenMap.empty();
+    private volatile String languageId = PlainTextLexer.LANGUAGE_ID;
+    private volatile boolean disposed;
+
+    private PendingRequest pendingRequest;
+    private ScheduledFuture<?> scheduledTask;
+
+    /**
+     * Creates a pipeline with default FX dispatcher and debounce.
+     */
+    public IncrementalLexerPipeline(Document document, Consumer<TokenMap> tokenMapConsumer) {
+        this(
+            document,
+            tokenMapConsumer,
+            IncrementalLexerPipeline::dispatchOnFxThread,
+            DEFAULT_DEBOUNCE_MILLIS
+        );
+    }
+
+    IncrementalLexerPipeline(
+        Document document,
+        Consumer<TokenMap> tokenMapConsumer,
+        Consumer<Runnable> fxDispatcher,
+        long debounceMillis
+    ) {
+        this.document = Objects.requireNonNull(document, "document");
+        this.tokenMapConsumer = Objects.requireNonNull(tokenMapConsumer, "tokenMapConsumer");
+        this.fxDispatcher = Objects.requireNonNull(fxDispatcher, "fxDispatcher");
+        this.debounceMillis = Math.max(0, debounceMillis);
+        this.worker = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "papiflyfx-lexer-pipeline");
+            thread.setDaemon(true);
+            return thread;
+        });
+
+        document.addChangeListener(documentChangeListener);
+        enqueue(document.getText(), 0, revision.get(), languageId, 0);
+    }
+
+    /**
+     * Returns current token map snapshot.
+     */
+    public TokenMap getTokenMap() {
+        return tokenMap;
+    }
+
+    /**
+     * Sets active language id and requests full re-lex.
+     */
+    public void setLanguageId(String languageId) {
+        String normalizedLanguageId = LexerRegistry.normalizeLanguageId(languageId);
+        this.languageId = normalizedLanguageId;
+        long nextRevision = revision.incrementAndGet();
+        enqueue(document.getText(), 0, nextRevision, normalizedLanguageId, debounceMillis);
+    }
+
+    /**
+     * Stops worker tasks and detaches document listeners.
+     */
+    public void dispose() {
+        synchronized (lock) {
+            if (disposed) {
+                return;
+            }
+            disposed = true;
+            pendingRequest = null;
+            if (scheduledTask != null) {
+                scheduledTask.cancel(true);
+                scheduledTask = null;
+            }
+        }
+        document.removeChangeListener(documentChangeListener);
+        worker.shutdownNow();
+    }
+
+    @Override
+    public void close() {
+        dispose();
+    }
+
+    private void onDocumentChanged(DocumentChangeEvent event) {
+        long nextRevision = revision.incrementAndGet();
+        int dirtyStartLine = document.getLineForOffset(Math.min(event.offset(), document.length()));
+        enqueue(document.getText(), dirtyStartLine, nextRevision, languageId, debounceMillis);
+    }
+
+    private void enqueue(
+        String textSnapshot,
+        int dirtyStartLine,
+        long targetRevision,
+        String targetLanguageId,
+        long delayMillis
+    ) {
+        synchronized (lock) {
+            if (disposed) {
+                return;
+            }
+            int mergedDirtyStart = pendingRequest == null
+                ? dirtyStartLine
+                : Math.min(pendingRequest.dirtyStartLine(), dirtyStartLine);
+
+            if (pendingRequest != null && targetRevision < pendingRequest.revision()) {
+                return;
+            }
+
+            pendingRequest = new PendingRequest(
+                textSnapshot,
+                mergedDirtyStart,
+                targetRevision,
+                targetLanguageId
+            );
+            scheduleLocked(delayMillis);
+        }
+    }
+
+    private void scheduleLocked(long delayMillis) {
+        if (scheduledTask != null) {
+            scheduledTask.cancel(true);
+        }
+        scheduledTask = worker.schedule(this::processPending, Math.max(0, delayMillis), TimeUnit.MILLISECONDS);
+    }
+
+    private void processPending() {
+        PendingRequest request;
+        TokenMap baseline;
+        synchronized (lock) {
+            if (disposed || pendingRequest == null) {
+                return;
+            }
+            request = pendingRequest;
+            pendingRequest = null;
+            baseline = tokenMap;
+        }
+
+        TokenMap computed;
+        try {
+            Lexer lexer = LexerRegistry.resolve(request.languageId());
+            computed = IncrementalLexerEngine.relex(
+                baseline,
+                request.textSnapshot(),
+                request.dirtyStartLine(),
+                lexer
+            );
+        } catch (CancellationException cancellationException) {
+            scheduleNextIfNeeded();
+            return;
+        }
+
+        if (request.revision() != revision.get() || disposed) {
+            scheduleNextIfNeeded();
+            return;
+        }
+
+        fxDispatcher.accept(() -> applyIfCurrent(request, computed));
+        scheduleNextIfNeeded();
+    }
+
+    private void applyIfCurrent(PendingRequest request, TokenMap computed) {
+        if (disposed) {
+            return;
+        }
+        if (request.revision() != revision.get()) {
+            return;
+        }
+        tokenMap = computed;
+        tokenMapConsumer.accept(computed);
+    }
+
+    private void scheduleNextIfNeeded() {
+        synchronized (lock) {
+            if (disposed || pendingRequest == null) {
+                return;
+            }
+            scheduleLocked(0);
+        }
+    }
+
+    private static void dispatchOnFxThread(Runnable runnable) {
+        if (Platform.isFxApplicationThread()) {
+            runnable.run();
+            return;
+        }
+        Platform.runLater(runnable);
+    }
+
+    private record PendingRequest(
+        String textSnapshot,
+        int dirtyStartLine,
+        long revision,
+        String languageId
+    ) {
+    }
+}
