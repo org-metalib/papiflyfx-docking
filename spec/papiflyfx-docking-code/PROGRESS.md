@@ -30,6 +30,12 @@
   - viewport token-aware rendering and editor language wiring.
 
 ## Update Log
+- **2026-02-16:** Applied Review 3 (Codex) fixes:
+  - **HIGH** — Fixed `IncrementalLexerEngine` stale-lines bug: early-stop optimization now validates all remaining baseline lines text-match before copying tail; non-contiguous edits with unchanged line count no longer produce stale tokens.
+  - **MEDIUM** — Fixed `MarkdownLexer` ordered list detection for numbers >= 10: replaced single-digit `startsWith(". ", 1)` check with arbitrary digit-span parser; marker length is now computed dynamically.
+  - **MEDIUM** — Moved line snapshot creation off UI/change thread in `IncrementalLexerPipeline`: caller now captures lightweight `document.getText()` string; `splitLines()` runs on worker thread.
+  - Added 5 regression tests (1 engine non-contiguous edit, 4 Markdown ordered list including negative case). Test suite now 122 passing.
+- **2026-02-16:** Added MarkdownLexer with support for headlines, list items, and code blocks. Updated TokenType and Viewport with Markdown-specific categories and colors. Added MarkdownLexerTest. Test suite now 117 passing.
 - **2026-02-16:** Completed Phase 3 incremental lexer pipeline. Added lexer model/engine/pipeline, Java/JSON/JavaScript lexers, tokenized viewport rendering, and language-driven async syntax updates in `CodeEditor`. Added 14 Phase 3 tests (language lexers, incremental engine/pipeline, and editor integration). Test suite now 113 passing.
 - **2026-02-16:** Applied Review 2 fixes: caret-state restore wiring, undo/redo caret behavior, scroll-state sync, adapter version-aware restore fallback, and disposal APIs (`CodeEditor.dispose`, `Viewport.dispose`). Added 7 new integration tests. Test suite now 99 passing.
 - **2026-02-15:** Completed Phase 2 viewport and rendering — `GlyphCache`, `RenderLine`, `SelectionModel`, `Viewport` (canvas-based virtualized renderer), full keyboard/mouse input in `CodeEditor`, headless FX test infrastructure. 92 tests passing.
@@ -93,6 +99,7 @@
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/JavaLexer.java`
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/JsonLexer.java`
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/JavaScriptLexer.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/MarkdownLexer.java`
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/LexerRegistry.java`
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerEngine.java`
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerPipeline.java`
@@ -127,10 +134,11 @@
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/JavaScriptLexerTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerEngineTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerPipelineTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/lexer/MarkdownLexerTest.java`
 
 ## Validation Results
 - `mvn -pl papiflyfx-docking-code -am compile` -> ✅ success
-- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (113 tests, 0 failures)
+- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (122 tests, 0 failures)
 - `mvn -pl papiflyfx-docking-code test` -> expected failure without `-am` because local `papiflyfx-docking-docks` artifact is not pre-installed
 
 ## Notes / Known Issues

@@ -5,6 +5,7 @@ import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeEvent;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.Executors;
@@ -167,9 +168,10 @@ public class IncrementalLexerPipeline implements AutoCloseable {
         TokenMap computed;
         try {
             Lexer lexer = LexerRegistry.resolve(request.languageId());
+            List<String> lines = IncrementalLexerEngine.splitLines(request.textSnapshot());
             computed = IncrementalLexerEngine.relex(
                 baseline,
-                request.textSnapshot(),
+                lines,
                 request.dirtyStartLine(),
                 lexer
             );

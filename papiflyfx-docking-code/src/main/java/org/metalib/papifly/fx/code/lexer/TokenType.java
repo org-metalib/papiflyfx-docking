@@ -13,5 +13,11 @@ public enum TokenType {
     NULL_LITERAL,
     OPERATOR,
     PUNCTUATION,
-    IDENTIFIER
+    IDENTIFIER,
+    
+    // Markdown elements
+    HEADLINE,
+    LIST_ITEM,
+    CODE_BLOCK,
+    TEXT
 }

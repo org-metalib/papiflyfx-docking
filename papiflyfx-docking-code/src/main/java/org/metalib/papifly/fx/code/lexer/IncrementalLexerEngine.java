@@ -46,30 +46,52 @@ public final class IncrementalLexerEngine {
         Objects.requireNonNull(lexer, "lexer");
         TokenMap baseline = previous == null ? TokenMap.empty() : previous;
         List<String> safeLines = lines == null || lines.isEmpty() ? List.of("") : lines;
-        int safeStartLine = Math.max(0, Math.min(dirtyStartLine, safeLines.size() - 1));
+        
+        // Ensure dirtyStartLine is within bounds
+        int safeStartLine = Math.max(0, Math.min(dirtyStartLine, safeLines.size()));
 
+        // We use an ArrayList to build the result. TokenMap constructor currently copies this.
         List<LineTokens> output = new ArrayList<>(safeLines.size());
+        
+        // 1. Identify common prefix that hasn't changed.
         int maxPrefix = Math.min(Math.min(safeStartLine, baseline.lineCount()), safeLines.size());
         for (int i = 0; i < maxPrefix; i++) {
             LineTokens previousLine = baseline.lineAt(i);
+            // If text changed, we must re-lex from here.
             if (previousLine == null || !Objects.equals(previousLine.text(), safeLines.get(i))) {
-                safeStartLine = i;
                 break;
             }
             output.add(previousLine);
         }
         safeStartLine = output.size();
 
+        // 2. Lex from safeStartLine until end or until states stabilize.
         LexState entryState = safeStartLine == 0 ? lexer.initialState() : output.get(safeStartLine - 1).exitState();
         for (int lineIndex = safeStartLine; lineIndex < safeLines.size(); lineIndex++) {
             ensureNotInterrupted();
             String lineText = safeLines.get(lineIndex);
+            
+            // Optimization: if text and entry state match what we had before,
+            // and line count is unchanged, try to copy remaining tail from baseline.
+            // We must verify every remaining line still text-matches to avoid stale tokens.
             LineTokens reusable = tryReuseLine(baseline, lineIndex, lineText, entryState);
-            if (reusable != null) {
-                output.add(reusable);
-                entryState = reusable.exitState();
-                continue;
+            if (reusable != null && safeLines.size() == baseline.lineCount()) {
+                boolean allMatch = true;
+                for (int j = lineIndex; j < safeLines.size(); j++) {
+                    LineTokens candidate = baseline.lineAt(j);
+                    if (candidate == null || !Objects.equals(candidate.text(), safeLines.get(j))) {
+                        allMatch = false;
+                        break;
+                    }
+                }
+                if (allMatch) {
+                    for (int j = lineIndex; j < safeLines.size(); j++) {
+                        output.add(baseline.lineAt(j));
+                    }
+                    return new TokenMap(output);
+                }
             }
+
             LexResult lexResult = lexer.lexLine(lineText, entryState);
             LineTokens computed = new LineTokens(lineText, lexResult.tokens(), entryState, lexResult.exitState());
             output.add(computed);

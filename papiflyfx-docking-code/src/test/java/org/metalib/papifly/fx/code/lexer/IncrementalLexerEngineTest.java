@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 class IncrementalLexerEngineTest {
@@ -50,6 +51,37 @@ class IncrementalLexerEngineTest {
 
         assertEquals(3, lexer.invocations());
         assertSame(baseline.lineAt(3), updated.lineAt(3));
+    }
+
+    @Test
+    void relexHandlesNonContiguousChangesWithSameLineCount() {
+        // Regression: non-contiguous edits with unchanged line count must not produce stale tokens.
+        // Baseline: ["a0","a1","a2","a3"]
+        // Updated:  ["a0x","a1","a2x","a3"], dirtyStartLine=0
+        PlainTextLexer plain = new PlainTextLexer();
+        TokenMap baseline = IncrementalLexerEngine.relex(
+            TokenMap.empty(),
+            List.of("a0", "a1", "a2", "a3"),
+            0,
+            plain
+        );
+        assertEquals(4, baseline.lineCount());
+        assertEquals("a0", baseline.lineAt(0).text());
+        assertEquals("a2", baseline.lineAt(2).text());
+
+        TokenMap updated = IncrementalLexerEngine.relex(
+            baseline,
+            List.of("a0x", "a1", "a2x", "a3"),
+            0,
+            plain
+        );
+        assertEquals(4, updated.lineCount());
+        assertEquals("a0x", updated.lineAt(0).text());
+        assertEquals("a1", updated.lineAt(1).text());
+        assertEquals("a2x", updated.lineAt(2).text());
+        assertEquals("a3", updated.lineAt(3).text());
+        // Line 2 must NOT be stale
+        assertNotEquals("a2", updated.lineAt(2).text());
     }
 
     private static final class CountingLexer implements Lexer {

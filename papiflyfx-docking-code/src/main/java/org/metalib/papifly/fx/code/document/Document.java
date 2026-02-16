@@ -1,6 +1,7 @@
 package org.metalib.papifly.fx.code.document;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
@@ -30,6 +31,18 @@ public class Document {
     public Document(String initialText) {
         this.textSource = new TextSource(initialText);
         this.lineIndex = new LineIndex(textSource.getText());
+    }
+
+    /**
+     * Returns a snapshot of lines.
+     */
+    public List<String> getLinesSnapshot() {
+        int count = getLineCount();
+        List<String> lines = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            lines.add(getLineText(i));
+        }
+        return lines;
     }
 
     /**

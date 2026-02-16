@@ -12,6 +12,7 @@ public final class LexerRegistry {
     private static final Lexer JAVA = new JavaLexer();
     private static final Lexer JSON = new JsonLexer();
     private static final Lexer JAVASCRIPT = new JavaScriptLexer();
+    private static final Lexer MARKDOWN = new MarkdownLexer();
 
     private static final Map<String, Lexer> LEXERS = Map.ofEntries(
         Map.entry(PlainTextLexer.LANGUAGE_ID, PLAIN_TEXT),
@@ -22,7 +23,9 @@ public final class LexerRegistry {
         Map.entry(JavaLexer.LANGUAGE_ID, JAVA),
         Map.entry(JsonLexer.LANGUAGE_ID, JSON),
         Map.entry(JavaScriptLexer.LANGUAGE_ID, JAVASCRIPT),
-        Map.entry("js", JAVASCRIPT)
+        Map.entry("js", JAVASCRIPT),
+        Map.entry(MarkdownLexer.LANGUAGE_ID, MARKDOWN),
+        Map.entry("md", MARKDOWN)
     );
 
     private LexerRegistry() {

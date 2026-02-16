@@ -36,6 +36,9 @@ public class Viewport extends Region {
     private static final Color NUMBER_COLOR = Color.web("#b5cea8");
     private static final Color BOOLEAN_COLOR = Color.web("#4ec9b0");
     private static final Color NULL_COLOR = Color.web("#4ec9b0");
+    private static final Color HEADLINE_COLOR = Color.web("#569cd6");
+    private static final Color LIST_ITEM_COLOR = Color.web("#9cdcfe");
+    private static final Color CODE_BLOCK_COLOR = Color.web("#d7ba7d");
 
     private final Canvas canvas;
     private final GlyphCache glyphCache;
@@ -404,6 +407,10 @@ public class Viewport extends Region {
             case NUMBER -> NUMBER_COLOR;
             case BOOLEAN -> BOOLEAN_COLOR;
             case NULL_LITERAL -> NULL_COLOR;
+            case HEADLINE -> HEADLINE_COLOR;
+            case LIST_ITEM -> LIST_ITEM_COLOR;
+            case CODE_BLOCK -> CODE_BLOCK_COLOR;
+            case TEXT -> TEXT_COLOR;
             default -> TEXT_COLOR;
         };
     }
