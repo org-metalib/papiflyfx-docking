@@ -12,6 +12,7 @@
 
     <modules>
         <module>papiflyfx-docking-docks</module>
+        <module>papiflyfx-docking-code</module>
     </modules>
 
     <properties>
