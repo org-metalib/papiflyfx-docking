@@ -11,8 +11,8 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IncrementalLexerPipelineTest {
@@ -98,7 +98,7 @@ class IncrementalLexerPipelineTest {
     }
 
     @Test
-    void keepsPreviousTokensWhenLexerThrowsAndRecovers() {
+    void fallsBackToPlainTextForCurrentSnapshotWhenLexerThrowsAndRecovers() {
         Document document = new Document("class Demo {}");
         AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
         AtomicBoolean failLexing = new AtomicBoolean(false);
@@ -121,12 +121,19 @@ class IncrementalLexerPipelineTest {
                 () -> hasTokenType(applied.get(), 0, TokenType.KEYWORD),
                 Duration.ofSeconds(2)
             ));
-            TokenMap stable = applied.get();
 
+            document.setText("class Broken {}");
             failLexing.set(true);
             pipeline.setLanguageId("throwing");
-            assertTrue(waitFor(() -> throwLexerCalls.get() > 0, Duration.ofSeconds(2)));
-            assertSame(stable, applied.get());
+            assertTrue(waitFor(() -> {
+                if (throwLexerCalls.get() <= 0) {
+                    return false;
+                }
+                LineTokens line = applied.get().lineAt(0);
+                return line != null
+                    && "class Broken {}".equals(line.text())
+                    && line.tokens().isEmpty();
+            }, Duration.ofSeconds(2)));
 
             failLexing.set(false);
             document.setText("let value = 1;");
@@ -137,6 +144,43 @@ class IncrementalLexerPipelineTest {
                     && "let value = 1;".equals(line.text())
                     && hasTokenType(applied.get(), 0, TokenType.KEYWORD);
             }, Duration.ofSeconds(2)));
+        } finally {
+            pipeline.dispose();
+        }
+    }
+
+    @Test
+    void disposeStopsApplyingTokenUpdates() {
+        Document document = new Document("class Demo {}");
+        AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
+        AtomicInteger applyCount = new AtomicInteger(0);
+        IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(
+            document,
+            tokenMap -> {
+                applied.set(tokenMap);
+                applyCount.incrementAndGet();
+            },
+            Runnable::run,
+            5
+        );
+        try {
+            pipeline.setLanguageId("java");
+            assertTrue(waitFor(
+                () -> hasTokenType(applied.get(), 0, TokenType.KEYWORD),
+                Duration.ofSeconds(2)
+            ));
+
+            int countBeforeDispose = applyCount.get();
+            pipeline.dispose();
+            document.setText("let value = 1;");
+
+            // No document listener should remain after dispose.
+            boolean changedAfterDispose = waitFor(
+                () -> applyCount.get() > countBeforeDispose,
+                Duration.ofMillis(200)
+            );
+            assertFalse(changedAfterDispose);
+            assertEquals(countBeforeDispose, applyCount.get());
         } finally {
             pipeline.dispose();
         }

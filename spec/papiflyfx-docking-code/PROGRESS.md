@@ -1,7 +1,7 @@
 # PapiflyFX Code - Progress Report
 
 **Date:** 2026-02-17
-**Status:** Phase 6 complete; Review 6 (Codex-0) all workstreams addressed; Phase 8 perf work incorporated
+**Status:** Phase 7 complete (failure handling + lifecycle cleanup); Phase 8 hardening in progress
 
 ## Summary
 - Specification and implementation plan were updated to target a separate module: `papiflyfx-docking-code`.
@@ -37,8 +37,23 @@
   - search highlight rendering in `Viewport` with current-match distinction,
   - gutter scroll synchronization with viewport,
   - keyboard shortcuts: `Ctrl/Cmd+F` (search), `Ctrl/Cmd+G` (go-to-line), `Escape` (close search).
+- Phase 7 failure handling and lifecycle cleanup was completed:
+  - lexer exception path now falls back to plain-text tokenization of the current snapshot (not stale previous tokens),
+  - lexer warning logs now include languageId/revision/dirtyStartLine context,
+  - `CodeEditor.dispose()` now clears search callbacks/document reference and closes search overlay safely,
+  - added tests for lexer failure fallback, post-dispose lexer quiescence, dispose callback cleanup, and docking session restore/capture under adapter restore/save failures.
 
 ## Update Log
+- **2026-02-17:** Completed Phase 7 — Failure Handling and Lifecycle Cleanup (Review 7 Codex-0 workstreams 1+2):
+  - **Workstream A** — Lexer failure fallback hardened in `IncrementalLexerPipeline`: exception path now re-lexes with plain-text fallback for the same pending request and revision. Previous behavior ("keep old tokens") that could leave stale highlighting is removed.
+  - **Workstream B** — Lifecycle cleanup hardened in `CodeEditor.dispose()`: search controller callbacks are nulled, document is detached, and overlay is closed before disposing rendering/lexer resources.
+  - **Workstream C** — Test matrix expanded:
+    - `IncrementalLexerPipelineTest`: fallback-on-throw now asserts plain-text tokens for current text snapshot; added post-dispose no-update test.
+    - `CodeEditorIntegrationTest`: added dispose/search callback cleanup regression test.
+    - `DockManagerSessionFxTest`: added restore failure path test where adapter restore/save both throw; verifies restore fallback + session capture still succeeds.
+  - Validation:
+    - `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dtest=IncrementalLexerPipelineTest,CodeEditorIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false test` -> ✅ pass (33 tests, 0 failures)
+    - `mvn -pl papiflyfx-docking-docks -am -Dtestfx.headless=true -Dtest=DockManagerSessionFxTest -Dsurefire.failIfNoSpecifiedTests=false test` -> ✅ pass (5 tests, 0 failures)
 - **2026-02-17:** Completed Phase 6 — Persistence and Restore Contract (Review 6 Codex-0):
   - **Workstream A** — Formalized v1 state contract: added comprehensive Javadoc to `EditorStateData` documenting all field invariants, canonical key set, and forward/backward compatibility semantics. Added 3 codec tolerance tests (unknown keys ignored, full v1 key set verification, all-fields round-trip).
   - **Workstream B** — Refactored adapter versioning: extracted `decodeV1()`, `migrateV0ToV1()`, and `fallbackEmptyState()` version-gated helpers in `CodeEditorStateAdapter`. Added `InvalidPathException` catch for malformed path syntax with empty-document fallback. Migration structure is now additive for future v2+ introduction.
@@ -99,7 +114,7 @@
 | 4 | Gutter, markers, navigation | ✅ Complete |
 | 5 | Theme composition and mapping | ✅ Complete |
 | 6 | Persistence hardening/migration | ✅ Complete |
-| 7 | Failure handling and disposal | 🟡 In progress (`dispose()` hooks + `DisposableContent` + DockLeaf integration + placeholder fallback complete) |
+| 7 | Failure handling and disposal | ✅ Complete |
 | 8 | Benchmarks and documentation hardening | 🟡 In progress (incremental line index, lazy lexer snapshot, dirty-region viewport redraw, perf guard test) |
 
 ## Implemented Files (Highlights)
@@ -233,14 +248,16 @@
 
 ## Validation Results
 - `mvn -pl papiflyfx-docking-code -am compile` -> ✅ success
-- `mvn -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test` -> ✅ success (202 tests total, 0 failures, 0 errors)
+- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dtest=IncrementalLexerPipelineTest,CodeEditorIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false test` -> ✅ success (33 tests, 0 failures, 0 errors)
+- `mvn -pl papiflyfx-docking-docks -am -Dtestfx.headless=true -Dtest=DockManagerSessionFxTest -Dsurefire.failIfNoSpecifiedTests=false test` -> ✅ success (5 tests, 0 failures, 0 errors)
+- `mvn -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test` -> ✅ success (204 tests total, 0 failures, 0 errors)
 - `mvn -pl papiflyfx-docking-code test` -> expected failure without `-am` because local `papiflyfx-docking-docks` artifact is not pre-installed
 
 ## Notes / Known Issues
 - Existing project warning remains in parent build config: duplicate `maven-release-plugin` declaration in root `pom.xml` pluginManagement.
 - All Review 5 issues (1–6) and Codex-1 follow-up items are now fully addressed.
 - Phase 6 persistence contract is complete: v1 schema documented, migration hooks structured, error containment in place.
-- Remaining hardening phases (7, 8) are still pending MVP completion.
+- Phase 7 failure handling/lifecycle cleanup is complete; remaining hardening focus is Phase 8 benchmarks/docs.
 
 ## Next Recommended Step
-1. Start Phase 7: Failure Handling and Lifecycle Cleanup (unknown language fallback, lexer exception handling, dispose lifecycle on editor components).
+1. Continue Phase 8: run full acceptance benchmark/documentation pass and record measured metrics from `spec.md`.

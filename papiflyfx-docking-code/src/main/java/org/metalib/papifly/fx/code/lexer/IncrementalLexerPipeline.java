@@ -23,6 +23,7 @@ public class IncrementalLexerPipeline implements AutoCloseable {
 
     static final long DEFAULT_DEBOUNCE_MILLIS = 35;
     private static final System.Logger LOGGER = System.getLogger(IncrementalLexerPipeline.class.getName());
+    private static final PlainTextLexer PLAIN_TEXT_FALLBACK_LEXER = new PlainTextLexer();
 
     private final Document document;
     private final Consumer<TokenMap> tokenMapConsumer;
@@ -232,11 +233,11 @@ public class IncrementalLexerPipeline implements AutoCloseable {
         if (textSnapshot == null) {
             textSnapshot = document.getText();
         }
+        List<String> lines = IncrementalLexerEngine.splitLines(textSnapshot);
 
         TokenMap computed;
         try {
             Lexer lexer = lexerResolver.apply(request.languageId());
-            List<String> lines = IncrementalLexerEngine.splitLines(textSnapshot);
             computed = IncrementalLexerEngine.relex(
                 baseline,
                 lines,
@@ -247,9 +248,31 @@ public class IncrementalLexerPipeline implements AutoCloseable {
             scheduleNextIfNeeded();
             return;
         } catch (Exception exception) {
-            LOGGER.log(System.Logger.Level.WARNING, "Lexer failure, keeping previous tokens", exception);
-            scheduleNextIfNeeded();
-            return;
+            LOGGER.log(
+                System.Logger.Level.WARNING,
+                "Lexer failure for languageId=" + request.languageId()
+                    + ", revision=" + request.revision()
+                    + ", dirtyStartLine=" + request.dirtyStartLine()
+                    + "; applying plain-text fallback",
+                exception
+            );
+            try {
+                computed = IncrementalLexerEngine.relex(
+                    baseline,
+                    lines,
+                    request.dirtyStartLine(),
+                    PLAIN_TEXT_FALLBACK_LEXER
+                );
+            } catch (Exception fallbackException) {
+                LOGGER.log(
+                    System.Logger.Level.WARNING,
+                    "Plain-text lexer fallback failed for revision=" + request.revision()
+                        + ", keeping previous tokens",
+                    fallbackException
+                );
+                scheduleNextIfNeeded();
+                return;
+            }
         }
 
         if (request.revision() != revision.get() || disposed) {
@@ -257,7 +280,8 @@ public class IncrementalLexerPipeline implements AutoCloseable {
             return;
         }
 
-        fxDispatcher.accept(() -> applyIfCurrent(request, computed));
+        TokenMap tokenMapToApply = computed;
+        fxDispatcher.accept(() -> applyIfCurrent(request, tokenMapToApply));
         scheduleNextIfNeeded();
     }
 

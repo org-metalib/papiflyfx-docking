@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.docks;
 
 import javafx.application.Platform;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
@@ -10,14 +11,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
+import org.metalib.papifly.fx.docks.core.DockTabGroup;
 import org.metalib.papifly.fx.docks.floating.FloatingDockWindow;
+import org.metalib.papifly.fx.docks.layout.ContentStateAdapter;
+import org.metalib.papifly.fx.docks.layout.ContentStateRegistry;
 import org.metalib.papifly.fx.docks.layout.ContentFactory;
 import org.metalib.papifly.fx.docks.layout.data.DockSessionData;
+import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
+import org.metalib.papifly.fx.docks.layout.data.LeafData;
+import org.metalib.papifly.fx.docks.layout.data.TabGroupData;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
 
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -319,6 +328,83 @@ class DockManagerSessionFxTest {
 
                 assertEquals(0, dockManager.getFloatingWindowManager().getFloatingCount());
                 assertNull(restoredLeaf.getContent());
+
+                latch.countDown();
+            } catch (Exception e) {
+                e.printStackTrace();
+                fail(e.getMessage());
+            }
+        });
+
+        latch.await();
+    }
+
+    @Test
+    void restoreSession_adapterRestoreFailureFallsBackAndCaptureStillWorks() throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                ContentStateRegistry registry = new ContentStateRegistry();
+                registry.register(new ContentStateAdapter() {
+                    @Override
+                    public String getTypeKey() {
+                        return "throwing-type";
+                    }
+
+                    @Override
+                    public int getVersion() {
+                        return 1;
+                    }
+
+                    @Override
+                    public Map<String, Object> saveState(String contentId, Node content) {
+                        throw new RuntimeException("simulated save failure");
+                    }
+
+                    @Override
+                    public Node restore(LeafContentData content) {
+                        throw new RuntimeException("simulated restore failure");
+                    }
+                });
+                dockManager.setContentStateRegistry(registry);
+
+                LeafContentData contentData = LeafContentData.of(
+                    "throwing-type",
+                    "leaf-content-1",
+                    1,
+                    Map.of("payload", "value")
+                );
+                LeafData leaf = LeafData.of(
+                    "leaf-throwing",
+                    "Throwing Leaf",
+                    "editor:Throwing Leaf",
+                    contentData
+                );
+                DockSessionData session = DockSessionData.of(
+                    TabGroupData.of("group-throwing", List.of(leaf), 0),
+                    List.of(),
+                    List.of(),
+                    null
+                );
+
+                dockManager.restoreSession(session);
+                WaitForAsyncUtils.waitForFxEvents();
+
+                assertNotNull(dockManager.getRoot());
+                assertTrue(dockManager.getRoot() instanceof DockTabGroup);
+                DockTabGroup group = (DockTabGroup) dockManager.getRoot();
+                assertEquals(1, group.getTabs().size());
+                assertNotNull(group.getTabs().getFirst().getContent());
+
+                DockSessionData captured = dockManager.captureSession();
+                assertNotNull(captured);
+                assertNotNull(captured.layout());
+                assertTrue(captured.layout() instanceof TabGroupData);
+                TabGroupData capturedGroup = (TabGroupData) captured.layout();
+                assertEquals(1, capturedGroup.tabs().size());
+                assertNotNull(capturedGroup.tabs().getFirst().content());
+                assertEquals("throwing-type", capturedGroup.tabs().getFirst().content().typeKey());
 
                 latch.countDown();
             } catch (Exception e) {

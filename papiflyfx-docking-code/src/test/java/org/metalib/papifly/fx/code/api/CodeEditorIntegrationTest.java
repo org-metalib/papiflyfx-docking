@@ -19,6 +19,7 @@ import org.testfx.util.WaitForAsyncUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -211,6 +212,26 @@ class CodeEditorIntegrationTest {
         WaitForAsyncUtils.waitForFxEvents();
         assertNull(callOnFx(editor::getOnKeyPressed));
         assertNull(callOnFx(editor::getOnScroll));
+    }
+
+    @Test
+    void disposeClearsSearchControllerCallbacksBeforeClose() {
+        AtomicBoolean onCloseCalled = new AtomicBoolean(false);
+        AtomicBoolean onSearchChangedCalled = new AtomicBoolean(false);
+
+        runOnFx(() -> {
+            editor.getSearchController().setOnClose(() -> onCloseCalled.set(true));
+            editor.getSearchController().setOnSearchChanged(() -> onSearchChangedCalled.set(true));
+            editor.getSearchController().open("query");
+            onCloseCalled.set(false);
+            onSearchChangedCalled.set(false);
+            editor.dispose();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertFalse(onCloseCalled.get());
+        assertFalse(onSearchChangedCalled.get());
+        assertFalse(callOnFx(() -> editor.getSearchController().isOpen()));
     }
 
     @Test

@@ -751,6 +751,11 @@ public class CodeEditor extends StackPane implements DisposableContent {
             return;
         }
         disposed = true;
+        searchController.setOnNavigate(null);
+        searchController.setOnClose(null);
+        searchController.setOnSearchChanged(null);
+        searchController.setDocument(null);
+        searchController.close();
         unbindThemeProperty();
         setOnKeyPressed(null);
         setOnKeyTyped(null);
