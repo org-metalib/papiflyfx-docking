@@ -1,7 +1,7 @@
 # PapiflyFX Code - Progress Report
 
 **Date:** 2026-02-17
-**Status:** Phase 5 complete; Review 5 (Codex) + Codex-1 follow-up fixes all addressed; Phase 8 perf work incorporated
+**Status:** Phase 6 complete; Review 6 (Codex-0) all workstreams addressed; Phase 8 perf work incorporated
 
 ## Summary
 - Specification and implementation plan were updated to target a separate module: `papiflyfx-docking-code`.
@@ -39,6 +39,12 @@
   - keyboard shortcuts: `Ctrl/Cmd+F` (search), `Ctrl/Cmd+G` (go-to-line), `Escape` (close search).
 
 ## Update Log
+- **2026-02-17:** Completed Phase 6 — Persistence and Restore Contract (Review 6 Codex-0):
+  - **Workstream A** — Formalized v1 state contract: added comprehensive Javadoc to `EditorStateData` documenting all field invariants, canonical key set, and forward/backward compatibility semantics. Added 3 codec tolerance tests (unknown keys ignored, full v1 key set verification, all-fields round-trip).
+  - **Workstream B** — Refactored adapter versioning: extracted `decodeV1()`, `migrateV0ToV1()`, and `fallbackEmptyState()` version-gated helpers in `CodeEditorStateAdapter`. Added `InvalidPathException` catch for malformed path syntax with empty-document fallback. Migration structure is now additive for future v2+ introduction.
+  - **Workstream C** — Hardened restore-order compatibility: guarded `adapter.restore()` in `LayoutFactory.buildLeaf()` with try-catch so adapter failures fall through to factory/placeholder chain. Guarded `adapter.saveState()` in `DockManager.refreshContentState()` so save failures do not abort session capture. Added focused logging for both error paths.
+  - **Workstream D** — Expanded test matrix: added 3 codec tests, 2 adapter tests (invalid path, saveState field verification), 2 LayoutFactory tests (adapter-throws-falls-to-factory, adapter-throws-falls-to-placeholder). Test suite now 202 tests passing (up from 197).
+  - **Workstream E** — Updated progress docs and phase status.
 - **2026-02-17:** Applied Review 5 Codex-1 follow-up fixes (all remaining issues):
   - **HIGH** — Resolved per-edit O(n) work (previously deferred issue 5): `LineIndex` now has `applyInsert()`/`applyDelete()` for incremental line-start updates. `Document.insert/delete/replace` use incremental updates instead of full rebuild. `IncrementalLexerPipeline` defers `getText()` snapshot to worker thread via lazy enqueue, avoiding O(n) string copy on every keystroke. Performance guard test validates <1ms per-edit on 50k-line document.
   - **HIGH** — Implemented dirty-region incremental redraw (previously deferred issue 6): `Viewport` now tracks dirty lines via `BitSet` and `fullRedrawRequired` flag. Document changes dirty only affected lines from change offset onward. Caret moves dirty only old/new caret lines. Full redraw occurs only on scroll, resize, or theme change.
@@ -92,7 +98,7 @@
 | 3 | Incremental lexer pipeline | ✅ Complete |
 | 4 | Gutter, markers, navigation | ✅ Complete |
 | 5 | Theme composition and mapping | ✅ Complete |
-| 6 | Persistence hardening/migration | 🟡 In progress (version-aware restore hooks + file rehydration added) |
+| 6 | Persistence hardening/migration | ✅ Complete |
 | 7 | Failure handling and disposal | 🟡 In progress (`dispose()` hooks + `DisposableContent` + DockLeaf integration + placeholder fallback complete) |
 | 8 | Benchmarks and documentation hardening | 🟡 In progress (incremental line index, lazy lexer snapshot, dirty-region viewport redraw, perf guard test) |
 
@@ -173,6 +179,12 @@
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/search/SearchController.java` (replaced hardcoded colors with `CodeEditorTheme` palette + runtime refresh)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` (theme binding, `bindThemeProperty`, `setEditorTheme`, dispose unbind)
 
+### Phase 6 Modified
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/state/EditorStateData.java` (v1 contract Javadoc)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditorStateAdapter.java` (version-gated decode helpers, malformed-path guard)
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/layout/LayoutFactory.java` (adapter.restore exception guard + logging)
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockManager.java` (adapter.saveState exception guard + logging)
+
 ### Review 5 Fixes (cross-module)
 - `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/layout/DisposableContent.java` (new interface)
 - `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/core/DockLeaf.java` (dispose calls `DisposableContent.dispose()`)
@@ -221,13 +233,14 @@
 
 ## Validation Results
 - `mvn -pl papiflyfx-docking-code -am compile` -> ✅ success
-- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (197 tests total, 0 failures, 0 errors)
+- `mvn -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test` -> ✅ success (202 tests total, 0 failures, 0 errors)
 - `mvn -pl papiflyfx-docking-code test` -> expected failure without `-am` because local `papiflyfx-docking-docks` artifact is not pre-installed
 
 ## Notes / Known Issues
 - Existing project warning remains in parent build config: duplicate `maven-release-plugin` declaration in root `pom.xml` pluginManagement.
 - All Review 5 issues (1–6) and Codex-1 follow-up items are now fully addressed.
-- Remaining hardening phases are still pending MVP completion.
+- Phase 6 persistence contract is complete: v1 schema documented, migration hooks structured, error containment in place.
+- Remaining hardening phases (7, 8) are still pending MVP completion.
 
 ## Next Recommended Step
-1. Start Phase 6 by completing persistence hardening and migration (full `EditorStateData` v1 save/restore contract, migration hooks).
+1. Start Phase 7: Failure Handling and Lifecycle Cleanup (unknown language fallback, lexer exception handling, dispose lifecycle on editor components).

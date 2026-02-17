@@ -9,6 +9,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EditorStateCodecTest {
 
@@ -92,5 +93,68 @@ class EditorStateCodecTest {
         assertNotNull(map);
         EditorStateData roundTrip = EditorStateCodec.fromMap(map);
         assertEquals(EditorStateData.empty(), roundTrip);
+    }
+
+    // --- Phase 6: forward/backward tolerance tests ---
+
+    @Test
+    void fromMapIgnoresUnknownKeys() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("filePath", "/test.txt");
+        map.put("cursorLine", 5);
+        map.put("cursorColumn", 3);
+        map.put("verticalScrollOffset", 42.5);
+        map.put("languageId", "java");
+        map.put("foldedLines", List.of(1, 2));
+        // Unknown keys from a future version
+        map.put("futureField", "value");
+        map.put("anotherFutureField", 999);
+
+        EditorStateData result = EditorStateCodec.fromMap(map);
+
+        assertEquals("/test.txt", result.filePath());
+        assertEquals(5, result.cursorLine());
+        assertEquals(3, result.cursorColumn());
+        assertEquals(42.5, result.verticalScrollOffset());
+        assertEquals("java", result.languageId());
+        assertEquals(List.of(1, 2), result.foldedLines());
+    }
+
+    @Test
+    void roundTripPreservesAllV1Fields() {
+        EditorStateData state = new EditorStateData(
+            "/home/user/project/Main.java",
+            42,
+            15,
+            350.75,
+            "java",
+            List.of(10, 20, 30)
+        );
+
+        Map<String, Object> map = EditorStateCodec.toMap(state);
+        EditorStateData restored = EditorStateCodec.fromMap(map);
+
+        assertEquals(state.filePath(), restored.filePath());
+        assertEquals(state.cursorLine(), restored.cursorLine());
+        assertEquals(state.cursorColumn(), restored.cursorColumn());
+        assertEquals(state.verticalScrollOffset(), restored.verticalScrollOffset());
+        assertEquals(state.languageId(), restored.languageId());
+        assertEquals(state.foldedLines(), restored.foldedLines());
+    }
+
+    @Test
+    void toMapContainsExactV1KeySet() {
+        EditorStateData state = new EditorStateData(
+            "/file.txt", 1, 2, 3.0, "json", List.of(5)
+        );
+        Map<String, Object> map = EditorStateCodec.toMap(state);
+
+        assertEquals(6, map.size());
+        assertTrue(map.containsKey("filePath"));
+        assertTrue(map.containsKey("cursorLine"));
+        assertTrue(map.containsKey("cursorColumn"));
+        assertTrue(map.containsKey("verticalScrollOffset"));
+        assertTrue(map.containsKey("languageId"));
+        assertTrue(map.containsKey("foldedLines"));
     }
 }

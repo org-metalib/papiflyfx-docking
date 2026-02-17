@@ -16,11 +16,16 @@ import org.metalib.papifly.fx.docks.layout.data.SplitData;
 import org.metalib.papifly.fx.docks.layout.data.TabGroupData;
 import org.metalib.papifly.fx.docks.theme.Theme;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * Factory for building DockElement trees from layout DTOs.
  * Recursively traverses the data model to instantiate concrete structural nodes.
  */
 public class LayoutFactory {
+
+    private static final Logger LOG = Logger.getLogger(LayoutFactory.class.getName());
 
     private final ObjectProperty<Theme> themeProperty;
     private ContentFactory contentFactory;
@@ -93,7 +98,13 @@ public class LayoutFactory {
         if (contentData != null && contentStateRegistry != null) {
             ContentStateAdapter adapter = contentStateRegistry.getAdapter(contentData.typeKey());
             if (adapter != null) {
-                content = adapter.restore(contentData);
+                try {
+                    content = adapter.restore(contentData);
+                } catch (Exception e) {
+                    LOG.log(Level.WARNING, "Adapter restore failed for typeKey=" + contentData.typeKey()
+                        + ", falling through to factory/placeholder", e);
+                    // content remains null -> factory fallback below
+                }
             }
             // When adapter is absent, fall through to factory attempt below
         }

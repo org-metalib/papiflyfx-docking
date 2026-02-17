@@ -13,6 +13,8 @@ import org.metalib.papifly.fx.docks.theme.Theme;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 
+import javafx.scene.Node;
+
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -89,6 +91,93 @@ class LayoutFactoryFxTest {
         String text = ((Label) leaf.getContent()).getText();
         assertTrue(text.contains("Missing content"), "Placeholder label should indicate missing content");
         assertTrue(text.contains("missing-type"), "Placeholder should include type key");
+    }
+
+    @Test
+    void build_leaf_fallsToFactoryWhenAdapterThrows() {
+        var themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        ContentFactory contentFactory = id -> new Label("factory:" + id);
+        LayoutFactory factory = new LayoutFactory(themeProperty, contentFactory);
+
+        // Register a throwing adapter
+        ContentStateRegistry registry = new ContentStateRegistry();
+        registry.register(new ContentStateAdapter() {
+            @Override
+            public String getTypeKey() {
+                return "throwing-type";
+            }
+            @Override
+            public int getVersion() {
+                return 1;
+            }
+            @Override
+            public Map<String, Object> saveState(String contentId, Node content) {
+                return Map.of();
+            }
+            @Override
+            public Node restore(LeafContentData content) {
+                throw new RuntimeException("adapter failure");
+            }
+        });
+        factory.setContentStateRegistry(registry);
+
+        LeafContentData contentData = new LeafContentData(
+            "throwing-type", "c1", 1, Map.of()
+        );
+        LeafData leafData = LeafData.of("leaf-ex", "Leaf Exception", "myFactory", contentData);
+
+        DockElement element = factory.build(leafData);
+        assertInstanceOf(DockTabGroup.class, element);
+
+        DockTabGroup group = (DockTabGroup) element;
+        var leaf = group.getTabs().getFirst();
+        assertNotNull(leaf.getContent());
+        // Should fall through to factory after adapter failure
+        assertInstanceOf(Label.class, leaf.getContent());
+        assertEquals("factory:myFactory", ((Label) leaf.getContent()).getText());
+    }
+
+    @Test
+    void build_leaf_createsPlaceholderWhenAdapterThrowsAndNoFactory() {
+        var themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        // No content factory
+        LayoutFactory factory = new LayoutFactory(themeProperty);
+
+        ContentStateRegistry registry = new ContentStateRegistry();
+        registry.register(new ContentStateAdapter() {
+            @Override
+            public String getTypeKey() {
+                return "throwing-type";
+            }
+            @Override
+            public int getVersion() {
+                return 1;
+            }
+            @Override
+            public Map<String, Object> saveState(String contentId, Node content) {
+                return Map.of();
+            }
+            @Override
+            public Node restore(LeafContentData content) {
+                throw new RuntimeException("adapter failure");
+            }
+        });
+        factory.setContentStateRegistry(registry);
+
+        LeafContentData contentData = new LeafContentData(
+            "throwing-type", "c1", 1, Map.of()
+        );
+        LeafData leafData = LeafData.of("leaf-ex2", "Leaf Ex2", null, contentData);
+
+        DockElement element = factory.build(leafData);
+        assertInstanceOf(DockTabGroup.class, element);
+
+        DockTabGroup group = (DockTabGroup) element;
+        var leaf = group.getTabs().getFirst();
+        assertNotNull(leaf.getContent());
+        assertInstanceOf(Label.class, leaf.getContent());
+        String text = ((Label) leaf.getContent()).getText();
+        assertTrue(text.contains("Missing content"), "Should show placeholder after adapter failure");
     }
 
     @Test

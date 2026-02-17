@@ -383,6 +383,52 @@ class CodeEditorIntegrationTest {
         assertEquals("java", callOnFx(() -> restored[0].getLanguageId()));
     }
 
+    // --- Phase 6: persistence contract tests ---
+
+    @Test
+    void adapterRestoreHandlesInvalidPathSyntax() {
+        CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
+        // Use a path with null bytes which is invalid on all platforms
+        Map<String, Object> state = EditorStateCodec.toMap(
+            new EditorStateData("/invalid\u0000path/file.txt", 3, 5, 20.0, "javascript", List.of())
+        );
+
+        CodeEditor restored = callOnFx(() -> (CodeEditor) adapter.restore(
+            new LeafContentData(CodeEditorFactory.FACTORY_ID, "editor-path", 1, state)
+        ));
+
+        // Empty document but metadata preserved
+        assertEquals("", callOnFx(restored::getText));
+        assertEquals("/invalid\u0000path/file.txt", callOnFx(restored::getFilePath));
+        assertEquals("javascript", callOnFx(restored::getLanguageId));
+        callOnFx(() -> {
+            restored.dispose();
+            return null;
+        });
+    }
+
+    @Test
+    void adapterSaveStateReturnsAllV1Fields() {
+        CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
+        runOnFx(() -> {
+            editor.setFilePath("/test/save.java");
+            editor.setLanguageId("java");
+            editor.setText("line0\nline1\nline2");
+            editor.getSelectionModel().moveCaret(1, 3);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        Map<String, Object> state = callOnFx(() -> adapter.saveState("test-id", editor));
+        assertNotNull(state);
+        assertFalse(state.isEmpty());
+        assertEquals("/test/save.java", state.get("filePath"));
+        assertEquals(1, ((Number) state.get("cursorLine")).intValue());
+        assertEquals(3, ((Number) state.get("cursorColumn")).intValue());
+        assertEquals("java", state.get("languageId"));
+        assertNotNull(state.get("verticalScrollOffset"));
+        assertNotNull(state.get("foldedLines"));
+    }
+
     // --- Helpers ---
 
     private String buildLines(int count) {

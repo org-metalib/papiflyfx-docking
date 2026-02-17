@@ -46,6 +46,8 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Central manager for the docking framework.
@@ -53,6 +55,8 @@ import java.util.Map;
  * Supports floating windows, minimize bar, and maximize functionality.
  */
 public class DockManager {
+
+    private static final Logger LOG = Logger.getLogger(DockManager.class.getName());
 
     private final BorderPane mainContainer;
     private final StackPane rootPane;
@@ -604,8 +608,14 @@ public class DockManager {
             return;
         }
 
-        Map<String, Object> state = adapter.saveState(contentId, content);
-        leaf.setContentData(new LeafContentData(typeKey, contentId, adapter.getVersion(), state));
+        try {
+            Map<String, Object> state = adapter.saveState(contentId, content);
+            leaf.setContentData(new LeafContentData(typeKey, contentId, adapter.getVersion(), state));
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Adapter saveState failed for typeKey=" + typeKey
+                + ", keeping previous contentData", e);
+            // Keep existing contentData unchanged — do not abort session capture
+        }
     }
 
     private void collectLeaves(DockElement element, Collection<DockLeaf> leaves) {
