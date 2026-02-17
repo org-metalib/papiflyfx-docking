@@ -3,9 +3,10 @@ package org.metalib.papifly.fx.code.gutter;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.Region;
-import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.render.GlyphCache;
+import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 
 /**
  * Canvas-based gutter rendering line numbers and a marker lane.
@@ -15,21 +16,13 @@ import org.metalib.papifly.fx.code.render.GlyphCache;
  */
 public class GutterView extends Region {
 
-    private static final Color GUTTER_BACKGROUND = Color.web("#1e1e1e");
-    private static final Color LINE_NUMBER_COLOR = Color.web("#858585");
-    private static final Color ACTIVE_LINE_NUMBER_COLOR = Color.web("#c6c6c6");
-    private static final Color MARKER_ERROR_COLOR = Color.web("#f44747");
-    private static final Color MARKER_WARNING_COLOR = Color.web("#cca700");
-    private static final Color MARKER_INFO_COLOR = Color.web("#75beff");
-    private static final Color MARKER_BREAKPOINT_COLOR = Color.web("#e51400");
-    private static final Color MARKER_BOOKMARK_COLOR = Color.web("#569cd6");
-
     private static final double MARKER_LANE_WIDTH = 12;
     private static final double LINE_NUMBER_RIGHT_PADDING = 8;
 
     private final Canvas canvas;
     private final GlyphCache glyphCache;
 
+    private CodeEditorTheme theme = CodeEditorTheme.dark();
     private Document document;
     private MarkerModel markerModel;
     private double scrollOffset;
@@ -50,6 +43,21 @@ public class GutterView extends Region {
         this.document = document;
         recomputeWidth();
         markDirty();
+    }
+
+    /**
+     * Sets the editor theme palette and triggers a redraw.
+     */
+    public void setTheme(CodeEditorTheme theme) {
+        this.theme = theme == null ? CodeEditorTheme.dark() : theme;
+        markDirty();
+    }
+
+    /**
+     * Returns the current editor theme.
+     */
+    public CodeEditorTheme getTheme() {
+        return theme;
     }
 
     /**
@@ -142,7 +150,7 @@ public class GutterView extends Region {
         int totalLines = document.getLineCount();
 
         // Clear
-        gc.setFill(GUTTER_BACKGROUND);
+        gc.setFill(theme.gutterBackground());
         gc.fillRect(0, 0, w, h);
 
         // Compute visible range
@@ -169,18 +177,18 @@ public class GutterView extends Region {
             // Draw line number
             String lineNum = String.valueOf(line + 1);
             double textX = w - LINE_NUMBER_RIGHT_PADDING - (lineNum.length() * glyphCache.getCharWidth());
-            gc.setFill(line == activeLineIndex ? ACTIVE_LINE_NUMBER_COLOR : LINE_NUMBER_COLOR);
+            gc.setFill(line == activeLineIndex ? theme.lineNumberActiveColor() : theme.lineNumberColor());
             gc.fillText(lineNum, textX, y + baseline);
         }
     }
 
-    private Color markerColor(MarkerType type) {
+    private Paint markerColor(MarkerType type) {
         return switch (type) {
-            case ERROR -> MARKER_ERROR_COLOR;
-            case WARNING -> MARKER_WARNING_COLOR;
-            case INFO -> MARKER_INFO_COLOR;
-            case BREAKPOINT -> MARKER_BREAKPOINT_COLOR;
-            case BOOKMARK -> MARKER_BOOKMARK_COLOR;
+            case ERROR -> theme.markerErrorColor();
+            case WARNING -> theme.markerWarningColor();
+            case INFO -> theme.markerInfoColor();
+            case BREAKPOINT -> theme.markerBreakpointColor();
+            case BOOKMARK -> theme.markerBookmarkColor();
         };
     }
 }

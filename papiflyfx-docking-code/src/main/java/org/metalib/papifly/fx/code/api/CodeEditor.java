@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.code.api;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -29,6 +30,9 @@ import org.metalib.papifly.fx.code.search.SearchController;
 import org.metalib.papifly.fx.code.search.SearchMatch;
 import org.metalib.papifly.fx.code.search.SearchModel;
 import org.metalib.papifly.fx.code.state.EditorStateData;
+import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
+import org.metalib.papifly.fx.code.theme.CodeEditorThemeMapper;
+import org.metalib.papifly.fx.docks.theme.Theme;
 
 import java.util.List;
 import java.util.Optional;
@@ -71,6 +75,8 @@ public class CodeEditor extends StackPane {
     private final DocumentChangeListener gutterWidthListener;
     private final IncrementalLexerPipeline lexerPipeline;
 
+    private ObjectProperty<Theme> boundThemeProperty;
+    private ChangeListener<Theme> themeChangeListener;
     private int gutterDigits;
     private boolean syncingScrollOffset;
     private boolean disposed;
@@ -211,6 +217,56 @@ public class CodeEditor extends StackPane {
      */
     public SearchController getSearchController() {
         return searchController;
+    }
+
+    /**
+     * Binds this editor to a docking {@link Theme} property.
+     * <p>
+     * The editor listens for changes and maps each new {@link Theme} to a
+     * {@link CodeEditorTheme} via {@link CodeEditorThemeMapper}, refreshing
+     * all visual components at runtime.
+     */
+    public void bindThemeProperty(ObjectProperty<Theme> themeProperty) {
+        unbindThemeProperty();
+        if (themeProperty == null) {
+            return;
+        }
+        this.boundThemeProperty = themeProperty;
+        this.themeChangeListener = (obs, oldTheme, newTheme) -> applyDockingTheme(newTheme);
+        themeProperty.addListener(themeChangeListener);
+        applyDockingTheme(themeProperty.get());
+    }
+
+    /**
+     * Unbinds a previously bound docking theme property.
+     */
+    public void unbindThemeProperty() {
+        if (boundThemeProperty != null && themeChangeListener != null) {
+            boundThemeProperty.removeListener(themeChangeListener);
+        }
+        boundThemeProperty = null;
+        themeChangeListener = null;
+    }
+
+    /**
+     * Directly applies a {@link CodeEditorTheme} to the editor and its sub-components.
+     */
+    public void setEditorTheme(CodeEditorTheme editorTheme) {
+        CodeEditorTheme resolved = editorTheme == null ? CodeEditorTheme.dark() : editorTheme;
+        viewport.setTheme(resolved);
+        gutterView.setTheme(resolved);
+        searchController.setTheme(resolved);
+    }
+
+    /**
+     * Returns the current editor theme from the viewport.
+     */
+    public CodeEditorTheme getEditorTheme() {
+        return viewport.getTheme();
+    }
+
+    private void applyDockingTheme(Theme dockingTheme) {
+        setEditorTheme(CodeEditorThemeMapper.map(dockingTheme));
     }
 
     /**
@@ -701,6 +757,7 @@ public class CodeEditor extends StackPane {
             return;
         }
         disposed = true;
+        unbindThemeProperty();
         setOnKeyPressed(null);
         setOnKeyTyped(null);
         setOnMousePressed(null);

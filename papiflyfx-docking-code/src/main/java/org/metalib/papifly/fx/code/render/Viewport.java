@@ -4,7 +4,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.Region;
-import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.text.Font;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
@@ -12,6 +12,7 @@ import org.metalib.papifly.fx.code.lexer.Token;
 import org.metalib.papifly.fx.code.lexer.TokenMap;
 import org.metalib.papifly.fx.code.lexer.TokenType;
 import org.metalib.papifly.fx.code.search.SearchMatch;
+import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,22 +27,6 @@ import java.util.List;
 public class Viewport extends Region {
 
     private static final int PREFETCH_LINES = 2;
-    private static final Color BACKGROUND_COLOR = Color.web("#1e1e1e");
-    private static final Color TEXT_COLOR = Color.web("#d4d4d4");
-    private static final Color CURRENT_LINE_COLOR = Color.web("#2a2d2e");
-    private static final Color SELECTION_COLOR = Color.web("#264f78");
-    private static final Color CARET_COLOR = Color.web("#aeafad");
-    private static final Color KEYWORD_COLOR = Color.web("#569cd6");
-    private static final Color STRING_COLOR = Color.web("#ce9178");
-    private static final Color COMMENT_COLOR = Color.web("#6a9955");
-    private static final Color NUMBER_COLOR = Color.web("#b5cea8");
-    private static final Color BOOLEAN_COLOR = Color.web("#4ec9b0");
-    private static final Color NULL_COLOR = Color.web("#4ec9b0");
-    private static final Color HEADLINE_COLOR = Color.web("#569cd6");
-    private static final Color LIST_ITEM_COLOR = Color.web("#9cdcfe");
-    private static final Color CODE_BLOCK_COLOR = Color.web("#d7ba7d");
-    private static final Color SEARCH_HIGHLIGHT_COLOR = Color.web("#623315");
-    private static final Color SEARCH_CURRENT_COLOR = Color.web("#9e6a03");
 
     private final Canvas canvas;
     private final GlyphCache glyphCache;
@@ -49,6 +34,7 @@ public class Viewport extends Region {
     private final ChangeListener<Number> caretLineListener = (obs, oldValue, newValue) -> markDirty();
     private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) -> markDirty();
 
+    private CodeEditorTheme theme = CodeEditorTheme.dark();
     private Document document;
     private double scrollOffset;
     private boolean dirty = true;
@@ -104,6 +90,21 @@ public class Viewport extends Region {
      */
     public GlyphCache getGlyphCache() {
         return glyphCache;
+    }
+
+    /**
+     * Sets the editor theme palette and triggers a redraw.
+     */
+    public void setTheme(CodeEditorTheme theme) {
+        this.theme = theme == null ? CodeEditorTheme.dark() : theme;
+        markDirty();
+    }
+
+    /**
+     * Returns the current editor theme.
+     */
+    public CodeEditorTheme getTheme() {
+        return theme;
     }
 
     /**
@@ -281,7 +282,7 @@ public class Viewport extends Region {
         buildRenderLines();
 
         // Clear background
-        gc.setFill(BACKGROUND_COLOR);
+        gc.setFill(theme.editorBackground());
         gc.fillRect(0, 0, w, h);
 
         // Draw layers
@@ -322,7 +323,7 @@ public class Viewport extends Region {
         int caretLine = selectionModel.getCaretLine();
         for (RenderLine rl : renderLines) {
             if (rl.lineIndex() == caretLine && !selectionModel.hasSelection()) {
-                gc.setFill(CURRENT_LINE_COLOR);
+                gc.setFill(theme.currentLineColor());
                 gc.fillRect(0, rl.y(), w, glyphCache.getLineHeight());
                 break;
             }
@@ -338,7 +339,7 @@ public class Viewport extends Region {
         int endLine = selectionModel.getSelectionEndLine();
         int endCol = selectionModel.getSelectionEndColumn();
 
-        gc.setFill(SELECTION_COLOR);
+        gc.setFill(theme.selectionColor());
         for (RenderLine rl : renderLines) {
             int line = rl.lineIndex();
             if (line < startLine || line > endLine) {
@@ -378,7 +379,7 @@ public class Viewport extends Region {
         String text = renderLine.text();
         List<Token> tokens = renderLine.tokens();
         if (tokens.isEmpty()) {
-            gc.setFill(TEXT_COLOR);
+            gc.setFill(theme.editorForeground());
             gc.fillText(text, 0, renderLine.y() + baseline);
             return;
         }
@@ -389,7 +390,7 @@ public class Viewport extends Region {
             int start = Math.max(0, Math.min(token.startColumn(), textLength));
             int end = Math.max(start, Math.min(token.endColumn(), textLength));
             if (start > cursor) {
-                drawSegment(gc, text, cursor, start, renderLine.y(), charWidth, baseline, TEXT_COLOR);
+                drawSegment(gc, text, cursor, start, renderLine.y(), charWidth, baseline, theme.editorForeground());
             }
             if (end > start) {
                 drawSegment(gc, text, start, end, renderLine.y(), charWidth, baseline, tokenColor(token.type()));
@@ -397,7 +398,7 @@ public class Viewport extends Region {
             cursor = Math.max(cursor, end);
         }
         if (cursor < textLength) {
-            drawSegment(gc, text, cursor, textLength, renderLine.y(), charWidth, baseline, TEXT_COLOR);
+            drawSegment(gc, text, cursor, textLength, renderLine.y(), charWidth, baseline, theme.editorForeground());
         }
     }
 
@@ -409,7 +410,7 @@ public class Viewport extends Region {
         double y,
         double charWidth,
         double baseline,
-        Color color
+        Paint color
     ) {
         if (endColumn <= startColumn) {
             return;
@@ -418,22 +419,22 @@ public class Viewport extends Region {
         gc.fillText(text.substring(startColumn, endColumn), startColumn * charWidth, y + baseline);
     }
 
-    private Color tokenColor(TokenType tokenType) {
+    private Paint tokenColor(TokenType tokenType) {
         if (tokenType == null) {
-            return TEXT_COLOR;
+            return theme.editorForeground();
         }
         return switch (tokenType) {
-            case KEYWORD -> KEYWORD_COLOR;
-            case STRING -> STRING_COLOR;
-            case COMMENT -> COMMENT_COLOR;
-            case NUMBER -> NUMBER_COLOR;
-            case BOOLEAN -> BOOLEAN_COLOR;
-            case NULL_LITERAL -> NULL_COLOR;
-            case HEADLINE -> HEADLINE_COLOR;
-            case LIST_ITEM -> LIST_ITEM_COLOR;
-            case CODE_BLOCK -> CODE_BLOCK_COLOR;
-            case TEXT -> TEXT_COLOR;
-            default -> TEXT_COLOR;
+            case KEYWORD -> theme.keywordColor();
+            case STRING -> theme.stringColor();
+            case COMMENT -> theme.commentColor();
+            case NUMBER -> theme.numberColor();
+            case BOOLEAN -> theme.booleanColor();
+            case NULL_LITERAL -> theme.nullLiteralColor();
+            case HEADLINE -> theme.headlineColor();
+            case LIST_ITEM -> theme.listItemColor();
+            case CODE_BLOCK -> theme.codeBlockColor();
+            case TEXT -> theme.editorForeground();
+            default -> theme.editorForeground();
         };
     }
 
@@ -447,7 +448,7 @@ public class Viewport extends Region {
                 if (rl.lineIndex() == match.line()) {
                     double x = match.startColumn() * charWidth;
                     double w = (match.endColumn() - match.startColumn()) * charWidth;
-                    gc.setFill(i == currentSearchMatchIndex ? SEARCH_CURRENT_COLOR : SEARCH_HIGHLIGHT_COLOR);
+                    gc.setFill(i == currentSearchMatchIndex ? theme.searchCurrentColor() : theme.searchHighlightColor());
                     gc.fillRect(x, rl.y(), w, lineHeight);
                     break;
                 }
@@ -460,7 +461,7 @@ public class Viewport extends Region {
         for (RenderLine rl : renderLines) {
             if (rl.lineIndex() == caretLine) {
                 double caretX = selectionModel.getCaretColumn() * charWidth;
-                gc.setStroke(CARET_COLOR);
+                gc.setStroke(theme.caretColor());
                 gc.setLineWidth(2);
                 gc.strokeLine(caretX, rl.y(), caretX, rl.y() + lineHeight);
                 break;

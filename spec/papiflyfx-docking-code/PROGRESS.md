@@ -1,7 +1,7 @@
 # PapiflyFX Code - Progress Report
 
-**Date:** 2026-02-16
-**Status:** Phase 4 complete; hardening work in progress (persistence/lifecycle/failure handling)
+**Date:** 2026-02-17
+**Status:** Phase 5 complete; hardening work in progress (persistence/lifecycle/failure handling)
 
 ## Summary
 - Specification and implementation plan were updated to target a separate module: `papiflyfx-docking-code`.
@@ -39,6 +39,16 @@
   - keyboard shortcuts: `Ctrl/Cmd+F` (search), `Ctrl/Cmd+G` (go-to-line), `Escape` (close search).
 
 ## Update Log
+- **2026-02-17:** Completed Phase 5 theme composition and mapping:
+  - Added `CodeEditorTheme` record with 30 palette fields (spec core 10 + syntax/gutter/search/overlay colors).
+  - Added `CodeEditorThemeMapper` that maps docking `Theme` to `CodeEditorTheme` via composition (dark/light detection from background brightness).
+  - Refactored `Viewport` to render all colors from `CodeEditorTheme` instead of hardcoded constants.
+  - Refactored `GutterView` to use `CodeEditorTheme` for background, line numbers, and markers.
+  - Refactored `SearchController` to use `CodeEditorTheme` for overlay styling with runtime refresh.
+  - Added `CodeEditor.bindThemeProperty(ObjectProperty<Theme>)` to observe `DockManager.themeProperty()` changes.
+  - Added `CodeEditor.setEditorTheme(CodeEditorTheme)` for direct palette control.
+  - Dispose unbinds theme listener; no inheritance from docking `Theme` record.
+  - Added 9 mapper unit tests and 7 integration tests. Test suite now 182 passing.
 - **2026-02-16:** Completed Phase 4 gutter, markers, and navigation:
   - Added `gutter/` package: `MarkerType`, `Marker`, `MarkerModel`, `GutterView`.
   - Added `search/` package: `SearchMatch`, `SearchModel`, `SearchController`.
@@ -65,7 +75,7 @@
 | 2 | Viewport and rendering | ✅ Complete |
 | 3 | Incremental lexer pipeline | ✅ Complete |
 | 4 | Gutter, markers, navigation | ✅ Complete |
-| 5 | Theme composition and mapping | ⏳ Not started |
+| 5 | Theme composition and mapping | ✅ Complete |
 | 6 | Persistence hardening/migration | 🟡 In progress (version-aware restore hooks added) |
 | 7 | Failure handling and disposal | 🟡 In progress (`dispose()` hooks added for editor/viewport) |
 | 8 | Benchmarks and documentation hardening | ⏳ Not started |
@@ -137,6 +147,16 @@
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` (gutter + search + go-to-line integration, BorderPane layout)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/Viewport.java` (search highlight rendering)
 
+### Phase 5 Source
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/theme/CodeEditorTheme.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/theme/CodeEditorThemeMapper.java`
+
+### Phase 5 Modified
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/Viewport.java` (replaced hardcoded colors with `CodeEditorTheme` palette)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/gutter/GutterView.java` (replaced hardcoded colors with `CodeEditorTheme` palette)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/search/SearchController.java` (replaced hardcoded colors with `CodeEditorTheme` palette + runtime refresh)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` (theme binding, `bindThemeProperty`, `setEditorTheme`, dispose unbind)
+
 ### Post-Phase 2 Hardening (2026-02-16)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java`
   - state application now drives caret model,
@@ -166,15 +186,17 @@
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/gutter/MarkerModelTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/gutter/GutterViewTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/search/SearchModelTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/theme/CodeEditorThemeMapperTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/theme/CodeEditorThemeIntegrationTest.java`
 
 ## Validation Results
 - `mvn -pl papiflyfx-docking-code -am compile` -> ✅ success
-- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (158 tests, 0 failures)
+- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (182 tests, 0 failures)
 - `mvn -pl papiflyfx-docking-code test` -> expected failure without `-am` because local `papiflyfx-docking-docks` artifact is not pre-installed
 
 ## Notes / Known Issues
 - Existing project warning remains in parent build config: duplicate `maven-release-plugin` declaration in root `pom.xml` pluginManagement.
-- Theme mapping and remaining hardening phases are still pending MVP completion.
+- Remaining hardening phases are still pending MVP completion.
 
 ## Next Recommended Step
-1. Start Phase 5 by implementing theme composition and mapping (`CodeEditorTheme`, `CodeEditorThemeMapper`).
+1. Start Phase 6 by implementing persistence hardening and migration (`EditorStateData` v1 fields, map codec, save/restore contract).

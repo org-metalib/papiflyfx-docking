@@ -17,9 +17,10 @@ import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.text.Font;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 
 import java.util.function.Consumer;
 
@@ -31,18 +32,12 @@ import java.util.function.Consumer;
  */
 public class SearchController extends VBox {
 
-    private static final Color BACKGROUND_COLOR = Color.web("#252526");
-    private static final Color ACCENT_BORDER_COLOR = Color.web("#007acc");
-    private static final Color CONTROL_BACKGROUND_COLOR = Color.web("#3c3c3c");
-    private static final Color CONTROL_BORDER_COLOR = Color.web("#555555");
-    private static final Color PRIMARY_TEXT_COLOR = Color.web("#d4d4d4");
-    private static final Color SECONDARY_TEXT_COLOR = Color.web("#858585");
-
     private static final CornerRadii CONTROL_RADII = new CornerRadii(2);
     private static final Insets BUTTON_PADDING = new Insets(2, 6, 2, 6);
     private static final Insets CHECKBOX_PADDING = new Insets(0, 2, 0, 2);
     private static final Font SMALL_FONT = Font.font(11);
 
+    private CodeEditorTheme theme = CodeEditorTheme.dark();
     private final SearchModel searchModel;
     private final TextField searchField;
     private final TextField replaceField;
@@ -58,9 +53,9 @@ public class SearchController extends VBox {
     public SearchController(SearchModel searchModel) {
         this.searchModel = searchModel;
 
-        setBackground(new Background(new BackgroundFill(BACKGROUND_COLOR, CornerRadii.EMPTY, Insets.EMPTY)));
+        setBackground(new Background(new BackgroundFill(theme.searchOverlayBackground(), CornerRadii.EMPTY, Insets.EMPTY)));
         setBorder(new Border(new BorderStroke(
-            ACCENT_BORDER_COLOR,
+            theme.searchOverlayAccentBorder(),
             BorderStrokeStyle.SOLID,
             CornerRadii.EMPTY,
             new BorderWidths(0, 0, 1, 0)
@@ -78,7 +73,7 @@ public class SearchController extends VBox {
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
         matchCountLabel = new Label("No results");
-        matchCountLabel.setTextFill(SECONDARY_TEXT_COLOR);
+        matchCountLabel.setTextFill(theme.searchOverlaySecondaryText());
         matchCountLabel.setFont(SMALL_FONT);
         matchCountLabel.setMinWidth(70);
 
@@ -165,6 +160,41 @@ public class SearchController extends VBox {
      */
     public void setDocument(Document document) {
         this.document = document;
+    }
+
+    /**
+     * Sets the editor theme and refreshes overlay styling.
+     */
+    public void setTheme(CodeEditorTheme theme) {
+        this.theme = theme == null ? CodeEditorTheme.dark() : theme;
+        applyThemeColors();
+    }
+
+    /**
+     * Returns the current editor theme.
+     */
+    public CodeEditorTheme getTheme() {
+        return theme;
+    }
+
+    private void applyThemeColors() {
+        setBackground(new Background(new BackgroundFill(theme.searchOverlayBackground(), CornerRadii.EMPTY, Insets.EMPTY)));
+        setBorder(new Border(new BorderStroke(
+            theme.searchOverlayAccentBorder(),
+            BorderStrokeStyle.SOLID,
+            CornerRadii.EMPTY,
+            new BorderWidths(0, 0, 1, 0)
+        )));
+        configureTextField(searchField);
+        configureTextField(replaceField);
+        matchCountLabel.setTextFill(theme.searchOverlaySecondaryText());
+        for (var node : lookupAll(".button")) {
+            if (node instanceof Button btn) {
+                configureButton(btn);
+            }
+        }
+        regexToggle.setTextFill(theme.searchOverlayPrimaryText());
+        caseSensitiveToggle.setTextFill(theme.searchOverlayPrimaryText());
     }
 
     /**
@@ -296,12 +326,12 @@ public class SearchController extends VBox {
 
     private void configureTextField(TextField field) {
         field.setBackground(new Background(new BackgroundFill(
-            CONTROL_BACKGROUND_COLOR,
+            theme.searchOverlayControlBackground(),
             CONTROL_RADII,
             Insets.EMPTY
         )));
         field.setBorder(new Border(new BorderStroke(
-            CONTROL_BORDER_COLOR,
+            theme.searchOverlayControlBorder(),
             BorderStrokeStyle.SOLID,
             CONTROL_RADII,
             BorderWidths.DEFAULT
@@ -310,22 +340,22 @@ public class SearchController extends VBox {
 
     private void configureButton(Button button) {
         button.setBackground(new Background(new BackgroundFill(
-            CONTROL_BACKGROUND_COLOR,
+            theme.searchOverlayControlBackground(),
             CONTROL_RADII,
             Insets.EMPTY
         )));
         button.setBorder(new Border(new BorderStroke(
-            CONTROL_BORDER_COLOR,
+            theme.searchOverlayControlBorder(),
             BorderStrokeStyle.SOLID,
             CONTROL_RADII,
             BorderWidths.DEFAULT
         )));
-        button.setTextFill(PRIMARY_TEXT_COLOR);
+        button.setTextFill(theme.searchOverlayPrimaryText());
         button.setPadding(BUTTON_PADDING);
     }
 
     private void configureToggle(CheckBox toggle) {
-        toggle.setTextFill(PRIMARY_TEXT_COLOR);
+        toggle.setTextFill(theme.searchOverlayPrimaryText());
         toggle.setFont(SMALL_FONT);
         toggle.setPadding(CHECKBOX_PADDING);
     }
