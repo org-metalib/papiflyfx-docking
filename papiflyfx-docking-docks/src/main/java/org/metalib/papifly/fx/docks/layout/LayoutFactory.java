@@ -104,8 +104,10 @@ public class LayoutFactory {
         }
 
         // Placeholder only after both adapter and factory attempts fail
-        if (content == null && contentData != null) {
-            content = createMissingContentPlaceholder(contentData);
+        if (content == null) {
+            content = contentData != null
+                ? createMissingContentPlaceholder(contentData)
+                : createMissingContentPlaceholder(data.id(), data.title());
         }
 
         if (content != null) {
@@ -137,6 +139,13 @@ public class LayoutFactory {
         String labelText = contentId != null
             ? "Missing content: " + typeKey + " (" + contentId + ")"
             : "Missing content: " + typeKey;
+        return new Label(labelText);
+    }
+
+    private Node createMissingContentPlaceholder(String leafId, String title) {
+        String labelText = title != null
+            ? "Missing content: " + title + " (" + leafId + ")"
+            : "Missing content: " + leafId;
         return new Label(labelText);
     }
 

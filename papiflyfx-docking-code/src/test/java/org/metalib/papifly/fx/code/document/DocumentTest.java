@@ -261,4 +261,97 @@ class DocumentTest {
         assertEquals("a\nb", document.getText());
         assertEquals(2, document.getLineCount());
     }
+
+    // --- Incremental line index correctness ---
+
+    @Test
+    void incrementalInsertMaintainsLineIndex() {
+        Document document = new Document("line1\nline2\nline3");
+        assertEquals(3, document.getLineCount());
+
+        // Insert newline in middle
+        document.insert(5, "\nnew");
+        assertEquals(4, document.getLineCount());
+        assertEquals("line1", document.getLineText(0));
+        assertEquals("new", document.getLineText(1));
+        assertEquals("line2", document.getLineText(2));
+        assertEquals("line3", document.getLineText(3));
+    }
+
+    @Test
+    void incrementalDeleteMaintainsLineIndex() {
+        Document document = new Document("line1\nline2\nline3");
+        assertEquals(3, document.getLineCount());
+
+        // Delete line2 including its newline
+        document.delete(5, 11);
+        assertEquals(2, document.getLineCount());
+        assertEquals("line1", document.getLineText(0));
+        assertEquals("line3", document.getLineText(1));
+    }
+
+    @Test
+    void incrementalReplaceMaintainsLineIndex() {
+        Document document = new Document("aaa\nbbb\nccc");
+        assertEquals(3, document.getLineCount());
+
+        // Replace "bbb" with "x\ny\nz"
+        document.replace(4, 7, "x\ny\nz");
+        assertEquals(5, document.getLineCount());
+        assertEquals("aaa", document.getLineText(0));
+        assertEquals("x", document.getLineText(1));
+        assertEquals("y", document.getLineText(2));
+        assertEquals("z", document.getLineText(3));
+        assertEquals("ccc", document.getLineText(4));
+    }
+
+    @Test
+    void incrementalUpdatesMatchFullRebuildAfterManyEdits() {
+        Document document = new Document("hello\nworld\nfoo\nbar");
+        document.insert(5, "\nnewline");
+        document.delete(0, 6);
+        document.insert(document.length(), "\nend");
+        document.replace(0, 7, "start");
+
+        // Verify by comparing against a fresh document
+        Document reference = new Document(document.getText());
+        assertEquals(reference.getLineCount(), document.getLineCount());
+        for (int i = 0; i < reference.getLineCount(); i++) {
+            assertEquals(reference.getLineText(i), document.getLineText(i),
+                "Line " + i + " mismatch");
+            assertEquals(reference.getLineStartOffset(i), document.getLineStartOffset(i),
+                "Line start offset mismatch at line " + i);
+        }
+    }
+
+    // --- Performance guard ---
+
+    @Test
+    void perEditPerformanceGuard_largeDocument() {
+        // Build a large document
+        StringBuilder sb = new StringBuilder();
+        int lineCount = 50_000;
+        for (int i = 0; i < lineCount; i++) {
+            if (i > 0) sb.append('\n');
+            sb.append("line ").append(i);
+        }
+        Document document = new Document(sb.toString());
+        assertEquals(lineCount, document.getLineCount());
+
+        // Measure 100 single-character inserts
+        long start = System.nanoTime();
+        int insertCount = 100;
+        for (int i = 0; i < insertCount; i++) {
+            document.insert(0, "x");
+        }
+        long elapsed = System.nanoTime() - start;
+        double avgMicros = (elapsed / 1000.0) / insertCount;
+
+        // Incremental updates should average under 1ms per edit even on 50k lines
+        assertTrue(avgMicros < 1000,
+            "Average per-edit time should be under 1ms, was " + avgMicros + " µs");
+
+        // Verify correctness
+        assertEquals(lineCount, document.getLineCount());
+    }
 }

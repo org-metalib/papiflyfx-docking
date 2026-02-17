@@ -135,7 +135,7 @@ public class IncrementalLexerPipeline implements AutoCloseable {
     private void onDocumentChanged(DocumentChangeEvent event) {
         long nextRevision = revision.incrementAndGet();
         int dirtyStartLine = document.getLineForOffset(Math.min(event.offset(), document.length()));
-        enqueue(document.getText(), dirtyStartLine, nextRevision, languageId, false, debounceMillis);
+        enqueueLazy(dirtyStartLine, nextRevision, languageId, false, debounceMillis);
     }
 
     private void enqueue(
@@ -171,6 +171,43 @@ public class IncrementalLexerPipeline implements AutoCloseable {
         }
     }
 
+    /**
+     * Enqueues a lazy pending request that defers the document text snapshot
+     * until the debounce fires, avoiding O(n) getText() on every keystroke.
+     */
+    private void enqueueLazy(
+        int dirtyStartLine,
+        long targetRevision,
+        String targetLanguageId,
+        boolean forceFullRelex,
+        long delayMillis
+    ) {
+        synchronized (lock) {
+            if (disposed) {
+                return;
+            }
+            int mergedDirtyStart = pendingRequest == null
+                ? dirtyStartLine
+                : Math.min(pendingRequest.dirtyStartLine(), dirtyStartLine);
+            boolean mergedForceFullRelex = forceFullRelex
+                || (pendingRequest != null && pendingRequest.forceFullRelex());
+
+            if (pendingRequest != null && targetRevision < pendingRequest.revision()) {
+                return;
+            }
+
+            // Use null textSnapshot to signal lazy snapshot
+            pendingRequest = new PendingRequest(
+                null,
+                mergedDirtyStart,
+                targetRevision,
+                targetLanguageId,
+                mergedForceFullRelex
+            );
+            scheduleLocked(delayMillis);
+        }
+    }
+
     private void scheduleLocked(long delayMillis) {
         if (scheduledTask != null) {
             scheduledTask.cancel(true);
@@ -190,10 +227,16 @@ public class IncrementalLexerPipeline implements AutoCloseable {
             baseline = request.forceFullRelex() ? TokenMap.empty() : tokenMap;
         }
 
+        // Resolve lazy text snapshot (deferred from change events)
+        String textSnapshot = request.textSnapshot();
+        if (textSnapshot == null) {
+            textSnapshot = document.getText();
+        }
+
         TokenMap computed;
         try {
             Lexer lexer = lexerResolver.apply(request.languageId());
-            List<String> lines = IncrementalLexerEngine.splitLines(request.textSnapshot());
+            List<String> lines = IncrementalLexerEngine.splitLines(textSnapshot);
             computed = IncrementalLexerEngine.relex(
                 baseline,
                 lines,

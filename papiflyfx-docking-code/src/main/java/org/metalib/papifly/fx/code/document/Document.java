@@ -151,8 +151,13 @@ public class Document {
         if (text == null || text.isEmpty()) {
             return;
         }
-        applyAndRecord(new InsertEdit(offset, text),
-            DocumentChangeEvent.insert(offset, text.length()));
+        String normalized = TextSource.normalizeLineEndings(text);
+        EditCommand command = new InsertEdit(offset, text);
+        command.apply(textSource);
+        lineIndex.applyInsert(offset, normalized);
+        undoStack.push(command);
+        redoStack.clear();
+        fireChange(DocumentChangeEvent.insert(offset, normalized.length()));
     }
 
     /**
@@ -162,8 +167,12 @@ public class Document {
         if (startOffset == endOffset) {
             return;
         }
-        applyAndRecord(new DeleteEdit(startOffset, endOffset),
-            DocumentChangeEvent.delete(startOffset, endOffset - startOffset));
+        EditCommand command = new DeleteEdit(startOffset, endOffset);
+        command.apply(textSource);
+        lineIndex.applyDelete(startOffset, endOffset);
+        undoStack.push(command);
+        redoStack.clear();
+        fireChange(DocumentChangeEvent.delete(startOffset, endOffset - startOffset));
     }
 
     /**
@@ -175,8 +184,16 @@ public class Document {
             insert(startOffset, safeReplacement);
             return;
         }
-        applyAndRecord(new ReplaceEdit(startOffset, endOffset, safeReplacement),
-            DocumentChangeEvent.replace(startOffset, endOffset - startOffset, safeReplacement.length()));
+        String normalized = TextSource.normalizeLineEndings(safeReplacement);
+        EditCommand command = new ReplaceEdit(startOffset, endOffset, safeReplacement);
+        command.apply(textSource);
+        lineIndex.applyDelete(startOffset, endOffset);
+        if (!normalized.isEmpty()) {
+            lineIndex.applyInsert(startOffset, normalized);
+        }
+        undoStack.push(command);
+        redoStack.clear();
+        fireChange(DocumentChangeEvent.replace(startOffset, endOffset - startOffset, normalized.length()));
     }
 
     /**
@@ -233,14 +250,6 @@ public class Document {
     public void clearHistory() {
         undoStack.clear();
         redoStack.clear();
-    }
-
-    private void applyAndRecord(EditCommand command, DocumentChangeEvent event) {
-        command.apply(textSource);
-        rebuildIndex();
-        undoStack.push(command);
-        redoStack.clear();
-        fireChange(event);
     }
 
     private void rebuildIndex() {

@@ -9,13 +9,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockSplitGroup;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
+import org.metalib.papifly.fx.docks.layout.DisposableContent;
 import org.metalib.papifly.fx.docks.testutil.FxTestUtil;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
 class DockManagerCloseLeafFxTest {
@@ -66,5 +70,39 @@ class DockManagerCloseLeafFxTest {
         assertSame(rightTabs, FxTestUtil.callFx(dockManager::getRoot));
         assertSame(rightTabs, FxTestUtil.callFx(rightLeaf::getParent));
         assertNotNull(FxTestUtil.callFx(rightLeaf::getContent));
+    }
+
+    @Test
+    void closingLeafCallsDisposableContentDispose() {
+        AtomicBoolean disposed = new AtomicBoolean(false);
+        DisposableLabel content = new DisposableLabel("Disposable", disposed);
+
+        DockLeaf leaf = FxTestUtil.callFx(() -> dockManager.createLeaf("Leaf", content));
+        DockTabGroup tabs = FxTestUtil.callFx(dockManager::createTabGroup);
+        FxTestUtil.runFx(() -> {
+            tabs.addLeaf(leaf);
+            dockManager.setRoot(tabs);
+        });
+
+        assertNotNull(FxTestUtil.callFx(leaf::getContent));
+
+        FxTestUtil.runFx(leaf::requestClose);
+
+        assertTrue(disposed.get(), "DisposableContent.dispose() should be called on leaf close via DockManager");
+        assertNull(FxTestUtil.callFx(leaf::getContent));
+    }
+
+    private static final class DisposableLabel extends Label implements DisposableContent {
+        private final AtomicBoolean disposed;
+
+        DisposableLabel(String text, AtomicBoolean disposed) {
+            super(text);
+            this.disposed = disposed;
+        }
+
+        @Override
+        public void dispose() {
+            disposed.set(true);
+        }
     }
 }

@@ -18,6 +18,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
 class LayoutFactoryFxTest {
@@ -65,5 +66,48 @@ class LayoutFactoryFxTest {
         // Factory should have been called since adapter is absent
         assertInstanceOf(Label.class, leaf.getContent());
         assertEquals("factory:myFactory", ((Label) leaf.getContent()).getText());
+    }
+
+    @Test
+    void build_leaf_createsPlaceholderWhenContentDataPresentButNoAdapterOrFactory() {
+        var themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        // No content factory provided
+        LayoutFactory factory = new LayoutFactory(themeProperty);
+
+        LeafContentData contentData = new LeafContentData(
+            "missing-type", "c1", 1, Map.of()
+        );
+        LeafData leafData = LeafData.of("leaf-3", "Leaf 3", null, contentData);
+
+        DockElement element = factory.build(leafData);
+        assertInstanceOf(DockTabGroup.class, element);
+
+        DockTabGroup group = (DockTabGroup) element;
+        var leaf = group.getTabs().getFirst();
+        assertNotNull(leaf.getContent());
+        assertInstanceOf(Label.class, leaf.getContent());
+        String text = ((Label) leaf.getContent()).getText();
+        assertTrue(text.contains("Missing content"), "Placeholder label should indicate missing content");
+        assertTrue(text.contains("missing-type"), "Placeholder should include type key");
+    }
+
+    @Test
+    void build_leaf_createsPlaceholderWhenNullContentDataAndNoFactory() {
+        var themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        // No content factory provided
+        LayoutFactory factory = new LayoutFactory(themeProperty);
+
+        // Leaf with no content data and no factory ID
+        LeafData leafData = LeafData.of("leaf-4", "Leaf 4", null);
+
+        DockElement element = factory.build(leafData);
+        assertInstanceOf(DockTabGroup.class, element);
+
+        DockTabGroup group = (DockTabGroup) element;
+        var leaf = group.getTabs().getFirst();
+        assertNotNull(leaf.getContent());
+        assertInstanceOf(Label.class, leaf.getContent());
+        String text = ((Label) leaf.getContent()).getText();
+        assertTrue(text.contains("Missing content"), "Placeholder label should indicate missing content");
     }
 }

@@ -42,6 +42,79 @@ public class LineIndex {
     }
 
     /**
+     * Incrementally updates the line index after an insertion.
+     *
+     * @param offset     the offset where text was inserted
+     * @param insertedText the inserted text
+     */
+    public void applyInsert(int offset, CharSequence insertedText) {
+        if (insertedText == null || insertedText.length() == 0) {
+            return;
+        }
+        // Find the line containing the offset
+        int lineIndex = lineForOffset(offset);
+        int insertionPoint = lineIndex + 1;
+
+        // Collect new line starts within the inserted text
+        List<Integer> newStarts = new ArrayList<>();
+        for (int i = 0; i < insertedText.length(); i++) {
+            if (insertedText.charAt(i) == '\n') {
+                newStarts.add(offset + i + 1);
+            }
+        }
+
+        // Shift all subsequent line starts by the inserted length
+        int insertedLength = insertedText.length();
+        for (int i = insertionPoint; i < lineStarts.size(); i++) {
+            lineStarts.set(i, lineStarts.get(i) + insertedLength);
+        }
+
+        // Insert new line starts
+        if (!newStarts.isEmpty()) {
+            lineStarts.addAll(insertionPoint, newStarts);
+        }
+    }
+
+    /**
+     * Incrementally updates the line index after a deletion.
+     *
+     * @param startOffset start offset of the deleted range (inclusive)
+     * @param endOffset   end offset of the deleted range (exclusive)
+     */
+    public void applyDelete(int startOffset, int endOffset) {
+        if (startOffset >= endOffset) {
+            return;
+        }
+        int deletedLength = endOffset - startOffset;
+
+        // Find lines that start within the deleted range (they are removed)
+        int startLine = lineForOffset(startOffset);
+        int removeFrom = startLine + 1;
+        int removeTo = removeFrom;
+        while (removeTo < lineStarts.size() && lineStarts.get(removeTo) <= endOffset) {
+            removeTo++;
+        }
+
+        // Remove collapsed lines
+        if (removeTo > removeFrom) {
+            lineStarts.subList(removeFrom, removeTo).clear();
+        }
+
+        // Shift all subsequent line starts by the deleted length
+        for (int i = removeFrom; i < lineStarts.size(); i++) {
+            lineStarts.set(i, lineStarts.get(i) - deletedLength);
+        }
+    }
+
+    private int lineForOffset(int offset) {
+        int position = Collections.binarySearch(lineStarts, offset);
+        if (position >= 0) {
+            return position;
+        }
+        return -position - 2;
+    }
+
+    /**
      * Returns number of lines in the text.
      */
     public int getLineCount() {

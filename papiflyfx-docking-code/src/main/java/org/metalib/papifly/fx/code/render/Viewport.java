@@ -14,7 +14,10 @@ import org.metalib.papifly.fx.code.lexer.TokenType;
 import org.metalib.papifly.fx.code.search.SearchMatch;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 
+import org.metalib.papifly.fx.code.document.DocumentChangeEvent;
+
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 
 /**
@@ -31,13 +34,15 @@ public class Viewport extends Region {
     private final Canvas canvas;
     private final GlyphCache glyphCache;
     private final SelectionModel selectionModel;
-    private final ChangeListener<Number> caretLineListener = (obs, oldValue, newValue) -> markDirty();
-    private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) -> markDirty();
+    private final ChangeListener<Number> caretLineListener = (obs, oldValue, newValue) -> onCaretLineChanged(oldValue.intValue(), newValue.intValue());
+    private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) -> onCaretColumnChanged();
 
     private CodeEditorTheme theme = CodeEditorTheme.dark();
     private Document document;
     private double scrollOffset;
     private boolean dirty = true;
+    private boolean fullRedrawRequired = true;
+    private final BitSet dirtyLines = new BitSet();
     private boolean disposed;
     private TokenMap tokenMap = TokenMap.empty();
     private List<SearchMatch> searchMatches = List.of();
@@ -45,9 +50,10 @@ public class Viewport extends Region {
 
     private int firstVisibleLine;
     private int visibleLineCount;
+    private int previousCaretLine = -1;
     private final List<RenderLine> renderLines = new ArrayList<>();
 
-    private final DocumentChangeListener changeListener = event -> markDirty();
+    private final DocumentChangeListener changeListener = this::onDocumentChanged;
 
     /**
      * Creates a viewport with the given selection model.
@@ -184,9 +190,21 @@ public class Viewport extends Region {
     }
 
     /**
-     * Marks the viewport as needing a redraw and schedules one.
+     * Marks the viewport as needing a full redraw and schedules one.
      */
     public void markDirty() {
+        dirty = true;
+        fullRedrawRequired = true;
+        requestLayout();
+    }
+
+    /**
+     * Marks specific document lines as dirty for incremental redraw.
+     */
+    public void markLinesDirty(int startLine, int endLine) {
+        for (int i = startLine; i <= endLine; i++) {
+            dirtyLines.set(i);
+        }
         dirty = true;
         requestLayout();
     }
@@ -244,6 +262,33 @@ public class Viewport extends Region {
         return Math.max(0, col);
     }
 
+    private void onDocumentChanged(DocumentChangeEvent event) {
+        if (document == null) {
+            markDirty();
+            return;
+        }
+        int startLine = document.getLineForOffset(Math.min(event.offset(), document.length()));
+        // For inserts/deletes that may affect all lines from startLine onward
+        int endLine = document.getLineCount() - 1;
+        markLinesDirty(startLine, endLine);
+    }
+
+    private void onCaretLineChanged(int oldLine, int newLine) {
+        // Dirty both old and new caret lines for highlight update
+        dirtyLines.set(oldLine);
+        dirtyLines.set(newLine);
+        dirty = true;
+        requestLayout();
+    }
+
+    private void onCaretColumnChanged() {
+        // Dirty the current caret line for caret position update
+        int caretLine = selectionModel.getCaretLine();
+        dirtyLines.set(caretLine);
+        dirty = true;
+        requestLayout();
+    }
+
     @Override
     protected void layoutChildren() {
         double w = getWidth();
@@ -251,15 +296,9 @@ public class Viewport extends Region {
         if (w != canvas.getWidth() || h != canvas.getHeight()) {
             canvas.setWidth(w);
             canvas.setHeight(h);
+            fullRedrawRequired = true;
             dirty = true;
         }
-        if (dirty) {
-            dirty = false;
-            redraw();
-        }
-    }
-
-    private void redrawIfDirty() {
         if (dirty) {
             dirty = false;
             redraw();
@@ -277,20 +316,70 @@ public class Viewport extends Region {
         double lineHeight = glyphCache.getLineHeight();
         double charWidth = glyphCache.getCharWidth();
 
+        int previousFirstVisible = firstVisibleLine;
+
         // Compute visible range
         computeVisibleRange(h, lineHeight);
         buildRenderLines();
 
-        // Clear background
-        gc.setFill(theme.editorBackground());
-        gc.fillRect(0, 0, w, h);
+        // Determine if we need full redraw or can do incremental
+        boolean doFullRedraw = fullRedrawRequired || previousFirstVisible != firstVisibleLine;
+        fullRedrawRequired = false;
 
-        // Draw layers
-        drawCurrentLineHighlight(gc, w);
-        drawSearchHighlights(gc, lineHeight, charWidth);
-        drawSelection(gc, w, lineHeight, charWidth);
-        drawText(gc, lineHeight, charWidth);
-        drawCaret(gc, lineHeight, charWidth);
+        if (doFullRedraw) {
+            // Full redraw path
+            dirtyLines.clear();
+            gc.setFill(theme.editorBackground());
+            gc.fillRect(0, 0, w, h);
+
+            drawCurrentLineHighlight(gc, w);
+            drawSearchHighlights(gc, lineHeight, charWidth);
+            drawSelection(gc, w, lineHeight, charWidth);
+            drawText(gc, lineHeight, charWidth);
+            drawCaret(gc, lineHeight, charWidth);
+        } else {
+            // Incremental redraw: only repaint dirty lines
+            int caretLine = selectionModel.getCaretLine();
+            // Always include caret line and previous caret line
+            dirtyLines.set(caretLine);
+            if (previousCaretLine >= 0) {
+                dirtyLines.set(previousCaretLine);
+            }
+
+            for (RenderLine rl : renderLines) {
+                if (dirtyLines.get(rl.lineIndex())) {
+                    // Clear the line area
+                    gc.setFill(theme.editorBackground());
+                    gc.fillRect(0, rl.y(), w, lineHeight);
+
+                    // Redraw current-line highlight
+                    if (rl.lineIndex() == caretLine && !selectionModel.hasSelection()) {
+                        gc.setFill(theme.currentLineColor());
+                        gc.fillRect(0, rl.y(), w, lineHeight);
+                    }
+
+                    // Redraw search highlights on this line
+                    drawSearchHighlightsForLine(gc, rl, lineHeight, charWidth);
+
+                    // Redraw selection on this line
+                    drawSelectionForLine(gc, rl, w, lineHeight, charWidth);
+
+                    // Redraw text
+                    gc.setFont(glyphCache.getFont());
+                    drawTokenizedLine(gc, rl, charWidth, glyphCache.getBaselineOffset());
+
+                    // Redraw caret
+                    if (rl.lineIndex() == caretLine) {
+                        double caretX = selectionModel.getCaretColumn() * charWidth;
+                        gc.setStroke(theme.caretColor());
+                        gc.setLineWidth(2);
+                        gc.strokeLine(caretX, rl.y(), caretX, rl.y() + lineHeight);
+                    }
+                }
+            }
+            dirtyLines.clear();
+        }
+        previousCaretLine = selectionModel.getCaretLine();
     }
 
     private void computeVisibleRange(double viewportHeight, double lineHeight) {
@@ -438,6 +527,53 @@ public class Viewport extends Region {
         };
     }
 
+    private void drawSearchHighlightsForLine(GraphicsContext gc, RenderLine rl, double lineHeight, double charWidth) {
+        if (searchMatches.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < searchMatches.size(); i++) {
+            SearchMatch match = searchMatches.get(i);
+            if (rl.lineIndex() == match.line()) {
+                double x = match.startColumn() * charWidth;
+                double w = (match.endColumn() - match.startColumn()) * charWidth;
+                gc.setFill(i == currentSearchMatchIndex ? theme.searchCurrentColor() : theme.searchHighlightColor());
+                gc.fillRect(x, rl.y(), w, lineHeight);
+            }
+        }
+    }
+
+    private void drawSelectionForLine(GraphicsContext gc, RenderLine rl, double w, double lineHeight, double charWidth) {
+        if (!selectionModel.hasSelection()) {
+            return;
+        }
+        int startLine = selectionModel.getSelectionStartLine();
+        int startCol = selectionModel.getSelectionStartColumn();
+        int endLine = selectionModel.getSelectionEndLine();
+        int endCol = selectionModel.getSelectionEndColumn();
+        int line = rl.lineIndex();
+
+        if (line < startLine || line > endLine) {
+            return;
+        }
+        double selX;
+        double selW;
+        if (line == startLine && line == endLine) {
+            selX = startCol * charWidth;
+            selW = (endCol - startCol) * charWidth;
+        } else if (line == startLine) {
+            selX = startCol * charWidth;
+            selW = w - selX;
+        } else if (line == endLine) {
+            selX = 0;
+            selW = endCol * charWidth;
+        } else {
+            selX = 0;
+            selW = w;
+        }
+        gc.setFill(theme.selectionColor());
+        gc.fillRect(selX, rl.y(), selW, lineHeight);
+    }
+
     private void drawSearchHighlights(GraphicsContext gc, double lineHeight, double charWidth) {
         if (searchMatches.isEmpty()) {
             return;
@@ -489,6 +625,7 @@ public class Viewport extends Region {
         selectionModel.caretLineProperty().removeListener(caretLineListener);
         selectionModel.caretColumnProperty().removeListener(caretColumnListener);
         renderLines.clear();
+        dirtyLines.clear();
         tokenMap = TokenMap.empty();
         searchMatches = List.of();
         currentSearchMatchIndex = -1;

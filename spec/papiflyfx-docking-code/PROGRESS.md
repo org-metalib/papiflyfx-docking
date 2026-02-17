@@ -1,7 +1,7 @@
 # PapiflyFX Code - Progress Report
 
 **Date:** 2026-02-17
-**Status:** Phase 5 complete; Review 5 (Codex) fixes applied; hardening work in progress
+**Status:** Phase 5 complete; Review 5 (Codex) + Codex-1 follow-up fixes all addressed; Phase 8 perf work incorporated
 
 ## Summary
 - Specification and implementation plan were updated to target a separate module: `papiflyfx-docking-code`.
@@ -39,6 +39,12 @@
   - keyboard shortcuts: `Ctrl/Cmd+F` (search), `Ctrl/Cmd+G` (go-to-line), `Escape` (close search).
 
 ## Update Log
+- **2026-02-17:** Applied Review 5 Codex-1 follow-up fixes (all remaining issues):
+  - **HIGH** — Resolved per-edit O(n) work (previously deferred issue 5): `LineIndex` now has `applyInsert()`/`applyDelete()` for incremental line-start updates. `Document.insert/delete/replace` use incremental updates instead of full rebuild. `IncrementalLexerPipeline` defers `getText()` snapshot to worker thread via lazy enqueue, avoiding O(n) string copy on every keystroke. Performance guard test validates <1ms per-edit on 50k-line document.
+  - **HIGH** — Implemented dirty-region incremental redraw (previously deferred issue 6): `Viewport` now tracks dirty lines via `BitSet` and `fullRedrawRequired` flag. Document changes dirty only affected lines from change offset onward. Caret moves dirty only old/new caret lines. Full redraw occurs only on scroll, resize, or theme change.
+  - **MEDIUM** — Fixed placeholder fallback when `contentData == null` and factory unavailable (issue 3 edge case): `LayoutFactory.buildLeaf()` now always creates a placeholder as final fallback using leaf id/title.
+  - Closed all test gaps: DockManager-level `DisposableContent.dispose()` test, placeholder-precedence tests (contentData-present and contentData-null), `LineIndex` incremental update tests (6), `Document` incremental correctness + perf guard tests (5).
+  - Test suite now 197 tests passing (up from 186), 0 failures, 0 errors.
 - **2026-02-17:** Applied Review 5 (Codex) fixes:
   - **HIGH** — Fixed typing caret advancement: `handleKeyTyped` now computes new offset after insert and calls `moveCaretToOffset()` instead of broken `moveCaretRight()`. Removed unused `moveCaretRight` method.
   - **HIGH** — Fixed DockLeaf content disposal: added `DisposableContent` interface in `papiflyfx-docking-docks`, `DockLeaf.dispose()` now calls `DisposableContent.dispose()` on content nodes. `CodeEditor` implements `DisposableContent`.
@@ -87,8 +93,8 @@
 | 4 | Gutter, markers, navigation | ✅ Complete |
 | 5 | Theme composition and mapping | ✅ Complete |
 | 6 | Persistence hardening/migration | 🟡 In progress (version-aware restore hooks + file rehydration added) |
-| 7 | Failure handling and disposal | 🟡 In progress (`dispose()` hooks + `DisposableContent` + DockLeaf integration) |
-| 8 | Benchmarks and documentation hardening | ⏳ Not started |
+| 7 | Failure handling and disposal | 🟡 In progress (`dispose()` hooks + `DisposableContent` + DockLeaf integration + placeholder fallback complete) |
+| 8 | Benchmarks and documentation hardening | 🟡 In progress (incremental line index, lazy lexer snapshot, dirty-region viewport redraw, perf guard test) |
 
 ## Implemented Files (Highlights)
 
@@ -170,9 +176,15 @@
 ### Review 5 Fixes (cross-module)
 - `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/layout/DisposableContent.java` (new interface)
 - `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/core/DockLeaf.java` (dispose calls `DisposableContent.dispose()`)
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/layout/LayoutFactory.java` (fixed restore fallback order)
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/layout/LayoutFactory.java` (fixed restore fallback order + null-contentData placeholder fallback)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` (implements `DisposableContent`, fixed typing caret, removed `moveCaretRight`)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditorStateAdapter.java` (file rehydration + missing-file fallback)
+
+### Review 5 Codex-1 Follow-up (performance + hardening)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/document/LineIndex.java` (added `applyInsert`/`applyDelete` incremental methods)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/document/Document.java` (insert/delete/replace use incremental line index updates)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/IncrementalLexerPipeline.java` (lazy text snapshot via `enqueueLazy`, deferred `getText()` to worker)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/Viewport.java` (dirty-region tracking via `BitSet`, incremental redraw path)
 
 ### Post-Phase 2 Hardening (2026-02-16)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java`
@@ -209,12 +221,12 @@
 
 ## Validation Results
 - `mvn -pl papiflyfx-docking-code -am compile` -> ✅ success
-- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (186 code-module + 41 docks-module tests, 0 failures)
+- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (197 tests total, 0 failures, 0 errors)
 - `mvn -pl papiflyfx-docking-code test` -> expected failure without `-am` because local `papiflyfx-docking-docks` artifact is not pre-installed
 
 ## Notes / Known Issues
 - Existing project warning remains in parent build config: duplicate `maven-release-plugin` declaration in root `pom.xml` pluginManagement.
-- Review 5 issues 5 (per-edit O(n) line-index rebuild) and 6 (dirty-region redraw) are deferred to Phase 8 benchmarks.
+- All Review 5 issues (1–6) and Codex-1 follow-up items are now fully addressed.
 - Remaining hardening phases are still pending MVP completion.
 
 ## Next Recommended Step
