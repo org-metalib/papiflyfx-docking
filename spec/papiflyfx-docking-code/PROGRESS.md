@@ -44,6 +44,10 @@
   - added tests for lexer failure fallback, post-dispose lexer quiescence, dispose callback cleanup, and docking session restore/capture under adapter restore/save failures.
 
 ## Update Log
+- **2026-02-17:** Applied Review 7-1 (Claude-0) minor fixes:
+  - **Finding 1** (Workstream A) — Fallback re-lex in `IncrementalLexerPipeline` now uses `TokenMap.empty()` and `dirtyStartLine=0` instead of passing the previous `baseline`. Semantically precise: plain-text fallback always produces a complete fresh token map from line 0.
+  - **Finding 2** (Workstream B) — `markerModel` change listener (`gutterView::markDirty`) is now stored as a named field and explicitly removed in `CodeEditor.dispose()`, closing the retention-neutral listener leak.
+  - Validation: `mvn -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test` -> ✅ pass (204 tests, 0 failures, 0 errors)
 - **2026-02-17:** Completed Phase 7 — Failure Handling and Lifecycle Cleanup (Review 7 Codex-0 workstreams 1+2):
   - **Workstream A** — Lexer failure fallback hardened in `IncrementalLexerPipeline`: exception path now re-lexes with plain-text fallback for the same pending request and revision. Previous behavior ("keep old tokens") that could leave stale highlighting is removed.
   - **Workstream B** — Lifecycle cleanup hardened in `CodeEditor.dispose()`: search controller callbacks are nulled, document is detached, and overlay is closed before disposing rendering/lexer resources.

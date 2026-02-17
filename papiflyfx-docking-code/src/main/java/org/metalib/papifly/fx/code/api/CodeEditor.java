@@ -74,6 +74,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         applyScrollOffset(newValue.doubleValue());
     private final ChangeListener<String> languageListener;
     private final DocumentChangeListener gutterWidthListener;
+    private final MarkerModel.MarkerChangeListener markerModelChangeListener;
     private final IncrementalLexerPipeline lexerPipeline;
 
     private ObjectProperty<Theme> boundThemeProperty;
@@ -106,7 +107,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.gutterDigits = computeGutterDigits(document.getLineCount());
         this.gutterWidthListener = event -> refreshGutterWidthIfNeeded();
         this.document.addChangeListener(gutterWidthListener);
-        this.markerModel.addChangeListener(gutterView::markDirty);
+        this.markerModelChangeListener = gutterView::markDirty;
+        this.markerModel.addChangeListener(markerModelChangeListener);
         this.caretLineListener = (obs, oldValue, newValue) -> {
             cursorLine.set(newValue.intValue());
             gutterView.setActiveLineIndex(newValue.intValue());
@@ -765,6 +767,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         selectionModel.caretLineProperty().removeListener(caretLineListener);
         selectionModel.caretColumnProperty().removeListener(caretColumnListener);
         document.removeChangeListener(gutterWidthListener);
+        markerModel.removeChangeListener(markerModelChangeListener);
         verticalScrollOffset.removeListener(scrollOffsetListener);
         languageId.removeListener(languageListener);
         lexerPipeline.dispose();

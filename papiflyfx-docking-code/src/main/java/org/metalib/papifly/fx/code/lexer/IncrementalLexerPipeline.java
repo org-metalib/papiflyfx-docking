@@ -258,9 +258,9 @@ public class IncrementalLexerPipeline implements AutoCloseable {
             );
             try {
                 computed = IncrementalLexerEngine.relex(
-                    baseline,
+                    TokenMap.empty(),
                     lines,
-                    request.dirtyStartLine(),
+                    0,
                     PLAIN_TEXT_FALLBACK_LEXER
                 );
             } catch (Exception fallbackException) {
