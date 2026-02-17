@@ -32,6 +32,7 @@ import org.metalib.papifly.fx.code.search.SearchModel;
 import org.metalib.papifly.fx.code.state.EditorStateData;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 import org.metalib.papifly.fx.code.theme.CodeEditorThemeMapper;
+import org.metalib.papifly.fx.docks.layout.DisposableContent;
 import org.metalib.papifly.fx.docks.theme.Theme;
 
 import java.util.List;
@@ -45,7 +46,7 @@ import java.util.Optional;
  * Includes a line number gutter, marker lane, search/replace overlay,
  * and go-to-line navigation.
  */
-public class CodeEditor extends StackPane {
+public class CodeEditor extends StackPane implements DisposableContent {
 
     private static final String DEFAULT_LANGUAGE = "plain-text";
     private static final double SCROLL_LINE_FACTOR = 3.0;
@@ -322,7 +323,7 @@ public class CodeEditor extends StackPane {
         deleteSelectionIfAny();
         int offset = selectionModel.getCaretOffset(document);
         document.insert(offset, ch);
-        moveCaretRight(ch.length(), false);
+        moveCaretToOffset(offset + ch.length());
         event.consume();
     }
 
@@ -576,14 +577,6 @@ public class CodeEditor extends StackPane {
         syncGutterScroll();
     }
 
-    private void moveCaretRight(int chars, boolean extendSelection) {
-        int offset = selectionModel.getCaretOffset(document);
-        // offset already advanced by insert, so we need to recalculate
-        int line = document.getLineForOffset(offset);
-        int col = document.getColumnForOffset(offset);
-        moveCaret(line, col, extendSelection);
-    }
-
     private void moveCaretToOffset(int offset) {
         offset = Math.max(0, Math.min(offset, document.length()));
         int line = document.getLineForOffset(offset);
@@ -752,6 +745,7 @@ public class CodeEditor extends StackPane {
     /**
      * Releases listeners and rendering resources associated with this editor.
      */
+    @Override
     public void dispose() {
         if (disposed) {
             return;

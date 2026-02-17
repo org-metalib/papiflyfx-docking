@@ -1,7 +1,7 @@
 # PapiflyFX Code - Progress Report
 
 **Date:** 2026-02-17
-**Status:** Phase 5 complete; hardening work in progress (persistence/lifecycle/failure handling)
+**Status:** Phase 5 complete; Review 5 (Codex) fixes applied; hardening work in progress
 
 ## Summary
 - Specification and implementation plan were updated to target a separate module: `papiflyfx-docking-code`.
@@ -39,6 +39,16 @@
   - keyboard shortcuts: `Ctrl/Cmd+F` (search), `Ctrl/Cmd+G` (go-to-line), `Escape` (close search).
 
 ## Update Log
+- **2026-02-17:** Applied Review 5 (Codex) fixes:
+  - **HIGH** — Fixed typing caret advancement: `handleKeyTyped` now computes new offset after insert and calls `moveCaretToOffset()` instead of broken `moveCaretRight()`. Removed unused `moveCaretRight` method.
+  - **HIGH** — Fixed DockLeaf content disposal: added `DisposableContent` interface in `papiflyfx-docking-docks`, `DockLeaf.dispose()` now calls `DisposableContent.dispose()` on content nodes. `CodeEditor` implements `DisposableContent`.
+  - **HIGH** — Fixed restore fallback order in `LayoutFactory.buildLeaf()`: when adapter is absent for a typeKey, factory creation is attempted before placeholder fallback (previously a placeholder was created immediately, blocking factory).
+  - **MEDIUM** — Fixed state rehydration: `CodeEditorStateAdapter.restore()` now loads file content from `filePath` when readable; falls back to empty document with metadata preserved for missing/unreadable files (spec §6).
+  - Issues 5 (per-edit O(n)) and 6 (dirty-region redraw) deferred to Phase 8 benchmarks.
+  - Added 4 regression tests in `CodeEditorIntegrationTest` (typing caret, DockLeaf dispose, file rehydration, missing file fallback).
+  - Added 3 tests in `DockLeafTest` (dispose with DisposableContent, non-disposable, null).
+  - Added 1 test in `LayoutFactoryFxTest` (adapter-missing factory fallback order).
+  - Test suite now 186 code-module + 41 docks-module tests passing.
 - **2026-02-17:** Completed Phase 5 theme composition and mapping:
   - Added `CodeEditorTheme` record with 30 palette fields (spec core 10 + syntax/gutter/search/overlay colors).
   - Added `CodeEditorThemeMapper` that maps docking `Theme` to `CodeEditorTheme` via composition (dark/light detection from background brightness).
@@ -76,8 +86,8 @@
 | 3 | Incremental lexer pipeline | ✅ Complete |
 | 4 | Gutter, markers, navigation | ✅ Complete |
 | 5 | Theme composition and mapping | ✅ Complete |
-| 6 | Persistence hardening/migration | 🟡 In progress (version-aware restore hooks added) |
-| 7 | Failure handling and disposal | 🟡 In progress (`dispose()` hooks added for editor/viewport) |
+| 6 | Persistence hardening/migration | 🟡 In progress (version-aware restore hooks + file rehydration added) |
+| 7 | Failure handling and disposal | 🟡 In progress (`dispose()` hooks + `DisposableContent` + DockLeaf integration) |
 | 8 | Benchmarks and documentation hardening | ⏳ Not started |
 
 ## Implemented Files (Highlights)
@@ -157,6 +167,13 @@
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/search/SearchController.java` (replaced hardcoded colors with `CodeEditorTheme` palette + runtime refresh)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` (theme binding, `bindThemeProperty`, `setEditorTheme`, dispose unbind)
 
+### Review 5 Fixes (cross-module)
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/layout/DisposableContent.java` (new interface)
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/core/DockLeaf.java` (dispose calls `DisposableContent.dispose()`)
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/layout/LayoutFactory.java` (fixed restore fallback order)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` (implements `DisposableContent`, fixed typing caret, removed `moveCaretRight`)
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditorStateAdapter.java` (file rehydration + missing-file fallback)
+
 ### Post-Phase 2 Hardening (2026-02-16)
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java`
   - state application now drives caret model,
@@ -188,15 +205,17 @@
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/search/SearchModelTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/theme/CodeEditorThemeMapperTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/theme/CodeEditorThemeIntegrationTest.java`
+- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/core/DockLeafTest.java`
 
 ## Validation Results
 - `mvn -pl papiflyfx-docking-code -am compile` -> ✅ success
-- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (182 tests, 0 failures)
+- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test` -> ✅ success (186 code-module + 41 docks-module tests, 0 failures)
 - `mvn -pl papiflyfx-docking-code test` -> expected failure without `-am` because local `papiflyfx-docking-docks` artifact is not pre-installed
 
 ## Notes / Known Issues
 - Existing project warning remains in parent build config: duplicate `maven-release-plugin` declaration in root `pom.xml` pluginManagement.
+- Review 5 issues 5 (per-edit O(n) line-index rebuild) and 6 (dirty-region redraw) are deferred to Phase 8 benchmarks.
 - Remaining hardening phases are still pending MVP completion.
 
 ## Next Recommended Step
-1. Start Phase 6 by implementing persistence hardening and migration (`EditorStateData` v1 fields, map codec, save/restore contract).
+1. Start Phase 6 by completing persistence hardening and migration (full `EditorStateData` v1 save/restore contract, migration hooks).

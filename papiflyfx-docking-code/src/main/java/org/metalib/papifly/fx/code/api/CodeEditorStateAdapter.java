@@ -6,12 +6,19 @@ import org.metalib.papifly.fx.code.state.EditorStateData;
 import org.metalib.papifly.fx.docks.layout.ContentStateAdapter;
 import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * ContentStateAdapter implementation for code editor content state.
  */
 public class CodeEditorStateAdapter implements ContentStateAdapter {
+
+    private static final Logger LOG = Logger.getLogger(CodeEditorStateAdapter.class.getName());
 
     /**
      * Current state schema version.
@@ -40,7 +47,9 @@ public class CodeEditorStateAdapter implements ContentStateAdapter {
     @Override
     public Node restore(LeafContentData content) {
         CodeEditor editor = new CodeEditor();
-        editor.applyState(restoreState(content));
+        EditorStateData state = restoreState(content);
+        rehydrateDocument(editor, state);
+        editor.applyState(state);
         return editor;
     }
 
@@ -58,5 +67,28 @@ public class CodeEditorStateAdapter implements ContentStateAdapter {
         }
         // Unknown future/legacy versions fall back to a safe minimal editor state.
         return EditorStateData.empty();
+    }
+
+    /**
+     * Loads file content into the editor when filePath is set and readable.
+     * Falls back to an empty document with metadata preserved when the file
+     * is missing or unreadable (per spec §6 fallback behavior).
+     */
+    private void rehydrateDocument(CodeEditor editor, EditorStateData state) {
+        String filePath = state.filePath();
+        if (filePath == null || filePath.isBlank()) {
+            return;
+        }
+        Path path = Path.of(filePath);
+        if (!Files.isReadable(path)) {
+            LOG.log(Level.WARNING, "File not readable, creating empty document: {0}", filePath);
+            return;
+        }
+        try {
+            String text = Files.readString(path);
+            editor.setText(text);
+        } catch (IOException e) {
+            LOG.log(Level.WARNING, "Failed to load file, creating empty document: " + filePath, e);
+        }
     }
 }

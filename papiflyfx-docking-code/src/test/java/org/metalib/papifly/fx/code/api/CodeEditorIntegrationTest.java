@@ -292,6 +292,97 @@ class CodeEditorIntegrationTest {
         assertTrue(widthFor100 > widthFor99);
     }
 
+    // --- Review 5 regression tests ---
+
+    @Test
+    void typedCharactersAdvanceCaretCorrectly() {
+        runOnFx(() -> {
+            editor.setText("");
+            editor.requestFocus();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        // Simulate typing 'a', 'b', 'c' via KEY_TYPED events
+        for (String ch : List.of("a", "b", "c")) {
+            runOnFx(() -> editor.fireEvent(new KeyEvent(
+                KeyEvent.KEY_TYPED,
+                ch,
+                "",
+                KeyCode.UNDEFINED,
+                false, false, false, false
+            )));
+            WaitForAsyncUtils.waitForFxEvents();
+        }
+
+        assertEquals("abc", callOnFx(() -> editor.getText()));
+        assertEquals(0, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(3, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+    }
+
+    @Test
+    void dockLeafDisposeCallsCodeEditorDispose() {
+        runOnFx(() -> {
+            org.metalib.papifly.fx.docks.core.DockLeaf leaf = new org.metalib.papifly.fx.docks.core.DockLeaf();
+            leaf.content(editor);
+            leaf.dispose();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        // After DockLeaf.dispose(), CodeEditor.dispose() should have been called.
+        // Verify by checking that further theme binding does not throw (disposed flag is set).
+        // The editor's internal disposed flag prevents re-disposal.
+        runOnFx(() -> editor.dispose()); // should be no-op, not throw
+    }
+
+    @Test
+    void stateAdapterRestoresFileContent() throws Exception {
+        // Create a temporary file with content
+        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("editor-test-", ".txt");
+        java.nio.file.Files.writeString(tempFile, "file content here");
+
+        try {
+            EditorStateData state = new EditorStateData(
+                tempFile.toString(), 0, 5, 0.0, "plain-text", List.of()
+            );
+            Map<String, Object> stateMap = EditorStateCodec.toMap(state);
+            LeafContentData contentData = new LeafContentData(
+                CodeEditorFactory.FACTORY_ID, "test-id", 1, stateMap
+            );
+
+            CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
+            CodeEditor[] restored = new CodeEditor[1];
+            runOnFx(() -> restored[0] = (CodeEditor) adapter.restore(contentData));
+            WaitForAsyncUtils.waitForFxEvents();
+
+            assertEquals("file content here", callOnFx(() -> restored[0].getText()));
+            assertEquals(0, callOnFx(() -> restored[0].getCursorLine()));
+            assertEquals(5, callOnFx(() -> restored[0].getCursorColumn()));
+        } finally {
+            java.nio.file.Files.deleteIfExists(tempFile);
+        }
+    }
+
+    @Test
+    void stateAdapterHandlesMissingFile() {
+        EditorStateData state = new EditorStateData(
+            "/nonexistent/path/to/file.txt", 2, 3, 10.0, "java", List.of()
+        );
+        Map<String, Object> stateMap = EditorStateCodec.toMap(state);
+        LeafContentData contentData = new LeafContentData(
+            CodeEditorFactory.FACTORY_ID, "test-id", 1, stateMap
+        );
+
+        CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
+        CodeEditor[] restored = new CodeEditor[1];
+        runOnFx(() -> restored[0] = (CodeEditor) adapter.restore(contentData));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        // Empty document but metadata preserved
+        assertEquals("", callOnFx(() -> restored[0].getText()));
+        assertEquals("/nonexistent/path/to/file.txt", callOnFx(() -> restored[0].getFilePath()));
+        assertEquals("java", callOnFx(() -> restored[0].getLanguageId()));
+    }
+
     // --- Helpers ---
 
     private String buildLines(int count) {

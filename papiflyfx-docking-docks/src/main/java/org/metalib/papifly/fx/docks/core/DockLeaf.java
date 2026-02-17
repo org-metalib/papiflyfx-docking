@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.docks.core;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Node;
+import org.metalib.papifly.fx.docks.layout.DisposableContent;
 import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
 import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
@@ -147,6 +148,10 @@ public class DockLeaf {
     }
 
     public void dispose() {
+        Node node = content.get();
+        if (node instanceof DisposableContent disposable) {
+            disposable.dispose();
+        }
         content.unbind();
         content.set(null);
     }

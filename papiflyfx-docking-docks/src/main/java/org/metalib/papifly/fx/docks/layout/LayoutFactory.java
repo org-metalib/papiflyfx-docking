@@ -94,9 +94,8 @@ public class LayoutFactory {
             ContentStateAdapter adapter = contentStateRegistry.getAdapter(contentData.typeKey());
             if (adapter != null) {
                 content = adapter.restore(contentData);
-            } else {
-                content = createMissingContentPlaceholder(contentData);
             }
+            // When adapter is absent, fall through to factory attempt below
         }
 
         // Create content if factory is available
@@ -104,6 +103,7 @@ public class LayoutFactory {
             content = contentFactory.create(data.contentFactoryId());
         }
 
+        // Placeholder only after both adapter and factory attempts fail
         if (content == null && contentData != null) {
             content = createMissingContentPlaceholder(contentData);
         }
