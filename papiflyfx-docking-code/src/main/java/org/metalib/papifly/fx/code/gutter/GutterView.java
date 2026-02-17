@@ -4,7 +4,6 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.render.GlyphCache;
 
@@ -139,7 +138,7 @@ public class GutterView extends Region {
 
         GraphicsContext gc = canvas.getGraphicsContext2D();
         double lineHeight = glyphCache.getLineHeight();
-        double baseline = lineHeight * 0.8;
+        double baseline = glyphCache.getBaselineOffset();
         int totalLines = document.getLineCount();
 
         // Clear

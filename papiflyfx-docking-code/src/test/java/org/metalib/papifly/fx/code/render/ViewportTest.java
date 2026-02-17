@@ -90,9 +90,9 @@ class ViewportTest {
     }
 
     @Test
-    void getLineAtYClampsToDocumentBounds() {
+    void getLineAtYReturnsMinusOneAboveViewportAndClampsBottom() {
         flushLayout();
-        assertEquals(0, viewport.getLineAtY(-10));
+        assertEquals(-1, viewport.getLineAtY(-10));
         assertEquals(9, viewport.getLineAtY(10000));
     }
 

@@ -51,13 +51,12 @@ public class MarkerModel {
      */
     public void removeMarker(Marker marker) {
         List<Marker> lineMarkers = markersByLine.get(marker.line());
-        if (lineMarkers != null) {
-            lineMarkers.remove(marker);
+        if (lineMarkers != null && lineMarkers.remove(marker)) {
             if (lineMarkers.isEmpty()) {
                 markersByLine.remove(marker.line());
             }
+            fireChanged();
         }
-        fireChanged();
     }
 
     /**
@@ -116,7 +115,7 @@ public class MarkerModel {
         }
         MarkerType best = null;
         for (Marker m : markers) {
-            if (best == null || m.type().ordinal() < best.ordinal()) {
+            if (best == null || m.type().priority() < best.priority()) {
                 best = m.type();
             }
         }

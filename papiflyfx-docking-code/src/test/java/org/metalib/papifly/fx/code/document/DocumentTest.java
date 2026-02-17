@@ -62,6 +62,7 @@ class DocumentTest {
         assertEquals(2, document.getLineCount());
         assertEquals("hello", document.getLineText(0));
         assertEquals("world", document.getLineText(1));
+        assertEquals("ello", document.getSubstring(1, 5));
         assertEquals(1, document.getLineForOffset(7));
         assertEquals(2, document.getColumnForOffset(8));
         assertEquals(8, document.toOffset(1, 2));
@@ -227,6 +228,21 @@ class DocumentTest {
         document.insert(0, "hello");
 
         assertTrue(events.isEmpty());
+    }
+
+    @Test
+    void listenerExceptionDoesNotStopRemainingListeners() {
+        Document document = new Document();
+        List<DocumentChangeEvent> events = new ArrayList<>();
+        document.addChangeListener(event -> {
+            throw new RuntimeException("boom");
+        });
+        document.addChangeListener(events::add);
+
+        document.insert(0, "x");
+
+        assertEquals(1, events.size());
+        assertEquals(DocumentChangeEvent.ChangeType.INSERT, events.get(0).type());
     }
 
     // --- Line ending normalization through Document ---

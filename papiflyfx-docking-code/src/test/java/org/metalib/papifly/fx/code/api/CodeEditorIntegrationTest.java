@@ -271,6 +271,27 @@ class CodeEditorIntegrationTest {
         ));
     }
 
+    @Test
+    void gutterWidthUpdatesWhenLineCountCrossesDigitBoundary() {
+        runOnFx(() -> {
+            editor.setText(buildLines(99));
+            editor.applyCss();
+            editor.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        double widthFor99 = callOnFx(() -> editor.getGutterView().getComputedWidth());
+
+        runOnFx(() -> {
+            editor.getDocument().insert(editor.getDocument().length(), "\nline99");
+            editor.applyCss();
+            editor.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        double widthFor100 = callOnFx(() -> editor.getGutterView().getComputedWidth());
+
+        assertTrue(widthFor100 > widthFor99);
+    }
+
     // --- Helpers ---
 
     private String buildLines(int count) {

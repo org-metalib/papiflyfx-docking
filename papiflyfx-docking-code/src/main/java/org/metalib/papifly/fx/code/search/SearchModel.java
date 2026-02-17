@@ -190,6 +190,7 @@ public class SearchModel {
             return false;
         }
         document.replace(match.startOffset(), match.endOffset(), replacement);
+        search(document);
         return true;
     }
 
@@ -231,11 +232,16 @@ public class SearchModel {
         while ((index = searchIn.indexOf(searchFor, index)) >= 0) {
             int endIndex = index + query.length();
             int line = document.getLineForOffset(index);
+            int endLine = document.getLineForOffset(Math.max(index, endIndex - 1));
+            if (line != endLine) {
+                index += searchFor.length();
+                continue;
+            }
             int lineStart = document.getLineStartOffset(line);
             int startCol = index - lineStart;
             int endCol = endIndex - lineStart;
             found.add(new SearchMatch(index, endIndex, line, startCol, endCol));
-            index++;
+            index += searchFor.length();
         }
         return found;
     }
@@ -253,11 +259,15 @@ public class SearchModel {
                     // Skip zero-length matches to avoid infinite loop
                     continue;
                 }
-                int line = document.getLineForOffset(start);
-                int lineStart = document.getLineStartOffset(line);
+                int startLine = document.getLineForOffset(start);
+                int endLine = document.getLineForOffset(Math.max(start, end - 1));
+                if (startLine != endLine) {
+                    continue;
+                }
+                int lineStart = document.getLineStartOffset(startLine);
                 int startCol = start - lineStart;
                 int endCol = end - lineStart;
-                found.add(new SearchMatch(start, end, line, startCol, endCol));
+                found.add(new SearchMatch(start, end, startLine, startCol, endCol));
             }
         } catch (PatternSyntaxException e) {
             // Invalid regex: return empty

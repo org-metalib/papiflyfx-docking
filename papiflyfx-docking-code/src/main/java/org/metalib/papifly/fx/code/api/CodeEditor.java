@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.code.api;
 
+import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -18,6 +19,7 @@ import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.document.DocumentChangeListener;
 import org.metalib.papifly.fx.code.gutter.GutterView;
 import org.metalib.papifly.fx.code.gutter.MarkerModel;
 import org.metalib.papifly.fx.code.lexer.IncrementalLexerPipeline;
@@ -66,8 +68,10 @@ public class CodeEditor extends StackPane {
     private final ChangeListener<Number> scrollOffsetListener = (obs, oldValue, newValue) ->
         applyScrollOffset(newValue.doubleValue());
     private final ChangeListener<String> languageListener;
+    private final DocumentChangeListener gutterWidthListener;
     private final IncrementalLexerPipeline lexerPipeline;
 
+    private int gutterDigits;
     private boolean syncingScrollOffset;
     private boolean disposed;
 
@@ -92,6 +96,9 @@ public class CodeEditor extends StackPane {
         this.gutterView = new GutterView(viewport.getGlyphCache());
         this.gutterView.setDocument(document);
         this.gutterView.setMarkerModel(markerModel);
+        this.gutterDigits = computeGutterDigits(document.getLineCount());
+        this.gutterWidthListener = event -> refreshGutterWidthIfNeeded();
+        this.document.addChangeListener(gutterWidthListener);
         this.markerModel.addChangeListener(gutterView::markDirty);
         this.caretLineListener = (obs, oldValue, newValue) -> {
             cursorLine.set(newValue.intValue());
@@ -657,7 +664,6 @@ public class CodeEditor extends StackPane {
     public void setVerticalScrollOffset(double verticalScrollOffset) {
         double safeOffset = Math.max(0.0, verticalScrollOffset);
         if (Double.compare(this.verticalScrollOffset.get(), safeOffset) == 0) {
-            applyScrollOffset(safeOffset);
             return;
         }
         this.verticalScrollOffset.set(safeOffset);
@@ -702,9 +708,27 @@ public class CodeEditor extends StackPane {
         setOnScroll(null);
         selectionModel.caretLineProperty().removeListener(caretLineListener);
         selectionModel.caretColumnProperty().removeListener(caretColumnListener);
+        document.removeChangeListener(gutterWidthListener);
         verticalScrollOffset.removeListener(scrollOffsetListener);
         languageId.removeListener(languageListener);
         lexerPipeline.dispose();
         viewport.dispose();
+    }
+
+    private void refreshGutterWidthIfNeeded() {
+        int nextDigits = computeGutterDigits(document.getLineCount());
+        if (nextDigits == gutterDigits) {
+            return;
+        }
+        gutterDigits = nextDigits;
+        if (Platform.isFxApplicationThread()) {
+            gutterView.recomputeWidth();
+            return;
+        }
+        Platform.runLater(gutterView::recomputeWidth);
+    }
+
+    private static int computeGutterDigits(int lineCount) {
+        return Math.max(2, String.valueOf(Math.max(1, lineCount)).length());
     }
 }

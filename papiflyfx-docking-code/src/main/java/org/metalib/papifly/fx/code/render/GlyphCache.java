@@ -14,6 +14,7 @@ public class GlyphCache {
     private Font font;
     private double lineHeight;
     private double charWidth;
+    private double baselineOffset;
 
     /**
      * Creates a cache with the default monospace font.
@@ -37,6 +38,13 @@ public class GlyphCache {
     }
 
     /**
+     * Returns the cached baseline offset from line top.
+     */
+    public double getBaselineOffset() {
+        return baselineOffset;
+    }
+
+    /**
      * Returns the current font.
      */
     public Font getFont() {
@@ -54,7 +62,9 @@ public class GlyphCache {
         measureNode.setText("M");
         charWidth = measureNode.getLayoutBounds().getWidth();
 
-        // Measure line height
+        // Measure line box and derive baseline from top bounds.
+        measureNode.setText("Hg");
         lineHeight = measureNode.getLayoutBounds().getHeight();
+        baselineOffset = -measureNode.getLayoutBounds().getMinY();
     }
 }

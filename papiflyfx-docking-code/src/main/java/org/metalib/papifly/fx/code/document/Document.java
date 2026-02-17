@@ -12,6 +12,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public class Document {
 
+    private static final System.Logger LOGGER = System.getLogger(Document.class.getName());
+
     private final TextSource textSource;
     private final LineIndex lineIndex;
     private final Deque<EditCommand> undoStack = new ArrayDeque<>();
@@ -64,6 +66,13 @@ public class Document {
      */
     public String getText() {
         return textSource.getText();
+    }
+
+    /**
+     * Returns substring in the range [startOffset, endOffset).
+     */
+    public String getSubstring(int startOffset, int endOffset) {
+        return textSource.substring(startOffset, endOffset);
     }
 
     /**
@@ -240,7 +249,11 @@ public class Document {
 
     private void fireChange(DocumentChangeEvent event) {
         for (DocumentChangeListener listener : listeners) {
-            listener.documentChanged(event);
+            try {
+                listener.documentChanged(event);
+            } catch (RuntimeException exception) {
+                LOGGER.log(System.Logger.Level.WARNING, "Document change listener failed", exception);
+            }
         }
     }
 }

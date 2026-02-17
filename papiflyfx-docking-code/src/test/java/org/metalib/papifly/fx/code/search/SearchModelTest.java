@@ -109,6 +109,18 @@ class SearchModelTest {
     }
 
     @Test
+    void plainTextSearchDoesNotReturnOverlappingMatches() {
+        Document doc = new Document("aaa");
+        SearchModel model = new SearchModel();
+        model.setQuery("aa");
+
+        int count = model.search(doc);
+
+        assertEquals(1, count);
+        assertEquals(0, model.getMatches().get(0).startOffset());
+    }
+
+    @Test
     void emptyQueryReturnsNoMatches() {
         Document doc = new Document("test");
         SearchModel model = new SearchModel();
@@ -167,6 +179,21 @@ class SearchModelTest {
     }
 
     @Test
+    void replaceCurrentRefreshesMatches() {
+        Document doc = new Document("aXaXa");
+        SearchModel model = new SearchModel();
+        model.setQuery("a");
+        model.setReplacement("bb");
+        model.search(doc);
+
+        assertTrue(model.replaceCurrent(doc));
+        assertEquals("bbXaXa", doc.getText());
+        assertEquals(2, model.getMatchCount());
+        assertNotNull(model.getCurrentMatch());
+        assertEquals(3, model.getCurrentMatch().startOffset());
+    }
+
+    @Test
     void replaceAll() {
         Document doc = new Document("aXaXa");
         SearchModel model = new SearchModel();
@@ -217,5 +244,17 @@ class SearchModelTest {
     void searchMatchLength() {
         SearchMatch match = new SearchMatch(5, 10, 0, 5, 10);
         assertEquals(5, match.length());
+    }
+
+    @Test
+    void regexSearchSkipsMultiLineMatches() {
+        Document doc = new Document("alpha\nbeta");
+        SearchModel model = new SearchModel();
+        model.setRegexMode(true);
+        model.setQuery("alpha\\s+beta");
+
+        int count = model.search(doc);
+
+        assertEquals(0, count);
     }
 }

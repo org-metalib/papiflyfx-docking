@@ -3,10 +3,12 @@ package org.metalib.papifly.fx.code.lexer;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.concurrent.CancellationException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class IncrementalLexerEngineTest {
 
@@ -82,6 +84,25 @@ class IncrementalLexerEngineTest {
         assertEquals("a3", updated.lineAt(3).text());
         // Line 2 must NOT be stale
         assertNotEquals("a2", updated.lineAt(2).text());
+    }
+
+    @Test
+    void relexChecksCancellationDuringPrefixReuse() {
+        List<String> lines = java.util.stream.IntStream.range(0, 5000)
+            .mapToObj(i -> "line-" + i)
+            .toList();
+        PlainTextLexer lexer = new PlainTextLexer();
+        TokenMap baseline = IncrementalLexerEngine.relex(TokenMap.empty(), lines, 0, lexer);
+
+        Thread.currentThread().interrupt();
+        try {
+            assertThrows(
+                CancellationException.class,
+                () -> IncrementalLexerEngine.relex(baseline, lines, lines.size(), lexer)
+            );
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     private static final class CountingLexer implements Lexer {

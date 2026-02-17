@@ -4,11 +4,15 @@ import org.junit.jupiter.api.Test;
 import org.metalib.papifly.fx.code.document.Document;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IncrementalLexerPipelineTest {
@@ -93,6 +97,51 @@ class IncrementalLexerPipelineTest {
         }
     }
 
+    @Test
+    void keepsPreviousTokensWhenLexerThrowsAndRecovers() {
+        Document document = new Document("class Demo {}");
+        AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
+        AtomicBoolean failLexing = new AtomicBoolean(false);
+        AtomicInteger throwLexerCalls = new AtomicInteger(0);
+        Lexer throwingLexer = new ThrowingLexer(failLexing, throwLexerCalls);
+        Function<String, Lexer> resolver = languageId -> "throwing".equals(languageId)
+            ? throwingLexer
+            : LexerRegistry.resolve(languageId);
+
+        IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(
+            document,
+            applied::set,
+            Runnable::run,
+            5,
+            resolver
+        );
+        try {
+            pipeline.setLanguageId("java");
+            assertTrue(waitFor(
+                () -> hasTokenType(applied.get(), 0, TokenType.KEYWORD),
+                Duration.ofSeconds(2)
+            ));
+            TokenMap stable = applied.get();
+
+            failLexing.set(true);
+            pipeline.setLanguageId("throwing");
+            assertTrue(waitFor(() -> throwLexerCalls.get() > 0, Duration.ofSeconds(2)));
+            assertSame(stable, applied.get());
+
+            failLexing.set(false);
+            document.setText("let value = 1;");
+            pipeline.setLanguageId("javascript");
+            assertTrue(waitFor(() -> {
+                LineTokens line = applied.get().lineAt(0);
+                return line != null
+                    && "let value = 1;".equals(line.text())
+                    && hasTokenType(applied.get(), 0, TokenType.KEYWORD);
+            }, Duration.ofSeconds(2)));
+        } finally {
+            pipeline.dispose();
+        }
+    }
+
     private static boolean hasTokenType(TokenMap tokenMap, int line, TokenType type) {
         if (tokenMap == null) {
             return false;
@@ -114,5 +163,35 @@ class IncrementalLexerPipelineTest {
             }
         }
         return condition.getAsBoolean();
+    }
+
+    private static final class ThrowingLexer implements Lexer {
+        private final AtomicBoolean failLexing;
+        private final AtomicInteger calls;
+        private final PlainTextLexer delegate = new PlainTextLexer();
+
+        private ThrowingLexer(AtomicBoolean failLexing, AtomicInteger calls) {
+            this.failLexing = failLexing;
+            this.calls = calls;
+        }
+
+        @Override
+        public String languageId() {
+            return "throwing";
+        }
+
+        @Override
+        public LexState initialState() {
+            return delegate.initialState();
+        }
+
+        @Override
+        public LexResult lexLine(String lineText, LexState entryState) {
+            calls.incrementAndGet();
+            if (failLexing.get()) {
+                throw new IllegalStateException("simulated lexer failure");
+            }
+            return delegate.lexLine(lineText, entryState);
+        }
     }
 }

@@ -105,7 +105,7 @@ public class SelectionModel {
         }
         int startOffset = getSelectionStartOffset(document);
         int endOffset = getSelectionEndOffset(document);
-        return document.getText().substring(startOffset, endOffset);
+        return document.getSubstring(startOffset, endOffset);
     }
 
     /**

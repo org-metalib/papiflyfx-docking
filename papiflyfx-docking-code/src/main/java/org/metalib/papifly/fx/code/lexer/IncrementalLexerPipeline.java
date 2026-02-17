@@ -14,6 +14,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Debounced asynchronous incremental lexer pipeline.
@@ -21,10 +22,12 @@ import java.util.function.Consumer;
 public class IncrementalLexerPipeline implements AutoCloseable {
 
     static final long DEFAULT_DEBOUNCE_MILLIS = 35;
+    private static final System.Logger LOGGER = System.getLogger(IncrementalLexerPipeline.class.getName());
 
     private final Document document;
     private final Consumer<TokenMap> tokenMapConsumer;
     private final Consumer<Runnable> fxDispatcher;
+    private final Function<String, Lexer> lexerResolver;
     private final ScheduledExecutorService worker;
     private final long debounceMillis;
     private final AtomicLong revision = new AtomicLong();
@@ -46,7 +49,8 @@ public class IncrementalLexerPipeline implements AutoCloseable {
             document,
             tokenMapConsumer,
             IncrementalLexerPipeline::dispatchOnFxThread,
-            DEFAULT_DEBOUNCE_MILLIS
+            DEFAULT_DEBOUNCE_MILLIS,
+            LexerRegistry::resolve
         );
     }
 
@@ -56,9 +60,26 @@ public class IncrementalLexerPipeline implements AutoCloseable {
         Consumer<Runnable> fxDispatcher,
         long debounceMillis
     ) {
+        this(
+            document,
+            tokenMapConsumer,
+            fxDispatcher,
+            debounceMillis,
+            LexerRegistry::resolve
+        );
+    }
+
+    IncrementalLexerPipeline(
+        Document document,
+        Consumer<TokenMap> tokenMapConsumer,
+        Consumer<Runnable> fxDispatcher,
+        long debounceMillis,
+        Function<String, Lexer> lexerResolver
+    ) {
         this.document = Objects.requireNonNull(document, "document");
         this.tokenMapConsumer = Objects.requireNonNull(tokenMapConsumer, "tokenMapConsumer");
         this.fxDispatcher = Objects.requireNonNull(fxDispatcher, "fxDispatcher");
+        this.lexerResolver = Objects.requireNonNull(lexerResolver, "lexerResolver");
         this.debounceMillis = Math.max(0, debounceMillis);
         this.worker = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "papiflyfx-lexer-pipeline");
@@ -67,7 +88,7 @@ public class IncrementalLexerPipeline implements AutoCloseable {
         });
 
         document.addChangeListener(documentChangeListener);
-        enqueue(document.getText(), 0, revision.get(), languageId, 0);
+        enqueue(document.getText(), 0, revision.get(), languageId, false, 0);
     }
 
     /**
@@ -84,7 +105,7 @@ public class IncrementalLexerPipeline implements AutoCloseable {
         String normalizedLanguageId = LexerRegistry.normalizeLanguageId(languageId);
         this.languageId = normalizedLanguageId;
         long nextRevision = revision.incrementAndGet();
-        enqueue(document.getText(), 0, nextRevision, normalizedLanguageId, debounceMillis);
+        enqueue(document.getText(), 0, nextRevision, normalizedLanguageId, true, debounceMillis);
     }
 
     /**
@@ -114,7 +135,7 @@ public class IncrementalLexerPipeline implements AutoCloseable {
     private void onDocumentChanged(DocumentChangeEvent event) {
         long nextRevision = revision.incrementAndGet();
         int dirtyStartLine = document.getLineForOffset(Math.min(event.offset(), document.length()));
-        enqueue(document.getText(), dirtyStartLine, nextRevision, languageId, debounceMillis);
+        enqueue(document.getText(), dirtyStartLine, nextRevision, languageId, false, debounceMillis);
     }
 
     private void enqueue(
@@ -122,6 +143,7 @@ public class IncrementalLexerPipeline implements AutoCloseable {
         int dirtyStartLine,
         long targetRevision,
         String targetLanguageId,
+        boolean forceFullRelex,
         long delayMillis
     ) {
         synchronized (lock) {
@@ -131,6 +153,8 @@ public class IncrementalLexerPipeline implements AutoCloseable {
             int mergedDirtyStart = pendingRequest == null
                 ? dirtyStartLine
                 : Math.min(pendingRequest.dirtyStartLine(), dirtyStartLine);
+            boolean mergedForceFullRelex = forceFullRelex
+                || (pendingRequest != null && pendingRequest.forceFullRelex());
 
             if (pendingRequest != null && targetRevision < pendingRequest.revision()) {
                 return;
@@ -140,7 +164,8 @@ public class IncrementalLexerPipeline implements AutoCloseable {
                 textSnapshot,
                 mergedDirtyStart,
                 targetRevision,
-                targetLanguageId
+                targetLanguageId,
+                mergedForceFullRelex
             );
             scheduleLocked(delayMillis);
         }
@@ -162,12 +187,12 @@ public class IncrementalLexerPipeline implements AutoCloseable {
             }
             request = pendingRequest;
             pendingRequest = null;
-            baseline = tokenMap;
+            baseline = request.forceFullRelex() ? TokenMap.empty() : tokenMap;
         }
 
         TokenMap computed;
         try {
-            Lexer lexer = LexerRegistry.resolve(request.languageId());
+            Lexer lexer = lexerResolver.apply(request.languageId());
             List<String> lines = IncrementalLexerEngine.splitLines(request.textSnapshot());
             computed = IncrementalLexerEngine.relex(
                 baseline,
@@ -176,6 +201,10 @@ public class IncrementalLexerPipeline implements AutoCloseable {
                 lexer
             );
         } catch (CancellationException cancellationException) {
+            scheduleNextIfNeeded();
+            return;
+        } catch (Exception exception) {
+            LOGGER.log(System.Logger.Level.WARNING, "Lexer failure, keeping previous tokens", exception);
             scheduleNextIfNeeded();
             return;
         }
@@ -221,7 +250,8 @@ public class IncrementalLexerPipeline implements AutoCloseable {
         String textSnapshot,
         int dirtyStartLine,
         long revision,
-        String languageId
+        String languageId,
+        boolean forceFullRelex
     ) {
     }
 }

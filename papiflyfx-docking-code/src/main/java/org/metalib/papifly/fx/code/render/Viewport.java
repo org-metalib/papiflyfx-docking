@@ -224,9 +224,9 @@ public class Viewport extends Region {
             return -1;
         }
         double lineHeight = glyphCache.getLineHeight();
-        int line = (int) ((y + scrollOffset) / lineHeight);
+        int line = (int) Math.floor((y + scrollOffset) / lineHeight);
         if (line < 0) {
-            return 0;
+            return -1;
         }
         if (line >= document.getLineCount()) {
             return document.getLineCount() - 1;
@@ -366,8 +366,8 @@ public class Viewport extends Region {
     private void drawText(GraphicsContext gc, double lineHeight, double charWidth) {
         gc.setFont(glyphCache.getFont());
 
-        // Text baseline offset (ascent from top)
-        double baseline = lineHeight * 0.8;
+        // Text baseline offset derived from actual font metrics.
+        double baseline = glyphCache.getBaselineOffset();
 
         for (RenderLine rl : renderLines) {
             drawTokenizedLine(gc, rl, charWidth, baseline);

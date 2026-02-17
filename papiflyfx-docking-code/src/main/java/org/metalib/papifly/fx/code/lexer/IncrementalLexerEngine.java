@@ -56,6 +56,9 @@ public final class IncrementalLexerEngine {
         // 1. Identify common prefix that hasn't changed.
         int maxPrefix = Math.min(Math.min(safeStartLine, baseline.lineCount()), safeLines.size());
         for (int i = 0; i < maxPrefix; i++) {
+            if ((i & 1023) == 0) {
+                ensureNotInterrupted();
+            }
             LineTokens previousLine = baseline.lineAt(i);
             // If text changed, we must re-lex from here.
             if (previousLine == null || !Objects.equals(previousLine.text(), safeLines.get(i))) {
@@ -78,6 +81,9 @@ public final class IncrementalLexerEngine {
             if (reusable != null && safeLines.size() == baseline.lineCount()) {
                 boolean allMatch = true;
                 for (int j = lineIndex; j < safeLines.size(); j++) {
+                    if (((j - lineIndex) & 1023) == 0) {
+                        ensureNotInterrupted();
+                    }
                     LineTokens candidate = baseline.lineAt(j);
                     if (candidate == null || !Objects.equals(candidate.text(), safeLines.get(j))) {
                         allMatch = false;

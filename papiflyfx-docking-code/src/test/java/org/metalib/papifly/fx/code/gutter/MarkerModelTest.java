@@ -100,6 +100,19 @@ class MarkerModelTest {
     }
 
     @Test
+    void removingMissingMarkerDoesNotNotify() {
+        MarkerModel model = new MarkerModel();
+        AtomicInteger count = new AtomicInteger(0);
+        model.addChangeListener(count::incrementAndGet);
+
+        model.addMarker(new Marker(0, MarkerType.ERROR));
+        assertEquals(1, count.get());
+
+        model.removeMarker(new Marker(1, MarkerType.ERROR));
+        assertEquals(1, count.get());
+    }
+
+    @Test
     void changeListenerNotifiedOnClear() {
         MarkerModel model = new MarkerModel();
         model.addMarker(new Marker(0, MarkerType.ERROR));
