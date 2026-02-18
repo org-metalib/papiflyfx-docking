@@ -21,6 +21,7 @@
         <prism.order>sw</prism.order>
         <prism.text>t2k</prism.text>
         <java.awt.headless>false</java.awt.headless>
+        <surefire.excludedGroups>benchmark</surefire.excludedGroups>
     </properties>
 
     <dependencies>
@@ -64,6 +65,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <useModulePath>false</useModulePath>
+                    <excludedGroups>${surefire.excludedGroups}</excludedGroups>
                     <argLine>
                         --enable-native-access=javafx.graphics
                         --add-exports=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED

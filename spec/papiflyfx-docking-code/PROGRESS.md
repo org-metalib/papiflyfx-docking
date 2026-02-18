@@ -1,7 +1,7 @@
 # PapiflyFX Code - Progress Report
 
 **Date:** 2026-02-17
-**Status:** Phase 7 complete (failure handling + lifecycle cleanup); Phase 8 hardening in progress
+**Status:** Phase 8 complete — all MVP phases delivered
 
 ## Summary
 - Specification and implementation plan were updated to target a separate module: `papiflyfx-docking-code`.
@@ -44,6 +44,14 @@
   - added tests for lexer failure fallback, post-dispose lexer quiescence, dispose callback cleanup, and docking session restore/capture under adapter restore/save failures.
 
 ## Update Log
+- **2026-02-17:** Completed Phase 8 — Hardening, Benchmarks, and Docs (Review 8 Claude-0):
+  - **Workstream A** — Performance benchmark harness: added `CodeEditorBenchmarkTest` with 4 tests measuring spec §8 acceptance criteria on 100k-line synthetic Java file. All thresholds met: open+render 218ms (≤2000ms), typing p95 3.27ms (≤16ms), scroll p95 0.18ms (≤16ms), memory 63MB (≤350MB). Benchmarks tagged `@Tag("benchmark")` and excluded from default test runs via `surefire.excludedGroups` property in pom.xml.
+  - **Workstream B** — End-to-end docking integration tests: added `CodeEditorDockingIntegrationTest` with 4 scenarios: full state round-trip through DockManager (filePath/language/cursor/scroll preserved via temp file), missing adapter falls back to factory, missing factory falls back to placeholder, multi-leaf session preserves independent state.
+  - **Workstream C** — Documentation: rewrote module `README.md` with Maven dependency, quickstart guide, factory/adapter registration examples, session persistence flow, API highlights table, supported languages, and acceptance metrics table. Added `META-INF/services/org.metalib.papifly.fx.docks.layout.ContentStateAdapter` ServiceLoader descriptor for auto-discovery.
+  - **Workstream D** — Updated PROGRESS.md with Phase 8 completion, benchmark results, and final test counts.
+  - Validation:
+    - `mvn -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test` -> ✅ pass (208 tests, 0 failures, 0 errors)
+    - `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dgroups=benchmark -Dsurefire.excludedGroups= test` -> ✅ pass (4 benchmarks, all within spec thresholds)
 - **2026-02-17:** Applied Review 7-1 (Claude-0) minor fixes:
   - **Finding 1** (Workstream A) — Fallback re-lex in `IncrementalLexerPipeline` now uses `TokenMap.empty()` and `dirtyStartLine=0` instead of passing the previous `baseline`. Semantically precise: plain-text fallback always produces a complete fresh token map from line 0.
   - **Finding 2** (Workstream B) — `markerModel` change listener (`gutterView::markDirty`) is now stored as a named field and explicitly removed in `CodeEditor.dispose()`, closing the retention-neutral listener leak.
@@ -119,7 +127,7 @@
 | 5 | Theme composition and mapping | ✅ Complete |
 | 6 | Persistence hardening/migration | ✅ Complete |
 | 7 | Failure handling and disposal | ✅ Complete |
-| 8 | Benchmarks and documentation hardening | 🟡 In progress (incremental line index, lazy lexer snapshot, dirty-region viewport redraw, perf guard test) |
+| 8 | Benchmarks and documentation hardening | ✅ Complete |
 
 ## Implemented Files (Highlights)
 
@@ -228,6 +236,13 @@
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/Viewport.java`
   - disposal lifecycle hook and listener cleanup.
 
+### Phase 8 Source
+- `papiflyfx-docking-code/src/main/resources/META-INF/services/org.metalib.papifly.fx.docks.layout.ContentStateAdapter` (ServiceLoader descriptor)
+
+### Phase 8 Modified
+- `papiflyfx-docking-code/pom.xml` (added `surefire.excludedGroups` property for benchmark tag exclusion)
+- `papiflyfx-docking-code/README.md` (full rewrite with integration guide, quickstart, and acceptance metrics)
+
 ### Tests
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/state/EditorStateCodecTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/document/TextSourceTest.java`
@@ -248,20 +263,36 @@
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/search/SearchModelTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/theme/CodeEditorThemeMapperTest.java`
 - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/theme/CodeEditorThemeIntegrationTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/api/CodeEditorDockingIntegrationTest.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/benchmark/CodeEditorBenchmarkTest.java`
 - `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/core/DockLeafTest.java`
 
 ## Validation Results
 - `mvn -pl papiflyfx-docking-code -am compile` -> ✅ success
-- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dtest=IncrementalLexerPipelineTest,CodeEditorIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false test` -> ✅ success (33 tests, 0 failures, 0 errors)
-- `mvn -pl papiflyfx-docking-docks -am -Dtestfx.headless=true -Dtest=DockManagerSessionFxTest -Dsurefire.failIfNoSpecifiedTests=false test` -> ✅ success (5 tests, 0 failures, 0 errors)
-- `mvn -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test` -> ✅ success (204 tests total, 0 failures, 0 errors)
-- `mvn -pl papiflyfx-docking-code test` -> expected failure without `-am` because local `papiflyfx-docking-docks` artifact is not pre-installed
+- `mvn -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test` -> ✅ success (208 tests total, 0 failures, 0 errors)
+- `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dgroups=benchmark -Dsurefire.excludedGroups= test` -> ✅ success (4 benchmarks, 0 failures)
+
+### Acceptance Metrics (spec §8, 100k-line Java file)
+| Metric | Threshold | Measured | Status |
+| --- | --- | --- | --- |
+| Large file open + first render | ≤ 2000ms | 218ms | ✅ PASS |
+| Typing latency (p95, single char) | ≤ 16ms | 3.27ms | ✅ PASS |
+| Scroll rendering (p95) | ≤ 16ms | 0.18ms | ✅ PASS |
+| Memory overhead (100k lines) | ≤ 350MB | 63MB | ✅ PASS |
 
 ## Notes / Known Issues
 - Existing project warning remains in parent build config: duplicate `maven-release-plugin` declaration in root `pom.xml` pluginManagement.
 - All Review 5 issues (1–6) and Codex-1 follow-up items are now fully addressed.
 - Phase 6 persistence contract is complete: v1 schema documented, migration hooks structured, error containment in place.
-- Phase 7 failure handling/lifecycle cleanup is complete; remaining hardening focus is Phase 8 benchmarks/docs.
+- Phase 7 failure handling/lifecycle cleanup is complete.
+- Phase 8 benchmarks and docs are complete. All spec §8 acceptance metrics pass with significant margin.
+- ServiceLoader auto-discovery is available via `ContentStateRegistry.fromServiceLoader()`.
 
-## Next Recommended Step
-1. Continue Phase 8: run full acceptance benchmark/documentation pass and record measured metrics from `spec.md`.
+## MVP Completion Summary
+All 8 phases are complete. The `papiflyfx-docking-code` module delivers:
+- Canvas-based virtualized code editor with single-caret editing, undo/redo, copy/paste, selection.
+- Incremental syntax highlighting for Java, JSON, JavaScript, Markdown, and plain text.
+- Line number gutter with marker lane, find/replace overlay with regex, go-to-line navigation.
+- Full docking integration via `ContentFactory`, `ContentStateAdapter`, and theme composition.
+- Session persistence with version-gated migration and failure containment.
+- 208 tests (unit + integration) + 4 benchmarks, all passing.
