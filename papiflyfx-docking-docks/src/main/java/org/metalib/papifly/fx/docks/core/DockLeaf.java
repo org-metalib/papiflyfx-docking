@@ -3,9 +3,9 @@ package org.metalib.papifly.fx.docks.core;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Node;
-import org.metalib.papifly.fx.docks.layout.DisposableContent;
+import org.metalib.papifly.fx.docking.api.DisposableContent;
+import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
-import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 
 import java.util.UUID;

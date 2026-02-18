@@ -9,7 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockSplitGroup;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
-import org.metalib.papifly.fx.docks.layout.DisposableContent;
+import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docks.testutil.FxTestUtil;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;

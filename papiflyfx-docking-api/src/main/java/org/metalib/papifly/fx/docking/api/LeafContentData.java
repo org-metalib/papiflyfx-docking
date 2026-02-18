@@ -1,4 +1,4 @@
-package org.metalib.papifly.fx.docks.layout.data;
+package org.metalib.papifly.fx.docking.api;
 
 import java.util.Map;
 

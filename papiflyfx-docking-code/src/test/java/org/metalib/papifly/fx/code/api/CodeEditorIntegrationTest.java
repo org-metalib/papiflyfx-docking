@@ -11,7 +11,7 @@ import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.lexer.TokenType;
 import org.metalib.papifly.fx.code.state.EditorStateCodec;
 import org.metalib.papifly.fx.code.state.EditorStateData;
-import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
+import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;

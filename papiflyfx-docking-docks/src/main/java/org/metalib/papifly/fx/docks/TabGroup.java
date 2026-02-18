@@ -3,7 +3,7 @@ package org.metalib.papifly.fx.docks;
 import javafx.beans.property.ObjectProperty;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
-import org.metalib.papifly.fx.docks.theme.Theme;
+import org.metalib.papifly.fx.docking.api.Theme;
 
 /**
  * Fluent builder for creating DockTabGroup instances.

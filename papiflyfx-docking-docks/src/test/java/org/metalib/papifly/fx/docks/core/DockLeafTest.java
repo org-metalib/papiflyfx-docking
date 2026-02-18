@@ -2,7 +2,7 @@ package org.metalib.papifly.fx.docks.core;
 
 import javafx.scene.control.Label;
 import org.junit.jupiter.api.Test;
-import org.metalib.papifly.fx.docks.layout.DisposableContent;
+import org.metalib.papifly.fx.docking.api.DisposableContent;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;

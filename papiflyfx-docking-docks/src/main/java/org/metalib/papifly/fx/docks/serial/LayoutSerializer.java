@@ -2,7 +2,7 @@ package org.metalib.papifly.fx.docks.serial;
 
 import javafx.geometry.Orientation;
 import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
-import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
+import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.SplitData;
 import org.metalib.papifly.fx.docks.layout.data.TabGroupData;

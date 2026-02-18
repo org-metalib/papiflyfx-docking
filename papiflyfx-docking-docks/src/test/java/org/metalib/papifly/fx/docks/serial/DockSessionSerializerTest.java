@@ -6,7 +6,7 @@ import org.metalib.papifly.fx.docks.layout.data.BoundsData;
 import org.metalib.papifly.fx.docks.layout.data.DockSessionData;
 import org.metalib.papifly.fx.docks.layout.data.FloatingLeafData;
 import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
-import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
+import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.MaximizedLeafData;
 import org.metalib.papifly.fx.docks.layout.data.MinimizedLeafData;

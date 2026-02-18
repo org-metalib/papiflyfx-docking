@@ -32,8 +32,8 @@ import org.metalib.papifly.fx.code.search.SearchModel;
 import org.metalib.papifly.fx.code.state.EditorStateData;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 import org.metalib.papifly.fx.code.theme.CodeEditorThemeMapper;
-import org.metalib.papifly.fx.docks.layout.DisposableContent;
-import org.metalib.papifly.fx.docks.theme.Theme;
+import org.metalib.papifly.fx.docking.api.DisposableContent;
+import org.metalib.papifly.fx.docking.api.Theme;
 
 import java.util.List;
 import java.util.Optional;

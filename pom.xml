@@ -11,6 +11,7 @@
     <url>https://github.com/org-metalib/papiflyfx-docking</url>
 
     <modules>
+        <module>papiflyfx-docking-api</module>
         <module>papiflyfx-docking-docks</module>
         <module>papiflyfx-docking-code</module>
     </modules>

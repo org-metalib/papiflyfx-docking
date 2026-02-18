@@ -19,7 +19,7 @@ import javafx.scene.shape.SVGPath;
 import javafx.util.Duration;
 import org.metalib.papifly.fx.docks.core.DockData;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
-import org.metalib.papifly.fx.docks.theme.Theme;
+import org.metalib.papifly.fx.docking.api.Theme;
 
 import java.util.HashMap;
 import java.util.Map;

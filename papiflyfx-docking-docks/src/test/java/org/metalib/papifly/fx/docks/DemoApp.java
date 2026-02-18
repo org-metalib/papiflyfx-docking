@@ -26,12 +26,12 @@ import org.metalib.papifly.fx.docks.core.DockElement;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockSplitGroup;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
-import org.metalib.papifly.fx.docks.layout.ContentStateAdapter;
+import org.metalib.papifly.fx.docking.api.ContentStateAdapter;
 import org.metalib.papifly.fx.docks.layout.ContentStateRegistry;
-import org.metalib.papifly.fx.docks.layout.ContentFactory;
-import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
+import org.metalib.papifly.fx.docking.api.ContentFactory;
+import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.DockSessionData;
-import org.metalib.papifly.fx.docks.theme.Theme;
+import org.metalib.papifly.fx.docking.api.Theme;
 
 import java.io.IOException;
 import java.nio.file.Files;

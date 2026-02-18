@@ -19,7 +19,7 @@ import org.metalib.papifly.fx.docks.testutil.DragSimulator;
 import org.metalib.papifly.fx.docks.testutil.FxTestUtil;
 import org.metalib.papifly.fx.docks.testutil.Merge;
 import org.metalib.papifly.fx.docks.testutil.Split;
-import org.metalib.papifly.fx.docks.theme.Theme;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;

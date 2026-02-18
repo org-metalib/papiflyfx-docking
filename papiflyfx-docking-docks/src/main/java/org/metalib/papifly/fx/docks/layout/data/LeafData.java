@@ -1,5 +1,7 @@
 package org.metalib.papifly.fx.docks.layout.data;
 
+import org.metalib.papifly.fx.docking.api.LeafContentData;
+
 /**
  * DTO representing a leaf node (terminal content) in the layout.
  */

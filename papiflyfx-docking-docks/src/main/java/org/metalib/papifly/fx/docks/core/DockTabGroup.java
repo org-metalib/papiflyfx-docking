@@ -30,7 +30,7 @@ import javafx.scene.shape.SVGPath;
 import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.TabGroupData;
-import org.metalib.papifly.fx.docks.theme.Theme;
+import org.metalib.papifly.fx.docking.api.Theme;
 
 import java.util.ArrayList;
 import java.util.List;

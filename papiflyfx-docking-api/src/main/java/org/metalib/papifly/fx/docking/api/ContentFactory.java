@@ -1,4 +1,4 @@
-package org.metalib.papifly.fx.docks.layout;
+package org.metalib.papifly.fx.docking.api;
 
 import javafx.scene.Node;
 

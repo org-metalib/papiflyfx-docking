@@ -5,11 +5,13 @@ import javafx.scene.control.Label;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.metalib.papifly.fx.docking.api.ContentFactory;
+import org.metalib.papifly.fx.docking.api.ContentStateAdapter;
+import org.metalib.papifly.fx.docking.api.LeafContentData;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.docks.core.DockElement;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
-import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
-import org.metalib.papifly.fx.docks.theme.Theme;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 

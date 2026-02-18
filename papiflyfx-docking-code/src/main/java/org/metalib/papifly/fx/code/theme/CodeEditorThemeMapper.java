@@ -2,7 +2,7 @@ package org.metalib.papifly.fx.code.theme;
 
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
-import org.metalib.papifly.fx.docks.theme.Theme;
+import org.metalib.papifly.fx.docking.api.Theme;
 
 /**
  * Maps a docking {@link Theme} to a {@link CodeEditorTheme} by composition.

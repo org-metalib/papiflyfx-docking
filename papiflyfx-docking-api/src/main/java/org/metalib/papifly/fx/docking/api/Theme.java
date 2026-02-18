@@ -1,4 +1,4 @@
-package org.metalib.papifly.fx.docks.theme;
+package org.metalib.papifly.fx.docking.api;
 
 import javafx.geometry.Insets;
 import javafx.scene.paint.Color;
@@ -27,7 +27,6 @@ public record Theme(
     double headerHeight,
     double tabHeight,
     Insets contentPadding,
-    // New properties for floating/minimize/maximize features
     Paint buttonHoverBackground,
     Paint buttonPressedBackground,
     Paint minimizedBarBackground,

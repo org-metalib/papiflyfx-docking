@@ -2,7 +2,7 @@ package org.metalib.papifly.fx.code.theme;
 
 import javafx.scene.paint.Color;
 import org.junit.jupiter.api.Test;
-import org.metalib.papifly.fx.docks.theme.Theme;
+import org.metalib.papifly.fx.docking.api.Theme;
 
 import static org.junit.jupiter.api.Assertions.*;
 

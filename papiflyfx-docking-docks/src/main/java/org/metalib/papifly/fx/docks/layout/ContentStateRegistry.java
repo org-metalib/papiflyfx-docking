@@ -1,5 +1,7 @@
 package org.metalib.papifly.fx.docks.layout;
 
+import org.metalib.papifly.fx.docking.api.ContentStateAdapter;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.ServiceLoader;

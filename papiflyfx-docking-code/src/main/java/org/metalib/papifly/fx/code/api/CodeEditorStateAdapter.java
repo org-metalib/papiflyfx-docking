@@ -3,8 +3,8 @@ package org.metalib.papifly.fx.code.api;
 import javafx.scene.Node;
 import org.metalib.papifly.fx.code.state.EditorStateCodec;
 import org.metalib.papifly.fx.code.state.EditorStateData;
-import org.metalib.papifly.fx.docks.layout.ContentStateAdapter;
-import org.metalib.papifly.fx.docks.layout.data.LeafContentData;
+import org.metalib.papifly.fx.docking.api.ContentStateAdapter;
+import org.metalib.papifly.fx.docking.api.LeafContentData;
 
 import java.io.IOException;
 import java.nio.file.Files;

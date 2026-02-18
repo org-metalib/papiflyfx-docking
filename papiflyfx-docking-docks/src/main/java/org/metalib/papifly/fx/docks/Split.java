@@ -4,7 +4,7 @@ import javafx.beans.property.ObjectProperty;
 import javafx.geometry.Orientation;
 import org.metalib.papifly.fx.docks.core.DockElement;
 import org.metalib.papifly.fx.docks.core.DockSplitGroup;
-import org.metalib.papifly.fx.docks.theme.Theme;
+import org.metalib.papifly.fx.docking.api.Theme;
 
 /**
  * Fluent builder for creating DockSplitGroup instances.
