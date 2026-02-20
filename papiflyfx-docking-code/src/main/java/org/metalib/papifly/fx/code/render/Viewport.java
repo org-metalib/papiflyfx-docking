@@ -36,6 +36,8 @@ public class Viewport extends Region {
     private final SelectionModel selectionModel;
     private final ChangeListener<Number> caretLineListener = (obs, oldValue, newValue) -> onCaretLineChanged(oldValue.intValue(), newValue.intValue());
     private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) -> onCaretColumnChanged();
+    private final ChangeListener<Number> anchorLineListener = (obs, oldValue, newValue) -> onSelectionAnchorChanged();
+    private final ChangeListener<Number> anchorColumnListener = (obs, oldValue, newValue) -> onSelectionAnchorChanged();
 
     private CodeEditorTheme theme = CodeEditorTheme.dark();
     private Document document;
@@ -51,6 +53,9 @@ public class Viewport extends Region {
     private int firstVisibleLine;
     private int visibleLineCount;
     private int previousCaretLine = -1;
+    private boolean previousSelectionActive;
+    private int previousSelectionStartLine = -1;
+    private int previousSelectionEndLine = -1;
     private final List<RenderLine> renderLines = new ArrayList<>();
 
     private final DocumentChangeListener changeListener = this::onDocumentChanged;
@@ -68,6 +73,8 @@ public class Viewport extends Region {
         // Redraw on caret move
         selectionModel.caretLineProperty().addListener(caretLineListener);
         selectionModel.caretColumnProperty().addListener(caretColumnListener);
+        selectionModel.anchorLineProperty().addListener(anchorLineListener);
+        selectionModel.anchorColumnProperty().addListener(anchorColumnListener);
     }
 
     /**
@@ -277,6 +284,7 @@ public class Viewport extends Region {
         // Dirty both old and new caret lines for highlight update
         dirtyLines.set(oldLine);
         dirtyLines.set(newLine);
+        markSelectionRangeDirty();
         dirty = true;
         requestLayout();
     }
@@ -285,8 +293,43 @@ public class Viewport extends Region {
         // Dirty the current caret line for caret position update
         int caretLine = selectionModel.getCaretLine();
         dirtyLines.set(caretLine);
+        markSelectionRangeDirty();
         dirty = true;
         requestLayout();
+    }
+
+    private void onSelectionAnchorChanged() {
+        markSelectionRangeDirty();
+        dirty = true;
+        requestLayout();
+    }
+
+    private void markSelectionRangeDirty() {
+        boolean hasSelection = selectionModel.hasSelection();
+        if (!previousSelectionActive && !hasSelection) {
+            return;
+        }
+        if (previousSelectionActive) {
+            dirtyLineRange(previousSelectionStartLine, previousSelectionEndLine);
+        }
+        if (hasSelection) {
+            int startLine = selectionModel.getSelectionStartLine();
+            int endLine = selectionModel.getSelectionEndLine();
+            dirtyLineRange(startLine, endLine);
+            previousSelectionStartLine = startLine;
+            previousSelectionEndLine = endLine;
+        } else {
+            previousSelectionStartLine = -1;
+            previousSelectionEndLine = -1;
+        }
+        previousSelectionActive = hasSelection;
+    }
+
+    private void dirtyLineRange(int startLine, int endLine) {
+        if (startLine < 0 || endLine < 0 || startLine > endLine) {
+            return;
+        }
+        dirtyLines.set(startLine, endLine + 1);
     }
 
     @Override
@@ -622,6 +665,8 @@ public class Viewport extends Region {
         setDocument(null);
         selectionModel.caretLineProperty().removeListener(caretLineListener);
         selectionModel.caretColumnProperty().removeListener(caretColumnListener);
+        selectionModel.anchorLineProperty().removeListener(anchorLineListener);
+        selectionModel.anchorColumnProperty().removeListener(anchorColumnListener);
         renderLines.clear();
         dirtyLines.clear();
         tokenMap = TokenMap.empty();

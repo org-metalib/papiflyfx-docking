@@ -38,6 +38,20 @@ public class SelectionModel {
     }
 
     /**
+     * Returns the read-only anchor line property.
+     */
+    public ReadOnlyIntegerProperty anchorLineProperty() {
+        return anchorLine;
+    }
+
+    /**
+     * Returns the read-only anchor column property.
+     */
+    public ReadOnlyIntegerProperty anchorColumnProperty() {
+        return anchorColumn;
+    }
+
+    /**
      * Returns the selection anchor line.
      */
     public int getAnchorLine() {

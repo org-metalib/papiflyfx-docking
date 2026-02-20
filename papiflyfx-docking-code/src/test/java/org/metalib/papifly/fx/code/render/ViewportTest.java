@@ -2,6 +2,8 @@ package org.metalib.papifly.fx.code.render;
 
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.image.WritableImage;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -134,6 +136,29 @@ class ViewportTest {
             "Scroll should adjust to show caret at line 49");
     }
 
+    @Test
+    void collapsingSelectionClearsHighlightFromPreviouslySelectedLines() {
+        runOnFx(() -> {
+            document.setText("line0\nline1\nline2\nline3\nline4\nline5");
+            selectionModel.moveCaret(0, 0);
+            selectionModel.moveCaretWithSelection(3, 2);
+        });
+        flushLayout();
+
+        Color expectedSelectionColor = themeColor(true);
+        Color selectedLineColor = sampleLineBackgroundColor(1);
+        assertTrue(colorsClose(selectedLineColor, expectedSelectionColor),
+            "Line should be painted with selection color before collapsing selection");
+
+        runOnFx(() -> selectionModel.moveCaret(4, 0));
+        flushLayout();
+
+        Color expectedBackground = themeColor(false);
+        Color clearedLineColor = sampleLineBackgroundColor(1);
+        assertTrue(colorsClose(clearedLineColor, expectedBackground),
+            "Previously selected line should be repainted with editor background");
+    }
+
     private void flushLayout() {
         // Apply CSS + layout on FX thread, then wait for completion
         runOnFx(() -> {
@@ -162,5 +187,33 @@ class ViewportTest {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
+    }
+
+    private Color sampleLineBackgroundColor(int lineIndex) {
+        final Color[] color = new Color[1];
+        runOnFx(() -> {
+            double lineHeight = viewport.getGlyphCache().getLineHeight();
+            double y = lineIndex * lineHeight + (lineHeight / 2.0);
+            WritableImage image = viewport.snapshot(null, null);
+            int sampleX = Math.max(0, (int) Math.min(image.getWidth() - 2, image.getWidth() * 0.75));
+            int sampleY = Math.max(0, (int) Math.min(image.getHeight() - 2, y));
+            color[0] = image.getPixelReader().getColor(sampleX, sampleY);
+        });
+        return color[0];
+    }
+
+    private boolean colorsClose(Color actual, Color expected) {
+        double tolerance = 0.03;
+        return Math.abs(actual.getRed() - expected.getRed()) <= tolerance
+            && Math.abs(actual.getGreen() - expected.getGreen()) <= tolerance
+            && Math.abs(actual.getBlue() - expected.getBlue()) <= tolerance;
+    }
+
+    private Color themeColor(boolean selection) {
+        final Color[] color = new Color[1];
+        runOnFx(() -> color[0] = (Color) (selection
+            ? viewport.getTheme().selectionColor()
+            : viewport.getTheme().editorBackground()));
+        return color[0];
     }
 }
