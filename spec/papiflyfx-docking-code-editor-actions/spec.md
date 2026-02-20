@@ -8,6 +8,7 @@ This document defines the keyboard and mouse action requirements for the `papifl
 - Align behavior with common modern editor conventions (VS Code / Sublime style).
 - Keep platform parity between Windows and macOS.
 - Include page-level navigation and selection semantics for large-file workflows.
+- Support macOS full-keyboard aliases for document boundaries (`Cmd+Home/End`).
 
 ## 2. Scope
 
@@ -64,8 +65,8 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 | Move by word | `Ctrl+Left/Right` | `Option+Left/Right` | Implemented |
 | Select by word | `Ctrl+Shift+Left/Right` | `Option+Shift+Left/Right` | Implemented |
 | Delete word left/right | `Ctrl+Backspace/Delete` | `Option+Delete` / `Option+Fn+Delete` | Implemented |
-| Document start/end | `Ctrl+Home/End` | `Cmd+Up/Down` | Implemented |
-| Select to doc bounds | `Ctrl+Shift+Home/End` | `Shift+Cmd+Up/Down` | Implemented |
+| Document start/end | `Ctrl+Home/End` | `Cmd+Up/Down`, `Cmd+Home/End` | Implemented |
+| Select to doc bounds | `Ctrl+Shift+Home/End` | `Shift+Cmd+Up/Down`, `Shift+Cmd+Home/End` | Implemented |
 | Delete current line | `Ctrl+Shift+K` | `Cmd+Shift+K` | Implemented |
 | Move line up/down | `Alt+Up/Down` | `Option+Up/Down` | Implemented |
 | Duplicate line up/down | `Shift+Alt+Up/Down` | `Shift+Option+Up/Down` | Implemented |
@@ -94,6 +95,15 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 | Scroll page up without caret move | `Alt+Page Up` | `Alt+Page Up`, `Cmd+Page Up` | Implemented |
 | Scroll page down without caret move | `Alt+Page Down` | `Alt+Page Down`, `Cmd+Page Down` | Implemented |
 
+### 4.5 Addendum 1: macOS Cmd+Home/Cmd+End Document Jump Aliases
+
+| Command | Windows | macOS | Status (2026-02-20) |
+| --- | --- | --- | --- |
+| Document start alias | N/A | `Cmd+Home` | Implemented |
+| Document end alias | N/A | `Cmd+End` | Implemented |
+| Select to document start alias | N/A | `Shift+Cmd+Home` | Implemented |
+| Select to document end alias | N/A | `Shift+Cmd+End` | Implemented |
+
 ## 5. Mouse Actions
 
 | Action | Windows | macOS | Status (2026-02-20) |
@@ -116,6 +126,7 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 - Undo/redo should treat each line action as a single history step.
 - Page move/select uses viewport-derived line deltas (`max(1, floor(viewportHeight / lineHeight))`).
 - Scroll-only page commands must not move caret or selection anchors.
+- On macOS, `Cmd+Home/End` and `Cmd+Up/Down` must execute the same document-boundary commands.
 
 ## 7. Persistence Impact
 
@@ -147,11 +158,13 @@ Phase 6 hardening (2026-02-20) adds:
 | AC-5 | Session save/restore remains backward-compatible (`v1`) and supports new action state (`v2`). |
 | AC-6 | Hardening/performance regressions are covered: disposal/listener cleanup stays safe and benchmark thresholds remain green. |
 | AC-7 | `Page Up`/`Page Down` move/select/scroll-only command semantics are deterministic and covered by keymap + integration tests. |
+| AC-8 | macOS `Cmd+Home/End` aliases map to document-boundary commands with matching selection-extension behavior. |
 
 ## 9. Verification Strategy
 
 - Unit tests for word boundaries, line action semantics, and multi-caret normalization.
 - JavaFX/TestFX integration tests for key/mouse gesture matrices.
 - JavaFX/TestFX integration tests for page move/select and scroll-only behavior.
+- Keymap unit tests for macOS `Cmd+Home/End` and `Shift+Cmd+Home/End` alias resolution.
 - Docking integration tests for state round-trip and fallback order (adapter -> factory -> placeholder).
 - Benchmark-tagged validation for large-file load, typing latency, scroll latency, multi-caret latency, and memory overhead.

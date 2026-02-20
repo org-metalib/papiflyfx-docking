@@ -27,8 +27,8 @@
 | Line end | `End` | `End` |
 | Move by word left | `Ctrl+Left` | `Alt+Left` |
 | Move by word right | `Ctrl+Right` | `Alt+Right` |
-| Document start | `Ctrl+Home` | `Cmd+Up` |
-| Document end | `Ctrl+End` | `Cmd+Down` |
+| Document start | `Ctrl+Home` | `Cmd+Up` or `Cmd+Home` |
+| Document end | `Ctrl+End` | `Cmd+Down` or `Cmd+End` |
 
 ### Selection
 
@@ -41,8 +41,8 @@
 | Select to line end | `Shift+End` | `Shift+End` |
 | Select word left | `Ctrl+Shift+Left` | `Alt+Shift+Left` |
 | Select word right | `Ctrl+Shift+Right` | `Alt+Shift+Right` |
-| Select to document start | `Ctrl+Shift+Home` | `Cmd+Shift+Up` |
-| Select to document end | `Ctrl+Shift+End` | `Cmd+Shift+Down` |
+| Select to document start | `Ctrl+Shift+Home` | `Cmd+Shift+Up` or `Cmd+Shift+Home` |
+| Select to document end | `Ctrl+Shift+End` | `Cmd+Shift+Down` or `Cmd+Shift+End` |
 
 ### Viewport Navigation
 
@@ -101,6 +101,7 @@
 - **Line operations with selection** — when a selection spans multiple lines, delete/move/duplicate line commands act on the entire range of selected lines.
 - **Single-step undo** — each line operation (delete, move, duplicate, join) is recorded as a single undo step.
 - **Cross-line word navigation** — moving word-left at column 0 jumps to the end of the previous line; moving word-right at end of line jumps to the start of the next line.
+- **macOS full-keyboard document aliases** — `Cmd+Home/End` and `Cmd+Shift+Home/End` are supported as aliases for document boundary move/select commands.
 - **Page move/select step** — page commands use viewport-derived step: `max(1, floor(viewportHeight / lineHeight))` lines.
 - **Scroll-only page commands** — `Alt/Cmd+Page Up/Down` scroll the viewport without moving caret or selection anchor.
 - **Workspace tab switching** — `Ctrl/Cmd+Page Up/Down` is intentionally not mapped by the editor and remains available to workspace-level tab navigation.

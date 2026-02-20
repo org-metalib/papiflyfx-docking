@@ -1,7 +1,7 @@
 # PapiflyFX Code Editor Actions Progress
 
 **Date:** 2026-02-20  
-**Status:** Phases 0–6 + Addendum 0 complete
+**Status:** Phases 0–6 + Addenda 0–1 complete
 
 ## 1. Summary
 
@@ -9,6 +9,7 @@ This report tracks implementation status for:
 
 - `spec/papiflyfx-docking-code-editor-actions/spec.md`
 - `spec/papiflyfx-docking-code-editor-actions/spec-add0.md`
+- `spec/papiflyfx-docking-code-editor-actions/spec-add1.md`
 
 ## 2. Completed Work
 
@@ -59,6 +60,15 @@ This report tracks implementation status for:
   - `KeymapTableTest` page binding assertions
   - `CodeEditorIntegrationTest` page move/select/scroll behavior
 
+### Addendum 1: macOS Cmd+Home/Cmd+End Document Jump Aliases (Done)
+
+- Added macOS document-boundary key aliases:
+  - `Cmd+Home` -> `DOCUMENT_START`
+  - `Cmd+End` -> `DOCUMENT_END`
+  - `Shift+Cmd+Home` -> `SELECT_TO_DOCUMENT_START`
+  - `Shift+Cmd+End` -> `SELECT_TO_DOCUMENT_END`
+- Extended `KeymapTableTest.documentBoundaries()` to assert the alias mappings on macOS.
+
 ## 3. Implemented Actions (Highlights)
 
 - Core editing/navigation/search actions from Profile A.
@@ -69,10 +79,11 @@ This report tracks implementation status for:
 - Persistence `v2` capture/restore + migration hardening.
 - Performance and lifecycle hardening.
 - Addendum 0 page navigation and selection commands.
+- Addendum 1 macOS `Cmd+Home/End` document-boundary aliases.
 
 ## 4. Remaining Gaps
 
-No open gaps for Phases 0–6 or Addendum 0.
+No open gaps for Phases 0–6 or Addenda 0–1.
 
 Optional Profile C actions remain future scope.
 
@@ -85,7 +96,8 @@ Optional Profile C actions remain future scope.
 5. ~~Mouse multi-caret + box selection~~ Done  
 6. ~~Persistence v2 migration coverage~~ Done  
 7. ~~Hardening/performance validation~~ Done  
-8. ~~Addendum 0 page navigation implementation~~ Done
+8. ~~Addendum 0 page navigation implementation~~ Done  
+9. ~~Addendum 1 macOS Cmd+Home/End aliases~~ Done
 
 ## 6. Validation
 
@@ -94,14 +106,14 @@ Optional Profile C actions remain future scope.
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test
 # Tests run: 307, Failures: 0, Errors: 0, Skipped: 0
 
-# Focused page-navigation regressions
+# Focused page-navigation + document-boundary-alias regressions
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
   -Dtest=KeymapTableTest,CodeEditorIntegrationTest \
   -Dsurefire.failIfNoSpecifiedTests=false test
 # Tests run: 52, Failures: 0, Errors: 0, Skipped: 0
 ```
 
-## 7. File Change Summary (Addendum 0)
+## 7. File Change Summary (Addenda 0/1 cumulative)
 
 | File | Action |
 | --- | --- |
@@ -110,3 +122,5 @@ mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
 | `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` | Added page command handlers and viewport page-step helpers |
 | `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/command/KeymapTableTest.java` | Added page binding tests |
 | `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/api/CodeEditorIntegrationTest.java` | Added page move/select/scroll behavior tests |
+| `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/command/KeymapTable.java` | Added macOS `Cmd+Home/End` and `Shift+Cmd+Home/End` document-boundary aliases |
+| `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/command/KeymapTableTest.java` | Added macOS alias assertions in `documentBoundaries()` |

@@ -188,6 +188,22 @@ Exit criteria:
 - [x] Scroll-only page commands do not move caret.
 - [x] Full module headless suite remains green.
 
+## Addendum 1: macOS Cmd+Home/Cmd+End Document Jump Aliases -- COMPLETE (2026-02-20)
+
+Tasks:
+- [x] Add `Cmd+Home` / `Cmd+End` bindings on macOS for document boundary navigation.
+- [x] Add `Shift+Cmd+Home` / `Shift+Cmd+End` bindings on macOS for selection-to-document-boundary behavior.
+- [x] Extend keymap tests to verify the new alias resolution.
+
+Deliverables:
+- `command/KeymapTable.java` — macOS aliases added for document start/end and selection-to-document start/end.
+- `command/KeymapTableTest.java` — document-boundary assertions now cover `Home/End` aliases on macOS.
+
+Exit criteria:
+- [x] macOS `Cmd+Home/End` behavior matches existing `Cmd+Up/Down` document-boundary commands.
+- [x] Shift-modified aliases preserve selection-anchor semantics via existing document selection commands.
+- [x] Focused headless regression suite remains green.
+
 ## 4. Risk Notes
 
 - Multi-caret can increase complexity in text mutation ordering.
@@ -205,7 +221,7 @@ Mitigations:
 # Module tests
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test
 
-# Focused keymap + integration coverage (includes Addendum 0 page commands)
+# Focused keymap + integration coverage (includes Addenda 0/1)
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
   -Dtest=KeymapTableTest,CodeEditorIntegrationTest \
   -Dsurefire.failIfNoSpecifiedTests=false test

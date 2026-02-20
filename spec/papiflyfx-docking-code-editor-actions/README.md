@@ -2,12 +2,13 @@
 
 This directory contains source requirements and normalized planning/spec documents for keyboard and mouse behavior in `papiflyfx-docking-code`.
 
-Current implementation status (2026-02-20): Phases 0–6 plus Addendum 0 complete (`Hardening and Performance` + `Page Navigation and Selection` delivered).
+Current implementation status (2026-02-20): Phases 0–6 plus Addenda 0–1 complete (`Hardening and Performance`, `Page Navigation and Selection`, and macOS `Cmd+Home/End` document-boundary aliases delivered).
 
 ## Documents
 
 - `spec.md` — normalized command-level action specification for implementation/testing.
 - `spec-add0.md` — implemented addendum for `Page Up` / `Page Down` behavior.
+- `spec-add1.md` — implemented addendum for macOS `Cmd+Home` / `Cmd+End` document jumps.
 - `implementation.md` — phased implementation plan for missing actions.
 - `PROGRESS.md` — current status of implemented vs pending actions.
 - `userguide.md` — end-user reference for all supported keyboard and mouse commands.
@@ -52,7 +53,7 @@ Here is a list of typical key and mouse actions for a plain text editor, separat
 *   **Select Word:** `Cmd + D` to select the current word (pressing it again selects the next matching occurrence).
 *   **Select Line:** `Cmd + L` to select the entire current line.
 *   **Line Navigation:** `Cmd + Left Arrow` to jump to the beginning of the line, and `Cmd + Right Arrow` to jump to the end.
-*   **Document Navigation:** `Cmd + Up Arrow` to jump to the top of the file, and `Cmd + Down Arrow` to jump to the bottom.
+*   **Document Navigation:** `Cmd + Up Arrow` to jump to the top of the file, and `Cmd + Down Arrow` to jump to the bottom. Full-size keyboards also commonly use `Cmd + Home` / `Cmd + End` for the same actions.
 
 **Advanced Text Manipulation**
 *   **Delete Line:** `Cmd + Shift + K` to delete the current line.

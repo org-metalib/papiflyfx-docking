@@ -102,6 +102,12 @@ public final class KeymapTable {
             put(map, KeyCode.DOWN, false, true, false, EditorCommand.DOCUMENT_END);
             put(map, KeyCode.UP, true, true, false, EditorCommand.SELECT_TO_DOCUMENT_START);
             put(map, KeyCode.DOWN, true, true, false, EditorCommand.SELECT_TO_DOCUMENT_END);
+
+            // Alias for full-size keyboards and editors that expose Home/End navigation.
+            put(map, KeyCode.HOME, false, true, false, EditorCommand.DOCUMENT_START);
+            put(map, KeyCode.END, false, true, false, EditorCommand.DOCUMENT_END);
+            put(map, KeyCode.HOME, true, true, false, EditorCommand.SELECT_TO_DOCUMENT_START);
+            put(map, KeyCode.END, true, true, false, EditorCommand.SELECT_TO_DOCUMENT_END);
         } else {
             put(map, KeyCode.HOME, false, true, false, EditorCommand.DOCUMENT_START);
             put(map, KeyCode.END, false, true, false, EditorCommand.DOCUMENT_END);

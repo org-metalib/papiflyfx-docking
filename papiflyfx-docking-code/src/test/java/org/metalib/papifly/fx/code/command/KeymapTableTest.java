@@ -137,6 +137,10 @@ class KeymapTableTest {
             assertEquals(Optional.of(EditorCommand.DOCUMENT_END), lookup(KeyCode.DOWN, false, true, false));
             assertEquals(Optional.of(EditorCommand.SELECT_TO_DOCUMENT_START), lookup(KeyCode.UP, true, true, false));
             assertEquals(Optional.of(EditorCommand.SELECT_TO_DOCUMENT_END), lookup(KeyCode.DOWN, true, true, false));
+            assertEquals(Optional.of(EditorCommand.DOCUMENT_START), lookup(KeyCode.HOME, false, true, false));
+            assertEquals(Optional.of(EditorCommand.DOCUMENT_END), lookup(KeyCode.END, false, true, false));
+            assertEquals(Optional.of(EditorCommand.SELECT_TO_DOCUMENT_START), lookup(KeyCode.HOME, true, true, false));
+            assertEquals(Optional.of(EditorCommand.SELECT_TO_DOCUMENT_END), lookup(KeyCode.END, true, true, false));
         } else {
             assertEquals(Optional.of(EditorCommand.DOCUMENT_START), lookup(KeyCode.HOME, false, true, false));
             assertEquals(Optional.of(EditorCommand.DOCUMENT_END), lookup(KeyCode.END, false, true, false));
