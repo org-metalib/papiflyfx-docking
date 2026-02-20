@@ -50,28 +50,28 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 | Move by char | `Left/Right` | `Left/Right` | Implemented |
 | Move by line | `Up/Down` | `Up/Down` | Implemented |
 | Extend selection | `Shift+Arrows` | `Shift+Arrows` | Implemented |
-| Line start/end | `Home/End` | `Cmd+Left/Right` | Partial |
+| Line start/end | `Home/End` | `Cmd+Left/Right` | Implemented |
 | Find | `Ctrl+F` | `Cmd+F` | Implemented |
 | Go to line | `Ctrl+G` | `Cmd+G` | Implemented |
 | Close find | `Escape` | `Escape` | Implemented |
 
 ### 4.2 Required Actions (Profile B)
 
-| Command | Windows | macOS |
-| --- | --- | --- |
-| Move by word | `Ctrl+Left/Right` | `Option+Left/Right` |
-| Select by word | `Ctrl+Shift+Left/Right` | `Option+Shift+Left/Right` |
-| Delete word left/right | `Ctrl+Backspace/Delete` | `Option+Delete` / `Option+Fn+Delete` |
-| Document start/end | `Ctrl+Home/End` | `Cmd+Up/Down` |
-| Select to doc bounds | `Ctrl+Shift+Home/End` | `Shift+Cmd+Up/Down` |
-| Delete current line | `Ctrl+Shift+K` | `Cmd+Shift+K` |
-| Move line up/down | `Alt+Up/Down` | `Option+Up/Down` |
-| Duplicate line up/down | `Shift+Alt+Up/Down` | `Shift+Option+Up/Down` |
-| Join lines | `Ctrl+J` | `Cmd+J` |
-| Select next occurrence | `Ctrl+D` | `Cmd+D` |
-| Select all occurrences | `Ctrl+Shift+L` | `Cmd+Shift+L` |
-| Add cursor up/down | `Ctrl+Alt+Up/Down` | `Cmd+Option+Up/Down` |
-| Undo last occurrence | `Ctrl+U` | `Cmd+U` |
+| Command | Windows | macOS | Status (2026-02-20) |
+| --- | --- | --- | --- |
+| Move by word | `Ctrl+Left/Right` | `Option+Left/Right` | Implemented |
+| Select by word | `Ctrl+Shift+Left/Right` | `Option+Shift+Left/Right` | Implemented |
+| Delete word left/right | `Ctrl+Backspace/Delete` | `Option+Delete` / `Option+Fn+Delete` | Implemented |
+| Document start/end | `Ctrl+Home/End` | `Cmd+Up/Down` | Implemented |
+| Select to doc bounds | `Ctrl+Shift+Home/End` | `Shift+Cmd+Up/Down` | Implemented |
+| Delete current line | `Ctrl+Shift+K` | `Cmd+Shift+K` | Implemented |
+| Move line up/down | `Alt+Up/Down` | `Option+Up/Down` | Implemented |
+| Duplicate line up/down | `Shift+Alt+Up/Down` | `Shift+Option+Up/Down` | Implemented |
+| Join lines | `Ctrl+J` | `Cmd+J` | Implemented |
+| Select next occurrence | `Ctrl+D` | `Cmd+D` | Planned |
+| Select all occurrences | `Ctrl+Shift+L` | `Cmd+Shift+L` | Planned |
+| Add cursor up/down | `Ctrl+Alt+Up/Down` | `Cmd+Option+Up/Down` | Planned |
+| Undo last occurrence | `Ctrl+U` | `Cmd+U` | Planned |
 
 ### 4.3 Optional Actions (Profile C)
 

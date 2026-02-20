@@ -22,38 +22,55 @@ Primary classes/packages expected to change:
 
 ## 3. Delivery Phases
 
-## Phase 0: Command Abstraction Baseline
+## Phase 0: Command Abstraction Baseline -- COMPLETE (2026-02-20)
 
 Tasks:
-- Introduce command IDs for all Profile A/B actions.
-- Add platform keymap tables (Windows, macOS).
-- Route existing input handling through command dispatch.
+- [x] Introduce command IDs for all Profile A/B actions.
+- [x] Add platform keymap tables (Windows, macOS).
+- [x] Route existing input handling through command dispatch.
+
+Deliverables:
+- `command/EditorCommand.java` — 38 command IDs
+- `command/KeyBinding.java` — key combination record
+- `command/KeymapTable.java` — platform-aware keymap (macOS Alt vs Windows Ctrl for word nav)
+- `command/WordBoundary.java` — word boundary utility
+- Refactored `CodeEditor.handleKeyPressed` → `KeymapTable.resolve()` + `executeCommand()`
+- `command/KeymapTableTest.java` — 13 tests
 
 Exit criteria:
-- Existing behavior unchanged.
-- Tests pass with command-based dispatch enabled.
+- [x] Existing behavior unchanged.
+- [x] Tests pass with command-based dispatch enabled (263 total, 0 failures).
 
-## Phase 1: Word + Document Navigation
+## Phase 1: Word + Document Navigation -- COMPLETE (2026-02-20)
 
 Tasks:
-- Add word navigation and word selection expansion.
-- Add word deletion left/right.
-- Add document start/end and select-to-boundary shortcuts.
+- [x] Add word navigation and word selection expansion.
+- [x] Add word deletion left/right.
+- [x] Add document start/end and select-to-boundary shortcuts.
+
+Deliverables:
+- 8 new handler methods in `CodeEditor`: `handleMoveWordLeft/Right`, `handleSelectWordLeft/Right`, `handleDeleteWordLeft/Right`, `handleDocumentStart/End`
+- Cross-line boundary support for word navigation
+- `command/WordBoundaryTest.java` — 26 edge-case tests
 
 Exit criteria:
-- All Profile B word/document commands are functional.
-- Unit tests cover token/whitespace/punctuation edge cases.
+- [x] All Profile B word/document commands are functional.
+- [x] Unit tests cover token/whitespace/punctuation edge cases.
 
-## Phase 2: Line Operations
+## Phase 2: Line Operations -- COMPLETE (2026-02-20)
 
 Tasks:
-- Add delete line, move line up/down, duplicate line up/down, join lines.
-- Ensure operations work with and without selection.
-- Ensure each action is single-step undo/redo.
+- [x] Add delete line, move line up/down, duplicate line up/down, join lines.
+- [x] Ensure operations work with and without selection.
+- [x] Ensure each action is single-step undo/redo.
+
+Deliverables:
+- 6 new handler methods in `CodeEditor`: `handleDeleteLine`, `handleMoveLineUp/Down`, `handleDuplicateLineUp/Down`, `handleJoinLines`
+- `command/LineOperationsTest.java` — 15 tests (delete, move, duplicate, join with undo coverage)
 
 Exit criteria:
-- Line actions match expected behavior across single and multi-line selections.
-- Undo/redo tests pass for each action.
+- [x] Line actions match expected behavior across single and multi-line selections.
+- [x] Undo/redo tests pass for each action.
 
 ## Phase 3: Multi-Caret Core
 

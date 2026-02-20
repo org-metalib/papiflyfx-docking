@@ -7,6 +7,7 @@ This directory contains source requirements and normalized planning/spec documen
 - `spec.md` — normalized command-level action specification for implementation/testing.
 - `implementation.md` — phased implementation plan for missing actions.
 - `PROGRESS.md` — current status of implemented vs pending actions.
+- `userguide.md` — end-user reference for all supported keyboard and mouse commands.
 - `README.md` — raw requirement reference (below).
 
 ## Raw Requirement Reference

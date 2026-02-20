@@ -13,12 +13,14 @@ import javafx.geometry.Pos;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
+import org.metalib.papifly.fx.code.command.EditorCommand;
+import org.metalib.papifly.fx.code.command.KeymapTable;
+import org.metalib.papifly.fx.code.command.WordBoundary;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
 import org.metalib.papifly.fx.code.gutter.GutterView;
@@ -330,28 +332,23 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void handleKeyPressed(KeyEvent event) {
-        boolean shift = event.isShiftDown();
-        boolean shortcut = event.isControlDown() || event.isMetaDown();
-        KeyCode code = event.getCode();
-
-        // Search and navigation shortcuts always active
-        if (shortcut && code == KeyCode.F) {
-            openSearch();
-            event.consume();
-            return;
-        }
-        if (shortcut && code == KeyCode.G) {
-            if (shift) {
-                // Ctrl+Shift+G: no-op or could be used for something else
-            } else {
-                goToLine();
-            }
-            event.consume();
-            return;
-        }
-        if (code == KeyCode.ESCAPE && searchController.isOpen()) {
+        // Escape always closes search
+        if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE && searchController.isOpen()) {
             searchController.close();
             requestFocus();
+            event.consume();
+            return;
+        }
+
+        Optional<EditorCommand> resolved = KeymapTable.resolve(event);
+        if (resolved.isEmpty()) {
+            return;
+        }
+        EditorCommand cmd = resolved.get();
+
+        // "Always-on" commands execute even when search is focused
+        if (cmd == EditorCommand.OPEN_SEARCH || cmd == EditorCommand.GO_TO_LINE) {
+            executeCommand(cmd);
             event.consume();
             return;
         }
@@ -361,26 +358,67 @@ public class CodeEditor extends StackPane implements DisposableContent {
             return;
         }
 
-        switch (code) {
-            case BACK_SPACE -> { handleBackspace(); event.consume(); }
-            case DELETE -> { handleDelete(); event.consume(); }
-            case ENTER -> { handleEnter(); event.consume(); }
-            case LEFT -> { handleLeft(shift); event.consume(); }
-            case RIGHT -> { handleRight(shift); event.consume(); }
-            case UP -> { handleUp(shift); event.consume(); }
-            case DOWN -> { handleDown(shift); event.consume(); }
-            case HOME -> { handleHome(shift); event.consume(); }
-            case END -> { handleEnd(shift); event.consume(); }
-            case A -> { if (shortcut) { handleSelectAll(); event.consume(); } }
-            case Z -> {
-                if (shortcut && shift) { handleRedo(); event.consume(); }
-                else if (shortcut) { handleUndo(); event.consume(); }
-            }
-            case Y -> { if (shortcut) { handleRedo(); event.consume(); } }
-            case C -> { if (shortcut) { handleCopy(); event.consume(); } }
-            case X -> { if (shortcut) { handleCut(); event.consume(); } }
-            case V -> { if (shortcut) { handlePaste(); event.consume(); } }
-            default -> { /* no-op */ }
+        executeCommand(cmd);
+        event.consume();
+    }
+
+    /**
+     * Dispatches an {@link EditorCommand} to the appropriate handler method.
+     */
+    void executeCommand(EditorCommand cmd) {
+        switch (cmd) {
+            // Navigation
+            case MOVE_LEFT -> handleLeft(false);
+            case MOVE_RIGHT -> handleRight(false);
+            case MOVE_UP -> handleUp(false);
+            case MOVE_DOWN -> handleDown(false);
+            case SELECT_LEFT -> handleLeft(true);
+            case SELECT_RIGHT -> handleRight(true);
+            case SELECT_UP -> handleUp(true);
+            case SELECT_DOWN -> handleDown(true);
+            case LINE_START -> handleHome(false);
+            case LINE_END -> handleEnd(false);
+            case SELECT_TO_LINE_START -> handleHome(true);
+            case SELECT_TO_LINE_END -> handleEnd(true);
+
+            // Editing
+            case BACKSPACE -> handleBackspace();
+            case DELETE -> handleDelete();
+            case ENTER -> handleEnter();
+
+            // Clipboard & undo
+            case SELECT_ALL -> handleSelectAll();
+            case UNDO -> handleUndo();
+            case REDO -> handleRedo();
+            case COPY -> handleCopy();
+            case CUT -> handleCut();
+            case PASTE -> handlePaste();
+
+            // Search
+            case OPEN_SEARCH -> openSearch();
+            case GO_TO_LINE -> goToLine();
+
+            // Phase 1 — word navigation
+            case MOVE_WORD_LEFT -> handleMoveWordLeft();
+            case MOVE_WORD_RIGHT -> handleMoveWordRight();
+            case SELECT_WORD_LEFT -> handleSelectWordLeft();
+            case SELECT_WORD_RIGHT -> handleSelectWordRight();
+            case DELETE_WORD_LEFT -> handleDeleteWordLeft();
+            case DELETE_WORD_RIGHT -> handleDeleteWordRight();
+
+            // Phase 1 — document boundaries
+            case DOCUMENT_START -> handleDocumentStart(false);
+            case DOCUMENT_END -> handleDocumentEnd(false);
+            case SELECT_TO_DOCUMENT_START -> handleDocumentStart(true);
+            case SELECT_TO_DOCUMENT_END -> handleDocumentEnd(true);
+
+            // Phase 2 — line operations
+            case DELETE_LINE -> handleDeleteLine();
+            case MOVE_LINE_UP -> handleMoveLineUp();
+            case MOVE_LINE_DOWN -> handleMoveLineDown();
+            case DUPLICATE_LINE_UP -> handleDuplicateLineUp();
+            case DUPLICATE_LINE_DOWN -> handleDuplicateLineDown();
+            case JOIN_LINES -> handleJoinLines();
         }
     }
 
@@ -512,6 +550,285 @@ public class CodeEditor extends StackPane implements DisposableContent {
             int newOffset = offset + text.length();
             moveCaretToOffset(newOffset);
         }
+    }
+
+    // --- Phase 1: word / document navigation ---
+
+    private void handleMoveWordLeft() {
+        int line = selectionModel.getCaretLine();
+        int col = selectionModel.getCaretColumn();
+        int target = WordBoundary.findWordLeft(document.getLineText(line), col);
+        if (target == col && line > 0) {
+            // At line start — jump to end of previous line
+            line--;
+            target = document.getLineText(line).length();
+        }
+        moveCaret(line, target, false);
+    }
+
+    private void handleMoveWordRight() {
+        int line = selectionModel.getCaretLine();
+        int col = selectionModel.getCaretColumn();
+        String lineText = document.getLineText(line);
+        int target = WordBoundary.findWordRight(lineText, col);
+        if (target == col && line < document.getLineCount() - 1) {
+            // At line end — jump to start of next line
+            line++;
+            target = 0;
+        }
+        moveCaret(line, target, false);
+    }
+
+    private void handleSelectWordLeft() {
+        int line = selectionModel.getCaretLine();
+        int col = selectionModel.getCaretColumn();
+        int target = WordBoundary.findWordLeft(document.getLineText(line), col);
+        if (target == col && line > 0) {
+            line--;
+            target = document.getLineText(line).length();
+        }
+        moveCaret(line, target, true);
+    }
+
+    private void handleSelectWordRight() {
+        int line = selectionModel.getCaretLine();
+        int col = selectionModel.getCaretColumn();
+        String lineText = document.getLineText(line);
+        int target = WordBoundary.findWordRight(lineText, col);
+        if (target == col && line < document.getLineCount() - 1) {
+            line++;
+            target = 0;
+        }
+        moveCaret(line, target, true);
+    }
+
+    private void handleDeleteWordLeft() {
+        if (selectionModel.hasSelection()) {
+            deleteSelectionIfAny();
+            return;
+        }
+        int line = selectionModel.getCaretLine();
+        int col = selectionModel.getCaretColumn();
+        int targetCol = WordBoundary.findWordLeft(document.getLineText(line), col);
+        if (targetCol == col && line > 0) {
+            // Delete back to end of previous line (joining lines)
+            int caretOffset = selectionModel.getCaretOffset(document);
+            document.delete(caretOffset - 1, caretOffset);
+            moveCaretToOffset(caretOffset - 1);
+            return;
+        }
+        int lineStart = document.getLineStartOffset(line);
+        document.delete(lineStart + targetCol, lineStart + col);
+        moveCaret(line, targetCol, false);
+    }
+
+    private void handleDeleteWordRight() {
+        if (selectionModel.hasSelection()) {
+            deleteSelectionIfAny();
+            return;
+        }
+        int line = selectionModel.getCaretLine();
+        int col = selectionModel.getCaretColumn();
+        String lineText = document.getLineText(line);
+        int targetCol = WordBoundary.findWordRight(lineText, col);
+        if (targetCol == col && line < document.getLineCount() - 1) {
+            // Delete forward to start of next line (joining lines)
+            int caretOffset = selectionModel.getCaretOffset(document);
+            document.delete(caretOffset, caretOffset + 1);
+            return;
+        }
+        int lineStart = document.getLineStartOffset(line);
+        document.delete(lineStart + col, lineStart + targetCol);
+    }
+
+    private void handleDocumentStart(boolean shift) {
+        moveCaret(0, 0, shift);
+    }
+
+    private void handleDocumentEnd(boolean shift) {
+        int lastLine = document.getLineCount() - 1;
+        int lastCol = document.getLineText(lastLine).length();
+        moveCaret(lastLine, lastCol, shift);
+    }
+
+    // --- Phase 2: line operations ---
+
+    private void handleDeleteLine() {
+        int startLine;
+        int endLine;
+        if (selectionModel.hasSelection()) {
+            startLine = selectionModel.getSelectionStartLine();
+            endLine = selectionModel.getSelectionEndLine();
+        } else {
+            startLine = selectionModel.getCaretLine();
+            endLine = startLine;
+        }
+
+        int startOffset = document.getLineStartOffset(startLine);
+        int endOffset;
+        if (endLine < document.getLineCount() - 1) {
+            endOffset = document.getLineStartOffset(endLine + 1);
+        } else {
+            // Last line — also remove preceding newline if possible
+            endOffset = document.length();
+            if (startLine > 0) {
+                startOffset = document.getLineStartOffset(startLine) - 1;
+            }
+        }
+
+        if (startOffset < endOffset) {
+            document.delete(startOffset, endOffset);
+            int targetLine = Math.min(startLine, document.getLineCount() - 1);
+            moveCaret(targetLine, 0, false);
+        }
+    }
+
+    private void handleMoveLineUp() {
+        int startLine;
+        int endLine;
+        if (selectionModel.hasSelection()) {
+            startLine = selectionModel.getSelectionStartLine();
+            endLine = selectionModel.getSelectionEndLine();
+        } else {
+            startLine = selectionModel.getCaretLine();
+            endLine = startLine;
+        }
+
+        if (startLine <= 0) {
+            return; // Already at top
+        }
+
+        // Swap block [startLine..endLine] with [startLine-1]
+        int blockStart = document.getLineStartOffset(startLine);
+        int blockEnd = endLine < document.getLineCount() - 1
+            ? document.getLineStartOffset(endLine + 1)
+            : document.length();
+        String blockText = document.getText().substring(blockStart, blockEnd);
+
+        int prevLineStart = document.getLineStartOffset(startLine - 1);
+        String prevLineText = document.getText().substring(prevLineStart, blockStart);
+
+        // Ensure both blocks end with newline for clean swap
+        String normalizedBlock = blockText.endsWith("\n") ? blockText : blockText + "\n";
+        String normalizedPrev = prevLineText.endsWith("\n") ? prevLineText : prevLineText + "\n";
+
+        // Replace the whole range [prevLineStart..blockEnd]
+        String combined = normalizedBlock + normalizedPrev;
+        // Trim trailing newline if we're at document end and original didn't have one
+        if (blockEnd == document.length() && !document.getText().endsWith("\n")) {
+            combined = combined.substring(0, combined.length() - 1);
+        }
+        document.replace(prevLineStart, blockEnd, combined);
+
+        int col = selectionModel.getCaretColumn();
+        moveCaret(selectionModel.getCaretLine() - 1, col, false);
+    }
+
+    private void handleMoveLineDown() {
+        int startLine;
+        int endLine;
+        if (selectionModel.hasSelection()) {
+            startLine = selectionModel.getSelectionStartLine();
+            endLine = selectionModel.getSelectionEndLine();
+        } else {
+            startLine = selectionModel.getCaretLine();
+            endLine = startLine;
+        }
+
+        if (endLine >= document.getLineCount() - 1) {
+            return; // Already at bottom
+        }
+
+        int blockStart = document.getLineStartOffset(startLine);
+        int blockEnd = document.getLineStartOffset(endLine + 1);
+        String blockText = document.getText().substring(blockStart, blockEnd);
+
+        int nextLineEnd = endLine + 1 < document.getLineCount() - 1
+            ? document.getLineStartOffset(endLine + 2)
+            : document.length();
+        String nextLineText = document.getText().substring(blockEnd, nextLineEnd);
+
+        String normalizedNext = nextLineText.endsWith("\n") ? nextLineText : nextLineText + "\n";
+        String normalizedBlock = blockText.endsWith("\n") ? blockText : blockText + "\n";
+
+        String combined = normalizedNext + normalizedBlock;
+        if (nextLineEnd == document.length() && !document.getText().endsWith("\n")) {
+            combined = combined.substring(0, combined.length() - 1);
+        }
+        document.replace(blockStart, nextLineEnd, combined);
+
+        int col = selectionModel.getCaretColumn();
+        moveCaret(selectionModel.getCaretLine() + 1, col, false);
+    }
+
+    private void handleDuplicateLineUp() {
+        int startLine;
+        int endLine;
+        if (selectionModel.hasSelection()) {
+            startLine = selectionModel.getSelectionStartLine();
+            endLine = selectionModel.getSelectionEndLine();
+        } else {
+            startLine = selectionModel.getCaretLine();
+            endLine = startLine;
+        }
+
+        int blockStart = document.getLineStartOffset(startLine);
+        int blockEnd = endLine < document.getLineCount() - 1
+            ? document.getLineStartOffset(endLine + 1)
+            : document.length();
+        String blockText = document.getText().substring(blockStart, blockEnd);
+
+        // Insert a copy above: the copy gets the newline, original stays
+        String insertion = blockText.endsWith("\n") ? blockText : blockText + "\n";
+        document.insert(blockStart, insertion);
+
+        // Caret stays on the original line (which shifted down)
+        // so caret position is unchanged
+    }
+
+    private void handleDuplicateLineDown() {
+        int startLine;
+        int endLine;
+        if (selectionModel.hasSelection()) {
+            startLine = selectionModel.getSelectionStartLine();
+            endLine = selectionModel.getSelectionEndLine();
+        } else {
+            startLine = selectionModel.getCaretLine();
+            endLine = startLine;
+        }
+
+        int blockStart = document.getLineStartOffset(startLine);
+        int blockEnd = endLine < document.getLineCount() - 1
+            ? document.getLineStartOffset(endLine + 1)
+            : document.length();
+        String blockText = document.getText().substring(blockStart, blockEnd);
+
+        // Insert a copy below
+        String insertion = blockText.startsWith("\n") ? blockText : "\n" + blockText;
+        if (blockEnd == document.length() && !blockText.startsWith("\n")) {
+            // At end of document, prepend newline
+            document.insert(blockEnd, "\n" + blockText);
+        } else {
+            // Insert the block text right after the block
+            String toInsert = blockText.endsWith("\n") ? blockText : blockText + "\n";
+            document.insert(blockEnd, toInsert);
+        }
+
+        // Move caret down to the duplicated line
+        int linesInserted = endLine - startLine + 1;
+        int col = selectionModel.getCaretColumn();
+        moveCaret(selectionModel.getCaretLine() + linesInserted, col, false);
+    }
+
+    private void handleJoinLines() {
+        int line = selectionModel.getCaretLine();
+        if (line >= document.getLineCount() - 1) {
+            return; // Last line, nothing to join
+        }
+        // Replace the newline at end of current line with a single space
+        int lineEnd = document.getLineStartOffset(line) + document.getLineText(line).length();
+        // The newline character is at offset lineEnd
+        document.replace(lineEnd, lineEnd + 1, " ");
     }
 
     // --- Mouse handling ---
