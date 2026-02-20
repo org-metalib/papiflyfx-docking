@@ -1,4 +1,15 @@
-#
+# PapiflyFX Code Editor Actions Requirements
+
+This directory contains source requirements and normalized planning/spec documents for keyboard and mouse behavior in `papiflyfx-docking-code`.
+
+## Documents
+
+- `spec.md` — normalized command-level action specification for implementation/testing.
+- `implementation.md` — phased implementation plan for missing actions.
+- `PROGRESS.md` — current status of implemented vs pending actions.
+- `README.md` — raw requirement reference (below).
+
+## Raw Requirement Reference
 
 Here is a list of typical key and mouse actions for a plain text editor, separated by macOS and Windows. These shortcuts reflect industry-standard conventions found in popular modern editors like Visual Studio Code and Sublime Text.
 
