@@ -25,6 +25,9 @@ public final class MarkdownLexer implements Lexer {
         int state = entryState == null ? STATE_DEFAULT : entryState.code();
 
         if (state == STATE_CODE_BLOCK) {
+            if (text.isEmpty()) {
+                return new LexResult(tokens, LexState.of(STATE_CODE_BLOCK));
+            }
             if (text.trim().startsWith("```")) {
                 tokens.add(new Token(0, text.length(), TokenType.CODE_BLOCK));
                 return new LexResult(tokens, LexState.of(STATE_DEFAULT));
@@ -32,6 +35,10 @@ public final class MarkdownLexer implements Lexer {
                 tokens.add(new Token(0, text.length(), TokenType.CODE_BLOCK));
                 return new LexResult(tokens, LexState.of(STATE_CODE_BLOCK));
             }
+        }
+
+        if (text.isEmpty()) {
+            return new LexResult(tokens, LexState.of(STATE_DEFAULT));
         }
 
         if (text.trim().startsWith("```")) {
