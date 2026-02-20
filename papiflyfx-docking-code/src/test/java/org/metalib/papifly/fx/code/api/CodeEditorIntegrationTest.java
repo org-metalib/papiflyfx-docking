@@ -8,6 +8,7 @@ import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.code.command.CaretRange;
+import org.metalib.papifly.fx.code.command.EditorCommand;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.lexer.TokenType;
 import org.metalib.papifly.fx.code.state.CaretStateData;
@@ -249,6 +250,64 @@ class CodeEditorIntegrationTest {
         fireShortcut(KeyCode.Y, false);
         assertEquals("abcd", callOnFx(() -> editor.getText()));
         assertEquals(4, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+    }
+
+    @Test
+    void pageDownMovesCaretByViewportPage() {
+        runOnFx(() -> {
+            editor.setText(buildLines(500));
+            editor.applyCss();
+            editor.layout();
+            editor.getSelectionModel().moveCaret(10, 3);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        int pageLineDelta = callOnFx(this::pageLineDelta);
+        runOnFx(() -> editor.executeCommand(EditorCommand.MOVE_PAGE_DOWN));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals(10 + pageLineDelta, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(3, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+    }
+
+    @Test
+    void shiftPageUpExtendsSelectionByViewportPage() {
+        runOnFx(() -> {
+            editor.setText(buildLines(500));
+            editor.applyCss();
+            editor.layout();
+            editor.getSelectionModel().moveCaret(120, 2);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        int pageLineDelta = callOnFx(this::pageLineDelta);
+        runOnFx(() -> editor.executeCommand(EditorCommand.SELECT_PAGE_UP));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals(120, callOnFx(() -> editor.getSelectionModel().getAnchorLine()));
+        assertEquals(2, callOnFx(() -> editor.getSelectionModel().getAnchorColumn()));
+        assertEquals(120 - pageLineDelta, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(2, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+        assertTrue(callOnFx(() -> editor.getSelectionModel().hasSelection()));
+    }
+
+    @Test
+    void pageScrollCommandDoesNotMoveCaret() {
+        runOnFx(() -> {
+            editor.setText(buildLines(500));
+            editor.applyCss();
+            editor.layout();
+            editor.getSelectionModel().moveCaret(20, 1);
+            editor.setVerticalScrollOffset(0);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        runOnFx(() -> editor.executeCommand(EditorCommand.SCROLL_PAGE_DOWN));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals(20, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(1, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+        assertTrue(callOnFx(() -> editor.getVerticalScrollOffset() > 0));
     }
 
     @Test
@@ -640,6 +699,16 @@ class CodeEditorIntegrationTest {
             sb.append("line").append(i);
         }
         return sb.toString();
+    }
+
+    private int pageLineDelta() {
+        double lineHeight = editor.getViewport().getGlyphCache().getLineHeight();
+        if (lineHeight <= 0) {
+            return 1;
+        }
+        double viewportHeight = editor.getViewport().getHeight();
+        double pagePixels = viewportHeight <= 0 ? lineHeight : viewportHeight;
+        return Math.max(1, (int) Math.floor(pagePixels / lineHeight));
     }
 
     private void fireShortcut(KeyCode keyCode, boolean shift) {

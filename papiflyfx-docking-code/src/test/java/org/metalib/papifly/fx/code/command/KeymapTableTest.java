@@ -56,6 +56,28 @@ class KeymapTableTest {
     }
 
     @Test
+    void pageNavigationBindings() {
+        assertEquals(Optional.of(EditorCommand.MOVE_PAGE_UP), lookup(KeyCode.PAGE_UP, false, false, false));
+        assertEquals(Optional.of(EditorCommand.MOVE_PAGE_DOWN), lookup(KeyCode.PAGE_DOWN, false, false, false));
+        assertEquals(Optional.of(EditorCommand.SELECT_PAGE_UP), lookup(KeyCode.PAGE_UP, true, false, false));
+        assertEquals(Optional.of(EditorCommand.SELECT_PAGE_DOWN), lookup(KeyCode.PAGE_DOWN, true, false, false));
+    }
+
+    @Test
+    void pageScrollBindings() {
+        assertEquals(Optional.of(EditorCommand.SCROLL_PAGE_UP), lookup(KeyCode.PAGE_UP, false, false, true));
+        assertEquals(Optional.of(EditorCommand.SCROLL_PAGE_DOWN), lookup(KeyCode.PAGE_DOWN, false, false, true));
+
+        if (KeymapTable.isMac()) {
+            assertEquals(Optional.of(EditorCommand.SCROLL_PAGE_UP), lookup(KeyCode.PAGE_UP, false, true, false));
+            assertEquals(Optional.of(EditorCommand.SCROLL_PAGE_DOWN), lookup(KeyCode.PAGE_DOWN, false, true, false));
+        } else {
+            assertTrue(lookup(KeyCode.PAGE_UP, false, true, false).isEmpty());
+            assertTrue(lookup(KeyCode.PAGE_DOWN, false, true, false).isEmpty());
+        }
+    }
+
+    @Test
     void editingKeys() {
         assertEquals(Optional.of(EditorCommand.BACKSPACE), lookup(KeyCode.BACK_SPACE, false, false, false));
         assertEquals(Optional.of(EditorCommand.DELETE), lookup(KeyCode.DELETE, false, false, false));

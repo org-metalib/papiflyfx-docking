@@ -7,6 +7,7 @@ This document defines the keyboard and mouse action requirements for the `papifl
 - Define a clear, testable command set for text editing interactions.
 - Align behavior with common modern editor conventions (VS Code / Sublime style).
 - Keep platform parity between Windows and macOS.
+- Include page-level navigation and selection semantics for large-file workflows.
 
 ## 2. Scope
 
@@ -22,6 +23,7 @@ This document defines the keyboard and mouse action requirements for the `papifl
 - IDE semantic navigation (`go to definition`, symbol index).
 - Custom keybinding UI.
 - Language-server behavior and refactor actions.
+- Workspace tab cycling shortcuts (`Ctrl/Cmd+PageUp/PageDown`).
 
 ## 3. Command Model
 
@@ -81,6 +83,17 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 | Expand/shrink semantic selection | `Shift+Alt+Right/Left` | `Ctrl+Shift+Cmd+Right/Left` |
 | Zoom with wheel | `Ctrl+Wheel` | `Cmd+Wheel` |
 
+### 4.4 Addendum 0: Page Navigation and Selection
+
+| Command | Windows | macOS | Status (2026-02-20) |
+| --- | --- | --- | --- |
+| Move page up | `Page Up` | `Page Up` | Implemented |
+| Move page down | `Page Down` | `Page Down` | Implemented |
+| Select page up | `Shift+Page Up` | `Shift+Page Up` | Implemented |
+| Select page down | `Shift+Page Down` | `Shift+Page Down` | Implemented |
+| Scroll page up without caret move | `Alt+Page Up` | `Alt+Page Up`, `Cmd+Page Up` | Implemented |
+| Scroll page down without caret move | `Alt+Page Down` | `Alt+Page Down`, `Cmd+Page Down` | Implemented |
+
 ## 5. Mouse Actions
 
 | Action | Windows | macOS | Status (2026-02-20) |
@@ -101,6 +114,8 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 - Line operations act on complete line spans when selection exists.
 - Word boundaries must be deterministic (`[A-Za-z0-9_]` word class baseline).
 - Undo/redo should treat each line action as a single history step.
+- Page move/select uses viewport-derived line deltas (`max(1, floor(viewportHeight / lineHeight))`).
+- Scroll-only page commands must not move caret or selection anchors.
 
 ## 7. Persistence Impact
 
@@ -131,10 +146,12 @@ Phase 6 hardening (2026-02-20) adds:
 | AC-4 | Undo/redo correctness is preserved after multi-caret and line operations. |
 | AC-5 | Session save/restore remains backward-compatible (`v1`) and supports new action state (`v2`). |
 | AC-6 | Hardening/performance regressions are covered: disposal/listener cleanup stays safe and benchmark thresholds remain green. |
+| AC-7 | `Page Up`/`Page Down` move/select/scroll-only command semantics are deterministic and covered by keymap + integration tests. |
 
 ## 9. Verification Strategy
 
 - Unit tests for word boundaries, line action semantics, and multi-caret normalization.
 - JavaFX/TestFX integration tests for key/mouse gesture matrices.
+- JavaFX/TestFX integration tests for page move/select and scroll-only behavior.
 - Docking integration tests for state round-trip and fallback order (adapter -> factory -> placeholder).
 - Benchmark-tagged validation for large-file load, typing latency, scroll latency, multi-caret latency, and memory overhead.

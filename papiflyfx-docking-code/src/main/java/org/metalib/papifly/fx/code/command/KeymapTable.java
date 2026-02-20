@@ -46,6 +46,8 @@ public final class KeymapTable {
         put(map, KeyCode.DOWN, false, false, false, EditorCommand.MOVE_DOWN);
         put(map, KeyCode.HOME, false, false, false, EditorCommand.LINE_START);
         put(map, KeyCode.END, false, false, false, EditorCommand.LINE_END);
+        put(map, KeyCode.PAGE_UP, false, false, false, EditorCommand.MOVE_PAGE_UP);
+        put(map, KeyCode.PAGE_DOWN, false, false, false, EditorCommand.MOVE_PAGE_DOWN);
 
         // --- shift selection ---
         put(map, KeyCode.LEFT, true, false, false, EditorCommand.SELECT_LEFT);
@@ -54,6 +56,8 @@ public final class KeymapTable {
         put(map, KeyCode.DOWN, true, false, false, EditorCommand.SELECT_DOWN);
         put(map, KeyCode.HOME, true, false, false, EditorCommand.SELECT_TO_LINE_START);
         put(map, KeyCode.END, true, false, false, EditorCommand.SELECT_TO_LINE_END);
+        put(map, KeyCode.PAGE_UP, true, false, false, EditorCommand.SELECT_PAGE_UP);
+        put(map, KeyCode.PAGE_DOWN, true, false, false, EditorCommand.SELECT_PAGE_DOWN);
 
         // --- editing ---
         put(map, KeyCode.BACK_SPACE, false, false, false, EditorCommand.BACKSPACE);
@@ -119,6 +123,16 @@ public final class KeymapTable {
 
         // Join lines: Ctrl+J
         put(map, KeyCode.J, false, true, false, EditorCommand.JOIN_LINES);
+
+        // --- page scroll without caret move ---
+        // Alt+PageUp/PageDown on both platforms.
+        put(map, KeyCode.PAGE_UP, false, false, true, EditorCommand.SCROLL_PAGE_UP);
+        put(map, KeyCode.PAGE_DOWN, false, false, true, EditorCommand.SCROLL_PAGE_DOWN);
+        // Cmd+PageUp/PageDown on macOS.
+        if (mac) {
+            put(map, KeyCode.PAGE_UP, false, true, false, EditorCommand.SCROLL_PAGE_UP);
+            put(map, KeyCode.PAGE_DOWN, false, true, false, EditorCommand.SCROLL_PAGE_DOWN);
+        }
 
         // --- macOS word-move keys override some Alt+Arrow entries ---
         // On macOS Alt+Up/Down are already word nav on some editors,

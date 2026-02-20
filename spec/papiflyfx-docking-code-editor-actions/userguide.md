@@ -22,6 +22,7 @@
 |---|---|---|
 | Move left / right | `Left` / `Right` | `Left` / `Right` |
 | Move up / down | `Up` / `Down` | `Up` / `Down` |
+| Move page up / down | `Page Up` / `Page Down` | `Page Up` / `Page Down` |
 | Line start | `Home` | `Home` |
 | Line end | `End` | `End` |
 | Move by word left | `Ctrl+Left` | `Alt+Left` |
@@ -35,12 +36,20 @@
 |---|---|---|
 | Select left / right | `Shift+Left` / `Shift+Right` | `Shift+Left` / `Shift+Right` |
 | Select up / down | `Shift+Up` / `Shift+Down` | `Shift+Up` / `Shift+Down` |
+| Select page up / down | `Shift+Page Up` / `Shift+Page Down` | `Shift+Page Up` / `Shift+Page Down` |
 | Select to line start | `Shift+Home` | `Shift+Home` |
 | Select to line end | `Shift+End` | `Shift+End` |
 | Select word left | `Ctrl+Shift+Left` | `Alt+Shift+Left` |
 | Select word right | `Ctrl+Shift+Right` | `Alt+Shift+Right` |
 | Select to document start | `Ctrl+Shift+Home` | `Cmd+Shift+Up` |
 | Select to document end | `Ctrl+Shift+End` | `Cmd+Shift+Down` |
+
+### Viewport Navigation
+
+| Action | Windows / Linux | macOS |
+|---|---|---|
+| Scroll page up (caret unchanged) | `Alt+Page Up` | `Alt+Page Up` or `Cmd+Page Up` |
+| Scroll page down (caret unchanged) | `Alt+Page Down` | `Alt+Page Down` or `Cmd+Page Down` |
 
 ### Word Deletion
 
@@ -92,6 +101,9 @@
 - **Line operations with selection** — when a selection spans multiple lines, delete/move/duplicate line commands act on the entire range of selected lines.
 - **Single-step undo** — each line operation (delete, move, duplicate, join) is recorded as a single undo step.
 - **Cross-line word navigation** — moving word-left at column 0 jumps to the end of the previous line; moving word-right at end of line jumps to the start of the next line.
+- **Page move/select step** — page commands use viewport-derived step: `max(1, floor(viewportHeight / lineHeight))` lines.
+- **Scroll-only page commands** — `Alt/Cmd+Page Up/Down` scroll the viewport without moving caret or selection anchor.
+- **Workspace tab switching** — `Ctrl/Cmd+Page Up/Down` is intentionally not mapped by the editor and remains available to workspace-level tab navigation.
 - **Multi-caret editing** — when multiple carets are active, typing, backspace, delete, enter, cut, and paste fan out to all caret positions. Edits are processed in reverse offset order to preserve correctness. The entire operation is a single undo step.
 - **Multi-caret collapse** — any single-caret navigation command (arrows, Home/End, word nav, document boundaries) or mouse click collapses back to a single caret.
 - **Select next occurrence** (`Cmd/Ctrl+D`) — first press selects the word under the caret; subsequent presses find and select the next match, adding a secondary caret.

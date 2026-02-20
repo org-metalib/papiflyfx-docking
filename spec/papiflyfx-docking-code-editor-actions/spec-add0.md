@@ -1,18 +1,50 @@
-# The Navigator’s Guide to Page Up and Page Down Keys
+# Addendum 0: Page Navigation and Selection
 
-Status (2026-02-20): informational addendum only. Core action roadmap progressed through Phase 6 (`Hardening and Performance` complete); this page-navigation addendum remains outside the implemented phase scope.
+Status (2026-02-20): implemented in `papiflyfx-docking-code`.
 
-You are absolutely right; the `Page Up` (`PgUp`) and `Page Down` (`PgDn`) keys play a crucial role in navigating large files efficiently.
-Here is how these keys are typically utilized in modern text editors:
+## 1. Objective
 
-**Basic Viewport Navigation**
-*   **Page Jump:** Pressing **`PgUp`** or **`PgDn`** simply moves the cursor and scrolls the viewport up or down by one full screen length at a time.
-*   **Scroll Without Moving Cursor:** In some setups, holding **`Alt` + `PgUp` / `PgDn`** (or **`Cmd` + `PgUp` / `PgDn`** on macOS) scrolls the page view up or down without changing your actual caret position in the text.
+- Add editor-native `Page Up` / `Page Down` behavior for caret movement, range selection, and viewport scrolling.
+- Keep behavior deterministic across Windows/Linux and macOS mappings.
+- Preserve existing docking/workspace shortcut ownership (tab switching remains outside this module).
 
-**Text Selection**
-*   **Page Selection:** Holding **`Shift` + `PgUp`** or **`Shift` + `PgDn`** highlights and selects text from your current cursor position expanding upwards or downwards by an entire page at a time.
-*   **Column / Block Page Selection:** When using column selection mode (box selection), pressing **`Shift` + `PgUp` / `PgDn`** (or **`Ctrl` + `PgUp` / `PgDn`** in editors like gedit) extends your rectangular text selection vertically by a full page.
+## 2. Command Matrix
 
-**UI and Workspace Navigation**
-*   **Switching Tabs:** One of the most common productivity shortcuts in editors like Visual Studio Code and Sublime Text is using **`Ctrl` + `PgUp`** and **`Ctrl` + `PgDn`** to quickly cycle through your open file tabs (moving to the previous or next document).
-*   **Navigating Long Lists:** When an autocomplete suggestion box, command palette, or multi-select list is open, using **`PgUp`** and **`PgDn`** allows you to quickly jump through the list items instead of scrolling line-by-line with the arrow keys.
+| Command | Windows / Linux | macOS | Status (2026-02-20) |
+| --- | --- | --- | --- |
+| Move page up | `Page Up` | `Page Up` | Implemented |
+| Move page down | `Page Down` | `Page Down` | Implemented |
+| Select page up | `Shift+Page Up` | `Shift+Page Up` | Implemented |
+| Select page down | `Shift+Page Down` | `Shift+Page Down` | Implemented |
+| Scroll page up (caret unchanged) | `Alt+Page Up` | `Alt+Page Up`, `Cmd+Page Up` | Implemented |
+| Scroll page down (caret unchanged) | `Alt+Page Down` | `Alt+Page Down`, `Cmd+Page Down` | Implemented |
+
+## 3. Behavioral Rules
+
+- Page movement/select step is derived from current viewport height:
+  - `max(1, floor(viewportHeight / lineHeight))` lines.
+- Page movement preserves target column preference and clamps to the line length.
+- `Shift+Page Up/Down` extends selection while preserving anchor stability.
+- Scroll-only page commands change vertical scroll offset only:
+  - caret and selection remain unchanged.
+  - multi-caret state remains unchanged.
+- `Ctrl+Page Up/Down` tab/workspace switching is out of scope for this module.
+
+## 4. Implementation Notes
+
+- Added command IDs:
+  - `MOVE_PAGE_UP`, `MOVE_PAGE_DOWN`
+  - `SELECT_PAGE_UP`, `SELECT_PAGE_DOWN`
+  - `SCROLL_PAGE_UP`, `SCROLL_PAGE_DOWN`
+- Added keymap entries in `KeymapTable`.
+- Added `CodeEditor` handlers for page move/select and scroll-only commands.
+- Added keymap + integration coverage.
+
+## 5. Validation
+
+- Focused validation:
+  - `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dtest=KeymapTableTest,CodeEditorIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false test`
+  - Result: `52` tests, `0` failures.
+- Full module validation:
+  - `mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test`
+  - Result: `307` tests, `0` failures.

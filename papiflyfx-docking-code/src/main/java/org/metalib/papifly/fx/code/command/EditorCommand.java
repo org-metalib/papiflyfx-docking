@@ -17,6 +17,11 @@ public enum EditorCommand {
     // Basic selection
     SELECT_LEFT, SELECT_RIGHT, SELECT_UP, SELECT_DOWN,
 
+    // Page navigation
+    MOVE_PAGE_UP, MOVE_PAGE_DOWN,
+    SELECT_PAGE_UP, SELECT_PAGE_DOWN,
+    SCROLL_PAGE_UP, SCROLL_PAGE_DOWN,
+
     // Line start / end
     LINE_START, LINE_END,
     SELECT_TO_LINE_START, SELECT_TO_LINE_END,

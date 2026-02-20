@@ -7,6 +7,7 @@ Scope: deliver keyboard/mouse action parity defined in `spec/papiflyfx-docking-c
 - Preserve current stable editing behavior.
 - Add missing word/line actions.
 - Add multi-caret and rectangular selection support.
+- Add page-level caret/selection/scroll navigation commands.
 - Keep rendering/performance and docking persistence contracts intact.
 
 ## 2. Target Areas
@@ -162,6 +163,31 @@ Exit criteria:
 - [x] Latency and memory remain within existing module thresholds.
 - [x] Full module test suite passes in headless mode.
 
+## Addendum 0: Page Navigation and Selection -- COMPLETE (2026-02-20)
+
+Tasks:
+- [x] Add command IDs for page move/select and scroll-only behavior.
+- [x] Bind `Page Up`/`Page Down` combinations in platform-aware keymap.
+- [x] Implement caret move/select by viewport page size.
+- [x] Implement scroll-only page commands that preserve caret/selection state.
+- [x] Add keymap and editor integration tests.
+
+Deliverables:
+- `command/EditorCommand.java` — 6 new command IDs (`MOVE_PAGE_*`, `SELECT_PAGE_*`, `SCROLL_PAGE_*`).
+- `command/KeymapTable.java` — key bindings for page commands:
+  - `PgUp/PgDn`, `Shift+PgUp/PgDn`
+  - `Alt+PgUp/PgDn` (all platforms)
+  - `Cmd+PgUp/PgDn` (macOS)
+- `api/CodeEditor.java` — page command handlers and viewport-derived page-step computation.
+- `command/KeymapTableTest.java` — page binding coverage.
+- `api/CodeEditorIntegrationTest.java` — caret move/select and scroll-only behavior coverage.
+
+Exit criteria:
+- [x] Page commands execute through command dispatch and keymap resolution.
+- [x] Caret/anchor semantics are deterministic for page move/select.
+- [x] Scroll-only page commands do not move caret.
+- [x] Full module headless suite remains green.
+
 ## 4. Risk Notes
 
 - Multi-caret can increase complexity in text mutation ordering.
@@ -178,6 +204,11 @@ Mitigations:
 ```bash
 # Module tests
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test
+
+# Focused keymap + integration coverage (includes Addendum 0 page commands)
+mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
+  -Dtest=KeymapTableTest,CodeEditorIntegrationTest \
+  -Dsurefire.failIfNoSpecifiedTests=false test
 
 # Docks + code integration coverage
 mvn -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test

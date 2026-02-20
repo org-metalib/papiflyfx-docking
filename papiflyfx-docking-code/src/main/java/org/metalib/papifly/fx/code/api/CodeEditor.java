@@ -415,7 +415,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
         boolean collapsesMultiCaret = switch (cmd) {
             case SELECT_NEXT_OCCURRENCE, SELECT_ALL_OCCURRENCES,
                  ADD_CURSOR_UP, ADD_CURSOR_DOWN, UNDO_LAST_OCCURRENCE -> false;
-            case BACKSPACE, DELETE, ENTER, CUT, PASTE -> false;
+            case BACKSPACE, DELETE, ENTER, CUT, PASTE,
+                 SCROLL_PAGE_UP, SCROLL_PAGE_DOWN -> false;
             default -> true;
         };
         if (collapsesMultiCaret && multiCaretModel.hasMultipleCarets()) {
@@ -428,10 +429,16 @@ public class CodeEditor extends StackPane implements DisposableContent {
             case MOVE_RIGHT -> handleRight(false);
             case MOVE_UP -> handleUp(false);
             case MOVE_DOWN -> handleDown(false);
+            case MOVE_PAGE_UP -> handlePageUp(false);
+            case MOVE_PAGE_DOWN -> handlePageDown(false);
             case SELECT_LEFT -> handleLeft(true);
             case SELECT_RIGHT -> handleRight(true);
             case SELECT_UP -> handleUp(true);
             case SELECT_DOWN -> handleDown(true);
+            case SELECT_PAGE_UP -> handlePageUp(true);
+            case SELECT_PAGE_DOWN -> handlePageDown(true);
+            case SCROLL_PAGE_UP -> handleScrollPageUp();
+            case SCROLL_PAGE_DOWN -> handleScrollPageDown();
             case LINE_START -> handleHome(false);
             case LINE_END -> handleEnd(false);
             case SELECT_TO_LINE_START -> handleHome(true);
@@ -595,6 +602,36 @@ public class CodeEditor extends StackPane implements DisposableContent {
             int newCol = Math.min(col, document.getLineText(line + 1).length());
             moveCaret(line + 1, newCol, shift);
         }
+    }
+
+    private void handlePageUp(boolean shift) {
+        handlePageMove(-1, shift);
+    }
+
+    private void handlePageDown(boolean shift) {
+        handlePageMove(1, shift);
+    }
+
+    private void handlePageMove(int direction, boolean shift) {
+        int lineDelta = computePageLineDelta();
+        int caretLine = selectionModel.getCaretLine();
+        int targetLine = clampLine(caretLine + (direction * lineDelta));
+        int targetColumn = Math.min(selectionModel.getCaretColumn(), document.getLineText(targetLine).length());
+        moveCaret(targetLine, targetColumn, shift);
+    }
+
+    private void handleScrollPageUp() {
+        handleScrollPage(-1);
+    }
+
+    private void handleScrollPageDown() {
+        handleScrollPage(1);
+    }
+
+    private void handleScrollPage(int direction) {
+        double pagePixels = computePagePixelDelta();
+        double newOffset = viewport.getScrollOffset() + (direction * pagePixels);
+        setVerticalScrollOffset(newOffset);
     }
 
     private void handleHome(boolean shift) {
@@ -1373,6 +1410,22 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     private void syncGutterScroll() {
         gutterView.setScrollOffset(viewport.getScrollOffset());
+    }
+
+    private int computePageLineDelta() {
+        double lineHeight = viewport.getGlyphCache().getLineHeight();
+        if (lineHeight <= 0) {
+            return 1;
+        }
+        return Math.max(1, (int) Math.floor(computePagePixelDelta() / lineHeight));
+    }
+
+    private double computePagePixelDelta() {
+        double viewportHeight = viewport.getHeight();
+        if (viewportHeight <= 0) {
+            return Math.max(1.0, viewport.getGlyphCache().getLineHeight());
+        }
+        return viewportHeight;
     }
 
     private void deleteSelectionIfAny() {
