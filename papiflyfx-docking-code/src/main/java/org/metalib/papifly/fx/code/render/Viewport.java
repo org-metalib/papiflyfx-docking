@@ -371,9 +371,8 @@ public class Viewport extends Region {
                     // Redraw caret
                     if (rl.lineIndex() == caretLine) {
                         double caretX = selectionModel.getCaretColumn() * charWidth;
-                        gc.setStroke(theme.caretColor());
-                        gc.setLineWidth(2);
-                        gc.strokeLine(caretX, rl.y(), caretX, rl.y() + lineHeight);
+                        gc.setFill(theme.caretColor());
+                        gc.fillRect(caretX, rl.y(), 2, lineHeight);
                     }
                 }
             }
@@ -597,9 +596,8 @@ public class Viewport extends Region {
         for (RenderLine rl : renderLines) {
             if (rl.lineIndex() == caretLine) {
                 double caretX = selectionModel.getCaretColumn() * charWidth;
-                gc.setStroke(theme.caretColor());
-                gc.setLineWidth(2);
-                gc.strokeLine(caretX, rl.y(), caretX, rl.y() + lineHeight);
+                gc.setFill(theme.caretColor());
+                gc.fillRect(caretX, rl.y(), 2, lineHeight);
                 break;
             }
         }
