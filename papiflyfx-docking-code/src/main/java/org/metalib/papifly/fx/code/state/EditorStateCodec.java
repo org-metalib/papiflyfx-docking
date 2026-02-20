@@ -13,9 +13,14 @@ public final class EditorStateCodec {
     private static final String KEY_FILE_PATH = "filePath";
     private static final String KEY_CURSOR_LINE = "cursorLine";
     private static final String KEY_CURSOR_COLUMN = "cursorColumn";
+    private static final String KEY_ANCHOR_LINE = "anchorLine";
+    private static final String KEY_ANCHOR_COLUMN = "anchorColumn";
     private static final String KEY_VERTICAL_SCROLL_OFFSET = "verticalScrollOffset";
     private static final String KEY_LANGUAGE_ID = "languageId";
     private static final String KEY_FOLDED_LINES = "foldedLines";
+    private static final String KEY_SECONDARY_CARETS = "secondaryCarets";
+    private static final String KEY_CARET_LINE = "caretLine";
+    private static final String KEY_CARET_COLUMN = "caretColumn";
 
     private EditorStateCodec() {
     }
@@ -29,9 +34,12 @@ public final class EditorStateCodec {
         map.put(KEY_FILE_PATH, safe.filePath());
         map.put(KEY_CURSOR_LINE, safe.cursorLine());
         map.put(KEY_CURSOR_COLUMN, safe.cursorColumn());
+        map.put(KEY_ANCHOR_LINE, safe.anchorLine());
+        map.put(KEY_ANCHOR_COLUMN, safe.anchorColumn());
         map.put(KEY_VERTICAL_SCROLL_OFFSET, safe.verticalScrollOffset());
         map.put(KEY_LANGUAGE_ID, safe.languageId());
         map.put(KEY_FOLDED_LINES, safe.foldedLines());
+        map.put(KEY_SECONDARY_CARETS, toCaretMapList(safe.secondaryCarets()));
         return map;
     }
 
@@ -42,13 +50,18 @@ public final class EditorStateCodec {
         if (state == null || state.isEmpty()) {
             return EditorStateData.empty();
         }
+        int cursorLine = asInt(state.get(KEY_CURSOR_LINE), 0);
+        int cursorColumn = asInt(state.get(KEY_CURSOR_COLUMN), 0);
         return new EditorStateData(
             asString(state.get(KEY_FILE_PATH), ""),
-            asInt(state.get(KEY_CURSOR_LINE), 0),
-            asInt(state.get(KEY_CURSOR_COLUMN), 0),
+            cursorLine,
+            cursorColumn,
             asDouble(state.get(KEY_VERTICAL_SCROLL_OFFSET), 0.0),
             asString(state.get(KEY_LANGUAGE_ID), "plain-text"),
-            asIntList(state.get(KEY_FOLDED_LINES))
+            asIntList(state.get(KEY_FOLDED_LINES)),
+            asInt(state.get(KEY_ANCHOR_LINE), cursorLine),
+            asInt(state.get(KEY_ANCHOR_COLUMN), cursorColumn),
+            asCaretStateList(state.get(KEY_SECONDARY_CARETS))
         );
     }
 
@@ -82,6 +95,50 @@ public final class EditorStateCodec {
             if (item instanceof Number number) {
                 result.add(number.intValue());
             }
+        }
+        return List.copyOf(result);
+    }
+
+    private static List<CaretStateData> asCaretStateList(Object value) {
+        if (!(value instanceof List<?> list)) {
+            return List.of();
+        }
+        List<CaretStateData> result = new ArrayList<>(list.size());
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> caretMap)) {
+                continue;
+            }
+            Integer caretLine = asNullableInt(caretMap.get(KEY_CARET_LINE));
+            Integer caretColumn = asNullableInt(caretMap.get(KEY_CARET_COLUMN));
+            if (caretLine == null || caretColumn == null) {
+                continue;
+            }
+            int anchorLine = asInt(caretMap.get(KEY_ANCHOR_LINE), caretLine);
+            int anchorColumn = asInt(caretMap.get(KEY_ANCHOR_COLUMN), caretColumn);
+            result.add(new CaretStateData(anchorLine, anchorColumn, caretLine, caretColumn));
+        }
+        return List.copyOf(result);
+    }
+
+    private static Integer asNullableInt(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return null;
+    }
+
+    private static List<Map<String, Object>> toCaretMapList(List<CaretStateData> carets) {
+        if (carets == null || carets.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> result = new ArrayList<>(carets.size());
+        for (CaretStateData caret : carets) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put(KEY_ANCHOR_LINE, caret.anchorLine());
+            map.put(KEY_ANCHOR_COLUMN, caret.anchorColumn());
+            map.put(KEY_CARET_LINE, caret.caretLine());
+            map.put(KEY_CARET_COLUMN, caret.caretColumn());
+            result.add(map);
         }
         return List.copyOf(result);
     }

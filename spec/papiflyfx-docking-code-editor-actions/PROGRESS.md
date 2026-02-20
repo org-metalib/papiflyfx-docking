@@ -1,7 +1,7 @@
 # PapiflyFX Code Editor Actions Progress
 
 **Date:** 2026-02-20
-**Status:** Phases 0–4 complete, Phase 5 pending
+**Status:** Phases 0–5 complete, Phase 6 pending
 
 ## 1. Summary
 
@@ -119,6 +119,23 @@ Mouse gestures:
 Tests:
 - `api/MouseGestureTest.java` — 9 tests (double-click word, double-click empty line, triple-click line, Alt+Click add caret, multiple Alt+Clicks, normal click collapses multi-caret, box selection creates carets, box selection clamps to line length, middle-click box selection).
 
+### Phase 5: Persistence v2 (Done)
+
+Added multi-caret persistence with backward-compatible restore from v1 payloads.
+
+New files:
+- `state/CaretStateData.java` — serializable caret snapshot record `(anchorLine, anchorColumn, caretLine, caretColumn)`.
+
+Modified files:
+- `state/EditorStateData.java` — upgraded to v2 shape with `anchorLine`, `anchorColumn`, `secondaryCarets`, plus backward-compatible 6-arg constructor for v1-style callers.
+- `state/EditorStateCodec.java` — added v2 keys (`anchorLine`, `anchorColumn`, `secondaryCarets`) and tolerant caret-list parsing; v1 payloads decode with anchor defaulting to cursor.
+- `api/CodeEditor.java` — `captureState()` now persists primary selection anchor + secondary carets; `applyState()` restores primary selection and secondary carets.
+- `api/CodeEditorStateAdapter.java` — adapter version bumped to `2`; added explicit `decodeV2()`, `migrateV1ToV2()`, and `migrateV0ToV2()` helpers.
+
+Tests:
+- `state/EditorStateCodecTest.java` — expanded to 13 tests with v2 round-trip, v1 fallback defaults, invalid secondary-caret filtering, and exact v2 key-set coverage.
+- `api/CodeEditorIntegrationTest.java` — added v2 capture/apply multi-caret assertions, v1→v2 migration behavior, and v2 save-state field checks.
+
 ## 3. Implemented (Full List)
 
 From Profile A (unchanged) + Profile B (newly added):
@@ -156,13 +173,15 @@ From Profile A (unchanged) + Profile B (newly added):
 - **Alt/Option+Click add secondary caret** (Phase 4)
 - **Box selection via Shift+Alt+Drag** (Phase 4)
 - **Box selection via middle-mouse drag** (Phase 4)
+- **Persistence v2: primary selection + secondary carets** (Phase 5)
+- **Backward-compatible v1 state restore with defaults** (Phase 5)
 
 ## 4. Remaining Gaps
 
-### 4.1 Persistence
+### 4.1 Hardening & Performance
 
-- Current state is single-caret (`v1`).
-- Multi-caret persistence schema (`v2`) not implemented.
+- Re-run performance and memory checks with persistence v2 enabled.
+- Add any additional regressions discovered during broader CI matrix runs.
 
 ## 5. Next Milestones
 
@@ -171,15 +190,22 @@ From Profile A (unchanged) + Profile B (newly added):
 3. ~~Implement line operations with single-step undo semantics.~~ Done
 4. ~~Implement multi-caret model and occurrence commands (Phase 3).~~ Done
 5. ~~Implement mouse multi-caret and box selection (Phase 4).~~ Done
-6. Add persistence `v2` migration coverage (Phase 5).
+6. ~~Add persistence `v2` migration coverage (Phase 5).~~ Done
+7. Run hardening/performance validation and finalize Phase 6.
 
 ## 6. Test Validation
 
-All 292 tests pass (83 new + 209 existing):
+All 298 tests pass (89 new + 209 existing):
 
 ```bash
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test
-# Tests run: 292, Failures: 0, Errors: 0, Skipped: 0
+# Tests run: 298, Failures: 0, Errors: 0, Skipped: 0
+
+# Run only Phase 5 persistence tests
+mvn -pl papiflyfx-docking-code -am \
+  -Dtest="EditorStateCodecTest,CodeEditorIntegrationTest" \
+  -Dsurefire.failIfNoSpecifiedTests=false test
+# Tests run: 43, Failures: 0, Errors: 0, Skipped: 0
 
 # Run only Phase 4 tests
 mvn -pl papiflyfx-docking-code -am \
@@ -220,3 +246,10 @@ mvn -pl papiflyfx-docking-code -am \
 | `command/MultiCaretModel.java` | **Modified** — added `setSecondaryCarets()` bulk helper | 4 |
 | `api/CodeEditor.java` | **Modified** — mouse gesture handlers, box selection state | 4 |
 | `api/MouseGestureTest.java` | **New** — 9 mouse gesture integration tests | 4 |
+| `state/CaretStateData.java` | **New** — serialized caret snapshot for v2 persistence | 5 |
+| `state/EditorStateData.java` | **Modified** — v2 fields (`anchorLine`, `anchorColumn`, `secondaryCarets`) | 5 |
+| `state/EditorStateCodec.java` | **Modified** — v2 map keys + tolerant caret-list decode | 5 |
+| `api/CodeEditorStateAdapter.java` | **Modified** — version `2` + v1/v0 migration helpers | 5 |
+| `api/CodeEditor.java` | **Modified** — capture/apply primary selection + secondary carets | 5 |
+| `state/EditorStateCodecTest.java` | **Modified** — v2 round-trip and migration tests | 5 |
+| `api/CodeEditorIntegrationTest.java` | **Modified** — persistence v2 integration coverage | 5 |

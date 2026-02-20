@@ -96,3 +96,4 @@
 - **Multi-caret collapse** — any single-caret navigation command (arrows, Home/End, word nav, document boundaries) or mouse click collapses back to a single caret.
 - **Select next occurrence** (`Cmd/Ctrl+D`) — first press selects the word under the caret; subsequent presses find and select the next match, adding a secondary caret.
 - **Undo last occurrence** (`Cmd/Ctrl+U`) — removes the most recently added occurrence selection.
+- **Session persistence (`v2`)** — save/restore now preserves primary selection anchor and all secondary carets/selections. Older `v1` session payloads restore with anchor=caret and no secondary carets.

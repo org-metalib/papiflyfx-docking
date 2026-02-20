@@ -34,6 +34,7 @@ import org.metalib.papifly.fx.code.render.Viewport;
 import org.metalib.papifly.fx.code.search.SearchController;
 import org.metalib.papifly.fx.code.search.SearchMatch;
 import org.metalib.papifly.fx.code.search.SearchModel;
+import org.metalib.papifly.fx.code.state.CaretStateData;
 import org.metalib.papifly.fx.code.state.EditorStateData;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 import org.metalib.papifly.fx.code.theme.CodeEditorThemeMapper;
@@ -1363,13 +1364,25 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public EditorStateData captureState() {
         syncVerticalScrollOffsetFromViewport();
+        List<CaretStateData> secondaryCarets = multiCaretModel.getSecondaryCarets()
+            .stream()
+            .map(caret -> new CaretStateData(
+                caret.anchorLine(),
+                caret.anchorColumn(),
+                caret.caretLine(),
+                caret.caretColumn()
+            ))
+            .toList();
         return new EditorStateData(
             filePath.get(),
-            cursorLine.get(),
-            cursorColumn.get(),
+            selectionModel.getCaretLine(),
+            selectionModel.getCaretColumn(),
             viewport.getScrollOffset(),
             languageId.get(),
-            foldedLines
+            foldedLines,
+            selectionModel.getAnchorLine(),
+            selectionModel.getAnchorColumn(),
+            secondaryCarets
         );
     }
 
@@ -1383,8 +1396,37 @@ public class CodeEditor extends StackPane implements DisposableContent {
         setFilePath(state.filePath());
         setLanguageId(state.languageId());
         setFoldedLines(state.foldedLines());
-        applyCaretState(state.cursorLine(), state.cursorColumn());
+        applyCaretState(state.anchorLine(), state.anchorColumn(), state.cursorLine(), state.cursorColumn());
+        applySecondaryCaretState(state.secondaryCarets());
         setVerticalScrollOffset(state.verticalScrollOffset());
+    }
+
+    private void applyCaretState(int anchorLine, int anchorColumn, int caretLine, int caretColumn) {
+        int safeAnchorLine = clampLine(anchorLine);
+        int safeAnchorColumn = clampColumn(safeAnchorLine, anchorColumn);
+        int safeCaretLine = clampLine(caretLine);
+        int safeCaretColumn = clampColumn(safeCaretLine, caretColumn);
+        selectionModel.moveCaret(safeAnchorLine, safeAnchorColumn);
+        if (safeAnchorLine != safeCaretLine || safeAnchorColumn != safeCaretColumn) {
+            selectionModel.moveCaretWithSelection(safeCaretLine, safeCaretColumn);
+        }
+        viewport.markDirty();
+    }
+
+    private void applySecondaryCaretState(List<CaretStateData> secondaryCarets) {
+        if (secondaryCarets == null || secondaryCarets.isEmpty()) {
+            multiCaretModel.clearSecondaryCarets();
+            return;
+        }
+        List<CaretRange> restored = new ArrayList<>(secondaryCarets.size());
+        for (CaretStateData caret : secondaryCarets) {
+            int safeAnchorLine = clampLine(caret.anchorLine());
+            int safeAnchorColumn = clampColumn(safeAnchorLine, caret.anchorColumn());
+            int safeCaretLine = clampLine(caret.caretLine());
+            int safeCaretColumn = clampColumn(safeCaretLine, caret.caretColumn());
+            restored.add(new CaretRange(safeAnchorLine, safeAnchorColumn, safeCaretLine, safeCaretColumn));
+        }
+        multiCaretModel.setSecondaryCarets(restored);
     }
 
     public String getFilePath() {

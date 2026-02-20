@@ -17,15 +17,15 @@ import java.util.logging.Logger;
 /**
  * ContentStateAdapter implementation for code editor content state.
  *
- * <p>Persistence contract (v1):</p>
+ * <p>Persistence contract (v2):</p>
  * <ol>
  *   <li>Decode state from map via version-gated helpers.</li>
  *   <li>Rehydrate document text from {@code filePath} when readable.</li>
- *   <li>Apply editor metadata (caret, scroll, language).</li>
+ *   <li>Apply editor metadata (caret/selection, secondary carets, scroll, language).</li>
  * </ol>
  *
  * <p>Version migration is structured additively: each version gets a dedicated
- * decode method ({@code decodeV1}, {@code migrateV0ToV1}) so future v2+
+ * decode method ({@code decodeV2}, {@code migrateV1ToV2}, {@code migrateV0ToV2}) so future v3+
  * introduction does not require branching chaos.</p>
  */
 public class CodeEditorStateAdapter implements ContentStateAdapter {
@@ -35,7 +35,7 @@ public class CodeEditorStateAdapter implements ContentStateAdapter {
     /**
      * Current state schema version.
      */
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
 
     @Override
     public String getTypeKey() {
@@ -73,27 +73,37 @@ public class CodeEditorStateAdapter implements ContentStateAdapter {
         }
         int version = content.version();
         if (version == VERSION) {
-            return decodeV1(content.state());
+            return decodeV2(content.state());
+        }
+        if (version == 1) {
+            return migrateV1ToV2(content.state());
         }
         if (version == 0) {
-            return migrateV0ToV1(content.state());
+            return migrateV0ToV2(content.state());
         }
         return fallbackEmptyState(version);
     }
 
     /**
-     * Decodes a v1 state map.
+     * Decodes a v2 state map.
      */
-    private EditorStateData decodeV1(Map<String, Object> state) {
+    private EditorStateData decodeV2(Map<String, Object> state) {
         return EditorStateCodec.fromMap(state);
     }
 
     /**
-     * Migrates a v0 state map to v1 format.
-     * V0 used the same payload keys, so this delegates to the v1 codec.
-     * Future schema changes would add field transformations here.
+     * Migrates a v1 state map to v2 format.
+     * V1 was single-caret only; v2 defaults anchor to cursor and secondary carets to empty.
      */
-    private EditorStateData migrateV0ToV1(Map<String, Object> state) {
+    private EditorStateData migrateV1ToV2(Map<String, Object> state) {
+        return EditorStateCodec.fromMap(state);
+    }
+
+    /**
+     * Migrates a v0 state map to v2 format.
+     * V0 shared v1 keys; migration applies v1 then v2 defaults.
+     */
+    private EditorStateData migrateV0ToV2(Map<String, Object> state) {
         return EditorStateCodec.fromMap(state);
     }
 

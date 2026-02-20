@@ -7,8 +7,10 @@ import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.metalib.papifly.fx.code.command.CaretRange;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.lexer.TokenType;
+import org.metalib.papifly.fx.code.state.CaretStateData;
 import org.metalib.papifly.fx.code.state.EditorStateCodec;
 import org.metalib.papifly.fx.code.state.EditorStateData;
 import org.metalib.papifly.fx.docking.api.LeafContentData;
@@ -171,6 +173,65 @@ class CodeEditorIntegrationTest {
     }
 
     @Test
+    void captureStateIncludesPrimarySelectionAndSecondaryCarets() {
+        runOnFx(() -> {
+            editor.setText("alpha\nbeta\ngamma");
+            editor.getSelectionModel().moveCaret(0, 1);
+            editor.getSelectionModel().moveCaretWithSelection(0, 4);
+            editor.getMultiCaretModel().addCaretNoStack(new CaretRange(1, 0, 1, 2));
+            editor.getMultiCaretModel().addCaretNoStack(new CaretRange(2, 3, 2, 3));
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        EditorStateData state = callOnFx(editor::captureState);
+        assertEquals(0, state.cursorLine());
+        assertEquals(4, state.cursorColumn());
+        assertEquals(0, state.anchorLine());
+        assertEquals(1, state.anchorColumn());
+        assertEquals(
+            List.of(
+                new CaretStateData(1, 0, 1, 2),
+                new CaretStateData(2, 3, 2, 3)
+            ),
+            state.secondaryCarets()
+        );
+    }
+
+    @Test
+    void applyStateRestoresPrimarySelectionAndSecondaryCarets() {
+        runOnFx(() -> {
+            editor.setText("alpha\nbeta\ngamma");
+            editor.applyState(new EditorStateData(
+                "",
+                0,
+                4,
+                0.0,
+                "plain-text",
+                List.of(),
+                0,
+                1,
+                List.of(
+                    new CaretStateData(1, 0, 1, 2),
+                    new CaretStateData(2, 3, 2, 3)
+                )
+            ));
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals(0, callOnFx(() -> editor.getSelectionModel().getAnchorLine()));
+        assertEquals(1, callOnFx(() -> editor.getSelectionModel().getAnchorColumn()));
+        assertEquals(0, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(4, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+        assertEquals(
+            List.of(
+                new CaretRange(1, 0, 1, 2),
+                new CaretRange(2, 3, 2, 3)
+            ),
+            callOnFx(() -> editor.getMultiCaretModel().getSecondaryCarets())
+        );
+    }
+
+    @Test
     void undoRedoShortcutKeepsCaretNearEditLocation() {
         runOnFx(() -> {
             editor.requestFocus();
@@ -252,6 +313,50 @@ class CodeEditorIntegrationTest {
             restored.dispose();
             return null;
         });
+    }
+
+    @Test
+    void adapterRestoreVersionOneMigratesStateToV2Defaults() {
+        java.nio.file.Path tempFile = null;
+        try {
+            tempFile = java.nio.file.Files.createTempFile("editor-v1-", ".txt");
+            java.nio.file.Files.writeString(tempFile, "line0\nline1-with-width\nline2-with-width");
+
+            CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
+            Map<String, Object> state = Map.of(
+                "filePath", tempFile.toString(),
+                "cursorLine", 2,
+                "cursorColumn", 7,
+                "verticalScrollOffset", 1.0,
+                "languageId", "java",
+                "foldedLines", List.of(4)
+            );
+
+            CodeEditor restored = callOnFx(() -> (CodeEditor) adapter.restore(
+                new LeafContentData(CodeEditorFactory.FACTORY_ID, "editor-v1", 1, state)
+            ));
+
+            assertEquals(tempFile.toString(), callOnFx(restored::getFilePath));
+            assertEquals(2, callOnFx(() -> restored.getSelectionModel().getCaretLine()));
+            assertEquals(7, callOnFx(() -> restored.getSelectionModel().getCaretColumn()));
+            assertEquals(2, callOnFx(() -> restored.getSelectionModel().getAnchorLine()));
+            assertEquals(7, callOnFx(() -> restored.getSelectionModel().getAnchorColumn()));
+            assertEquals(List.of(), callOnFx(() -> restored.getMultiCaretModel().getSecondaryCarets()));
+            callOnFx(() -> {
+                restored.dispose();
+                return null;
+            });
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (tempFile != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(tempFile);
+                } catch (java.io.IOException ignored) {
+                    // Best-effort cleanup for test temp file.
+                }
+            }
+        }
     }
 
     @Test
@@ -367,7 +472,7 @@ class CodeEditorIntegrationTest {
             );
             Map<String, Object> stateMap = EditorStateCodec.toMap(state);
             LeafContentData contentData = new LeafContentData(
-                CodeEditorFactory.FACTORY_ID, "test-id", 1, stateMap
+                CodeEditorFactory.FACTORY_ID, "test-id", CodeEditorStateAdapter.VERSION, stateMap
             );
 
             CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
@@ -390,7 +495,7 @@ class CodeEditorIntegrationTest {
         );
         Map<String, Object> stateMap = EditorStateCodec.toMap(state);
         LeafContentData contentData = new LeafContentData(
-            CodeEditorFactory.FACTORY_ID, "test-id", 1, stateMap
+            CodeEditorFactory.FACTORY_ID, "test-id", CodeEditorStateAdapter.VERSION, stateMap
         );
 
         CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
@@ -415,7 +520,12 @@ class CodeEditorIntegrationTest {
         );
 
         CodeEditor restored = callOnFx(() -> (CodeEditor) adapter.restore(
-            new LeafContentData(CodeEditorFactory.FACTORY_ID, "editor-path", 1, state)
+            new LeafContentData(
+                CodeEditorFactory.FACTORY_ID,
+                "editor-path",
+                CodeEditorStateAdapter.VERSION,
+                state
+            )
         ));
 
         // Empty document but metadata preserved
@@ -429,7 +539,7 @@ class CodeEditorIntegrationTest {
     }
 
     @Test
-    void adapterSaveStateReturnsAllV1Fields() {
+    void adapterSaveStateReturnsAllV2Fields() {
         CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
         runOnFx(() -> {
             editor.setFilePath("/test/save.java");
@@ -445,9 +555,12 @@ class CodeEditorIntegrationTest {
         assertEquals("/test/save.java", state.get("filePath"));
         assertEquals(1, ((Number) state.get("cursorLine")).intValue());
         assertEquals(3, ((Number) state.get("cursorColumn")).intValue());
+        assertEquals(1, ((Number) state.get("anchorLine")).intValue());
+        assertEquals(3, ((Number) state.get("anchorColumn")).intValue());
         assertEquals("java", state.get("languageId"));
         assertNotNull(state.get("verticalScrollOffset"));
         assertNotNull(state.get("foldedLines"));
+        assertNotNull(state.get("secondaryCarets"));
     }
 
     // --- Helpers ---

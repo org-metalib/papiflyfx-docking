@@ -104,14 +104,16 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 
 ## 7. Persistence Impact
 
-Current persisted state is single-caret (`EditorStateData` v1).  
-For full multi-caret support, define `v2` state with:
+Persistence `v2` is implemented (2026-02-20).  
+`EditorStateData` now captures:
 
-- primary caret position,
-- secondary caret positions,
-- optional per-caret selection ranges.
+- primary caret position (`cursorLine`, `cursorColumn`),
+- primary selection anchor (`anchorLine`, `anchorColumn`),
+- secondary carets/selections (`secondaryCarets` list).
 
-`v1` payload restore must remain supported.
+`v1` payload restore remains supported via migration defaults:
+- anchor defaults to cursor,
+- secondary carets default to empty.
 
 ## 8. Acceptance Criteria
 

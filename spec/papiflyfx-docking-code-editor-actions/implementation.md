@@ -121,16 +121,26 @@ Exit criteria:
 - [x] Box selection creates per-line carets with column clamping.
 - [x] All 292 tests pass (0 failures).
 
-## Phase 5: Persistence v2
+## Phase 5: Persistence v2 -- COMPLETE (2026-02-20)
 
 Tasks:
-- Extend `EditorStateData` and codec for multi-caret state.
-- Add adapter migration from `v1` single-caret state.
-- Keep tolerant restore for missing/invalid fields.
+- [x] Extend `EditorStateData` and codec for multi-caret state.
+- [x] Add adapter migration from `v1` single-caret state.
+- [x] Keep tolerant restore for missing/invalid fields.
+
+Deliverables:
+- `state/CaretStateData.java` — serialized caret record for secondary caret payloads.
+- `state/EditorStateData.java` — v2 fields (`anchorLine`, `anchorColumn`, `secondaryCarets`) + backward-compatible 6-arg constructor.
+- `state/EditorStateCodec.java` — v2 key encode/decode and tolerant secondary-caret parsing.
+- `api/CodeEditor.java` — capture/apply persistence upgraded to include primary selection + secondary carets.
+- `api/CodeEditorStateAdapter.java` — `VERSION = 2`, with `decodeV2()`, `migrateV1ToV2()`, `migrateV0ToV2()`.
+- `state/EditorStateCodecTest.java` — expanded v2 round-trip/migration coverage.
+- `api/CodeEditorIntegrationTest.java` — editor-level capture/apply + adapter migration assertions.
 
 Exit criteria:
-- Round-trip tests for `v2` pass.
-- `v1` restore compatibility remains green.
+- [x] Round-trip tests for `v2` pass.
+- [x] `v1` restore compatibility remains green.
+- [x] Full module headless suite passes after migration (`298` tests, `0` failures).
 
 ## Phase 6: Hardening and Performance
 
