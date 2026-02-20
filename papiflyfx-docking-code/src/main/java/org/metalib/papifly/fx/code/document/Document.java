@@ -19,6 +19,7 @@ public class Document {
     private final Deque<EditCommand> undoStack = new ArrayDeque<>();
     private final Deque<EditCommand> redoStack = new ArrayDeque<>();
     private final List<DocumentChangeListener> listeners = new CopyOnWriteArrayList<>();
+    private List<EditCommand> compoundBuffer;
 
     /**
      * Creates an empty document.
@@ -155,8 +156,7 @@ public class Document {
         EditCommand command = new InsertEdit(offset, text);
         command.apply(textSource);
         lineIndex.applyInsert(offset, normalized);
-        undoStack.push(command);
-        redoStack.clear();
+        recordEdit(command);
         fireChange(DocumentChangeEvent.insert(offset, normalized.length()));
     }
 
@@ -170,8 +170,7 @@ public class Document {
         EditCommand command = new DeleteEdit(startOffset, endOffset);
         command.apply(textSource);
         lineIndex.applyDelete(startOffset, endOffset);
-        undoStack.push(command);
-        redoStack.clear();
+        recordEdit(command);
         fireChange(DocumentChangeEvent.delete(startOffset, endOffset - startOffset));
     }
 
@@ -191,8 +190,7 @@ public class Document {
         if (!normalized.isEmpty()) {
             lineIndex.applyInsert(startOffset, normalized);
         }
-        undoStack.push(command);
-        redoStack.clear();
+        recordEdit(command);
         fireChange(DocumentChangeEvent.replace(startOffset, endOffset - startOffset, normalized.length()));
     }
 
@@ -245,11 +243,50 @@ public class Document {
     }
 
     /**
+     * Begins accumulating edits into a compound group.
+     * <p>
+     * While a compound edit is active, individual edits are applied
+     * immediately but not pushed onto the undo stack. Call
+     * {@link #endCompoundEdit()} to wrap them into a single undo entry.
+     */
+    public void beginCompoundEdit() {
+        compoundBuffer = new ArrayList<>();
+    }
+
+    /**
+     * Ends the current compound edit session and pushes the accumulated
+     * edits as a single {@link CompoundEdit} onto the undo stack.
+     */
+    public void endCompoundEdit() {
+        if (compoundBuffer != null && !compoundBuffer.isEmpty()) {
+            undoStack.push(new CompoundEdit(List.copyOf(compoundBuffer)));
+            redoStack.clear();
+        }
+        compoundBuffer = null;
+    }
+
+    /**
+     * Returns {@code true} if a compound edit session is currently active.
+     */
+    public boolean isCompoundEditActive() {
+        return compoundBuffer != null;
+    }
+
+    /**
      * Clears undo/redo history.
      */
     public void clearHistory() {
         undoStack.clear();
         redoStack.clear();
+    }
+
+    private void recordEdit(EditCommand command) {
+        if (compoundBuffer != null) {
+            compoundBuffer.add(command);
+        } else {
+            undoStack.push(command);
+            redoStack.clear();
+        }
     }
 
     private void rebuildIndex() {

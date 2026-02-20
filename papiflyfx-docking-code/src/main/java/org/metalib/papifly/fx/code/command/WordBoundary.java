@@ -90,7 +90,7 @@ public final class WordBoundary {
         return pos;
     }
 
-    static boolean isWordChar(char ch) {
+    public static boolean isWordChar(char ch) {
         return Character.isLetterOrDigit(ch) || ch == '_';
     }
 }

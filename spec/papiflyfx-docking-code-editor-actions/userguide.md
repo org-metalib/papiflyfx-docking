@@ -60,6 +60,16 @@
 | Duplicate line down | `Alt+Shift+Down` | `Alt+Shift+Down` |
 | Join lines | `Ctrl+J` | `Cmd+J` |
 
+### Multi-Caret
+
+| Action | Windows / Linux | macOS |
+|---|---|---|
+| Select next occurrence | `Ctrl+D` | `Cmd+D` |
+| Select all occurrences | `Ctrl+Shift+L` | `Cmd+Shift+L` |
+| Add cursor up | `Ctrl+Alt+Up` | `Cmd+Alt+Up` |
+| Add cursor down | `Ctrl+Alt+Down` | `Cmd+Alt+Down` |
+| Undo last occurrence | `Ctrl+U` | `Cmd+U` |
+
 ### Search & Navigation
 
 | Action | Windows / Linux | macOS |
@@ -82,3 +92,7 @@
 - **Line operations with selection** — when a selection spans multiple lines, delete/move/duplicate line commands act on the entire range of selected lines.
 - **Single-step undo** — each line operation (delete, move, duplicate, join) is recorded as a single undo step.
 - **Cross-line word navigation** — moving word-left at column 0 jumps to the end of the previous line; moving word-right at end of line jumps to the start of the next line.
+- **Multi-caret editing** — when multiple carets are active, typing, backspace, delete, enter, cut, and paste fan out to all caret positions. Edits are processed in reverse offset order to preserve correctness. The entire operation is a single undo step.
+- **Multi-caret collapse** — any single-caret navigation command (arrows, Home/End, word nav, document boundaries) or mouse click collapses back to a single caret.
+- **Select next occurrence** (`Cmd/Ctrl+D`) — first press selects the word under the caret; subsequent presses find and select the next match, adding a secondary caret.
+- **Undo last occurrence** (`Cmd/Ctrl+U`) — removes the most recently added occurrence selection.

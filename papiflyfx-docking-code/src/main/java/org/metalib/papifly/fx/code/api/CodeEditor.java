@@ -18,8 +18,10 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
+import org.metalib.papifly.fx.code.command.CaretRange;
 import org.metalib.papifly.fx.code.command.EditorCommand;
 import org.metalib.papifly.fx.code.command.KeymapTable;
+import org.metalib.papifly.fx.code.command.MultiCaretModel;
 import org.metalib.papifly.fx.code.command.WordBoundary;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
@@ -37,6 +39,8 @@ import org.metalib.papifly.fx.code.theme.CodeEditorThemeMapper;
 import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -64,6 +68,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final Document document;
     private final Viewport viewport;
     private final SelectionModel selectionModel;
+    private final MultiCaretModel multiCaretModel;
     private final GutterView gutterView;
     private final MarkerModel markerModel;
     private final SearchModel searchModel;
@@ -98,7 +103,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
     public CodeEditor(Document document) {
         this.document = document;
         this.selectionModel = new SelectionModel();
+        this.multiCaretModel = new MultiCaretModel(selectionModel);
         this.viewport = new Viewport(selectionModel);
+        this.viewport.setMultiCaretModel(multiCaretModel);
         this.viewport.setDocument(document);
 
         // Gutter
@@ -194,6 +201,13 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public SelectionModel getSelectionModel() {
         return selectionModel;
+    }
+
+    /**
+     * Returns the multi-caret model.
+     */
+    public MultiCaretModel getMultiCaretModel() {
+        return multiCaretModel;
     }
 
     /**
@@ -324,10 +338,23 @@ public class CodeEditor extends StackPane implements DisposableContent {
         if (event.isControlDown() || event.isMetaDown()) {
             return;
         }
-        deleteSelectionIfAny();
-        int offset = selectionModel.getCaretOffset(document);
-        document.insert(offset, ch);
-        moveCaretToOffset(offset + ch.length());
+        if (multiCaretModel.hasMultipleCarets()) {
+            executeAtAllCarets(caret -> {
+                int start = caret.getStartOffset(document);
+                int end = caret.getEndOffset(document);
+                if (caret.hasSelection()) {
+                    document.replace(start, end, ch);
+                } else {
+                    document.insert(start, ch);
+                }
+            });
+            viewport.markDirty();
+        } else {
+            deleteSelectionIfAny();
+            int offset = selectionModel.getCaretOffset(document);
+            document.insert(offset, ch);
+            moveCaretToOffset(offset + ch.length());
+        }
         event.consume();
     }
 
@@ -366,6 +393,17 @@ public class CodeEditor extends StackPane implements DisposableContent {
      * Dispatches an {@link EditorCommand} to the appropriate handler method.
      */
     void executeCommand(EditorCommand cmd) {
+        // Commands that collapse multi-caret back to single caret
+        boolean collapsesMultiCaret = switch (cmd) {
+            case SELECT_NEXT_OCCURRENCE, SELECT_ALL_OCCURRENCES,
+                 ADD_CURSOR_UP, ADD_CURSOR_DOWN, UNDO_LAST_OCCURRENCE -> false;
+            case BACKSPACE, DELETE, ENTER, CUT, PASTE -> false;
+            default -> true;
+        };
+        if (collapsesMultiCaret && multiCaretModel.hasMultipleCarets()) {
+            multiCaretModel.clearSecondaryCarets();
+        }
+
         switch (cmd) {
             // Navigation
             case MOVE_LEFT -> handleLeft(false);
@@ -419,10 +457,31 @@ public class CodeEditor extends StackPane implements DisposableContent {
             case DUPLICATE_LINE_UP -> handleDuplicateLineUp();
             case DUPLICATE_LINE_DOWN -> handleDuplicateLineDown();
             case JOIN_LINES -> handleJoinLines();
+
+            // Phase 3 — multi-caret
+            case SELECT_NEXT_OCCURRENCE -> handleSelectNextOccurrence();
+            case SELECT_ALL_OCCURRENCES -> handleSelectAllOccurrences();
+            case ADD_CURSOR_UP -> handleAddCursorUp();
+            case ADD_CURSOR_DOWN -> handleAddCursorDown();
+            case UNDO_LAST_OCCURRENCE -> handleUndoLastOccurrence();
         }
     }
 
     private void handleBackspace() {
+        if (multiCaretModel.hasMultipleCarets()) {
+            executeAtAllCarets(caret -> {
+                if (caret.hasSelection()) {
+                    document.delete(caret.getStartOffset(document), caret.getEndOffset(document));
+                } else {
+                    int offset = caret.getCaretOffset(document);
+                    if (offset > 0) {
+                        document.delete(offset - 1, offset);
+                    }
+                }
+            });
+            viewport.markDirty();
+            return;
+        }
         if (selectionModel.hasSelection()) {
             deleteSelectionIfAny();
             return;
@@ -435,6 +494,20 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void handleDelete() {
+        if (multiCaretModel.hasMultipleCarets()) {
+            executeAtAllCarets(caret -> {
+                if (caret.hasSelection()) {
+                    document.delete(caret.getStartOffset(document), caret.getEndOffset(document));
+                } else {
+                    int offset = caret.getCaretOffset(document);
+                    if (offset < document.length()) {
+                        document.delete(offset, offset + 1);
+                    }
+                }
+            });
+            viewport.markDirty();
+            return;
+        }
         if (selectionModel.hasSelection()) {
             deleteSelectionIfAny();
             return;
@@ -446,6 +519,19 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void handleEnter() {
+        if (multiCaretModel.hasMultipleCarets()) {
+            executeAtAllCarets(caret -> {
+                int start = caret.getStartOffset(document);
+                int end = caret.getEndOffset(document);
+                if (caret.hasSelection()) {
+                    document.replace(start, end, "\n");
+                } else {
+                    document.insert(start, "\n");
+                }
+            });
+            viewport.markDirty();
+            return;
+        }
         deleteSelectionIfAny();
         int offset = selectionModel.getCaretOffset(document);
         document.insert(offset, "\n");
@@ -537,16 +623,38 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     private void handleCut() {
         handleCopy();
-        deleteSelectionIfAny();
+        if (multiCaretModel.hasMultipleCarets()) {
+            executeAtAllCarets(caret -> {
+                if (caret.hasSelection()) {
+                    document.delete(caret.getStartOffset(document), caret.getEndOffset(document));
+                }
+            });
+            viewport.markDirty();
+        } else {
+            deleteSelectionIfAny();
+        }
     }
 
     private void handlePaste() {
         String text = Clipboard.getSystemClipboard().getString();
-        if (text != null && !text.isEmpty()) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        if (multiCaretModel.hasMultipleCarets()) {
+            executeAtAllCarets(caret -> {
+                int start = caret.getStartOffset(document);
+                int end = caret.getEndOffset(document);
+                if (caret.hasSelection()) {
+                    document.replace(start, end, text);
+                } else {
+                    document.insert(start, text);
+                }
+            });
+            viewport.markDirty();
+        } else {
             deleteSelectionIfAny();
             int offset = selectionModel.getCaretOffset(document);
             document.insert(offset, text);
-            // Move caret to end of pasted text
             int newOffset = offset + text.length();
             moveCaretToOffset(newOffset);
         }
@@ -831,10 +939,177 @@ public class CodeEditor extends StackPane implements DisposableContent {
         document.replace(lineEnd, lineEnd + 1, " ");
     }
 
+    // --- Phase 3: multi-caret handlers ---
+
+    private void handleSelectNextOccurrence() {
+        String selectedText;
+        if (selectionModel.hasSelection()) {
+            selectedText = selectionModel.getSelectedText(document);
+        } else {
+            // Select the word under the caret
+            int line = selectionModel.getCaretLine();
+            int col = selectionModel.getCaretColumn();
+            String lineText = document.getLineText(line);
+            if (lineText.isEmpty() || col >= lineText.length() && col > 0) {
+                return;
+            }
+            int wordStart = col;
+            while (wordStart > 0 && WordBoundary.isWordChar(lineText.charAt(wordStart - 1))) {
+                wordStart--;
+            }
+            int wordEnd = col;
+            while (wordEnd < lineText.length() && WordBoundary.isWordChar(lineText.charAt(wordEnd))) {
+                wordEnd++;
+            }
+            if (wordStart == wordEnd) {
+                return;
+            }
+            // Select the word under caret as primary
+            selectionModel.moveCaret(line, wordStart);
+            selectionModel.moveCaretWithSelection(line, wordEnd);
+            viewport.markDirty();
+            return;
+        }
+
+        if (selectedText.isEmpty()) {
+            return;
+        }
+
+        // Find next occurrence after the last caret
+        String fullText = document.getText();
+        List<CaretRange> all = multiCaretModel.allCarets(document);
+        CaretRange lastCaret = all.get(all.size() - 1);
+        int searchFrom = lastCaret.getEndOffset(document);
+
+        int found = fullText.indexOf(selectedText, searchFrom);
+        if (found < 0) {
+            // Wrap around
+            found = fullText.indexOf(selectedText);
+        }
+        if (found < 0) {
+            return;
+        }
+
+        // Check we don't already have a caret at this position
+        int foundEnd = found + selectedText.length();
+        int anchorLine = document.getLineForOffset(found);
+        int anchorCol = document.getColumnForOffset(found);
+        int caretLine = document.getLineForOffset(foundEnd);
+        int caretCol = document.getColumnForOffset(foundEnd);
+        CaretRange newCaret = new CaretRange(anchorLine, anchorCol, caretLine, caretCol);
+
+        // Don't add duplicates
+        for (CaretRange existing : all) {
+            if (existing.getStartOffset(document) == found && existing.getEndOffset(document) == foundEnd) {
+                return;
+            }
+        }
+
+        multiCaretModel.addCaret(newCaret);
+        viewport.markDirty();
+    }
+
+    private void handleSelectAllOccurrences() {
+        String selectedText;
+        if (selectionModel.hasSelection()) {
+            selectedText = selectionModel.getSelectedText(document);
+        } else {
+            // Select word under caret first (same as first Ctrl+D)
+            handleSelectNextOccurrence();
+            if (!selectionModel.hasSelection()) {
+                return;
+            }
+            selectedText = selectionModel.getSelectedText(document);
+        }
+
+        if (selectedText.isEmpty()) {
+            return;
+        }
+
+        String fullText = document.getText();
+        int searchFrom = 0;
+        boolean first = true;
+        while (true) {
+            int found = fullText.indexOf(selectedText, searchFrom);
+            if (found < 0) {
+                break;
+            }
+            int foundEnd = found + selectedText.length();
+            int anchorLine = document.getLineForOffset(found);
+            int anchorCol = document.getColumnForOffset(found);
+            int caretLine = document.getLineForOffset(foundEnd);
+            int caretCol = document.getColumnForOffset(foundEnd);
+
+            if (first) {
+                // Make the first occurrence the primary
+                selectionModel.moveCaret(anchorLine, anchorCol);
+                selectionModel.moveCaretWithSelection(caretLine, caretCol);
+                first = false;
+            } else {
+                multiCaretModel.addCaretNoStack(
+                    new CaretRange(anchorLine, anchorCol, caretLine, caretCol));
+            }
+            searchFrom = foundEnd;
+        }
+        viewport.markDirty();
+    }
+
+    private void handleAddCursorUp() {
+        int caretLine = selectionModel.getCaretLine();
+        int caretCol = selectionModel.getCaretColumn();
+        if (caretLine <= 0) {
+            return;
+        }
+        int newLine = caretLine - 1;
+        int newCol = Math.min(caretCol, document.getLineText(newLine).length());
+        multiCaretModel.addCaret(new CaretRange(newLine, newCol, newLine, newCol));
+        viewport.markDirty();
+    }
+
+    private void handleAddCursorDown() {
+        int caretLine = selectionModel.getCaretLine();
+        int caretCol = selectionModel.getCaretColumn();
+        if (caretLine >= document.getLineCount() - 1) {
+            return;
+        }
+        int newLine = caretLine + 1;
+        int newCol = Math.min(caretCol, document.getLineText(newLine).length());
+        multiCaretModel.addCaret(new CaretRange(newLine, newCol, newLine, newCol));
+        viewport.markDirty();
+    }
+
+    private void handleUndoLastOccurrence() {
+        multiCaretModel.undoLastOccurrence();
+        viewport.markDirty();
+    }
+
+    /**
+     * Executes an edit action at every caret in reverse offset order,
+     * wrapped in a compound edit for single-step undo.
+     */
+    private void executeAtAllCarets(java.util.function.Consumer<CaretRange> editAction) {
+        List<CaretRange> carets = multiCaretModel.allCarets(document);
+        // Sort descending by caret offset so edits at higher offsets don't shift lower ones
+        carets.sort(Comparator.comparingInt((CaretRange cr) -> cr.getCaretOffset(document)).reversed());
+
+        document.beginCompoundEdit();
+        try {
+            for (CaretRange caret : carets) {
+                editAction.accept(caret);
+            }
+        } finally {
+            document.endCompoundEdit();
+        }
+
+        // After edits, clear secondaries — the multi-caret state is consumed
+        multiCaretModel.clearSecondaryCarets();
+    }
+
     // --- Mouse handling ---
 
     private void handleMousePressed(MouseEvent event) {
         requestFocus();
+        multiCaretModel.clearSecondaryCarets();
         int line = viewport.getLineAtY(event.getY());
         int col = viewport.getColumnAtX(event.getX());
         if (line >= 0) {

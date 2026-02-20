@@ -68,10 +68,10 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 | Move line up/down | `Alt+Up/Down` | `Option+Up/Down` | Implemented |
 | Duplicate line up/down | `Shift+Alt+Up/Down` | `Shift+Option+Up/Down` | Implemented |
 | Join lines | `Ctrl+J` | `Cmd+J` | Implemented |
-| Select next occurrence | `Ctrl+D` | `Cmd+D` | Planned |
-| Select all occurrences | `Ctrl+Shift+L` | `Cmd+Shift+L` | Planned |
-| Add cursor up/down | `Ctrl+Alt+Up/Down` | `Cmd+Option+Up/Down` | Planned |
-| Undo last occurrence | `Ctrl+U` | `Cmd+U` | Planned |
+| Select next occurrence | `Ctrl+D` | `Cmd+D` | Implemented |
+| Select all occurrences | `Ctrl+Shift+L` | `Cmd+Shift+L` | Implemented |
+| Add cursor up/down | `Ctrl+Alt+Up/Down` | `Cmd+Option+Up/Down` | Implemented |
+| Undo last occurrence | `Ctrl+U` | `Cmd+U` | Implemented |
 
 ### 4.3 Optional Actions (Profile C)
 

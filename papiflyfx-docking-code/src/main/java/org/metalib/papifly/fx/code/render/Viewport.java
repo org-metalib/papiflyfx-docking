@@ -6,6 +6,8 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Paint;
 import javafx.scene.text.Font;
+import org.metalib.papifly.fx.code.command.CaretRange;
+import org.metalib.papifly.fx.code.command.MultiCaretModel;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
 import org.metalib.papifly.fx.code.lexer.Token;
@@ -49,6 +51,7 @@ public class Viewport extends Region {
     private TokenMap tokenMap = TokenMap.empty();
     private List<SearchMatch> searchMatches = List.of();
     private int currentSearchMatchIndex = -1;
+    private MultiCaretModel multiCaretModel;
 
     private int firstVisibleLine;
     private int visibleLineCount;
@@ -156,6 +159,13 @@ public class Viewport extends Region {
      */
     public List<SearchMatch> getSearchMatches() {
         return searchMatches;
+    }
+
+    /**
+     * Sets the multi-caret model for rendering multiple carets and selections.
+     */
+    public void setMultiCaretModel(MultiCaretModel multiCaretModel) {
+        this.multiCaretModel = multiCaretModel;
     }
 
     /**
@@ -305,6 +315,10 @@ public class Viewport extends Region {
     }
 
     private void markSelectionRangeDirty() {
+        if (multiCaretModel != null && multiCaretModel.hasMultipleCarets()) {
+            fullRedrawRequired = true;
+            return;
+        }
         boolean hasSelection = selectionModel.hasSelection();
         if (!previousSelectionActive && !hasSelection) {
             return;
@@ -411,8 +425,15 @@ public class Viewport extends Region {
                     gc.setFont(glyphCache.getFont());
                     drawTokenizedLine(gc, rl, charWidth, glyphCache.getBaselineOffset());
 
-                    // Redraw caret
-                    if (rl.lineIndex() == caretLine) {
+                    // Redraw caret(s)
+                    if (multiCaretModel != null && multiCaretModel.hasMultipleCarets() && document != null) {
+                        gc.setFill(theme.caretColor());
+                        for (CaretRange cr : multiCaretModel.allCarets(document)) {
+                            if (rl.lineIndex() == cr.caretLine()) {
+                                gc.fillRect(cr.caretColumn() * charWidth, rl.y(), 2, lineHeight);
+                            }
+                        }
+                    } else if (rl.lineIndex() == caretLine) {
                         double caretX = selectionModel.getCaretColumn() * charWidth;
                         gc.setFill(theme.caretColor());
                         gc.fillRect(caretX, rl.y(), 2, lineHeight);
@@ -462,15 +483,28 @@ public class Viewport extends Region {
     }
 
     private void drawSelection(GraphicsContext gc, double w, double lineHeight, double charWidth) {
+        if (multiCaretModel != null && multiCaretModel.hasMultipleCarets() && document != null) {
+            gc.setFill(theme.selectionColor());
+            for (CaretRange caret : multiCaretModel.allCarets(document)) {
+                if (caret.hasSelection()) {
+                    drawSelectionRange(gc, caret.getStartLine(), caret.getStartColumn(),
+                        caret.getEndLine(), caret.getEndColumn(), w, lineHeight, charWidth);
+                }
+            }
+            return;
+        }
         if (!selectionModel.hasSelection()) {
             return;
         }
-        int startLine = selectionModel.getSelectionStartLine();
-        int startCol = selectionModel.getSelectionStartColumn();
-        int endLine = selectionModel.getSelectionEndLine();
-        int endCol = selectionModel.getSelectionEndColumn();
-
         gc.setFill(theme.selectionColor());
+        drawSelectionRange(gc, selectionModel.getSelectionStartLine(), selectionModel.getSelectionStartColumn(),
+            selectionModel.getSelectionEndLine(), selectionModel.getSelectionEndColumn(),
+            w, lineHeight, charWidth);
+    }
+
+    private void drawSelectionRange(GraphicsContext gc, int startLine, int startCol,
+                                     int endLine, int endCol,
+                                     double w, double lineHeight, double charWidth) {
         for (RenderLine rl : renderLines) {
             int line = rl.lineIndex();
             if (line < startLine || line > endLine) {
@@ -585,15 +619,29 @@ public class Viewport extends Region {
     }
 
     private void drawSelectionForLine(GraphicsContext gc, RenderLine rl, double w, double lineHeight, double charWidth) {
+        if (multiCaretModel != null && multiCaretModel.hasMultipleCarets() && document != null) {
+            gc.setFill(theme.selectionColor());
+            for (CaretRange caret : multiCaretModel.allCarets(document)) {
+                if (caret.hasSelection()) {
+                    drawSelectionRangeForLine(gc, rl, caret.getStartLine(), caret.getStartColumn(),
+                        caret.getEndLine(), caret.getEndColumn(), w, lineHeight, charWidth);
+                }
+            }
+            return;
+        }
         if (!selectionModel.hasSelection()) {
             return;
         }
-        int startLine = selectionModel.getSelectionStartLine();
-        int startCol = selectionModel.getSelectionStartColumn();
-        int endLine = selectionModel.getSelectionEndLine();
-        int endCol = selectionModel.getSelectionEndColumn();
-        int line = rl.lineIndex();
+        gc.setFill(theme.selectionColor());
+        drawSelectionRangeForLine(gc, rl, selectionModel.getSelectionStartLine(), selectionModel.getSelectionStartColumn(),
+            selectionModel.getSelectionEndLine(), selectionModel.getSelectionEndColumn(),
+            w, lineHeight, charWidth);
+    }
 
+    private void drawSelectionRangeForLine(GraphicsContext gc, RenderLine rl,
+                                            int startLine, int startCol, int endLine, int endCol,
+                                            double w, double lineHeight, double charWidth) {
+        int line = rl.lineIndex();
         if (line < startLine || line > endLine) {
             return;
         }
@@ -612,7 +660,6 @@ public class Viewport extends Region {
             selX = 0;
             selW = w;
         }
-        gc.setFill(theme.selectionColor());
         gc.fillRect(selX, rl.y(), selW, lineHeight);
     }
 
@@ -635,6 +682,18 @@ public class Viewport extends Region {
     }
 
     private void drawCaret(GraphicsContext gc, double lineHeight, double charWidth) {
+        if (multiCaretModel != null && multiCaretModel.hasMultipleCarets() && document != null) {
+            gc.setFill(theme.caretColor());
+            for (CaretRange caret : multiCaretModel.allCarets(document)) {
+                for (RenderLine rl : renderLines) {
+                    if (rl.lineIndex() == caret.caretLine()) {
+                        double caretX = caret.caretColumn() * charWidth;
+                        gc.fillRect(caretX, rl.y(), 2, lineHeight);
+                    }
+                }
+            }
+            return;
+        }
         int caretLine = selectionModel.getCaretLine();
         for (RenderLine rl : renderLines) {
             if (rl.lineIndex() == caretLine) {

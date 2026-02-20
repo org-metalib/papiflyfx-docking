@@ -39,6 +39,13 @@ public enum EditorCommand {
     DUPLICATE_LINE_UP, DUPLICATE_LINE_DOWN,
     JOIN_LINES,
 
+    // Phase 3 — multi-caret
+    SELECT_NEXT_OCCURRENCE,
+    SELECT_ALL_OCCURRENCES,
+    ADD_CURSOR_UP,
+    ADD_CURSOR_DOWN,
+    UNDO_LAST_OCCURRENCE,
+
     // Always-on shortcuts (handled before search-focus guard)
     OPEN_SEARCH, GO_TO_LINE
 }

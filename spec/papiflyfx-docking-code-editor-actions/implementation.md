@@ -72,16 +72,33 @@ Exit criteria:
 - [x] Line actions match expected behavior across single and multi-line selections.
 - [x] Undo/redo tests pass for each action.
 
-## Phase 3: Multi-Caret Core
+## Phase 3: Multi-Caret Core -- COMPLETE (2026-02-20)
 
 Tasks:
-- Extend selection model to track multiple carets/selections.
-- Implement add-next-occurrence, select-all-occurrences, add-cursor-up/down, undo-last-occurrence.
-- Normalize overlapping carets/ranges deterministically.
+- [x] Extend selection model to track multiple carets/selections.
+- [x] Implement add-next-occurrence, select-all-occurrences, add-cursor-up/down, undo-last-occurrence.
+- [x] Normalize overlapping carets/ranges deterministically.
+- [x] Implement compound edit mechanism for single-step undo of multi-caret edits.
+- [x] Fan-out editing (typing/backspace/delete/enter/cut/paste) at all carets.
+- [x] Multi-caret collapse on single-caret navigation and mouse click.
+- [x] Multi-caret rendering in Viewport (selections + caret bars).
+
+Deliverables:
+- `command/CaretRange.java` — immutable record with start/end/offset helpers
+- `command/MultiCaretModel.java` — primary + secondary carets, occurrence stack, normalize/merge
+- `document/CompoundEdit.java` — grouped edit for single-step undo
+- `Document.beginCompoundEdit()` / `endCompoundEdit()` API
+- 5 new command handlers in `CodeEditor` + `executeAtAllCarets()` fan-out helper
+- Multi-caret rendering in `Viewport.drawSelection/drawCaret/drawSelectionForLine`
+- `command/MultiCaretModelTest.java` — 8 tests
+- `command/MultiCaretEditTest.java` — 5 tests
+- `document/CompoundEditTest.java` — 6 tests
+- `command/KeymapTableTest.java` — 1 new test (5 bindings)
 
 Exit criteria:
-- Multi-caret edit fan-out works for insert/delete/replace.
-- Deterministic order and collapse rules are covered by tests.
+- [x] Multi-caret edit fan-out works for insert/delete/replace.
+- [x] Deterministic order and collapse rules are covered by tests.
+- [x] All 283 tests pass (0 failures).
 
 ## Phase 4: Mouse Multi-Caret + Box Selection
 

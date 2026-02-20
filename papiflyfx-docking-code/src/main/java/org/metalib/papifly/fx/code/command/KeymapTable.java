@@ -124,6 +124,17 @@ public final class KeymapTable {
         // On macOS Alt+Up/Down are already word nav on some editors,
         // but VS Code uses them for line move, so we keep line-move.
 
+        // --- multi-caret (Phase 3) ---
+        // Select next occurrence: Cmd+D / Ctrl+D
+        put(map, KeyCode.D, false, true, false, EditorCommand.SELECT_NEXT_OCCURRENCE);
+        // Select all occurrences: Cmd+Shift+L / Ctrl+Shift+L
+        put(map, KeyCode.L, true, true, false, EditorCommand.SELECT_ALL_OCCURRENCES);
+        // Add cursor up/down: Cmd+Alt+Up / Ctrl+Alt+Up, Cmd+Alt+Down / Ctrl+Alt+Down
+        put(map, KeyCode.UP, false, true, true, EditorCommand.ADD_CURSOR_UP);
+        put(map, KeyCode.DOWN, false, true, true, EditorCommand.ADD_CURSOR_DOWN);
+        // Undo last occurrence: Cmd+U / Ctrl+U
+        put(map, KeyCode.U, false, true, false, EditorCommand.UNDO_LAST_OCCURRENCE);
+
         return Map.copyOf(map);
     }
 

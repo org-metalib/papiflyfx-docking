@@ -134,6 +134,20 @@ class KeymapTableTest {
     }
 
     @Test
+    void multiCaretBindings() {
+        // Ctrl/Cmd+D -> SELECT_NEXT_OCCURRENCE
+        assertEquals(Optional.of(EditorCommand.SELECT_NEXT_OCCURRENCE), lookup(KeyCode.D, false, true, false));
+        // Ctrl/Cmd+Shift+L -> SELECT_ALL_OCCURRENCES
+        assertEquals(Optional.of(EditorCommand.SELECT_ALL_OCCURRENCES), lookup(KeyCode.L, true, true, false));
+        // Ctrl/Cmd+Alt+Up -> ADD_CURSOR_UP
+        assertEquals(Optional.of(EditorCommand.ADD_CURSOR_UP), lookup(KeyCode.UP, false, true, true));
+        // Ctrl/Cmd+Alt+Down -> ADD_CURSOR_DOWN
+        assertEquals(Optional.of(EditorCommand.ADD_CURSOR_DOWN), lookup(KeyCode.DOWN, false, true, true));
+        // Ctrl/Cmd+U -> UNDO_LAST_OCCURRENCE
+        assertEquals(Optional.of(EditorCommand.UNDO_LAST_OCCURRENCE), lookup(KeyCode.U, false, true, false));
+    }
+
+    @Test
     void unmappedKeyReturnsEmpty() {
         assertTrue(lookup(KeyCode.Q, false, false, false).isEmpty());
         assertTrue(lookup(KeyCode.DIGIT0, false, false, false).isEmpty());
