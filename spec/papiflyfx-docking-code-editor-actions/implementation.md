@@ -142,16 +142,25 @@ Exit criteria:
 - [x] `v1` restore compatibility remains green.
 - [x] Full module headless suite passes after migration (`298` tests, `0` failures).
 
-## Phase 6: Hardening and Performance
+## Phase 6: Hardening and Performance -- COMPLETE (2026-02-20)
 
 Tasks:
-- Re-run typing/scroll benchmarks with advanced actions enabled.
-- Add regressions for input handler disposal and listener cleanup.
-- Ensure no docking restore regressions.
+- [x] Re-run typing/scroll benchmarks with advanced actions enabled.
+- [x] Add regressions for input handler disposal and listener cleanup.
+- [x] Ensure no docking restore regressions.
+
+Deliverables:
+- `api/CodeEditor.java` — disposal guards for input/scroll paths; bounded + deduplicated secondary-caret restore (`2048` cap) and primary-duplicate filtering.
+- `state/EditorStateCodec.java` — payload sanitization: non-negative deduplicated folded lines, bounded + deduplicated secondary caret decoding/encoding (`2048` cap).
+- `render/Viewport.java` — multi-caret render-path optimization: one active-caret snapshot per redraw reused across full/incremental paint paths.
+- `api/CodeEditorIntegrationTest.java` — disposal listener-detach regressions and large-state secondary-caret cap regression.
+- `api/CodeEditorDockingIntegrationTest.java` — docking session round-trip now asserts primary anchor + secondary carets.
+- `state/EditorStateCodecTest.java` — hardening coverage for folded-line sanitization and secondary-caret cap/dedupe behavior.
+- `benchmark/CodeEditorBenchmarkTest.java` — advanced benchmarks added: multi-caret typing latency p95 and multi-caret scroll rendering p95.
 
 Exit criteria:
-- Latency and memory remain within existing module thresholds.
-- Full module test suite passes in headless mode.
+- [x] Latency and memory remain within existing module thresholds.
+- [x] Full module test suite passes in headless mode.
 
 ## 4. Risk Notes
 
@@ -172,4 +181,10 @@ mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test
 
 # Docks + code integration coverage
 mvn -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test
+
+# Benchmark-tagged suite (includes Phase 6 multi-caret perf checks)
+mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
+  -Dsurefire.excludedGroups= -Dgroups=benchmark \
+  -Dtest=CodeEditorBenchmarkTest \
+  -Dsurefire.failIfNoSpecifiedTests=false test
 ```

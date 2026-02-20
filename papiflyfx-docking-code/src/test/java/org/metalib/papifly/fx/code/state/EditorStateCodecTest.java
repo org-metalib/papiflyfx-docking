@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.code.state;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -112,7 +113,7 @@ class EditorStateCodecTest {
     @Test
     void fromMapFoldedLinesDropsNonNumbers() {
         Map<String, Object> map = new HashMap<>();
-        map.put("foldedLines", Arrays.asList(1, "bad", 3, null, 5));
+        map.put("foldedLines", Arrays.asList(1, "bad", 3, null, 5, -2, 3, 1));
 
         EditorStateData result = EditorStateCodec.fromMap(map);
 
@@ -159,6 +160,23 @@ class EditorStateCodecTest {
             ),
             result.secondaryCarets()
         );
+    }
+
+    @Test
+    void fromMapSecondaryCaretsCapsAndDeduplicates() {
+        List<Map<String, Object>> serializedCarets = new ArrayList<>();
+        serializedCarets.add(Map.of("anchorLine", 0, "anchorColumn", 0, "caretLine", 0, "caretColumn", 1));
+        serializedCarets.add(Map.of("anchorLine", 0, "anchorColumn", 0, "caretLine", 0, "caretColumn", 1));
+        for (int i = 1; i <= 2600; i++) {
+            serializedCarets.add(Map.of("anchorLine", i, "anchorColumn", 0, "caretLine", i, "caretColumn", 1));
+        }
+        Map<String, Object> map = new HashMap<>();
+        map.put("secondaryCarets", serializedCarets);
+
+        EditorStateData result = EditorStateCodec.fromMap(map);
+
+        assertEquals(2048, result.secondaryCarets().size());
+        assertEquals(new CaretStateData(0, 0, 0, 1), result.secondaryCarets().getFirst());
     }
 
     @Test

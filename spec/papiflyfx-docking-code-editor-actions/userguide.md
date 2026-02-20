@@ -97,3 +97,5 @@
 - **Select next occurrence** (`Cmd/Ctrl+D`) — first press selects the word under the caret; subsequent presses find and select the next match, adding a secondary caret.
 - **Undo last occurrence** (`Cmd/Ctrl+U`) — removes the most recently added occurrence selection.
 - **Session persistence (`v2`)** — save/restore now preserves primary selection anchor and all secondary carets/selections. Older `v1` session payloads restore with anchor=caret and no secondary carets.
+- **Restore hardening** — folded-line state is sanitized (non-negative deduplicated list), secondary-carets are deduplicated and capped at `2048` entries during restore.
+- **Lifecycle hardening** — disposed editors ignore further keyboard/mouse/scroll input callbacks and detach caret/scroll mirror listeners.

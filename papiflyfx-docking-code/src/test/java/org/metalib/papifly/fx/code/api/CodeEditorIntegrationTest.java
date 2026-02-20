@@ -18,6 +18,7 @@ import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -273,6 +274,41 @@ class CodeEditorIntegrationTest {
         WaitForAsyncUtils.waitForFxEvents();
         assertNull(callOnFx(editor::getOnKeyPressed));
         assertNull(callOnFx(editor::getOnScroll));
+    }
+
+    @Test
+    void disposeDetachesCaretMirrorListeners() {
+        runOnFx(() -> {
+            editor.setText("line0\nline1");
+            editor.getSelectionModel().moveCaret(0, 2);
+            editor.dispose();
+            editor.getSelectionModel().moveCaret(1, 4);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals(0, callOnFx(editor::getCursorLine));
+        assertEquals(2, callOnFx(editor::getCursorColumn));
+    }
+
+    @Test
+    void disposeDetachesScrollMirrorListener() {
+        runOnFx(() -> {
+            editor.setText(buildLines(200));
+            editor.applyCss();
+            editor.layout();
+            editor.setVerticalScrollOffset(240);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        double beforeDisposeViewportOffset = callOnFx(() -> editor.getViewport().getScrollOffset());
+
+        runOnFx(() -> {
+            editor.dispose();
+            editor.setVerticalScrollOffset(640);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals(beforeDisposeViewportOffset, callOnFx(() -> editor.getViewport().getScrollOffset()), 0.0001);
     }
 
     @Test
@@ -561,6 +597,36 @@ class CodeEditorIntegrationTest {
         assertNotNull(state.get("verticalScrollOffset"));
         assertNotNull(state.get("foldedLines"));
         assertNotNull(state.get("secondaryCarets"));
+    }
+
+    @Test
+    void applyStateCapsAndDeduplicatesSecondaryCarets() {
+        runOnFx(() -> {
+            editor.setText(buildLines(3000));
+            List<CaretStateData> largeState = new ArrayList<>();
+            // Duplicate of primary; should be dropped.
+            largeState.add(new CaretStateData(0, 0, 0, 0));
+            for (int line = 1; line <= 2600; line++) {
+                largeState.add(new CaretStateData(line, 0, line, 1));
+            }
+            editor.applyState(new EditorStateData(
+                "",
+                0,
+                0,
+                0.0,
+                "plain-text",
+                List.of(),
+                0,
+                0,
+                largeState
+            ));
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        List<CaretRange> restored = callOnFx(() -> editor.getMultiCaretModel().getSecondaryCarets());
+        assertEquals(2048, restored.size());
+        assertEquals(new CaretRange(1, 0, 1, 1), restored.getFirst());
+        assertFalse(restored.contains(new CaretRange(0, 0, 0, 0)));
     }
 
     // --- Helpers ---

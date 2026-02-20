@@ -2,11 +2,14 @@ package org.metalib.papifly.fx.code.benchmark;
 
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.code.api.CodeEditor;
+import org.metalib.papifly.fx.code.command.CaretRange;
 import org.metalib.papifly.fx.code.lexer.TokenType;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
@@ -136,6 +139,58 @@ class CodeEditorBenchmarkTest {
     }
 
     /**
+     * Phase 6: typing latency with multi-caret fan-out enabled.
+     */
+    @Test
+    void typingLatencyP95WithMultiCaretFanOut() {
+        String text = generateLargeJavaFile(LARGE_FILE_LINE_COUNT);
+
+        runOnFx(() -> {
+            editor.setText(text);
+            editor.setLanguageId("plain-text");
+            editor.requestFocus();
+            editor.applyCss();
+            editor.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        int editCount = 80;
+        long[] durationsNs = new long[editCount];
+
+        for (int i = 0; i < editCount; i++) {
+            final int idx = i;
+            final int baseLine = 20 + (i % 120);
+            callOnFx(() -> {
+                configureVerticalCarets(baseLine, 8, 2);
+                long t0 = System.nanoTime();
+                editor.fireEvent(new KeyEvent(
+                    KeyEvent.KEY_TYPED,
+                    "x",
+                    "",
+                    KeyCode.UNDEFINED,
+                    false,
+                    false,
+                    false,
+                    false
+                ));
+                editor.applyCss();
+                editor.layout();
+                durationsNs[idx] = System.nanoTime() - t0;
+                return null;
+            });
+        }
+
+        Arrays.sort(durationsNs);
+        long p95Ns = durationsNs[(int) (editCount * 0.95)];
+        double p95Ms = p95Ns / 1_000_000.0;
+
+        System.out.println("[Benchmark] Multi-caret typing latency p95: " + String.format("%.2f", p95Ms)
+            + "ms (threshold: 16ms)");
+        assertTrue(p95Ms <= 16.0,
+            "Multi-caret typing latency p95 is " + String.format("%.2f", p95Ms) + "ms, threshold is 16ms");
+    }
+
+    /**
      * Spec §8.3: Scroll rendering p95 ≤ 16ms while continuously scrolling.
      */
     @Test
@@ -175,6 +230,50 @@ class CodeEditorBenchmarkTest {
         System.out.println("[Benchmark] Scroll rendering p95: " + String.format("%.2f", p95Ms) + "ms (threshold: 16ms)");
         assertTrue(p95Ms <= 16.0,
             "Scroll rendering p95 is " + String.format("%.2f", p95Ms) + "ms, threshold is 16ms");
+    }
+
+    /**
+     * Phase 6: scroll rendering latency with persistent multi-caret overlays.
+     */
+    @Test
+    void scrollRenderingP95WithMultiCaretOverlays() {
+        String text = generateLargeJavaFile(LARGE_FILE_LINE_COUNT);
+
+        runOnFx(() -> {
+            editor.setText(text);
+            editor.setLanguageId("plain-text");
+            editor.applyCss();
+            editor.layout();
+            configureVerticalCarets(10, 24, 4);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        double lineHeight = callOnFx(() -> editor.getViewport().getGlyphCache().getLineHeight());
+        double scrollStep = lineHeight * 5;
+        int scrollCount = 200;
+        long[] durationsNs = new long[scrollCount];
+
+        for (int i = 0; i < scrollCount; i++) {
+            final double offset = scrollStep * (i + 1);
+            final int idx = i;
+            callOnFx(() -> {
+                long t0 = System.nanoTime();
+                editor.setVerticalScrollOffset(offset);
+                editor.applyCss();
+                editor.layout();
+                durationsNs[idx] = System.nanoTime() - t0;
+                return null;
+            });
+        }
+
+        Arrays.sort(durationsNs);
+        long p95Ns = durationsNs[(int) (scrollCount * 0.95)];
+        double p95Ms = p95Ns / 1_000_000.0;
+
+        System.out.println("[Benchmark] Multi-caret scroll rendering p95: " + String.format("%.2f", p95Ms)
+            + "ms (threshold: 16ms)");
+        assertTrue(p95Ms <= 16.0,
+            "Multi-caret scroll rendering p95 is " + String.format("%.2f", p95Ms) + "ms, threshold is 16ms");
     }
 
     /**
@@ -261,6 +360,22 @@ class CodeEditorBenchmarkTest {
 
         sb.append("}\n");
         return sb.toString();
+    }
+
+    private void configureVerticalCarets(int baseLine, int count, int preferredColumn) {
+        int lineCount = editor.getDocument().getLineCount();
+        if (lineCount <= 0) {
+            return;
+        }
+        int firstLine = Math.max(0, Math.min(baseLine, lineCount - 1));
+        int firstColumn = Math.min(preferredColumn, editor.getDocument().getLineText(firstLine).length());
+        editor.getSelectionModel().moveCaret(firstLine, firstColumn);
+        editor.getMultiCaretModel().clearSecondaryCarets();
+        for (int i = 1; i < count; i++) {
+            int line = Math.min(firstLine + i, lineCount - 1);
+            int col = Math.min(preferredColumn, editor.getDocument().getLineText(line).length());
+            editor.getMultiCaretModel().addCaretNoStack(new CaretRange(line, col, line, col));
+        }
     }
 
     private boolean waitForCondition(BooleanSupplier condition, long timeoutMillis) {

@@ -1,14 +1,18 @@
 package org.metalib.papifly.fx.code.state;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Converts editor state between DTO and generic map payload.
  */
 public final class EditorStateCodec {
+
+    private static final int MAX_SECONDARY_CARETS = 2_048;
 
     private static final String KEY_FILE_PATH = "filePath";
     private static final String KEY_CURSOR_LINE = "cursorLine";
@@ -90,10 +94,13 @@ public final class EditorStateCodec {
         if (!(value instanceof List<?> list)) {
             return List.of();
         }
-        List<Integer> result = new ArrayList<>(list.size());
+        Set<Integer> result = new LinkedHashSet<>(list.size());
         for (Object item : list) {
             if (item instanceof Number number) {
-                result.add(number.intValue());
+                int line = number.intValue();
+                if (line >= 0) {
+                    result.add(line);
+                }
             }
         }
         return List.copyOf(result);
@@ -103,8 +110,11 @@ public final class EditorStateCodec {
         if (!(value instanceof List<?> list)) {
             return List.of();
         }
-        List<CaretStateData> result = new ArrayList<>(list.size());
+        Set<CaretStateData> result = new LinkedHashSet<>(Math.min(list.size(), MAX_SECONDARY_CARETS));
         for (Object item : list) {
+            if (result.size() >= MAX_SECONDARY_CARETS) {
+                break;
+            }
             if (!(item instanceof Map<?, ?> caretMap)) {
                 continue;
             }
@@ -131,8 +141,12 @@ public final class EditorStateCodec {
         if (carets == null || carets.isEmpty()) {
             return List.of();
         }
-        List<Map<String, Object>> result = new ArrayList<>(carets.size());
+        int maxCount = Math.min(carets.size(), MAX_SECONDARY_CARETS);
+        List<Map<String, Object>> result = new ArrayList<>(maxCount);
         for (CaretStateData caret : carets) {
+            if (result.size() >= maxCount) {
+                break;
+            }
             Map<String, Object> map = new LinkedHashMap<>();
             map.put(KEY_ANCHOR_LINE, caret.anchorLine());
             map.put(KEY_ANCHOR_COLUMN, caret.anchorColumn());

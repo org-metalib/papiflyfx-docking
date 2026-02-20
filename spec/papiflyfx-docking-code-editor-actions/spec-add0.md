@@ -1,6 +1,6 @@
 # The Navigator’s Guide to Page Up and Page Down Keys
 
-Status (2026-02-20): informational addendum only. Core action roadmap progressed through Phase 5 (`Persistence v2` complete); this page-navigation addendum remains outside the implemented phase scope.
+Status (2026-02-20): informational addendum only. Core action roadmap progressed through Phase 6 (`Hardening and Performance` complete); this page-navigation addendum remains outside the implemented phase scope.
 
 You are absolutely right; the `Page Up` (`PgUp`) and `Page Down` (`PgDn`) keys play a crucial role in navigating large files efficiently.
 Here is how these keys are typically utilized in modern text editors:

@@ -43,8 +43,10 @@ import org.metalib.papifly.fx.docking.api.Theme;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Canvas-based code editor component.
@@ -58,6 +60,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     private static final String DEFAULT_LANGUAGE = "plain-text";
     private static final double SCROLL_LINE_FACTOR = 3.0;
+    private static final int MAX_RESTORED_SECONDARY_CARETS = 2_048;
 
     private final StringProperty filePath = new SimpleStringProperty(this, "filePath", "");
     private final IntegerProperty cursorLine = new SimpleIntegerProperty(this, "cursorLine", 0);
@@ -334,6 +337,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
     // --- Key handling ---
 
     private void handleKeyTyped(KeyEvent event) {
+        if (disposed) {
+            return;
+        }
         if (searchController.isOpen() && searchController.isFocusWithin()) {
             return; // Let search field handle typed input
         }
@@ -365,6 +371,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void handleKeyPressed(KeyEvent event) {
+        if (disposed) {
+            return;
+        }
         // Escape always closes search
         if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE && searchController.isOpen()) {
             searchController.close();
@@ -399,6 +408,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
      * Dispatches an {@link EditorCommand} to the appropriate handler method.
      */
     void executeCommand(EditorCommand cmd) {
+        if (disposed) {
+            return;
+        }
         // Commands that collapse multi-caret back to single caret
         boolean collapsesMultiCaret = switch (cmd) {
             case SELECT_NEXT_OCCURRENCE, SELECT_ALL_OCCURRENCES,
@@ -1114,6 +1126,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
     // --- Mouse handling ---
 
     private void handleMousePressed(MouseEvent event) {
+        if (disposed) {
+            return;
+        }
         requestFocus();
         int line = viewport.getLineAtY(event.getY());
         int col = viewport.getColumnAtX(event.getX());
@@ -1237,6 +1252,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void handleMouseDragged(MouseEvent event) {
+        if (disposed) {
+            return;
+        }
         int line = viewport.getLineAtY(event.getY());
         int col = viewport.getColumnAtX(event.getX());
         if (line < 0) {
@@ -1254,10 +1272,16 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void handleMouseReleased(MouseEvent event) {
+        if (disposed) {
+            return;
+        }
         boxSelectionActive = false;
     }
 
     private void handleScroll(ScrollEvent event) {
+        if (disposed) {
+            return;
+        }
         double delta = -event.getDeltaY() * SCROLL_LINE_FACTOR;
         double newOffset = viewport.getScrollOffset() + delta;
         setVerticalScrollOffset(newOffset);
@@ -1323,6 +1347,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void applyScrollOffset(double requestedOffset) {
+        if (disposed) {
+            return;
+        }
         if (syncingScrollOffset) {
             return;
         }
@@ -1418,15 +1445,30 @@ public class CodeEditor extends StackPane implements DisposableContent {
             multiCaretModel.clearSecondaryCarets();
             return;
         }
-        List<CaretRange> restored = new ArrayList<>(secondaryCarets.size());
+        int targetCount = Math.min(secondaryCarets.size(), MAX_RESTORED_SECONDARY_CARETS);
+        Set<CaretRange> unique = new LinkedHashSet<>(targetCount);
+        CaretRange primary = CaretRange.fromSelectionModel(selectionModel);
         for (CaretStateData caret : secondaryCarets) {
+            if (unique.size() >= targetCount) {
+                break;
+            }
+            if (caret == null) {
+                continue;
+            }
             int safeAnchorLine = clampLine(caret.anchorLine());
             int safeAnchorColumn = clampColumn(safeAnchorLine, caret.anchorColumn());
             int safeCaretLine = clampLine(caret.caretLine());
             int safeCaretColumn = clampColumn(safeCaretLine, caret.caretColumn());
-            restored.add(new CaretRange(safeAnchorLine, safeAnchorColumn, safeCaretLine, safeCaretColumn));
+            CaretRange normalized = new CaretRange(safeAnchorLine, safeAnchorColumn, safeCaretLine, safeCaretColumn);
+            if (!normalized.equals(primary)) {
+                unique.add(normalized);
+            }
         }
-        multiCaretModel.setSecondaryCarets(restored);
+        if (unique.isEmpty()) {
+            multiCaretModel.clearSecondaryCarets();
+            return;
+        }
+        multiCaretModel.setSecondaryCarets(List.copyOf(unique));
     }
 
     public String getFilePath() {
@@ -1510,6 +1552,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
             return;
         }
         disposed = true;
+        boxSelectionActive = false;
+        multiCaretModel.clearSecondaryCarets();
         searchController.setOnNavigate(null);
         searchController.setOnClose(null);
         searchController.setOnSearchChanged(null);

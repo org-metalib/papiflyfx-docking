@@ -115,6 +115,12 @@ Persistence `v2` is implemented (2026-02-20).
 - anchor defaults to cursor,
 - secondary carets default to empty.
 
+Phase 6 hardening (2026-02-20) adds:
+- bounded secondary-caret restore payloads (cap: 2048),
+- folded-line payload sanitization (non-negative, deduplicated),
+- deterministic duplicate filtering for restored secondary carets,
+- disposal guards on input/scroll event handlers.
+
 ## 8. Acceptance Criteria
 
 | ID | Criterion |
@@ -124,9 +130,11 @@ Persistence `v2` is implemented (2026-02-20).
 | AC-3 | Profile B mouse gestures for multi-caret and box selection are deterministic. |
 | AC-4 | Undo/redo correctness is preserved after multi-caret and line operations. |
 | AC-5 | Session save/restore remains backward-compatible (`v1`) and supports new action state (`v2`). |
+| AC-6 | Hardening/performance regressions are covered: disposal/listener cleanup stays safe and benchmark thresholds remain green. |
 
 ## 9. Verification Strategy
 
 - Unit tests for word boundaries, line action semantics, and multi-caret normalization.
 - JavaFX/TestFX integration tests for key/mouse gesture matrices.
 - Docking integration tests for state round-trip and fallback order (adapter -> factory -> placeholder).
+- Benchmark-tagged validation for large-file load, typing latency, scroll latency, multi-caret latency, and memory overhead.

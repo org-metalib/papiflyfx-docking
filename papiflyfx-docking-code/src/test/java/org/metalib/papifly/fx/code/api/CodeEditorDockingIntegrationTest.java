@@ -8,6 +8,7 @@ import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.metalib.papifly.fx.code.command.CaretRange;
 import org.metalib.papifly.fx.docks.DockManager;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
@@ -19,6 +20,7 @@ import org.testfx.util.WaitForAsyncUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 
@@ -68,7 +70,10 @@ class CodeEditorDockingIntegrationTest {
             editor.setFilePath(tempFile.toString());
             editor.setText(content.toString());
             editor.setLanguageId("java");
-            editor.getSelectionModel().moveCaret(10, 5);
+            editor.getSelectionModel().moveCaret(10, 2);
+            editor.getSelectionModel().moveCaretWithSelection(10, 5);
+            editor.getMultiCaretModel().addCaretNoStack(new CaretRange(12, 1, 12, 4));
+            editor.getMultiCaretModel().addCaretNoStack(new CaretRange(15, 0, 15, 0));
             editor.setVerticalScrollOffset(42.0);
 
             DockLeaf leaf = dockManager.createLeaf("TestEditor", editor);
@@ -105,6 +110,15 @@ class CodeEditorDockingIntegrationTest {
         assertEquals("java", callOnFx(restored::getLanguageId));
         assertEquals(10, callOnFx(restored::getCursorLine));
         assertEquals(5, callOnFx(restored::getCursorColumn));
+        assertEquals(10, callOnFx(() -> restored.getSelectionModel().getAnchorLine()));
+        assertEquals(2, callOnFx(() -> restored.getSelectionModel().getAnchorColumn()));
+        assertEquals(
+            List.of(
+                new CaretRange(12, 1, 12, 4),
+                new CaretRange(15, 0, 15, 0)
+            ),
+            callOnFx(() -> restored.getMultiCaretModel().getSecondaryCarets())
+        );
         // Text should be rehydrated from the temp file
         assertTrue(callOnFx(() -> restored.getText().startsWith("// line 0")));
         assertTrue(callOnFx(() -> restored.getText().length() > 0));

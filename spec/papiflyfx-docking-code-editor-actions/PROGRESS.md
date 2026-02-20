@@ -1,7 +1,7 @@
 # PapiflyFX Code Editor Actions Progress
 
 **Date:** 2026-02-20
-**Status:** Phases 0–5 complete, Phase 6 pending
+**Status:** Phases 0–6 complete
 
 ## 1. Summary
 
@@ -133,8 +133,29 @@ Modified files:
 - `api/CodeEditorStateAdapter.java` — adapter version bumped to `2`; added explicit `decodeV2()`, `migrateV1ToV2()`, and `migrateV0ToV2()` helpers.
 
 Tests:
-- `state/EditorStateCodecTest.java` — expanded to 13 tests with v2 round-trip, v1 fallback defaults, invalid secondary-caret filtering, and exact v2 key-set coverage.
+- `state/EditorStateCodecTest.java` — expanded to 14 tests with v2 round-trip, v1 fallback defaults, invalid secondary-caret filtering, and exact v2 key-set coverage.
 - `api/CodeEditorIntegrationTest.java` — added v2 capture/apply multi-caret assertions, v1→v2 migration behavior, and v2 save-state field checks.
+
+### Phase 6: Hardening and Performance (Done)
+
+Hardened lifecycle behavior, persistence payload tolerance, and render hot paths.
+
+Modified files:
+- `api/CodeEditor.java` — guards input/scroll handlers after disposal, clears transient multi-caret state on dispose, bounds + deduplicates restored secondary carets (cap `2048`) and drops primary-duplicate restore entries.
+- `state/EditorStateCodec.java` — folded-line payload sanitization (non-negative, deduplicated) plus bounded + deduplicated secondary-caret decode/encode (cap `2048`).
+- `render/Viewport.java` — multi-caret render optimization: one active-caret snapshot is computed per redraw and reused across full/incremental paths.
+- `api/CodeEditorDockingIntegrationTest.java` — session round-trip now asserts restored primary anchor and secondary caret list.
+- `api/CodeEditorIntegrationTest.java` — added disposal listener-detach regressions and oversized-state secondary-caret cap regression.
+- `state/EditorStateCodecTest.java` — added folded-line sanitization and secondary-caret cap/dedup tests.
+- `benchmark/CodeEditorBenchmarkTest.java` — added advanced benchmarks: multi-caret typing latency p95 and multi-caret scroll rendering p95.
+
+Benchmarks (headless):
+- Large file open + first render: `213ms` (`<= 2000ms`)
+- Typing latency p95: `3.30ms` (`<= 16ms`)
+- Multi-caret typing latency p95: `9.53ms` (`<= 16ms`)
+- Scroll rendering p95: `0.13ms` (`<= 16ms`)
+- Multi-caret scroll rendering p95: `0.40ms` (`<= 16ms`)
+- Memory overhead (100k lines): `61MB` (`<= 350MB`)
 
 ## 3. Implemented (Full List)
 
@@ -175,13 +196,15 @@ From Profile A (unchanged) + Profile B (newly added):
 - **Box selection via middle-mouse drag** (Phase 4)
 - **Persistence v2: primary selection + secondary carets** (Phase 5)
 - **Backward-compatible v1 state restore with defaults** (Phase 5)
+- **Dispose/input hardening and listener cleanup regression coverage** (Phase 6)
+- **Persistence payload sanitization and bounded secondary-caret restore** (Phase 6)
+- **Multi-caret render hot-path optimization + benchmark validation** (Phase 6)
 
 ## 4. Remaining Gaps
 
-### 4.1 Hardening & Performance
+No open gaps for Phases 0–6.
 
-- Re-run performance and memory checks with persistence v2 enabled.
-- Add any additional regressions discovered during broader CI matrix runs.
+Follow-up work (out of current phase scope) can target optional actions from Profile C.
 
 ## 5. Next Milestones
 
@@ -191,33 +214,28 @@ From Profile A (unchanged) + Profile B (newly added):
 4. ~~Implement multi-caret model and occurrence commands (Phase 3).~~ Done
 5. ~~Implement mouse multi-caret and box selection (Phase 4).~~ Done
 6. ~~Add persistence `v2` migration coverage (Phase 5).~~ Done
-7. Run hardening/performance validation and finalize Phase 6.
+7. ~~Run hardening/performance validation and finalize Phase 6.~~ Done
 
 ## 6. Test Validation
 
-All 298 tests pass (89 new + 209 existing):
+All module tests pass after Phase 6:
 
 ```bash
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test
-# Tests run: 298, Failures: 0, Errors: 0, Skipped: 0
+# Tests run: 302, Failures: 0, Errors: 0, Skipped: 0
 
-# Run only Phase 5 persistence tests
-mvn -pl papiflyfx-docking-code -am \
-  -Dtest="EditorStateCodecTest,CodeEditorIntegrationTest" \
+# Focused hardening/docking/codec regressions
+mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
+  -Dtest="EditorStateCodecTest,CodeEditorIntegrationTest,CodeEditorDockingIntegrationTest" \
   -Dsurefire.failIfNoSpecifiedTests=false test
-# Tests run: 43, Failures: 0, Errors: 0, Skipped: 0
+# Tests run: 51, Failures: 0, Errors: 0, Skipped: 0
 
-# Run only Phase 4 tests
-mvn -pl papiflyfx-docking-code -am \
-  -Dtest="MouseGestureTest" \
+# Run benchmark-tagged tests (including multi-caret Phase 6 additions)
+mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
+  -Dsurefire.excludedGroups= -Dgroups=benchmark \
+  -Dtest=CodeEditorBenchmarkTest \
   -Dsurefire.failIfNoSpecifiedTests=false test
-# Tests run: 9, Failures: 0, Errors: 0, Skipped: 0
-
-# Run all command/document tests
-mvn -pl papiflyfx-docking-code -am \
-  -Dtest="WordBoundaryTest,KeymapTableTest,LineOperationsTest,MultiCaretModelTest,MultiCaretEditTest,CompoundEditTest,MouseGestureTest" \
-  -Dsurefire.failIfNoSpecifiedTests=false test
-# Tests run: 83, Failures: 0, Errors: 0, Skipped: 0
+# Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## 7. File Change Summary
@@ -253,3 +271,8 @@ mvn -pl papiflyfx-docking-code -am \
 | `api/CodeEditor.java` | **Modified** — capture/apply primary selection + secondary carets | 5 |
 | `state/EditorStateCodecTest.java` | **Modified** — v2 round-trip and migration tests | 5 |
 | `api/CodeEditorIntegrationTest.java` | **Modified** — persistence v2 integration coverage | 5 |
+| `api/CodeEditor.java` | **Modified** — disposal guards + bounded/deduplicated secondary-caret restore | 6 |
+| `state/EditorStateCodec.java` | **Modified** — folded-line sanitization + secondary-caret cap/dedup | 6 |
+| `render/Viewport.java` | **Modified** — active multi-caret snapshot reused per redraw | 6 |
+| `api/CodeEditorDockingIntegrationTest.java` | **Modified** — v2 docking round-trip asserts anchor + secondary carets | 6 |
+| `benchmark/CodeEditorBenchmarkTest.java` | **Modified** — multi-caret typing/scroll benchmark coverage | 6 |

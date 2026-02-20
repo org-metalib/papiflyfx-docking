@@ -2,7 +2,7 @@
 
 This directory contains source requirements and normalized planning/spec documents for keyboard and mouse behavior in `papiflyfx-docking-code`.
 
-Current implementation status (2026-02-20): Phases 0–5 complete (`Persistence v2` delivered), Phase 6 pending.
+Current implementation status (2026-02-20): Phases 0–6 complete (`Hardening and Performance` delivered).
 
 ## Documents
 
