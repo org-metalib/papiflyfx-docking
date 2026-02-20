@@ -67,6 +67,16 @@ public class MultiCaretModel {
     }
 
     /**
+     * Replaces all secondary carets with the given list and clears the occurrence stack.
+     * Used by box selection where all secondaries are rebuilt on each drag event.
+     */
+    public void setSecondaryCarets(List<CaretRange> carets) {
+        secondaryCarets.clear();
+        secondaryCarets.addAll(carets);
+        occurrenceStack.clear();
+    }
+
+    /**
      * Removes all secondary carets and clears the occurrence stack.
      */
     public void clearSecondaryCarets() {

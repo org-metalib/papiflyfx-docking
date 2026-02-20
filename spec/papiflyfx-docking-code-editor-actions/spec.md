@@ -88,11 +88,11 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 | Set caret | Click | Click | Implemented |
 | Drag range selection | Drag | Drag | Implemented |
 | Extend selection | `Shift+Click` | `Shift+Click` | Implemented |
-| Select word | Double click | Double click | Planned |
-| Select line | Triple click | Triple click | Planned |
-| Add caret at point | `Alt+Click` | `Option+Click` | Planned |
-| Box selection drag | `Shift+Alt+Drag` | `Shift+Option+Drag` | Planned |
-| Box selection by middle mouse | Middle-drag | N/A | Planned |
+| Select word | Double click | Double click | Implemented |
+| Select line | Triple click | Triple click | Implemented |
+| Add caret at point | `Alt+Click` | `Option+Click` | Implemented |
+| Box selection drag | `Shift+Alt+Drag` | `Shift+Option+Drag` | Implemented |
+| Box selection by middle mouse | Middle-drag | N/A | Implemented |
 
 ## 6. Behavioral Rules
 

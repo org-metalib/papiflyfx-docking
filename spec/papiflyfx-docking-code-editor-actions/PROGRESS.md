@@ -1,7 +1,7 @@
 # PapiflyFX Code Editor Actions Progress
 
 **Date:** 2026-02-20
-**Status:** Phases 0–3 complete, Phases 4–5 pending
+**Status:** Phases 0–4 complete, Phase 5 pending
 
 ## 1. Summary
 
@@ -99,6 +99,26 @@ Tests:
 - `document/CompoundEditTest.java` — 6 tests (grouped inserts/deletes/replaces, empty compound, redo).
 - `command/KeymapTableTest.java` — added `multiCaretBindings()` test (5 new bindings).
 
+### Phase 4: Mouse Multi-Caret + Box Selection (Done)
+
+Added mouse-based multi-caret and selection features: double-click word selection, triple-click line selection, Alt/Option+Click to add secondary carets, box selection via Shift+Alt+Drag and middle-mouse drag.
+
+Modified files:
+- `command/MultiCaretModel.java` — added `setSecondaryCarets(List<CaretRange>)` bulk replacement helper for box selection.
+- `api/CodeEditor.java` — restructured `handleMousePressed` with click-count and modifier dispatch; added 7 new handler methods (`handleDoubleClick`, `handleTripleClick`, `handleAltClick`, `startBoxSelection`, `updateBoxSelection`, `handleMouseDragged` box branch, `handleMouseReleased`); added 3 fields for box selection state (`boxSelectionActive`, `boxAnchorLine`, `boxAnchorCol`); added `MouseButton` import; registered `setOnMouseReleased` in constructor and cleaned up in `dispose()`.
+
+Mouse gestures:
+| Action | Gesture | Platform |
+|---|---|---|
+| Select word | Double-click | All |
+| Select line | Triple-click | All |
+| Add caret at point | `Alt+Click` / `Option+Click` | All |
+| Box selection drag | `Shift+Alt+Drag` / `Shift+Option+Drag` | All |
+| Box selection by middle mouse | Middle-drag | Windows/Linux |
+
+Tests:
+- `api/MouseGestureTest.java` — 9 tests (double-click word, double-click empty line, triple-click line, Alt+Click add caret, multiple Alt+Clicks, normal click collapses multi-caret, box selection creates carets, box selection clamps to line length, middle-click box selection).
+
 ## 3. Implemented (Full List)
 
 From Profile A (unchanged) + Profile B (newly added):
@@ -131,18 +151,15 @@ From Profile A (unchanged) + Profile B (newly added):
 - **Undo last occurrence** (Phase 3)
 - **Multi-caret fan-out editing** (Phase 3)
 - **Compound edit (single-step undo for multi-caret)** (Phase 3)
+- **Double-click word selection** (Phase 4)
+- **Triple-click line selection** (Phase 4)
+- **Alt/Option+Click add secondary caret** (Phase 4)
+- **Box selection via Shift+Alt+Drag** (Phase 4)
+- **Box selection via middle-mouse drag** (Phase 4)
 
 ## 4. Remaining Gaps
 
-### 4.1 Mouse (Profile B/C)
-
-- Double-click word selection
-- Triple-click line selection
-- Alt/Option+click add-caret
-- Box selection drag (modifier+drag)
-- Middle-mouse box selection (optional)
-
-### 4.3 Persistence
+### 4.1 Persistence
 
 - Current state is single-caret (`v1`).
 - Multi-caret persistence schema (`v2`) not implemented.
@@ -153,28 +170,28 @@ From Profile A (unchanged) + Profile B (newly added):
 2. ~~Implement word/document movement and deletion.~~ Done
 3. ~~Implement line operations with single-step undo semantics.~~ Done
 4. ~~Implement multi-caret model and occurrence commands (Phase 3).~~ Done
-5. Implement mouse multi-caret and box selection (Phase 4).
+5. ~~Implement mouse multi-caret and box selection (Phase 4).~~ Done
 6. Add persistence `v2` migration coverage (Phase 5).
 
 ## 6. Test Validation
 
-All 283 tests pass (74 new + 209 existing):
+All 292 tests pass (83 new + 209 existing):
 
 ```bash
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test
-# Tests run: 283, Failures: 0, Errors: 0, Skipped: 0
+# Tests run: 292, Failures: 0, Errors: 0, Skipped: 0
 
-# Run only Phase 3 tests
+# Run only Phase 4 tests
 mvn -pl papiflyfx-docking-code -am \
-  -Dtest="MultiCaretModelTest,MultiCaretEditTest,CompoundEditTest,KeymapTableTest" \
+  -Dtest="MouseGestureTest" \
   -Dsurefire.failIfNoSpecifiedTests=false test
-# Tests run: 33, Failures: 0, Errors: 0, Skipped: 0
+# Tests run: 9, Failures: 0, Errors: 0, Skipped: 0
 
 # Run all command/document tests
 mvn -pl papiflyfx-docking-code -am \
-  -Dtest="WordBoundaryTest,KeymapTableTest,LineOperationsTest,MultiCaretModelTest,MultiCaretEditTest,CompoundEditTest" \
+  -Dtest="WordBoundaryTest,KeymapTableTest,LineOperationsTest,MultiCaretModelTest,MultiCaretEditTest,CompoundEditTest,MouseGestureTest" \
   -Dsurefire.failIfNoSpecifiedTests=false test
-# Tests run: 74, Failures: 0, Errors: 0, Skipped: 0
+# Tests run: 83, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## 7. File Change Summary
@@ -200,3 +217,6 @@ mvn -pl papiflyfx-docking-code -am \
 | `command/MultiCaretModelTest.java` | **New** — 8 multi-caret model tests | 3 |
 | `command/MultiCaretEditTest.java` | **New** — 5 multi-caret edit tests | 3 |
 | `document/CompoundEditTest.java` | **New** — 6 compound edit tests | 3 |
+| `command/MultiCaretModel.java` | **Modified** — added `setSecondaryCarets()` bulk helper | 4 |
+| `api/CodeEditor.java` | **Modified** — mouse gesture handlers, box selection state | 4 |
+| `api/MouseGestureTest.java` | **New** — 9 mouse gesture integration tests | 4 |

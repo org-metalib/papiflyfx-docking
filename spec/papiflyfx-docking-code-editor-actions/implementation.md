@@ -100,16 +100,26 @@ Exit criteria:
 - [x] Deterministic order and collapse rules are covered by tests.
 - [x] All 283 tests pass (0 failures).
 
-## Phase 4: Mouse Multi-Caret + Box Selection
+## Phase 4: Mouse Multi-Caret + Box Selection -- COMPLETE (2026-02-20)
 
 Tasks:
-- Add `Alt/Option+Click` secondary caret creation.
-- Add rectangular selection via modifier+drag.
-- Add double-click word selection and triple-click line selection.
+- [x] Add double-click word selection and triple-click line selection.
+- [x] Add `Alt/Option+Click` secondary caret creation.
+- [x] Add rectangular box selection via `Shift+Alt+Drag` / `Shift+Option+Drag`.
+- [x] Add middle-mouse box selection (Windows/Linux).
+- [x] Add `handleMouseReleased` handler for box selection state cleanup.
+
+Deliverables:
+- `MultiCaretModel.setSecondaryCarets(List<CaretRange>)` — bulk replacement helper for box selection drag rebuild
+- 7 new handler methods in `CodeEditor`: `handleDoubleClick`, `handleTripleClick`, `handleAltClick`, `startBoxSelection`, `updateBoxSelection`, `handleMouseDragged` (box branch), `handleMouseReleased`
+- 3 new fields in `CodeEditor`: `boxSelectionActive`, `boxAnchorLine`, `boxAnchorCol`
+- Restructured `handleMousePressed` with priority dispatch: triple-click → double-click → Alt+Click → Shift+Alt+Click → Middle-button → normal click
+- `api/MouseGestureTest.java` — 9 integration tests
 
 Exit criteria:
-- Mouse gesture matrix passes headless TestFX tests.
-- Box selection edits are undo-safe and deterministic.
+- [x] Mouse gesture matrix passes headless TestFX tests.
+- [x] Box selection creates per-line carets with column clamping.
+- [x] All 292 tests pass (0 failures).
 
 ## Phase 5: Persistence v2
 

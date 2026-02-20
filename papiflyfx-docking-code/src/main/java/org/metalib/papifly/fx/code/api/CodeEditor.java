@@ -14,6 +14,7 @@ import javafx.scene.control.TextInputDialog;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
@@ -89,6 +90,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private int gutterDigits;
     private boolean syncingScrollOffset;
     private boolean disposed;
+    private boolean boxSelectionActive;
+    private int boxAnchorLine;
+    private int boxAnchorCol;
 
     /**
      * Creates an empty editor.
@@ -162,6 +166,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         setOnKeyTyped(this::handleKeyTyped);
         setOnMousePressed(this::handleMousePressed);
         setOnMouseDragged(this::handleMouseDragged);
+        setOnMouseReleased(this::handleMouseReleased);
         setOnScroll(this::handleScroll);
     }
 
@@ -1109,28 +1114,146 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     private void handleMousePressed(MouseEvent event) {
         requestFocus();
-        multiCaretModel.clearSecondaryCarets();
         int line = viewport.getLineAtY(event.getY());
         int col = viewport.getColumnAtX(event.getX());
-        if (line >= 0) {
-            col = Math.min(col, document.getLineText(line).length());
-            if (event.isShiftDown()) {
-                selectionModel.moveCaretWithSelection(line, col);
-            } else {
-                selectionModel.moveCaret(line, col);
-            }
-            viewport.markDirty();
+        if (line < 0) {
+            return;
         }
+        col = Math.min(col, document.getLineText(line).length());
+
+        // Triple-click: select line
+        if (event.getClickCount() >= 3) {
+            handleTripleClick(line);
+            return;
+        }
+        // Double-click: select word
+        if (event.getClickCount() == 2) {
+            handleDoubleClick(line, col);
+            return;
+        }
+        // Alt+Click (no shift): add secondary caret
+        if (event.isAltDown() && !event.isShiftDown()) {
+            handleAltClick(line, col);
+            return;
+        }
+        // Shift+Alt+Click: start box selection
+        if (event.isShiftDown() && event.isAltDown()) {
+            startBoxSelection(line, col);
+            return;
+        }
+        // Middle-button: start box selection
+        if (event.getButton() == MouseButton.MIDDLE) {
+            startBoxSelection(line, col);
+            return;
+        }
+
+        // Normal click — collapse multi-caret and move
+        multiCaretModel.clearSecondaryCarets();
+        if (event.isShiftDown()) {
+            selectionModel.moveCaretWithSelection(line, col);
+        } else {
+            selectionModel.moveCaret(line, col);
+        }
+        viewport.markDirty();
+    }
+
+    private void handleDoubleClick(int line, int col) {
+        multiCaretModel.clearSecondaryCarets();
+        String lineText = document.getLineText(line);
+        if (lineText.isEmpty()) {
+            selectionModel.moveCaret(line, 0);
+            viewport.markDirty();
+            return;
+        }
+        int clampedCol = Math.min(col, lineText.length() - 1);
+        int wordStart = clampedCol;
+        int wordEnd = clampedCol;
+        if (WordBoundary.isWordChar(lineText.charAt(clampedCol))) {
+            while (wordStart > 0 && WordBoundary.isWordChar(lineText.charAt(wordStart - 1))) {
+                wordStart--;
+            }
+            while (wordEnd < lineText.length() - 1 && WordBoundary.isWordChar(lineText.charAt(wordEnd + 1))) {
+                wordEnd++;
+            }
+            wordEnd++; // exclusive end
+        } else {
+            // Non-word character: select just that character
+            wordEnd = clampedCol + 1;
+            wordStart = clampedCol;
+        }
+        selectionModel.moveCaret(line, wordStart);
+        selectionModel.moveCaretWithSelection(line, wordEnd);
+        viewport.markDirty();
+    }
+
+    private void handleTripleClick(int line) {
+        multiCaretModel.clearSecondaryCarets();
+        int lineLength = document.getLineText(line).length();
+        selectionModel.moveCaret(line, 0);
+        selectionModel.moveCaretWithSelection(line, lineLength);
+        viewport.markDirty();
+    }
+
+    private void handleAltClick(int line, int col) {
+        multiCaretModel.addCaretNoStack(new CaretRange(line, col, line, col));
+        viewport.markDirty();
+    }
+
+    private void startBoxSelection(int line, int col) {
+        boxSelectionActive = true;
+        boxAnchorLine = line;
+        boxAnchorCol = col;
+        multiCaretModel.clearSecondaryCarets();
+        selectionModel.moveCaret(line, col);
+        viewport.markDirty();
+    }
+
+    private void updateBoxSelection(int line, int col) {
+        int minLine = Math.min(boxAnchorLine, line);
+        int maxLine = Math.max(boxAnchorLine, line);
+        int minCol = Math.min(boxAnchorCol, col);
+        int maxCol = Math.max(boxAnchorCol, col);
+
+        // First line becomes primary caret
+        int firstLineLen = document.getLineText(minLine).length();
+        int firstStart = Math.min(minCol, firstLineLen);
+        int firstEnd = Math.min(maxCol, firstLineLen);
+        selectionModel.moveCaret(minLine, firstStart);
+        if (firstStart != firstEnd) {
+            selectionModel.moveCaretWithSelection(minLine, firstEnd);
+        }
+
+        // Remaining lines become secondaries
+        List<CaretRange> secondaries = new ArrayList<>();
+        for (int i = minLine + 1; i <= maxLine; i++) {
+            int lineLen = document.getLineText(i).length();
+            int start = Math.min(minCol, lineLen);
+            int end = Math.min(maxCol, lineLen);
+            secondaries.add(new CaretRange(i, start, i, end));
+        }
+        multiCaretModel.setSecondaryCarets(secondaries);
+        viewport.markDirty();
     }
 
     private void handleMouseDragged(MouseEvent event) {
         int line = viewport.getLineAtY(event.getY());
         int col = viewport.getColumnAtX(event.getX());
-        if (line >= 0) {
-            col = Math.min(col, document.getLineText(line).length());
-            selectionModel.moveCaretWithSelection(line, col);
-            viewport.markDirty();
+        if (line < 0) {
+            return;
         }
+        col = Math.min(col, document.getLineText(line).length());
+
+        if (boxSelectionActive) {
+            updateBoxSelection(line, col);
+            return;
+        }
+        // Normal drag — extend selection
+        selectionModel.moveCaretWithSelection(line, col);
+        viewport.markDirty();
+    }
+
+    private void handleMouseReleased(MouseEvent event) {
+        boxSelectionActive = false;
     }
 
     private void handleScroll(ScrollEvent event) {
@@ -1355,6 +1478,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         setOnKeyTyped(null);
         setOnMousePressed(null);
         setOnMouseDragged(null);
+        setOnMouseReleased(null);
         setOnScroll(null);
         selectionModel.caretLineProperty().removeListener(caretLineListener);
         selectionModel.caretColumnProperty().removeListener(caretColumnListener);
