@@ -103,6 +103,7 @@
 - **Cross-line word navigation** — moving word-left at column 0 jumps to the end of the previous line; moving word-right at end of line jumps to the start of the next line.
 - **macOS full-keyboard document aliases** — `Cmd+Home/End` and `Cmd+Shift+Home/End` are supported as aliases for document boundary move/select commands.
 - **Caret blinking** — the caret blinks while the editor is focused, resets to visible after caret/edit interactions, and hides when the editor is unfocused or disposed.
+- **Vertical preferred column** — repeated `Up/Down` (and shift/page variants) preserve the intended horizontal offset across shorter lines; non-vertical moves reset the preferred column baseline.
 - **Page move/select step** — page commands use viewport-derived step: `max(1, floor(viewportHeight / lineHeight))` lines.
 - **Scroll-only page commands** — `Alt/Cmd+Page Up/Down` scroll the viewport without moving caret or selection anchor.
 - **Workspace tab switching** — `Ctrl/Cmd+Page Up/Down` is intentionally not mapped by the editor and remains available to workspace-level tab navigation.

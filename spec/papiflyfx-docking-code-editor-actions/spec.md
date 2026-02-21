@@ -10,6 +10,7 @@ This document defines the keyboard and mouse action requirements for the `papifl
 - Include page-level navigation and selection semantics for large-file workflows.
 - Support macOS full-keyboard aliases for document boundaries (`Cmd+Home/End`).
 - Provide deterministic caret blinking behavior tied to editor activity/focus.
+- Preserve preferred caret column during repeated vertical movement across short lines.
 
 ## 2. Scope
 
@@ -113,6 +114,14 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 | Caret hidden while editor is unfocused/disposed | Same | Same | Implemented |
 | Blink reset on caret/doc interaction | Same | Same | Implemented |
 
+### 4.7 Addendum 3: Vertical Caret Column Preservation
+
+| Behavior | Windows | macOS | Status (2026-02-21) |
+| --- | --- | --- | --- |
+| Up/down restores preferred column after short-line clamp | Same | Same | Implemented |
+| Shift+up/down preserves anchor + preferred column | Same | Same | Implemented |
+| Non-vertical moves reset preferred vertical column | Same | Same | Implemented |
+
 ## 5. Mouse Actions
 
 | Action | Windows | macOS | Status (2026-02-20) |
@@ -137,6 +146,7 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 - Scroll-only page commands must not move caret or selection anchors.
 - On macOS, `Cmd+Home/End` and `Cmd+Up/Down` must execute the same document-boundary commands.
 - Caret blinking resets to visible on caret/document interactions and only paints while editor focus is active.
+- Vertical movement (`Up/Down`, `Shift+Up/Down`, page move/select) must preserve preferred horizontal offset until a non-vertical move resets it.
 
 ## 7. Persistence Impact
 
@@ -170,12 +180,14 @@ Phase 6 hardening (2026-02-20) adds:
 | AC-7 | `Page Up`/`Page Down` move/select/scroll-only command semantics are deterministic and covered by keymap + integration tests. |
 | AC-8 | macOS `Cmd+Home/End` aliases map to document-boundary commands with matching selection-extension behavior. |
 | AC-9 | Caret blinking behavior is deterministic (toggle, reset-on-interaction, inactive hidden state) and covered by viewport tests. |
+| AC-10 | Vertical caret movement preserves preferred column across short lines and resets correctly after non-vertical moves. |
 
 ## 9. Verification Strategy
 
 - Unit tests for word boundaries, line action semantics, and multi-caret normalization.
 - JavaFX/TestFX integration tests for key/mouse gesture matrices.
 - JavaFX/TestFX integration tests for page move/select and scroll-only behavior.
+- JavaFX/TestFX integration tests for vertical preferred-column behavior across short lines.
 - Keymap unit tests for macOS `Cmd+Home/End` and `Shift+Cmd+Home/End` alias resolution.
 - Viewport rendering tests for caret blink toggle/reset/inactive semantics.
 - Docking integration tests for state round-trip and fallback order (adapter -> factory -> placeholder).

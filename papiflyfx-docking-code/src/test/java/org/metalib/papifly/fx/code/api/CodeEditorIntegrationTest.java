@@ -311,6 +311,64 @@ class CodeEditorIntegrationTest {
     }
 
     @Test
+    void verticalMovePreservesPreferredColumnAcrossShortLine() {
+        runOnFx(() -> {
+            editor.setText("0123456789\nxy\n0123456789");
+            editor.getSelectionModel().moveCaret(0, 8);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        runOnFx(() -> editor.executeCommand(EditorCommand.MOVE_DOWN));
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(1, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(2, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+
+        runOnFx(() -> editor.executeCommand(EditorCommand.MOVE_DOWN));
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(2, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(8, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+    }
+
+    @Test
+    void horizontalMoveResetsPreferredColumnForVerticalMove() {
+        runOnFx(() -> {
+            editor.setText("0123456789\nxy\n0123456789");
+            editor.getSelectionModel().moveCaret(0, 8);
+            editor.executeCommand(EditorCommand.MOVE_DOWN);
+            editor.executeCommand(EditorCommand.MOVE_LEFT);
+            editor.executeCommand(EditorCommand.MOVE_DOWN);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals(2, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(1, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+    }
+
+    @Test
+    void shiftVerticalMoveKeepsPreferredColumnAndAnchor() {
+        runOnFx(() -> {
+            editor.setText("0123456789\nxy\n0123456789");
+            editor.getSelectionModel().moveCaret(0, 8);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        runOnFx(() -> editor.executeCommand(EditorCommand.SELECT_DOWN));
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(0, callOnFx(() -> editor.getSelectionModel().getAnchorLine()));
+        assertEquals(8, callOnFx(() -> editor.getSelectionModel().getAnchorColumn()));
+        assertEquals(1, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(2, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+
+        runOnFx(() -> editor.executeCommand(EditorCommand.SELECT_DOWN));
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(0, callOnFx(() -> editor.getSelectionModel().getAnchorLine()));
+        assertEquals(8, callOnFx(() -> editor.getSelectionModel().getAnchorColumn()));
+        assertEquals(2, callOnFx(() -> editor.getSelectionModel().getCaretLine()));
+        assertEquals(8, callOnFx(() -> editor.getSelectionModel().getCaretColumn()));
+        assertTrue(callOnFx(() -> editor.getSelectionModel().hasSelection()));
+    }
+
+    @Test
     void captureStateUsesActualViewportScrollOffset() {
         runOnFx(() -> {
             editor.setText(buildLines(100));

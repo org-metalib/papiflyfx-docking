@@ -9,6 +9,7 @@ Scope: deliver keyboard/mouse action parity defined in `spec/papiflyfx-docking-c
 - Add multi-caret and rectangular selection support.
 - Add page-level caret/selection/scroll navigation commands.
 - Add lifecycle-safe caret blinking behavior for active editors.
+- Preserve preferred caret column during repeated vertical movement.
 - Keep rendering/performance and docking persistence contracts intact.
 
 ## 2. Target Areas
@@ -225,6 +226,24 @@ Exit criteria:
 - [x] Caret becomes immediately visible after caret movement/edit interactions.
 - [x] Full module headless suite remains green.
 
+## Addendum 3: Vertical Caret Column Preservation -- COMPLETE (2026-02-21)
+
+Tasks:
+- [x] Preserve preferred horizontal column for repeated vertical navigation (`Up/Down`, `Shift+Up/Down`, page move/select).
+- [x] Reset preferred vertical column after non-vertical movement.
+- [x] Add integration regressions for short-line clamp/restore behavior.
+
+Deliverables:
+- `api/CodeEditor.java` — preferred vertical column state + vertical movement helpers with non-vertical reset behavior.
+- `api/CodeEditorIntegrationTest.java` — preferred-column restore/reset and shift-selection vertical regressions.
+- `spec/papiflyfx-docking-code-editor-actions/spec-add3.md` — addendum spec/progress notes.
+
+Exit criteria:
+- [x] Moving down/up through short lines does not permanently lose preferred column.
+- [x] Shift-extended vertical moves keep anchor stability while preserving preferred column.
+- [x] Horizontal moves reset preferred column baseline.
+- [x] Focused + full module headless suites remain green.
+
 ## 4. Risk Notes
 
 - Multi-caret can increase complexity in text mutation ordering.
@@ -242,7 +261,7 @@ Mitigations:
 # Module tests
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test
 
-# Focused keymap + viewport + integration coverage (includes Addenda 0/1/2)
+# Focused keymap + viewport + integration coverage (includes Addenda 0/1/2/3)
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
   -Dtest=KeymapTableTest,ViewportTest,CodeEditorIntegrationTest \
   -Dsurefire.failIfNoSpecifiedTests=false test

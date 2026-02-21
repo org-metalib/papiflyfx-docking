@@ -98,6 +98,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private boolean boxSelectionActive;
     private int boxAnchorLine;
     private int boxAnchorCol;
+    private int preferredVerticalColumn = -1;
 
     /**
      * Creates an empty editor.
@@ -190,6 +191,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public void setText(String text) {
         document.setText(text);
+        clearPreferredVerticalColumn();
         selectionModel.moveCaret(0, 0);
         setVerticalScrollOffset(0);
         gutterView.recomputeWidth();
@@ -417,6 +419,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
         if (disposed) {
             return;
         }
+        if (!isVerticalCaretCommand(cmd)) {
+            clearPreferredVerticalColumn();
+        }
         // Commands that collapse multi-caret back to single caret
         boolean collapsesMultiCaret = switch (cmd) {
             case SELECT_NEXT_OCCURRENCE, SELECT_ALL_OCCURRENCES,
@@ -594,19 +599,15 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     private void handleUp(boolean shift) {
         int line = selectionModel.getCaretLine();
-        int col = selectionModel.getCaretColumn();
         if (line > 0) {
-            int newCol = Math.min(col, document.getLineText(line - 1).length());
-            moveCaret(line - 1, newCol, shift);
+            moveCaretVertically(line - 1, shift);
         }
     }
 
     private void handleDown(boolean shift) {
         int line = selectionModel.getCaretLine();
-        int col = selectionModel.getCaretColumn();
         if (line < document.getLineCount() - 1) {
-            int newCol = Math.min(col, document.getLineText(line + 1).length());
-            moveCaret(line + 1, newCol, shift);
+            moveCaretVertically(line + 1, shift);
         }
     }
 
@@ -622,8 +623,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         int lineDelta = computePageLineDelta();
         int caretLine = selectionModel.getCaretLine();
         int targetLine = clampLine(caretLine + (direction * lineDelta));
-        int targetColumn = Math.min(selectionModel.getCaretColumn(), document.getLineText(targetLine).length());
-        moveCaret(targetLine, targetColumn, shift);
+        moveCaretVertically(targetLine, shift);
     }
 
     private void handleScrollPageUp() {
@@ -1172,6 +1172,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         if (disposed) {
             return;
         }
+        clearPreferredVerticalColumn();
         requestFocus();
         viewport.resetCaretBlink();
         int line = viewport.getLineAtY(event.getY());
@@ -1299,6 +1300,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         if (disposed) {
             return;
         }
+        clearPreferredVerticalColumn();
         viewport.resetCaretBlink();
         int line = viewport.getLineAtY(event.getY());
         int col = viewport.getColumnAtX(event.getX());
@@ -1352,6 +1354,21 @@ public class CodeEditor extends StackPane implements DisposableContent {
     // --- Helpers ---
 
     private void moveCaret(int line, int col, boolean extendSelection) {
+        clearPreferredVerticalColumn();
+        moveCaretInternal(line, col, extendSelection);
+    }
+
+    private void moveCaretVertically(int targetLine, boolean extendSelection) {
+        int safeLine = clampLine(targetLine);
+        int preferredColumn = preferredVerticalColumn >= 0
+            ? preferredVerticalColumn
+            : selectionModel.getCaretColumn();
+        int targetColumn = Math.min(preferredColumn, document.getLineText(safeLine).length());
+        moveCaretInternal(safeLine, targetColumn, extendSelection);
+        preferredVerticalColumn = preferredColumn;
+    }
+
+    private void moveCaretInternal(int line, int col, boolean extendSelection) {
         int safeLine = clampLine(line);
         int safeColumn = clampColumn(safeLine, col);
         if (extendSelection) {
@@ -1365,6 +1382,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void moveCaretToOffset(int offset) {
+        clearPreferredVerticalColumn();
         offset = Math.max(0, Math.min(offset, document.length()));
         int line = document.getLineForOffset(offset);
         int col = document.getColumnForOffset(offset);
@@ -1375,10 +1393,23 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void applyCaretState(int line, int column) {
+        clearPreferredVerticalColumn();
         int safeLine = clampLine(line);
         int safeColumn = clampColumn(safeLine, column);
         selectionModel.moveCaret(safeLine, safeColumn);
         viewport.markDirty();
+    }
+
+    private boolean isVerticalCaretCommand(EditorCommand cmd) {
+        return switch (cmd) {
+            case MOVE_UP, MOVE_DOWN, SELECT_UP, SELECT_DOWN,
+                 MOVE_PAGE_UP, MOVE_PAGE_DOWN, SELECT_PAGE_UP, SELECT_PAGE_DOWN -> true;
+            default -> false;
+        };
+    }
+
+    private void clearPreferredVerticalColumn() {
+        preferredVerticalColumn = -1;
     }
 
     private int clampLine(int line) {
@@ -1490,6 +1521,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void applyCaretState(int anchorLine, int anchorColumn, int caretLine, int caretColumn) {
+        clearPreferredVerticalColumn();
         int safeAnchorLine = clampLine(anchorLine);
         int safeAnchorColumn = clampColumn(safeAnchorLine, anchorColumn);
         int safeCaretLine = clampLine(caretLine);
