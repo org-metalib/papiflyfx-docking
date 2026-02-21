@@ -9,6 +9,7 @@ This document defines the keyboard and mouse action requirements for the `papifl
 - Keep platform parity between Windows and macOS.
 - Include page-level navigation and selection semantics for large-file workflows.
 - Support macOS full-keyboard aliases for document boundaries (`Cmd+Home/End`).
+- Provide deterministic caret blinking behavior tied to editor activity/focus.
 
 ## 2. Scope
 
@@ -104,6 +105,14 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 | Select to document start alias | N/A | `Shift+Cmd+Home` | Implemented |
 | Select to document end alias | N/A | `Shift+Cmd+End` | Implemented |
 
+### 4.6 Addendum 2: Caret Blinking
+
+| Behavior | Windows | macOS | Status (2026-02-20) |
+| --- | --- | --- | --- |
+| Active caret blink while editor is focused | Same | Same | Implemented |
+| Caret hidden while editor is unfocused/disposed | Same | Same | Implemented |
+| Blink reset on caret/doc interaction | Same | Same | Implemented |
+
 ## 5. Mouse Actions
 
 | Action | Windows | macOS | Status (2026-02-20) |
@@ -127,6 +136,7 @@ The editor should bind shortcuts to command IDs, then execute behavior by comman
 - Page move/select uses viewport-derived line deltas (`max(1, floor(viewportHeight / lineHeight))`).
 - Scroll-only page commands must not move caret or selection anchors.
 - On macOS, `Cmd+Home/End` and `Cmd+Up/Down` must execute the same document-boundary commands.
+- Caret blinking resets to visible on caret/document interactions and only paints while editor focus is active.
 
 ## 7. Persistence Impact
 
@@ -159,6 +169,7 @@ Phase 6 hardening (2026-02-20) adds:
 | AC-6 | Hardening/performance regressions are covered: disposal/listener cleanup stays safe and benchmark thresholds remain green. |
 | AC-7 | `Page Up`/`Page Down` move/select/scroll-only command semantics are deterministic and covered by keymap + integration tests. |
 | AC-8 | macOS `Cmd+Home/End` aliases map to document-boundary commands with matching selection-extension behavior. |
+| AC-9 | Caret blinking behavior is deterministic (toggle, reset-on-interaction, inactive hidden state) and covered by viewport tests. |
 
 ## 9. Verification Strategy
 
@@ -166,5 +177,6 @@ Phase 6 hardening (2026-02-20) adds:
 - JavaFX/TestFX integration tests for key/mouse gesture matrices.
 - JavaFX/TestFX integration tests for page move/select and scroll-only behavior.
 - Keymap unit tests for macOS `Cmd+Home/End` and `Shift+Cmd+Home/End` alias resolution.
+- Viewport rendering tests for caret blink toggle/reset/inactive semantics.
 - Docking integration tests for state round-trip and fallback order (adapter -> factory -> placeholder).
 - Benchmark-tagged validation for large-file load, typing latency, scroll latency, multi-caret latency, and memory overhead.

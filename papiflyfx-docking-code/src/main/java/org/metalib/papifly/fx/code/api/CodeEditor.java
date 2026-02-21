@@ -85,6 +85,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final ChangeListener<Number> scrollOffsetListener = (obs, oldValue, newValue) ->
         applyScrollOffset(newValue.doubleValue());
     private final ChangeListener<String> languageListener;
+    private final ChangeListener<Boolean> focusListener;
     private final DocumentChangeListener gutterWidthListener;
     private final MarkerModel.MarkerChangeListener markerModelChangeListener;
     private final IncrementalLexerPipeline lexerPipeline;
@@ -162,6 +163,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
         this.lexerPipeline = new IncrementalLexerPipeline(document, viewport::setTokenMap);
         this.languageListener = (obs, oldValue, newValue) -> lexerPipeline.setLanguageId(newValue);
+        this.focusListener = (obs, oldFocused, focused) -> viewport.setCaretBlinkActive(focused);
         languageId.addListener(languageListener);
         lexerPipeline.setLanguageId(languageId.get());
 
@@ -172,6 +174,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
         setOnMouseDragged(this::handleMouseDragged);
         setOnMouseReleased(this::handleMouseReleased);
         setOnScroll(this::handleScroll);
+        focusedProperty().addListener(focusListener);
+        viewport.setCaretBlinkActive(isFocused());
     }
 
     /**
@@ -350,6 +354,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         if (event.isControlDown() || event.isMetaDown()) {
             return;
         }
+        viewport.resetCaretBlink();
         if (multiCaretModel.hasMultipleCarets()) {
             executeAtAllCarets(caret -> {
                 int start = caret.getStartOffset(document);
@@ -400,6 +405,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
             return;
         }
 
+        viewport.resetCaretBlink();
         executeCommand(cmd);
         event.consume();
     }
@@ -1167,6 +1173,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
             return;
         }
         requestFocus();
+        viewport.resetCaretBlink();
         int line = viewport.getLineAtY(event.getY());
         int col = viewport.getColumnAtX(event.getX());
         if (line < 0) {
@@ -1292,6 +1299,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         if (disposed) {
             return;
         }
+        viewport.resetCaretBlink();
         int line = viewport.getLineAtY(event.getY());
         int col = viewport.getColumnAtX(event.getX());
         if (line < 0) {
@@ -1619,6 +1627,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
         setOnMouseDragged(null);
         setOnMouseReleased(null);
         setOnScroll(null);
+        focusedProperty().removeListener(focusListener);
+        viewport.setCaretBlinkActive(false);
         selectionModel.caretLineProperty().removeListener(caretLineListener);
         selectionModel.caretColumnProperty().removeListener(caretColumnListener);
         document.removeChangeListener(gutterWidthListener);

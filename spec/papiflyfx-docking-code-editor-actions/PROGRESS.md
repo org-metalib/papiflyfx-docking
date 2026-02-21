@@ -1,7 +1,7 @@
 # PapiflyFX Code Editor Actions Progress
 
 **Date:** 2026-02-20  
-**Status:** Phases 0–6 + Addenda 0–1 complete
+**Status:** Phases 0–6 + Addenda 0–2 complete
 
 ## 1. Summary
 
@@ -10,6 +10,7 @@ This report tracks implementation status for:
 - `spec/papiflyfx-docking-code-editor-actions/spec.md`
 - `spec/papiflyfx-docking-code-editor-actions/spec-add0.md`
 - `spec/papiflyfx-docking-code-editor-actions/spec-add1.md`
+- `spec/papiflyfx-docking-code-editor-actions/spec-add2.md`
 
 ## 2. Completed Work
 
@@ -69,6 +70,13 @@ This report tracks implementation status for:
   - `Shift+Cmd+End` -> `SELECT_TO_DOCUMENT_END`
 - Extended `KeymapTableTest.documentBoundaries()` to assert the alias mappings on macOS.
 
+### Addendum 2: Caret Blinking (Done)
+
+- Added viewport caret blinking scheduler and visibility gating.
+- Added interaction-based blink reset on caret/document/selection changes.
+- Added focus-bound blink activation/deactivation via `CodeEditor`.
+- Added deterministic `ViewportTest` coverage for blink toggle, reset, and inactive hidden behavior.
+
 ## 3. Implemented Actions (Highlights)
 
 - Core editing/navigation/search actions from Profile A.
@@ -80,10 +88,11 @@ This report tracks implementation status for:
 - Performance and lifecycle hardening.
 - Addendum 0 page navigation and selection commands.
 - Addendum 1 macOS `Cmd+Home/End` document-boundary aliases.
+- Addendum 2 caret blinking behavior and lifecycle management.
 
 ## 4. Remaining Gaps
 
-No open gaps for Phases 0–6 or Addenda 0–1.
+No open gaps for Phases 0–6 or Addenda 0–2.
 
 Optional Profile C actions remain future scope.
 
@@ -98,22 +107,23 @@ Optional Profile C actions remain future scope.
 7. ~~Hardening/performance validation~~ Done  
 8. ~~Addendum 0 page navigation implementation~~ Done  
 9. ~~Addendum 1 macOS Cmd+Home/End aliases~~ Done
+10. ~~Addendum 2 caret blinking~~ Done
 
 ## 6. Validation
 
 ```bash
 # Full headless module suite
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test
-# Tests run: 307, Failures: 0, Errors: 0, Skipped: 0
+# Tests run: 310, Failures: 0, Errors: 0, Skipped: 0
 
-# Focused page-navigation + document-boundary-alias regressions
+# Focused addenda regressions (aliases + blinking + integration)
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
-  -Dtest=KeymapTableTest,CodeEditorIntegrationTest \
+  -Dtest=KeymapTableTest,ViewportTest,CodeEditorIntegrationTest \
   -Dsurefire.failIfNoSpecifiedTests=false test
-# Tests run: 52, Failures: 0, Errors: 0, Skipped: 0
+# Tests run: 67, Failures: 0, Errors: 0, Skipped: 0
 ```
 
-## 7. File Change Summary (Addenda 0/1 cumulative)
+## 7. File Change Summary (Addenda 0/1/2 cumulative)
 
 | File | Action |
 | --- | --- |
@@ -124,3 +134,6 @@ mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
 | `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/api/CodeEditorIntegrationTest.java` | Added page move/select/scroll behavior tests |
 | `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/command/KeymapTable.java` | Added macOS `Cmd+Home/End` and `Shift+Cmd+Home/End` document-boundary aliases |
 | `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/command/KeymapTableTest.java` | Added macOS alias assertions in `documentBoundaries()` |
+| `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/render/Viewport.java` | Added caret blink scheduling, focus-aware visibility gating, and caret-line incremental repaint updates |
+| `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/api/CodeEditor.java` | Added focus binding and interaction-triggered caret blink resets |
+| `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/render/ViewportTest.java` | Added caret blink behavior tests (toggle/reset/inactive hidden) |

@@ -8,6 +8,7 @@ Scope: deliver keyboard/mouse action parity defined in `spec/papiflyfx-docking-c
 - Add missing word/line actions.
 - Add multi-caret and rectangular selection support.
 - Add page-level caret/selection/scroll navigation commands.
+- Add lifecycle-safe caret blinking behavior for active editors.
 - Keep rendering/performance and docking persistence contracts intact.
 
 ## 2. Target Areas
@@ -204,6 +205,26 @@ Exit criteria:
 - [x] Shift-modified aliases preserve selection-anchor semantics via existing document selection commands.
 - [x] Focused headless regression suite remains green.
 
+## Addendum 2: Caret Blinking -- COMPLETE (2026-02-20)
+
+Tasks:
+- [x] Add viewport caret blink scheduling and visibility toggling.
+- [x] Reset blink cycle on caret/document interactions.
+- [x] Bind blink activity to editor focus and stop lifecycle timers on dispose.
+- [x] Add deterministic viewport blink behavior tests.
+
+Deliverables:
+- `render/Viewport.java` — caret blink scheduler (`PauseTransition` + `Timeline`), active/visible gating, caret-line dirty repaint path.
+- `api/CodeEditor.java` — focus listener wiring for blink activation, interaction-triggered blink resets, disposal cleanup.
+- `render/ViewportTest.java` — blink toggle/reset/inactive assertions.
+- `spec/papiflyfx-docking-code-editor-actions/spec-add2.md` — addendum spec/progress notes.
+
+Exit criteria:
+- [x] Caret blinks while editor focus is active.
+- [x] Caret hides when editor is inactive/disposed.
+- [x] Caret becomes immediately visible after caret movement/edit interactions.
+- [x] Full module headless suite remains green.
+
 ## 4. Risk Notes
 
 - Multi-caret can increase complexity in text mutation ordering.
@@ -221,9 +242,9 @@ Mitigations:
 # Module tests
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true test
 
-# Focused keymap + integration coverage (includes Addenda 0/1)
+# Focused keymap + viewport + integration coverage (includes Addenda 0/1/2)
 mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true \
-  -Dtest=KeymapTableTest,CodeEditorIntegrationTest \
+  -Dtest=KeymapTableTest,ViewportTest,CodeEditorIntegrationTest \
   -Dsurefire.failIfNoSpecifiedTests=false test
 
 # Docks + code integration coverage

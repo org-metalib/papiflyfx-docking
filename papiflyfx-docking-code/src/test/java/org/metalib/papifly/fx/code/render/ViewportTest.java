@@ -5,6 +5,7 @@ import javafx.scene.Scene;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.code.document.Document;
@@ -12,7 +13,9 @@ import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -159,6 +162,47 @@ class ViewportTest {
             "Previously selected line should be repainted with editor background");
     }
 
+    @Test
+    void caretBlinkTogglesVisibilityWhenActive() {
+        runOnFx(() -> {
+            viewport.setCaretBlinkTimings(Duration.millis(20), Duration.millis(80));
+            viewport.setCaretBlinkActive(true);
+        });
+        flushLayout();
+
+        assertTrue(callOnFx(viewport::isCaretVisible));
+        assertTrue(waitForCondition(() -> callOnFx(() -> !viewport.isCaretVisible()), 1_500),
+            "Caret should toggle to hidden while blinking is active");
+    }
+
+    @Test
+    void caretMovementResetsBlinkToVisible() {
+        runOnFx(() -> {
+            viewport.setCaretBlinkTimings(Duration.millis(20), Duration.millis(80));
+            viewport.setCaretBlinkActive(true);
+        });
+        flushLayout();
+
+        assertTrue(waitForCondition(() -> callOnFx(() -> !viewport.isCaretVisible()), 1_500),
+            "Caret should become hidden after blink cycle");
+
+        runOnFx(() -> selectionModel.moveCaret(2, 1));
+        WaitForAsyncUtils.waitForFxEvents();
+        assertTrue(callOnFx(viewport::isCaretVisible),
+            "Caret should be immediately visible after caret movement");
+    }
+
+    @Test
+    void caretHiddenWhenBlinkInactive() {
+        runOnFx(() -> {
+            viewport.setCaretBlinkTimings(Duration.millis(20), Duration.millis(80));
+            viewport.setCaretBlinkActive(true);
+            viewport.setCaretBlinkActive(false);
+        });
+        flushLayout();
+        assertFalse(callOnFx(viewport::isCaretVisible));
+    }
+
     private void flushLayout() {
         // Apply CSS + layout on FX thread, then wait for completion
         runOnFx(() -> {
@@ -187,6 +231,52 @@ class ViewportTest {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T callOnFx(Callable<T> action) {
+        if (Platform.isFxApplicationThread()) {
+            try {
+                return action.call();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        CountDownLatch latch = new CountDownLatch(1);
+        Object[] result = new Object[1];
+        Platform.runLater(() -> {
+            try {
+                result[0] = action.call();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                latch.countDown();
+            }
+        });
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+        return (T) result[0];
+    }
+
+    private boolean waitForCondition(BooleanSupplier condition, long timeoutMillis) {
+        long deadline = System.currentTimeMillis() + timeoutMillis;
+        while (System.currentTimeMillis() < deadline) {
+            if (condition.getAsBoolean()) {
+                return true;
+            }
+            WaitForAsyncUtils.waitForFxEvents();
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return condition.getAsBoolean();
     }
 
     private Color sampleLineBackgroundColor(int lineIndex) {

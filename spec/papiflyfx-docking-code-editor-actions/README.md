@@ -2,13 +2,14 @@
 
 This directory contains source requirements and normalized planning/spec documents for keyboard and mouse behavior in `papiflyfx-docking-code`.
 
-Current implementation status (2026-02-20): Phases 0–6 plus Addenda 0–1 complete (`Hardening and Performance`, `Page Navigation and Selection`, and macOS `Cmd+Home/End` document-boundary aliases delivered).
+Current implementation status (2026-02-20): Phases 0–6 plus Addenda 0–2 complete (`Hardening and Performance`, `Page Navigation and Selection`, macOS `Cmd+Home/End` document-boundary aliases, and caret blinking delivered).
 
 ## Documents
 
 - `spec.md` — normalized command-level action specification for implementation/testing.
 - `spec-add0.md` — implemented addendum for `Page Up` / `Page Down` behavior.
 - `spec-add1.md` — implemented addendum for macOS `Cmd+Home` / `Cmd+End` document jumps.
+- `spec-add2.md` — implemented addendum for caret blinking behavior and lifecycle.
 - `implementation.md` — phased implementation plan for missing actions.
 - `PROGRESS.md` — current status of implemented vs pending actions.
 - `userguide.md` — end-user reference for all supported keyboard and mouse commands.

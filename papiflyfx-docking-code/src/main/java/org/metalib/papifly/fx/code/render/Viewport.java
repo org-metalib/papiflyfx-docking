@@ -1,11 +1,16 @@
 package org.metalib.papifly.fx.code.render;
 
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.PauseTransition;
+import javafx.animation.Timeline;
 import javafx.beans.value.ChangeListener;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Paint;
 import javafx.scene.text.Font;
+import javafx.util.Duration;
 import org.metalib.papifly.fx.code.command.CaretRange;
 import org.metalib.papifly.fx.code.command.MultiCaretModel;
 import org.metalib.papifly.fx.code.document.Document;
@@ -32,6 +37,8 @@ import java.util.List;
 public class Viewport extends Region {
 
     private static final int PREFETCH_LINES = 2;
+    private static final Duration DEFAULT_CARET_BLINK_DELAY = Duration.millis(500);
+    private static final Duration DEFAULT_CARET_BLINK_PERIOD = Duration.millis(500);
 
     private final Canvas canvas;
     private final GlyphCache glyphCache;
@@ -40,6 +47,8 @@ public class Viewport extends Region {
     private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) -> onCaretColumnChanged();
     private final ChangeListener<Number> anchorLineListener = (obs, oldValue, newValue) -> onSelectionAnchorChanged();
     private final ChangeListener<Number> anchorColumnListener = (obs, oldValue, newValue) -> onSelectionAnchorChanged();
+    private final PauseTransition caretBlinkDelay = new PauseTransition(DEFAULT_CARET_BLINK_DELAY);
+    private final Timeline caretBlinkTimeline = new Timeline();
 
     private CodeEditorTheme theme = CodeEditorTheme.dark();
     private Document document;
@@ -60,6 +69,8 @@ public class Viewport extends Region {
     private int previousSelectionStartLine = -1;
     private int previousSelectionEndLine = -1;
     private final List<RenderLine> renderLines = new ArrayList<>();
+    private boolean caretBlinkActive;
+    private boolean caretVisible = true;
 
     private final DocumentChangeListener changeListener = this::onDocumentChanged;
 
@@ -78,6 +89,13 @@ public class Viewport extends Region {
         selectionModel.caretColumnProperty().addListener(caretColumnListener);
         selectionModel.anchorLineProperty().addListener(anchorLineListener);
         selectionModel.anchorColumnProperty().addListener(anchorColumnListener);
+
+        configureCaretBlink(DEFAULT_CARET_BLINK_DELAY, DEFAULT_CARET_BLINK_PERIOD);
+        caretBlinkDelay.setOnFinished(event -> {
+            if (caretBlinkActive && !disposed) {
+                caretBlinkTimeline.playFromStart();
+            }
+        });
     }
 
     /**
@@ -169,6 +187,48 @@ public class Viewport extends Region {
     }
 
     /**
+     * Enables/disables caret blinking and caret visibility.
+     * <p>
+     * Typically bound to editor focus state.
+     */
+    public void setCaretBlinkActive(boolean active) {
+        if (caretBlinkActive == active) {
+            return;
+        }
+        caretBlinkActive = active;
+        if (active) {
+            showCaretAndRestartBlink();
+        } else {
+            stopCaretBlink();
+            if (caretVisible) {
+                caretVisible = false;
+                markCaretLinesDirty();
+            }
+        }
+    }
+
+    /**
+     * Returns true when caret blink animation is active.
+     */
+    public boolean isCaretBlinkActive() {
+        return caretBlinkActive;
+    }
+
+    /**
+     * Resets blink cycle and makes caret immediately visible.
+     */
+    public void resetCaretBlink() {
+        if (disposed || !caretBlinkActive) {
+            return;
+        }
+        if (!caretVisible) {
+            caretVisible = true;
+            markCaretLinesDirty();
+        }
+        restartCaretBlink();
+    }
+
+    /**
      * Sets the font for rendering.
      */
     public void setFont(Font font) {
@@ -233,6 +293,19 @@ public class Viewport extends Region {
         return dirty;
     }
 
+    void setCaretBlinkTimings(Duration delay, Duration period) {
+        Duration safeDelay = sanitizeDuration(delay, DEFAULT_CARET_BLINK_DELAY);
+        Duration safePeriod = sanitizeDuration(period, DEFAULT_CARET_BLINK_PERIOD);
+        configureCaretBlink(safeDelay, safePeriod);
+        if (caretBlinkActive) {
+            restartCaretBlink();
+        }
+    }
+
+    boolean isCaretVisible() {
+        return caretVisible;
+    }
+
     /**
      * Ensures the caret line is visible by adjusting scroll offset.
      */
@@ -284,6 +357,7 @@ public class Viewport extends Region {
             markDirty();
             return;
         }
+        resetCaretBlink();
         int startLine = document.getLineForOffset(Math.min(event.offset(), document.length()));
         // For inserts/deletes that may affect all lines from startLine onward
         int endLine = document.getLineCount() - 1;
@@ -295,6 +369,7 @@ public class Viewport extends Region {
         dirtyLines.set(oldLine);
         dirtyLines.set(newLine);
         markSelectionRangeDirty();
+        resetCaretBlink();
         dirty = true;
         requestLayout();
     }
@@ -304,12 +379,14 @@ public class Viewport extends Region {
         int caretLine = selectionModel.getCaretLine();
         dirtyLines.set(caretLine);
         markSelectionRangeDirty();
+        resetCaretBlink();
         dirty = true;
         requestLayout();
     }
 
     private void onSelectionAnchorChanged() {
         markSelectionRangeDirty();
+        resetCaretBlink();
         dirty = true;
         requestLayout();
     }
@@ -374,6 +451,7 @@ public class Viewport extends Region {
         double charWidth = glyphCache.getCharWidth();
         List<CaretRange> activeCarets = collectActiveCarets();
         boolean hasMultiCarets = !activeCarets.isEmpty();
+        boolean paintCaret = shouldPaintCaret();
 
         int previousFirstVisible = firstVisibleLine;
 
@@ -395,7 +473,9 @@ public class Viewport extends Region {
             drawSearchHighlights(gc, lineHeight, charWidth);
             drawSelection(gc, w, lineHeight, charWidth, activeCarets);
             drawText(gc, lineHeight, charWidth);
-            drawCaret(gc, lineHeight, charWidth, activeCarets);
+            if (paintCaret) {
+                drawCaret(gc, lineHeight, charWidth, activeCarets);
+            }
         } else {
             // Incremental redraw: only repaint dirty lines
             int caretLine = selectionModel.getCaretLine();
@@ -428,14 +508,14 @@ public class Viewport extends Region {
                     drawTokenizedLine(gc, rl, charWidth, glyphCache.getBaselineOffset());
 
                     // Redraw caret(s)
-                    if (hasMultiCarets) {
+                    if (paintCaret && hasMultiCarets) {
                         gc.setFill(theme.caretColor());
                         for (CaretRange cr : activeCarets) {
                             if (rl.lineIndex() == cr.caretLine()) {
                                 gc.fillRect(cr.caretColumn() * charWidth, rl.y(), 2, lineHeight);
                             }
                         }
-                    } else if (rl.lineIndex() == caretLine) {
+                    } else if (paintCaret && rl.lineIndex() == caretLine) {
                         double caretX = selectionModel.getCaretColumn() * charWidth;
                         gc.setFill(theme.caretColor());
                         gc.fillRect(caretX, rl.y(), 2, lineHeight);
@@ -727,6 +807,71 @@ public class Viewport extends Region {
         }
     }
 
+    private boolean shouldPaintCaret() {
+        return caretBlinkActive && caretVisible;
+    }
+
+    private void showCaretAndRestartBlink() {
+        if (!caretVisible) {
+            caretVisible = true;
+        }
+        markCaretLinesDirty();
+        restartCaretBlink();
+    }
+
+    private void restartCaretBlink() {
+        if (disposed || !caretBlinkActive) {
+            return;
+        }
+        stopCaretBlink();
+        caretBlinkDelay.playFromStart();
+    }
+
+    private void stopCaretBlink() {
+        caretBlinkDelay.stop();
+        caretBlinkTimeline.stop();
+    }
+
+    private void toggleCaretVisibility() {
+        if (disposed || !caretBlinkActive) {
+            return;
+        }
+        caretVisible = !caretVisible;
+        markCaretLinesDirty();
+    }
+
+    private void markCaretLinesDirty() {
+        if (document == null) {
+            return;
+        }
+        List<CaretRange> activeCarets = collectActiveCarets();
+        if (!activeCarets.isEmpty()) {
+            for (CaretRange caret : activeCarets) {
+                dirtyLines.set(caret.caretLine());
+            }
+        } else {
+            dirtyLines.set(selectionModel.getCaretLine());
+            if (previousCaretLine >= 0) {
+                dirtyLines.set(previousCaretLine);
+            }
+        }
+        dirty = true;
+        requestLayout();
+    }
+
+    private void configureCaretBlink(Duration delay, Duration period) {
+        caretBlinkDelay.setDuration(delay);
+        caretBlinkTimeline.getKeyFrames().setAll(new KeyFrame(period, event -> toggleCaretVisibility()));
+        caretBlinkTimeline.setCycleCount(Animation.INDEFINITE);
+    }
+
+    private Duration sanitizeDuration(Duration value, Duration fallback) {
+        if (value == null || value.isUnknown() || value.lessThanOrEqualTo(Duration.ZERO)) {
+            return fallback;
+        }
+        return value;
+    }
+
     private double computeMaxScrollOffset() {
         if (document == null) {
             return 0;
@@ -743,6 +888,9 @@ public class Viewport extends Region {
             return;
         }
         disposed = true;
+        stopCaretBlink();
+        caretBlinkActive = false;
+        caretVisible = false;
         setDocument(null);
         selectionModel.caretLineProperty().removeListener(caretLineListener);
         selectionModel.caretColumnProperty().removeListener(caretColumnListener);
