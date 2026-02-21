@@ -81,6 +81,7 @@ class CodeEditorThemeIntegrationTest {
         assertEquals(light, editor.getViewport().getTheme());
         assertEquals(light, editor.getGutterView().getTheme());
         assertEquals(light, editor.getSearchController().getTheme());
+        assertEquals(light, editor.getGoToLineController().getTheme());
     }
 
     @Test
@@ -111,6 +112,7 @@ class CodeEditorThemeIntegrationTest {
         assertEquals(expected, editor.getViewport().getTheme());
         assertEquals(expected, editor.getGutterView().getTheme());
         assertEquals(expected, editor.getSearchController().getTheme());
+        assertEquals(expected, editor.getGoToLineController().getTheme());
     }
 
     @Test

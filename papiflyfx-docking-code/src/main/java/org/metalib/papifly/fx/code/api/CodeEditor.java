@@ -12,7 +12,6 @@ import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.TextInputDialog;
 import javafx.util.Duration;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -81,6 +80,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final MarkerModel markerModel;
     private final SearchModel searchModel;
     private final SearchController searchController;
+    private final GoToLineController goToLineController;
 
     private final ChangeListener<Number> caretLineListener;
     private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) ->
@@ -146,6 +146,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.searchController.setOnNavigate(this::navigateToSearchMatch);
         this.searchController.setOnClose(this::onSearchClosed);
         this.searchController.setOnSearchChanged(this::onSearchResultsChanged);
+        this.goToLineController = new GoToLineController();
+        this.goToLineController.setOnGoToLine(this::goToLine);
+        this.goToLineController.setOnClose(this::onGoToLineClosed);
 
         // Debounced search refresh on document edits
         this.searchRefreshDebounce = new PauseTransition(Duration.millis(150));
@@ -171,6 +174,10 @@ public class CodeEditor extends StackPane implements DisposableContent {
         StackPane.setAlignment(searchController, Pos.TOP_RIGHT);
         StackPane.setMargin(searchController, new Insets(0, 16, 0, 0));
         getChildren().add(searchController);
+        // Go-to-line overlay anchored to top-right
+        StackPane.setAlignment(goToLineController, Pos.TOP_RIGHT);
+        StackPane.setMargin(goToLineController, new Insets(6, 16, 0, 0));
+        getChildren().add(goToLineController);
 
         // Bind cursor properties to selection model
         selectionModel.caretLineProperty().addListener(caretLineListener);
@@ -271,6 +278,13 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     /**
+     * Returns the go-to-line overlay controller.
+     */
+    public GoToLineController getGoToLineController() {
+        return goToLineController;
+    }
+
+    /**
      * Binds this editor to a docking {@link Theme} property.
      * <p>
      * The editor listens for changes and maps each new {@link Theme} to a
@@ -307,6 +321,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         viewport.setTheme(resolved);
         gutterView.setTheme(resolved);
         searchController.setTheme(resolved);
+        goToLineController.setTheme(resolved);
     }
 
     /**
@@ -324,6 +339,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
      * Opens the search/replace overlay. Shortcut: Ctrl/Cmd+F.
      */
     public void openSearch() {
+        goToLineController.close();
         String selectedText = selectionModel.hasSelection()
             ? selectionModel.getSelectedText(document)
             : null;
@@ -334,6 +350,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
      * Opens the search/replace overlay in replace mode. Shortcut: Ctrl+H / Cmd+Option+F.
      */
     public void openReplace() {
+        goToLineController.close();
         String selectedText = selectionModel.hasSelection()
             ? selectionModel.getSelectedText(document)
             : null;
@@ -344,19 +361,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
      * Opens a go-to-line dialog. Shortcut: Ctrl/Cmd+G.
      */
     public void goToLine() {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Go to Line");
-        dialog.setHeaderText(null);
-        dialog.setContentText("Line number (1-" + document.getLineCount() + "):");
-        Optional<String> result = dialog.showAndWait();
-        result.ifPresent(input -> {
-            try {
-                int lineNumber = Integer.parseInt(input.trim());
-                goToLine(lineNumber);
-            } catch (NumberFormatException ignored) {
-                // Invalid input, do nothing
-            }
-        });
+        searchController.close();
+        goToLineController.open(selectionModel.getCaretLine() + 1, document.getLineCount());
     }
 
     /**
@@ -373,8 +379,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
         if (disposed) {
             return;
         }
-        if (searchController.isOpen() && searchController.isFocusWithin()) {
-            return; // Let search field handle typed input
+        if ((searchController.isOpen() && searchController.isFocusWithin())
+            || (goToLineController.isOpen() && goToLineController.isFocusWithin())) {
+            return; // Let overlay fields handle typed input
         }
         String ch = event.getCharacter();
         if (ch.isEmpty() || ch.charAt(0) < 32 || ch.charAt(0) == 127) {
@@ -408,12 +415,20 @@ public class CodeEditor extends StackPane implements DisposableContent {
         if (disposed) {
             return;
         }
-        // Escape always closes search
-        if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE && searchController.isOpen()) {
-            searchController.close();
-            requestFocus();
-            event.consume();
-            return;
+        // Escape always closes overlays
+        if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+            if (searchController.isOpen()) {
+                searchController.close();
+                requestFocus();
+                event.consume();
+                return;
+            }
+            if (goToLineController.isOpen()) {
+                goToLineController.close();
+                requestFocus();
+                event.consume();
+                return;
+            }
         }
 
         Optional<EditorCommand> resolved = KeymapTable.resolve(event);
@@ -429,8 +444,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
             return;
         }
 
-        // If search is focused, don't process editing keys
-        if (searchController.isOpen() && searchController.isFocusWithin()) {
+        // If an overlay is focused, don't process editing keys
+        if ((searchController.isOpen() && searchController.isFocusWithin())
+            || (goToLineController.isOpen() && goToLineController.isFocusWithin())) {
             return;
         }
 
@@ -1387,6 +1403,10 @@ public class CodeEditor extends StackPane implements DisposableContent {
         requestFocus();
     }
 
+    private void onGoToLineClosed() {
+        requestFocus();
+    }
+
     private void onSearchResultsChanged() {
         viewport.setSearchMatches(searchModel.getMatches(), searchModel.getCurrentMatchIndex());
     }
@@ -1703,6 +1723,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
         searchController.setSelectionRangeSupplier(null);
         searchController.setDocument(null);
         searchController.close();
+        goToLineController.setOnGoToLine(null);
+        goToLineController.setOnClose(null);
+        goToLineController.close();
         searchRefreshDebounce.stop();
         document.removeChangeListener(searchRefreshListener);
         unbindThemeProperty();

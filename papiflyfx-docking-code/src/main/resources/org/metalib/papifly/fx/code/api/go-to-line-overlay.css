@@ -1,0 +1,112 @@
+.pf-goto-overlay {
+    -pf-goto-bg: #252526;
+    -pf-goto-panel-border: #3f3f46;
+    -pf-goto-text: #d4d4d4;
+    -pf-goto-muted-text: #858585;
+    -pf-goto-control-bg: #3c3c3c;
+    -pf-goto-control-border: #555555;
+    -pf-goto-control-hover-bg: #4a4a4a;
+    -pf-goto-control-focused-border: #007acc;
+    -pf-goto-control-disabled-text: #7a7a7a;
+    -pf-goto-invalid-border: #d16969;
+    -pf-goto-shadow: rgba(0, 0, 0, 0.25);
+
+    -fx-background-color: -pf-goto-bg;
+    -fx-border-color: -pf-goto-panel-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.pf-goto-title {
+    -fx-font-size: 12px;
+    -fx-text-fill: -pf-goto-text;
+}
+
+.pf-goto-range {
+    -fx-font-size: 11px;
+    -fx-text-fill: -pf-goto-muted-text;
+}
+
+.pf-goto-field {
+    -fx-font-size: 11px;
+    -fx-min-height: 24;
+    -fx-pref-height: 24;
+    -fx-max-height: 24;
+    -fx-background-color: -pf-goto-control-bg;
+    -fx-background-radius: 5;
+    -fx-border-color: -pf-goto-control-border;
+    -fx-border-radius: 5;
+    -fx-border-width: 1;
+    -fx-text-fill: -pf-goto-text;
+    -fx-prompt-text-fill: -pf-goto-muted-text;
+}
+
+.pf-goto-field:focused {
+    -fx-border-color: -pf-goto-control-focused-border;
+}
+
+.pf-goto-field:invalid {
+    -fx-border-color: -pf-goto-invalid-border;
+}
+
+.pf-goto-action-button {
+    -fx-font-size: 11px;
+    -fx-min-height: 22;
+    -fx-pref-height: 22;
+    -fx-max-height: 22;
+    -fx-background-color: -pf-goto-control-bg;
+    -fx-border-color: -pf-goto-control-border;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-text-fill: -pf-goto-text;
+    -fx-padding: 0 8 0 8;
+}
+
+.pf-goto-action-button:hover {
+    -fx-background-color: -pf-goto-control-hover-bg;
+}
+
+.pf-goto-action-button:focused {
+    -fx-border-color: -pf-goto-control-focused-border;
+}
+
+.pf-goto-action-button:disabled {
+    -fx-text-fill: -pf-goto-control-disabled-text;
+    -fx-opacity: 1.0;
+}
+
+.pf-goto-action-secondary {
+    -fx-background-color: transparent;
+}
+
+.pf-goto-action-secondary:hover {
+    -fx-background-color: -pf-goto-control-hover-bg;
+}
+
+.pf-goto-icon-button {
+    -fx-min-width: 22;
+    -fx-pref-width: 22;
+    -fx-max-width: 22;
+    -fx-min-height: 22;
+    -fx-pref-height: 22;
+    -fx-max-height: 22;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+}
+
+.pf-goto-icon-button:hover {
+    -fx-background-color: -pf-goto-control-hover-bg;
+}
+
+.pf-goto-icon-button:focused {
+    -fx-border-color: -pf-goto-control-focused-border;
+}
+
+.pf-goto-icon {
+    -fx-fill: -pf-goto-text;
+    -fx-stroke: -pf-goto-text;
+}

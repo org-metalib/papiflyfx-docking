@@ -253,6 +253,33 @@ class CodeEditorIntegrationTest {
     }
 
     @Test
+    void goToLineShortcutOpensOverlay() {
+        runOnFx(() -> {
+            editor.requestFocus();
+            editor.setText(buildLines(40));
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        fireShortcut(KeyCode.G, false);
+
+        assertTrue(callOnFx(() -> editor.getGoToLineController().isOpen()));
+    }
+
+    @Test
+    void escapeClosesGoToLineOverlay() {
+        runOnFx(() -> {
+            editor.setText(buildLines(40));
+            editor.goToLine();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        assertTrue(callOnFx(() -> editor.getGoToLineController().isOpen()));
+
+        fireKey(KeyCode.ESCAPE);
+
+        assertFalse(callOnFx(() -> editor.getGoToLineController().isOpen()));
+    }
+
+    @Test
     void pageDownMovesCaretByViewportPage() {
         runOnFx(() -> {
             editor.setText(buildLines(500));
@@ -777,6 +804,20 @@ class CodeEditorIntegrationTest {
             keyCode,
             shift,
             true,
+            false,
+            false
+        )));
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    private void fireKey(KeyCode keyCode) {
+        runOnFx(() -> editor.fireEvent(new KeyEvent(
+            KeyEvent.KEY_PRESSED,
+            "",
+            "",
+            keyCode,
+            false,
+            false,
             false,
             false
         )));
