@@ -52,5 +52,5 @@ public enum EditorCommand {
     UNDO_LAST_OCCURRENCE,
 
     // Always-on shortcuts (handled before search-focus guard)
-    OPEN_SEARCH, GO_TO_LINE
+    OPEN_SEARCH, OPEN_REPLACE, GO_TO_LINE
 }

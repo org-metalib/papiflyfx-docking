@@ -247,6 +247,74 @@ class SearchModelTest {
     }
 
     @Test
+    void searchPlainTextWholeWord() {
+        Document doc = new Document("hello helloworld hello");
+        SearchModel model = new SearchModel();
+        model.setQuery("hello");
+        model.setWholeWord(true);
+        int count = model.search(doc);
+
+        assertEquals(2, count);
+        assertEquals(0, model.getMatches().get(0).startOffset());
+        assertEquals(17, model.getMatches().get(1).startOffset());
+    }
+
+    @Test
+    void searchPlainTextWholeWordCaseInsensitive() {
+        Document doc = new Document("Hello helloworld HELLO");
+        SearchModel model = new SearchModel();
+        model.setQuery("hello");
+        model.setWholeWord(true);
+        model.setCaseSensitive(false);
+        int count = model.search(doc);
+
+        assertEquals(2, count);
+        assertEquals(0, model.getMatches().get(0).startOffset());
+        assertEquals(17, model.getMatches().get(1).startOffset());
+    }
+
+    @Test
+    void searchRegexWholeWord() {
+        Document doc = new Document("cat catfish scat cat");
+        SearchModel model = new SearchModel();
+        model.setQuery("cat");
+        model.setRegexMode(true);
+        model.setWholeWord(true);
+        int count = model.search(doc);
+
+        assertEquals(2, count);
+        assertEquals(0, model.getMatches().get(0).startOffset());
+        assertEquals(17, model.getMatches().get(1).startOffset());
+    }
+
+    @Test
+    void regexReplaceCaptureGroups() {
+        Document doc = new Document("foo-bar");
+        SearchModel model = new SearchModel();
+        model.setQuery("(\\w+)-(\\w+)");
+        model.setRegexMode(true);
+        model.setReplacement("$2_$1");
+        model.search(doc);
+
+        assertTrue(model.replaceCurrent(doc));
+        assertEquals("bar_foo", doc.getText());
+    }
+
+    @Test
+    void replaceAllRegexCaptureGroups() {
+        Document doc = new Document("foo-bar baz-qux");
+        SearchModel model = new SearchModel();
+        model.setQuery("(\\w+)-(\\w+)");
+        model.setRegexMode(true);
+        model.setReplacement("$2_$1");
+        model.search(doc);
+
+        int replaced = model.replaceAll(doc);
+        assertEquals(2, replaced);
+        assertEquals("bar_foo qux_baz", doc.getText());
+    }
+
+    @Test
     void regexSearchSkipsMultiLineMatches() {
         Document doc = new Document("alpha\nbeta");
         SearchModel model = new SearchModel();

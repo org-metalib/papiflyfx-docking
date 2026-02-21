@@ -16,6 +16,7 @@ import javafx.scene.layout.BorderWidths;
 import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Paint;
 import javafx.scene.text.Font;
@@ -28,7 +29,8 @@ import java.util.function.Consumer;
  * Overlay UI for find/replace functionality.
  * <p>
  * Provides text fields for search/replace, navigation buttons,
- * and mode toggles (regex, case-sensitive).
+ * and mode toggles (regex, case-sensitive, whole-word).
+ * The replace row can be collapsed or expanded via a chevron toggle.
  */
 public class SearchController extends VBox {
 
@@ -44,7 +46,13 @@ public class SearchController extends VBox {
     private final Label matchCountLabel;
     private final CheckBox regexToggle;
     private final CheckBox caseSensitiveToggle;
+    private final CheckBox wholeWordToggle;
+    private final Button replaceButton;
+    private final Button replaceAllButton;
+    private final Button chevronButton;
+    private final HBox replaceRow;
 
+    private boolean replaceMode;
     private Document document;
     private Consumer<SearchMatch> onNavigate;
     private Runnable onClose;
@@ -62,8 +70,14 @@ public class SearchController extends VBox {
         )));
         setPadding(new Insets(4, 8, 4, 8));
         setSpacing(4);
+        setMaxSize(Double.MAX_VALUE, Region.USE_PREF_SIZE);
         setManaged(false);
         setVisible(false);
+
+        // Chevron toggle button for expand/collapse replace row
+        chevronButton = new Button("\u25b6");
+        configureButton(chevronButton);
+        chevronButton.setOnAction(e -> toggleReplaceMode());
 
         // Search row
         searchField = new TextField();
@@ -89,13 +103,6 @@ public class SearchController extends VBox {
         configureButton(closeButton);
         closeButton.setOnAction(e -> close());
 
-        regexToggle = new CheckBox(".*");
-        configureToggle(regexToggle);
-        regexToggle.setOnAction(e -> {
-            searchModel.setRegexMode(regexToggle.isSelected());
-            executeSearch();
-        });
-
         caseSensitiveToggle = new CheckBox("Aa");
         configureToggle(caseSensitiveToggle);
         caseSensitiveToggle.setOnAction(e -> {
@@ -103,7 +110,21 @@ public class SearchController extends VBox {
             executeSearch();
         });
 
-        HBox searchRow = new HBox(4, searchField, regexToggle, caseSensitiveToggle, matchCountLabel, prevButton, nextButton, closeButton);
+        wholeWordToggle = new CheckBox("W");
+        configureToggle(wholeWordToggle);
+        wholeWordToggle.setOnAction(e -> {
+            searchModel.setWholeWord(wholeWordToggle.isSelected());
+            executeSearch();
+        });
+
+        regexToggle = new CheckBox(".*");
+        configureToggle(regexToggle);
+        regexToggle.setOnAction(e -> {
+            searchModel.setRegexMode(regexToggle.isSelected());
+            executeSearch();
+        });
+
+        HBox searchRow = new HBox(4, searchField, caseSensitiveToggle, wholeWordToggle, regexToggle, matchCountLabel, prevButton, nextButton, closeButton);
         searchRow.setAlignment(Pos.CENTER_LEFT);
 
         // Replace row
@@ -113,18 +134,25 @@ public class SearchController extends VBox {
         replaceField.setPrefWidth(200);
         HBox.setHgrow(replaceField, Priority.ALWAYS);
 
-        Button replaceButton = new Button("Replace");
+        replaceButton = new Button("Replace");
         configureButton(replaceButton);
+        replaceButton.setDisable(true);
         replaceButton.setOnAction(e -> replaceCurrent());
 
-        Button replaceAllButton = new Button("All");
+        replaceAllButton = new Button("All");
         configureButton(replaceAllButton);
+        replaceAllButton.setDisable(true);
         replaceAllButton.setOnAction(e -> replaceAll());
 
-        HBox replaceRow = new HBox(4, replaceField, replaceButton, replaceAllButton);
+        replaceRow = new HBox(4, replaceField, replaceButton, replaceAllButton);
         replaceRow.setAlignment(Pos.CENTER_LEFT);
+        replaceRow.setManaged(false);
+        replaceRow.setVisible(false);
 
-        getChildren().addAll(searchRow, replaceRow);
+        // Layout: chevron on left, search/replace rows in a VBox on the right
+        VBox rows = new VBox(4, searchRow, replaceRow);
+        HBox.setHgrow(rows, Priority.ALWAYS);
+        getChildren().addAll(new HBox(4, chevronButton, rows));
 
         // Wire search on text change and Enter
         searchField.textProperty().addListener((obs, oldValue, newValue) -> {
@@ -148,7 +176,10 @@ public class SearchController extends VBox {
         replaceField.textProperty().addListener((obs, oldValue, newValue) ->
             searchModel.setReplacement(newValue));
         replaceField.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ESCAPE) {
+            if (e.getCode() == KeyCode.ENTER) {
+                replaceCurrent();
+                e.consume();
+            } else if (e.getCode() == KeyCode.ESCAPE) {
                 close();
                 e.consume();
             }
@@ -195,6 +226,7 @@ public class SearchController extends VBox {
         }
         regexToggle.setTextFill(theme.searchOverlayPrimaryText());
         caseSensitiveToggle.setTextFill(theme.searchOverlayPrimaryText());
+        wholeWordToggle.setTextFill(theme.searchOverlayPrimaryText());
     }
 
     /**
@@ -239,6 +271,16 @@ public class SearchController extends VBox {
     }
 
     /**
+     * Opens the search overlay directly in replace mode.
+     */
+    public void openInReplaceMode(String initialQuery) {
+        if (!replaceMode) {
+            toggleReplaceMode();
+        }
+        open(initialQuery);
+    }
+
+    /**
      * Hides the search overlay and clears highlights.
      */
     public void close() {
@@ -264,10 +306,31 @@ public class SearchController extends VBox {
     }
 
     /**
+     * Returns true if replace mode is active (replace row visible).
+     */
+    public boolean isReplaceMode() {
+        return replaceMode;
+    }
+
+    /**
      * Returns the search model.
      */
     public SearchModel getSearchModel() {
         return searchModel;
+    }
+
+    /**
+     * Refreshes the match label and button states from current search model state.
+     */
+    public void refreshMatchDisplay() {
+        updateMatchLabel();
+    }
+
+    private void toggleReplaceMode() {
+        replaceMode = !replaceMode;
+        replaceRow.setManaged(replaceMode);
+        replaceRow.setVisible(replaceMode);
+        chevronButton.setText(replaceMode ? "\u25bc" : "\u25b6");
     }
 
     private void executeSearch() {
@@ -322,6 +385,8 @@ public class SearchController extends VBox {
             int current = searchModel.getCurrentMatchIndex() + 1;
             matchCountLabel.setText(current + " of " + count);
         }
+        replaceButton.setDisable(count == 0);
+        replaceAllButton.setDisable(count == 0);
     }
 
     private void configureTextField(TextField field) {

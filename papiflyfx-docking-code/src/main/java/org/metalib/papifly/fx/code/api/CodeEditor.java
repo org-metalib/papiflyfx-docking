@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.code.api;
 
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
@@ -9,8 +10,10 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.TextInputDialog;
+import javafx.util.Duration;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyEvent;
@@ -87,6 +90,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final ChangeListener<String> languageListener;
     private final ChangeListener<Boolean> focusListener;
     private final DocumentChangeListener gutterWidthListener;
+    private final DocumentChangeListener searchRefreshListener;
+    private final PauseTransition searchRefreshDebounce;
     private final MarkerModel.MarkerChangeListener markerModelChangeListener;
     private final IncrementalLexerPipeline lexerPipeline;
 
@@ -141,6 +146,16 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.searchController.setOnClose(this::onSearchClosed);
         this.searchController.setOnSearchChanged(this::onSearchResultsChanged);
 
+        // Debounced search refresh on document edits
+        this.searchRefreshDebounce = new PauseTransition(Duration.millis(150));
+        this.searchRefreshDebounce.setOnFinished(evt -> refreshSearchIfOpen());
+        this.searchRefreshListener = event -> {
+            if (searchController.isOpen()) {
+                searchRefreshDebounce.playFromStart();
+            }
+        };
+        this.document.addChangeListener(searchRefreshListener);
+
         // Layout: gutter left, viewport center, search overlay on top
         BorderPane editorArea = new BorderPane();
         editorArea.setLeft(gutterView);
@@ -151,8 +166,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
         setFocusTraversable(true);
         getChildren().add(editorArea);
 
-        // Search overlay anchored to top
-        StackPane.setAlignment(searchController, Pos.TOP_CENTER);
+        // Search overlay anchored to top-right
+        StackPane.setAlignment(searchController, Pos.TOP_RIGHT);
+        StackPane.setMargin(searchController, new Insets(0, 16, 0, 0));
         getChildren().add(searchController);
 
         // Bind cursor properties to selection model
@@ -314,6 +330,16 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     /**
+     * Opens the search/replace overlay in replace mode. Shortcut: Ctrl+H / Cmd+Option+F.
+     */
+    public void openReplace() {
+        String selectedText = selectionModel.hasSelection()
+            ? selectionModel.getSelectedText(document)
+            : null;
+        searchController.openInReplaceMode(selectedText);
+    }
+
+    /**
      * Opens a go-to-line dialog. Shortcut: Ctrl/Cmd+G.
      */
     public void goToLine() {
@@ -396,7 +422,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         EditorCommand cmd = resolved.get();
 
         // "Always-on" commands execute even when search is focused
-        if (cmd == EditorCommand.OPEN_SEARCH || cmd == EditorCommand.GO_TO_LINE) {
+        if (cmd == EditorCommand.OPEN_SEARCH || cmd == EditorCommand.OPEN_REPLACE || cmd == EditorCommand.GO_TO_LINE) {
             executeCommand(cmd);
             event.consume();
             return;
@@ -470,6 +496,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
             // Search
             case OPEN_SEARCH -> openSearch();
+            case OPEN_REPLACE -> openReplace();
             case GO_TO_LINE -> goToLine();
 
             // Phase 1 — word navigation
@@ -1342,6 +1369,17 @@ public class CodeEditor extends StackPane implements DisposableContent {
         onSearchResultsChanged();
     }
 
+    private void refreshSearchIfOpen() {
+        if (!searchController.isOpen()) {
+            return;
+        }
+        int caretOffset = selectionModel.getCaretOffset(document);
+        searchModel.search(document);
+        searchModel.selectNearestMatch(caretOffset);
+        onSearchResultsChanged();
+        searchController.refreshMatchDisplay();
+    }
+
     private void onSearchClosed() {
         viewport.setSearchMatches(List.of(), -1);
         requestFocus();
@@ -1652,6 +1690,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
         searchController.setOnSearchChanged(null);
         searchController.setDocument(null);
         searchController.close();
+        searchRefreshDebounce.stop();
+        document.removeChangeListener(searchRefreshListener);
         unbindThemeProperty();
         setOnKeyPressed(null);
         setOnKeyTyped(null);

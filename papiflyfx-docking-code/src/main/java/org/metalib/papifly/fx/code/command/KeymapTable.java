@@ -76,6 +76,12 @@ public final class KeymapTable {
         // --- search / go-to-line ---
         put(map, KeyCode.F, false, true, false, EditorCommand.OPEN_SEARCH);
         put(map, KeyCode.G, false, true, false, EditorCommand.GO_TO_LINE);
+        // Open replace: Cmd+Option+F on mac, Ctrl+H on others
+        if (mac) {
+            put(map, KeyCode.F, false, true, true, EditorCommand.OPEN_REPLACE);
+        } else {
+            put(map, KeyCode.H, false, true, false, EditorCommand.OPEN_REPLACE);
+        }
 
         // --- word navigation ---
         // macOS: Alt+Arrow   Windows/Linux: Ctrl+Arrow

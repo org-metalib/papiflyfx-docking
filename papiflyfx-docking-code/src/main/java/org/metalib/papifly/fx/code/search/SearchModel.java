@@ -11,7 +11,8 @@ import java.util.regex.PatternSyntaxException;
 
 /**
  * Search/replace model that finds matches in a document.
- * Supports plain text and regex modes, case-sensitive and case-insensitive.
+ * Supports plain text and regex modes, case-sensitive and case-insensitive,
+ * and whole-word matching.
  */
 public class SearchModel {
 
@@ -19,6 +20,7 @@ public class SearchModel {
     private String replacement = "";
     private boolean regexMode;
     private boolean caseSensitive;
+    private boolean wholeWord;
     private List<SearchMatch> matches = List.of();
     private int currentMatchIndex = -1;
 
@@ -79,6 +81,20 @@ public class SearchModel {
     }
 
     /**
+     * Returns true if whole-word matching is enabled.
+     */
+    public boolean isWholeWord() {
+        return wholeWord;
+    }
+
+    /**
+     * Enables or disables whole-word matching.
+     */
+    public void setWholeWord(boolean wholeWord) {
+        this.wholeWord = wholeWord;
+    }
+
+    /**
      * Returns the current list of matches (unmodifiable).
      */
     public List<SearchMatch> getMatches() {
@@ -121,7 +137,7 @@ public class SearchModel {
         }
 
         String text = document.getText();
-        List<SearchMatch> found = new ArrayList<>();
+        List<SearchMatch> found;
 
         if (regexMode) {
             found = searchRegex(text, document);
@@ -182,6 +198,8 @@ public class SearchModel {
 
     /**
      * Replaces the current match in the document.
+     * When regex mode is active, capture-group references ($1, $2, etc.) in the
+     * replacement string are expanded.
      * Returns true if replacement was performed.
      */
     public boolean replaceCurrent(Document document) {
@@ -189,18 +207,24 @@ public class SearchModel {
         if (match == null || document == null) {
             return false;
         }
-        document.replace(match.startOffset(), match.endOffset(), replacement);
+        String effectiveReplacement = computeReplacement(document.getText(), match);
+        document.replace(match.startOffset(), match.endOffset(), effectiveReplacement);
         search(document);
         return true;
     }
 
     /**
-     * Replaces all matches in the document (from last to first to preserve offsets).
+     * Replaces all matches in the document.
+     * When regex mode is active, uses {@link Matcher#replaceAll} for correct
+     * capture-group expansion in a single pass.
      * Returns the number of replacements made.
      */
     public int replaceAll(Document document) {
         if (matches.isEmpty() || document == null) {
             return 0;
+        }
+        if (regexMode) {
+            return replaceAllRegex(document);
         }
         int count = matches.size();
         // Replace from end to start to preserve offsets
@@ -223,6 +247,59 @@ public class SearchModel {
         currentMatchIndex = -1;
     }
 
+    private String computeReplacement(String text, SearchMatch match) {
+        if (!regexMode) {
+            return replacement;
+        }
+        try {
+            int flags = caseSensitive ? 0 : Pattern.CASE_INSENSITIVE;
+            String patternStr = wholeWord ? "\\b" + query + "\\b" : query;
+            Pattern pattern = Pattern.compile(patternStr, flags);
+            String matchedText = text.substring(match.startOffset(), match.endOffset());
+            Matcher matcher = pattern.matcher(matchedText);
+            if (matcher.matches()) {
+                return matcher.replaceFirst(replacement);
+            }
+        } catch (PatternSyntaxException | IndexOutOfBoundsException e) {
+            // Fall through to literal replacement
+        }
+        return replacement;
+    }
+
+    private int replaceAllRegex(Document document) {
+        try {
+            int flags = caseSensitive ? 0 : Pattern.CASE_INSENSITIVE;
+            String patternStr = wholeWord ? "\\b" + query + "\\b" : query;
+            Pattern pattern = Pattern.compile(patternStr, flags);
+            String text = document.getText();
+            Matcher matcher = pattern.matcher(text);
+            int count = 0;
+            // Count matches first (we already know from matches.size() but re-count for safety)
+            StringBuilder sb = new StringBuilder();
+            while (matcher.find()) {
+                if (matcher.start() == matcher.end()) {
+                    continue; // skip zero-length
+                }
+                int startLine = document.getLineForOffset(matcher.start());
+                int endLine = document.getLineForOffset(Math.max(matcher.start(), matcher.end() - 1));
+                if (startLine != endLine) {
+                    continue; // skip multi-line
+                }
+                matcher.appendReplacement(sb, replacement);
+                count++;
+            }
+            matcher.appendTail(sb);
+            if (count > 0) {
+                document.replace(0, text.length(), sb.toString());
+            }
+            matches = List.of();
+            currentMatchIndex = -1;
+            return count;
+        } catch (PatternSyntaxException | IndexOutOfBoundsException e) {
+            return 0;
+        }
+    }
+
     private List<SearchMatch> searchPlainText(String text, Document document) {
         List<SearchMatch> found = new ArrayList<>();
         String searchIn = caseSensitive ? text : text.toLowerCase();
@@ -231,6 +308,10 @@ public class SearchModel {
         int index = 0;
         while ((index = searchIn.indexOf(searchFor, index)) >= 0) {
             int endIndex = index + query.length();
+            if (wholeWord && !isWordBoundary(text, index, endIndex)) {
+                index += searchFor.length();
+                continue;
+            }
             int line = document.getLineForOffset(index);
             int endLine = document.getLineForOffset(Math.max(index, endIndex - 1));
             if (line != endLine) {
@@ -250,7 +331,8 @@ public class SearchModel {
         List<SearchMatch> found = new ArrayList<>();
         try {
             int flags = caseSensitive ? 0 : Pattern.CASE_INSENSITIVE;
-            Pattern pattern = Pattern.compile(query, flags);
+            String patternStr = wholeWord ? "\\b" + query + "\\b" : query;
+            Pattern pattern = Pattern.compile(patternStr, flags);
             Matcher matcher = pattern.matcher(text);
             while (matcher.find()) {
                 int start = matcher.start();
@@ -273,5 +355,19 @@ public class SearchModel {
             // Invalid regex: return empty
         }
         return found;
+    }
+
+    private static boolean isWordBoundary(String text, int start, int end) {
+        if (start > 0 && isWordChar(text.charAt(start - 1))) {
+            return false;
+        }
+        if (end < text.length() && isWordChar(text.charAt(end))) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean isWordChar(char ch) {
+        return Character.isLetterOrDigit(ch) || ch == '_';
     }
 }

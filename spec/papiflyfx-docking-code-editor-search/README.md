@@ -248,13 +248,120 @@ Solution:
 7. Layout safety:
    - keep search panel non-filling and limited to compact preferred size.
 
+## Implementation Progress
+
+| # | Finding | Severity | Status | Commit/Branch |
+|---|---------|----------|--------|---------------|
+| 1 | Overlay covers whole editor area | Critical | Done | `code` branch |
+| 2 | Missing whole-word search (`W`) | High | Done | `code` branch |
+| 3 | Replace row always visible; no collapsed/expanded mode | High | Done | `code` branch |
+| 4 | No shortcut for "Open Replace" mode | High | Done | `code` branch |
+| 5 | Search results stale after document edits | High | Done | `code` branch |
+| 6 | Regex replace lacks capture-group substitution | Medium | Done | `code` branch |
+| 7 | Replace controls not disabled when no matches | Medium | Done | `code` branch |
+| 8 | Missing "preserve case" toggle and scope controls | Medium | Deferred | — |
+| 9 | Replace-field Enter key has no replace behavior | Medium | Done | `code` branch |
+| 10 | Limited automated coverage for search UI | Low | Partial | `code` branch |
+
+### Implementation Summary
+
+All changes were made on the `code` branch. Build verified: 318 tests pass (`./mvnw test -pl papiflyfx-docking-code -am -Dtestfx.headless=true`).
+
+#### Phase 1: Fix overlay layout (Finding #1)
+
+**`SearchController.java`**
+- Added `setMaxSize(Double.MAX_VALUE, Region.USE_PREF_SIZE)` so the VBox only takes its preferred height, not the full StackPane layer.
+
+**`CodeEditor.java`**
+- Changed alignment from `TOP_CENTER` to `TOP_RIGHT` to match VS Code style.
+- Added 16px right margin: `StackPane.setMargin(searchController, new Insets(0, 16, 0, 0))`.
+
+#### Phase 2: Collapsed/expanded replace mode (Finding #3)
+
+**`SearchController.java`**
+- Added `replaceMode` field and chevron toggle button (`▶` collapsed, `▼` expanded).
+- Replace row starts hidden: `replaceRow.setManaged(false); replaceRow.setVisible(false)`.
+- Chevron click toggles replace row visibility.
+- Added `openInReplaceMode(String)` method for direct replace-mode opening.
+- Restructured layout: chevron on left, search/replace rows in a nested VBox on right.
+
+#### Phase 3: OPEN_REPLACE shortcut (Finding #4)
+
+**`EditorCommand.java`**
+- Added `OPEN_REPLACE` enum value after `OPEN_SEARCH`.
+
+**`KeymapTable.java`**
+- Mac: `Cmd+Option+F` → `OPEN_REPLACE`
+- Non-mac: `Ctrl+H` → `OPEN_REPLACE`
+
+**`CodeEditor.java`**
+- Added `openReplace()` method calling `searchController.openInReplaceMode(selectedText)`.
+- Added `OPEN_REPLACE` to the "always-on" guard in `handleKeyPressed`.
+- Added `OPEN_REPLACE` case in `executeCommand` dispatch.
+
+#### Phase 4: Whole-word search (Finding #2)
+
+**`SearchModel.java`**
+- Added `boolean wholeWord` field with getter/setter.
+- `searchPlainText()`: after finding a match, checks word boundaries via `isWordBoundary(text, start, end)` — character before start and after end must be non-word chars (or start/end of text).
+- `searchRegex()`: when `wholeWord` is enabled, wraps the compiled pattern with `\b...\b` word boundary anchors.
+- Added `isWordBoundary()` and `isWordChar()` helpers.
+
+**`SearchController.java`**
+- Added `CheckBox wholeWordToggle = new CheckBox("W")` between `caseSensitiveToggle` and `regexToggle`.
+- Wired to `searchModel.setWholeWord(...)` + `executeSearch()`.
+- Toggle order in search row matches screenshot: `Aa`, `W`, `.*`.
+
+#### Phase 5: Replace button disable states (Finding #7)
+
+**`SearchController.java`**
+- `replaceButton` and `replaceAllButton` stored as fields, initialized with `setDisable(true)`.
+- `updateMatchLabel()` now also sets `replaceButton.setDisable(count == 0)` and `replaceAllButton.setDisable(count == 0)`.
+
+#### Phase 6: Enter key in replace field (Finding #9)
+
+**`SearchController.java`**
+- Added `Enter` handler to `replaceField.setOnKeyPressed` that calls `replaceCurrent()` and consumes the event.
+
+#### Phase 7: Regex capture-group replacement (Finding #6)
+
+**`SearchModel.java`**
+- `replaceCurrent()`: when `regexMode`, compiles the pattern, matches it against the matched substring, and uses `matcher.replaceFirst(replacement)` to expand `$1`, `$2`, etc.
+- `replaceAll()`: when `regexMode`, uses `Matcher.appendReplacement`/`appendTail` in a single pass over the full text for correct group expansion, skipping zero-length and multi-line matches.
+
+#### Phase 8: Live search refresh on document edits (Finding #5)
+
+**`CodeEditor.java`**
+- Added `DocumentChangeListener searchRefreshListener` that triggers refresh when search overlay is open.
+- Added `PauseTransition searchRefreshDebounce` (150ms) to avoid churn during fast typing.
+- On refresh: re-runs `searchModel.search(document)`, selects nearest match to caret position, updates highlights and match label.
+- Added `refreshMatchDisplay()` public method to `SearchController`.
+- Cleanup in `dispose()`: stops debounce timer and removes listener.
+
+#### Phase 9: Preserve case toggle (Finding #8)
+
+Deferred to a follow-up. This is an advanced feature (`Aa` toggle in replace row, `Exclude` button) that is lower priority.
+
+#### Phase 10: Tests (Finding #10)
+
+**`SearchModelTest.java`** — 5 new tests added (19 → 24 total):
+- `searchPlainTextWholeWord()` — "hello" matches whole word only, not "helloworld"
+- `searchPlainTextWholeWordCaseInsensitive()` — case-insensitive whole-word
+- `searchRegexWholeWord()` — regex with `\b` wrapping
+- `regexReplaceCaptureGroups()` — pattern `(\w+)-(\w+)`, replacement `$2_$1`
+- `replaceAllRegexCaptureGroups()` — multi-match capture-group replace
+
+No `SearchControllerFxTest` added in this phase — requires TestFX infrastructure for overlay testing.
+
 ## Conclusion
 
-The current implementation provides a functional baseline find/replace overlay, but it does not yet match the expected UX and behavior shown in the reference screenshots.  
+The current implementation provides a functional baseline find/replace overlay, but it does not yet match the expected UX and behavior shown in the reference screenshots.
 The highest-priority gaps are:
 
-1. overlay currently hiding editor content on search open,
-2. whole-word support,
-3. collapsible replace mode,
-4. replace-open shortcut,
-5. live resync after document edits.
+1. ~~overlay currently hiding editor content on search open~~ — **Fixed**
+2. ~~whole-word support~~ — **Fixed**
+3. ~~collapsible replace mode~~ — **Fixed**
+4. ~~replace-open shortcut~~ — **Fixed**
+5. ~~live resync after document edits~~ — **Fixed**
+
+**Remaining:** Finding #8 (preserve case toggle / scope controls) is deferred. Finding #10 (SearchController FX integration tests) is partially addressed with model-level tests.
