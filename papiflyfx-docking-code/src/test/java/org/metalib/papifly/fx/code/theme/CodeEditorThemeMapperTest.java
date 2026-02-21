@@ -26,6 +26,8 @@ class CodeEditorThemeMapperTest {
         // Accent flows to bookmark and search accent border
         assertEquals(Theme.dark().accentColor(), result.markerBookmarkColor());
         assertEquals(Theme.dark().accentColor(), result.searchOverlayAccentBorder());
+        assertEquals(Theme.dark().accentColor(), result.searchOverlayControlFocusedBorder());
+        assertEquals(Theme.dark().accentColor(), result.searchOverlayIntegratedToggleActive());
     }
 
     @Test
@@ -112,5 +114,7 @@ class CodeEditorThemeMapperTest {
         CodeEditorTheme result = CodeEditorThemeMapper.map(custom);
         assertEquals(Color.RED, result.markerBookmarkColor());
         assertEquals(Color.RED, result.searchOverlayAccentBorder());
+        assertEquals(Color.RED, result.searchOverlayControlFocusedBorder());
+        assertEquals(Color.RED, result.searchOverlayIntegratedToggleActive());
     }
 }

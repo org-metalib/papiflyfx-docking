@@ -1,59 +1,67 @@
 package org.metalib.papifly.fx.code.search;
 
+import javafx.css.PseudoClass;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.input.KeyCode;
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
-import javafx.scene.layout.Border;
-import javafx.scene.layout.BorderStroke;
-import javafx.scene.layout.BorderStrokeStyle;
-import javafx.scene.layout.BorderWidths;
-import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
-import javafx.scene.text.Font;
+import javafx.scene.shape.SVGPath;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Overlay UI for find/replace functionality.
  * <p>
- * Provides text fields for search/replace, navigation buttons,
- * and mode toggles (regex, case-sensitive, whole-word).
- * The replace row can be collapsed or expanded via a chevron toggle.
+ * Uses compact, chip-style controls and icon-only navigation actions while
+ * keeping search model behavior and keyboard flow stable.
  */
 public class SearchController extends VBox {
 
-    private static final CornerRadii CONTROL_RADII = new CornerRadii(2);
-    private static final Insets BUTTON_PADDING = new Insets(2, 6, 2, 6);
-    private static final Insets CHECKBOX_PADDING = new Insets(0, 2, 0, 2);
-    private static final Font SMALL_FONT = Font.font(11);
+    private static final String STYLESHEET_NAME = "search-overlay.css";
+    private static final PseudoClass NO_RESULTS_PSEUDO_CLASS = PseudoClass.getPseudoClass("no-results");
+    private static final double FIELD_HEIGHT = 24.0;
 
     private CodeEditorTheme theme = CodeEditorTheme.dark();
     private final SearchModel searchModel;
     private final TextField searchField;
     private final TextField replaceField;
     private final Label matchCountLabel;
-    private final CheckBox regexToggle;
-    private final CheckBox caseSensitiveToggle;
-    private final CheckBox wholeWordToggle;
+    private final ToggleButton regexToggle;
+    private final ToggleButton caseSensitiveToggle;
+    private final ToggleButton wholeWordToggle;
+    private final ToggleButton inSelectionToggle;
+    private final ToggleButton preserveCaseToggle;
+    private final Button skipButton;
     private final Button replaceButton;
     private final Button replaceAllButton;
     private final Button chevronButton;
+    private final SVGPath chevronIcon;
     private final HBox replaceRow;
+    private final List<SVGPath> iconNodes = new ArrayList<>();
 
     private boolean replaceMode;
+    private boolean programmaticUpdate;
     private Document document;
+    private Supplier<int[]> selectionRangeSupplier;
     private Consumer<SearchMatch> onNavigate;
     private Runnable onClose;
     private Runnable onSearchChanged;
@@ -61,101 +69,22 @@ public class SearchController extends VBox {
     public SearchController(SearchModel searchModel) {
         this.searchModel = searchModel;
 
-        setBackground(new Background(new BackgroundFill(theme.searchOverlayBackground(), CornerRadii.EMPTY, Insets.EMPTY)));
-        setBorder(new Border(new BorderStroke(
-            theme.searchOverlayAccentBorder(),
-            BorderStrokeStyle.SOLID,
-            CornerRadii.EMPTY,
-            new BorderWidths(0, 0, 1, 0)
-        )));
-        setPadding(new Insets(4, 8, 4, 8));
-        setSpacing(4);
-        setMaxSize(Double.MAX_VALUE, Region.USE_PREF_SIZE);
+        getStyleClass().add("pf-search-overlay");
+        setPadding(new Insets(2, 4, 2, 4));
+        setSpacing(2);
+        setMinWidth(520);
+        setPrefWidth(620);
+        setMaxWidth(760);
+        setMaxHeight(Region.USE_PREF_SIZE);
         setManaged(false);
         setVisible(false);
+        ensureStylesheetLoaded();
 
-        // Chevron toggle button for expand/collapse replace row
-        chevronButton = new Button("\u25b6");
-        configureButton(chevronButton);
-        chevronButton.setOnAction(e -> toggleReplaceMode());
-
-        // Search row
-        searchField = new TextField();
-        searchField.setPromptText("Find");
-        configureTextField(searchField);
-        searchField.setPrefWidth(200);
-        HBox.setHgrow(searchField, Priority.ALWAYS);
-
-        matchCountLabel = new Label("No results");
-        matchCountLabel.setTextFill(theme.searchOverlaySecondaryText());
-        matchCountLabel.setFont(SMALL_FONT);
-        matchCountLabel.setMinWidth(70);
-
-        Button prevButton = new Button("\u25b2");
-        configureButton(prevButton);
-        prevButton.setOnAction(e -> navigatePrevious());
-
-        Button nextButton = new Button("\u25bc");
-        configureButton(nextButton);
-        nextButton.setOnAction(e -> navigateNext());
-
-        Button closeButton = new Button("\u2715");
-        configureButton(closeButton);
-        closeButton.setOnAction(e -> close());
-
-        caseSensitiveToggle = new CheckBox("Aa");
-        configureToggle(caseSensitiveToggle);
-        caseSensitiveToggle.setOnAction(e -> {
-            searchModel.setCaseSensitive(caseSensitiveToggle.isSelected());
-            executeSearch();
-        });
-
-        wholeWordToggle = new CheckBox("W");
-        configureToggle(wholeWordToggle);
-        wholeWordToggle.setOnAction(e -> {
-            searchModel.setWholeWord(wholeWordToggle.isSelected());
-            executeSearch();
-        });
-
-        regexToggle = new CheckBox(".*");
-        configureToggle(regexToggle);
-        regexToggle.setOnAction(e -> {
-            searchModel.setRegexMode(regexToggle.isSelected());
-            executeSearch();
-        });
-
-        HBox searchRow = new HBox(4, searchField, caseSensitiveToggle, wholeWordToggle, regexToggle, matchCountLabel, prevButton, nextButton, closeButton);
-        searchRow.setAlignment(Pos.CENTER_LEFT);
-
-        // Replace row
-        replaceField = new TextField();
-        replaceField.setPromptText("Replace");
-        configureTextField(replaceField);
-        replaceField.setPrefWidth(200);
-        HBox.setHgrow(replaceField, Priority.ALWAYS);
-
-        replaceButton = new Button("Replace");
-        configureButton(replaceButton);
-        replaceButton.setDisable(true);
-        replaceButton.setOnAction(e -> replaceCurrent());
-
-        replaceAllButton = new Button("All");
-        configureButton(replaceAllButton);
-        replaceAllButton.setDisable(true);
-        replaceAllButton.setOnAction(e -> replaceAll());
-
-        replaceRow = new HBox(4, replaceField, replaceButton, replaceAllButton);
-        replaceRow.setAlignment(Pos.CENTER_LEFT);
-        replaceRow.setManaged(false);
-        replaceRow.setVisible(false);
-
-        // Layout: chevron on left, search/replace rows in a VBox on the right
-        VBox rows = new VBox(4, searchRow, replaceRow);
-        HBox.setHgrow(rows, Priority.ALWAYS);
-        getChildren().addAll(new HBox(4, chevronButton, rows));
-
-        // Wire search on text change and Enter
+        searchField = createTextField("Find");
         searchField.textProperty().addListener((obs, oldValue, newValue) -> {
+            if (programmaticUpdate) {
+                return;
+            }
             searchModel.setQuery(newValue);
             executeSearch();
         });
@@ -173,8 +102,13 @@ public class SearchController extends VBox {
             }
         });
 
-        replaceField.textProperty().addListener((obs, oldValue, newValue) ->
-            searchModel.setReplacement(newValue));
+        replaceField = createTextField("Replace");
+        replaceField.textProperty().addListener((obs, oldValue, newValue) -> {
+            if (programmaticUpdate) {
+                return;
+            }
+            searchModel.setReplacement(newValue);
+        });
         replaceField.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER) {
                 replaceCurrent();
@@ -184,6 +118,103 @@ public class SearchController extends VBox {
                 e.consume();
             }
         });
+
+        matchCountLabel = new Label();
+        matchCountLabel.getStyleClass().add("pf-search-result-label");
+        matchCountLabel.setMinWidth(76);
+        matchCountLabel.setAlignment(Pos.CENTER_RIGHT);
+
+        caseSensitiveToggle = createChipToggle("Aa");
+        caseSensitiveToggle.selectedProperty().addListener((obs, oldValue, selected) -> {
+            if (programmaticUpdate) {
+                return;
+            }
+            searchModel.setCaseSensitive(selected);
+            executeSearch();
+        });
+
+        wholeWordToggle = createChipToggle("W");
+        wholeWordToggle.selectedProperty().addListener((obs, oldValue, selected) -> {
+            if (programmaticUpdate) {
+                return;
+            }
+            searchModel.setWholeWord(selected);
+            executeSearch();
+        });
+
+        regexToggle = createChipToggle(".*");
+        regexToggle.selectedProperty().addListener((obs, oldValue, selected) -> {
+            if (programmaticUpdate) {
+                return;
+            }
+            searchModel.setRegexMode(selected);
+            executeSearch();
+        });
+
+        inSelectionToggle = createChipToggle("In");
+        SVGPath inSelectionIcon = createIcon(SearchIcons.FILTER, 10);
+        inSelectionToggle.setGraphic(inSelectionIcon);
+        inSelectionToggle.setContentDisplay(ContentDisplay.LEFT);
+        inSelectionToggle.selectedProperty().addListener((obs, oldValue, selected) -> {
+            if (programmaticUpdate) {
+                return;
+            }
+            searchModel.setSearchInSelection(selected);
+            executeSearch();
+        });
+        inSelectionToggle.setDisable(true);
+
+        preserveCaseToggle = createChipToggle("Aa");
+        preserveCaseToggle.selectedProperty().addListener((obs, oldValue, selected) -> {
+            if (programmaticUpdate) {
+                return;
+            }
+            searchModel.setPreserveCase(selected);
+        });
+
+        Button prevButton = createIconButton(createIcon(SearchIcons.ARROW_UP, 10), this::navigatePrevious);
+        Button nextButton = createIconButton(createIcon(SearchIcons.ARROW_DOWN, 10), this::navigateNext);
+        chevronIcon = createIcon(SearchIcons.CHEVRON_RIGHT, 10);
+        chevronButton = createIconButton(chevronIcon, this::toggleReplaceMode);
+        Button closeButton = createIconButton(createIcon(SearchIcons.CLOSE, 10), this::close);
+
+        skipButton = createActionButton("Skip", this::skipCurrent, true);
+        replaceButton = createActionButton("Replace", this::replaceCurrent, false);
+        replaceAllButton = createActionButton("All", this::replaceAll, false);
+
+        StackPane searchInput = createSearchInput();
+        HBox searchMiddle = new HBox(2, caseSensitiveToggle, wholeWordToggle, regexToggle, inSelectionToggle, matchCountLabel);
+        searchMiddle.setAlignment(Pos.CENTER_LEFT);
+        HBox searchRight = new HBox(2, prevButton, nextButton, chevronButton, closeButton);
+        searchRight.setAlignment(Pos.CENTER_RIGHT);
+        HBox searchRow = new HBox(2, searchInput, searchMiddle, searchRight);
+        searchRow.getStyleClass().add("pf-search-row");
+        searchRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(searchInput, Priority.ALWAYS);
+
+        HBox replaceMiddle = new HBox(2, preserveCaseToggle);
+        replaceMiddle.setAlignment(Pos.CENTER_LEFT);
+        HBox replaceRight = new HBox(2, skipButton, replaceButton, replaceAllButton);
+        replaceRight.setAlignment(Pos.CENTER_RIGHT);
+        replaceRow = new HBox(2, replaceField, replaceMiddle, replaceRight);
+        replaceRow.getStyleClass().add("pf-search-row");
+        replaceRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(replaceField, Priority.ALWAYS);
+        replaceRow.setManaged(false);
+        replaceRow.setVisible(false);
+
+        getChildren().addAll(searchRow, replaceRow);
+
+        withProgrammaticUpdate(() -> {
+            caseSensitiveToggle.setSelected(searchModel.isCaseSensitive());
+            wholeWordToggle.setSelected(searchModel.isWholeWord());
+            regexToggle.setSelected(searchModel.isRegexMode());
+            inSelectionToggle.setSelected(searchModel.isSearchInSelection());
+            preserveCaseToggle.setSelected(searchModel.isPreserveCase());
+        });
+
+        updateMatchLabel();
+        applyThemeColors();
     }
 
     /**
@@ -191,6 +222,33 @@ public class SearchController extends VBox {
      */
     public void setDocument(Document document) {
         this.document = document;
+    }
+
+    /**
+     * Sets a supplier that provides active selection offsets as {start, end}.
+     */
+    public void setSelectionRangeSupplier(Supplier<int[]> selectionRangeSupplier) {
+        this.selectionRangeSupplier = selectionRangeSupplier;
+        refreshSelectionScope();
+    }
+
+    /**
+     * Re-evaluates selection scope based on the current selection supplier.
+     */
+    public void refreshSelectionScope() {
+        int[] scope = selectionRangeSupplier == null ? null : selectionRangeSupplier.get();
+        boolean validScope = scope != null && scope.length >= 2 && scope[0] < scope[1];
+        if (validScope) {
+            searchModel.setSelectionScope(scope[0], scope[1]);
+            inSelectionToggle.setDisable(false);
+            return;
+        }
+        searchModel.clearSelectionScope();
+        inSelectionToggle.setDisable(true);
+        if (searchModel.isSearchInSelection()) {
+            searchModel.setSearchInSelection(false);
+            withProgrammaticUpdate(() -> inSelectionToggle.setSelected(false));
+        }
     }
 
     /**
@@ -206,27 +264,6 @@ public class SearchController extends VBox {
      */
     public CodeEditorTheme getTheme() {
         return theme;
-    }
-
-    private void applyThemeColors() {
-        setBackground(new Background(new BackgroundFill(theme.searchOverlayBackground(), CornerRadii.EMPTY, Insets.EMPTY)));
-        setBorder(new Border(new BorderStroke(
-            theme.searchOverlayAccentBorder(),
-            BorderStrokeStyle.SOLID,
-            CornerRadii.EMPTY,
-            new BorderWidths(0, 0, 1, 0)
-        )));
-        configureTextField(searchField);
-        configureTextField(replaceField);
-        matchCountLabel.setTextFill(theme.searchOverlaySecondaryText());
-        for (var node : lookupAll(".button")) {
-            if (node instanceof Button btn) {
-                configureButton(btn);
-            }
-        }
-        regexToggle.setTextFill(theme.searchOverlayPrimaryText());
-        caseSensitiveToggle.setTextFill(theme.searchOverlayPrimaryText());
-        wholeWordToggle.setTextFill(theme.searchOverlayPrimaryText());
     }
 
     /**
@@ -254,6 +291,7 @@ public class SearchController extends VBox {
      * Shows the search overlay and focuses the search field.
      */
     public void open() {
+        refreshSelectionScope();
         setManaged(true);
         setVisible(true);
         searchField.requestFocus();
@@ -265,7 +303,9 @@ public class SearchController extends VBox {
      */
     public void open(String initialQuery) {
         if (initialQuery != null && !initialQuery.isEmpty()) {
-            searchField.setText(initialQuery);
+            withProgrammaticUpdate(() -> searchField.setText(initialQuery));
+            searchModel.setQuery(initialQuery);
+            executeSearch();
         }
         open();
     }
@@ -287,8 +327,10 @@ public class SearchController extends VBox {
         setManaged(false);
         setVisible(false);
         searchModel.clear();
-        searchField.clear();
-        replaceField.clear();
+        withProgrammaticUpdate(() -> {
+            searchField.clear();
+            replaceField.clear();
+        });
         updateMatchLabel();
         if (onSearchChanged != null) {
             onSearchChanged.run();
@@ -330,10 +372,11 @@ public class SearchController extends VBox {
         replaceMode = !replaceMode;
         replaceRow.setManaged(replaceMode);
         replaceRow.setVisible(replaceMode);
-        chevronButton.setText(replaceMode ? "\u25bc" : "\u25b6");
+        chevronIcon.setContent(replaceMode ? SearchIcons.CHEVRON_DOWN : SearchIcons.CHEVRON_RIGHT);
     }
 
     private void executeSearch() {
+        refreshSelectionScope();
         if (document != null) {
             searchModel.search(document);
         }
@@ -341,7 +384,6 @@ public class SearchController extends VBox {
         if (onSearchChanged != null) {
             onSearchChanged.run();
         }
-        // Navigate to first match
         SearchMatch current = searchModel.getCurrentMatch();
         if (current != null && onNavigate != null) {
             onNavigate.accept(current);
@@ -364,6 +406,10 @@ public class SearchController extends VBox {
         updateMatchLabel();
     }
 
+    private void skipCurrent() {
+        navigateNext();
+    }
+
     private void replaceCurrent() {
         if (document != null && searchModel.replaceCurrent(document)) {
             executeSearch();
@@ -379,49 +425,154 @@ public class SearchController extends VBox {
 
     private void updateMatchLabel() {
         int count = searchModel.getMatchCount();
+        boolean noResults = !searchModel.getQuery().isEmpty() && count == 0;
         if (count == 0) {
             matchCountLabel.setText(searchModel.getQuery().isEmpty() ? "" : "No results");
         } else {
             int current = searchModel.getCurrentMatchIndex() + 1;
             matchCountLabel.setText(current + " of " + count);
         }
+        searchField.pseudoClassStateChanged(NO_RESULTS_PSEUDO_CLASS, noResults);
+        skipButton.setDisable(count == 0);
         replaceButton.setDisable(count == 0);
         replaceAllButton.setDisable(count == 0);
     }
 
-    private void configureTextField(TextField field) {
-        field.setBackground(new Background(new BackgroundFill(
-            theme.searchOverlayControlBackground(),
-            CONTROL_RADII,
-            Insets.EMPTY
-        )));
-        field.setBorder(new Border(new BorderStroke(
-            theme.searchOverlayControlBorder(),
-            BorderStrokeStyle.SOLID,
-            CONTROL_RADII,
-            BorderWidths.DEFAULT
-        )));
+    private TextField createTextField(String promptText) {
+        TextField field = new TextField();
+        field.setPromptText(promptText);
+        field.getStyleClass().add("pf-search-field");
+        field.setMinHeight(FIELD_HEIGHT);
+        field.setPrefHeight(FIELD_HEIGHT);
+        field.setMaxHeight(FIELD_HEIGHT);
+        HBox.setHgrow(field, Priority.ALWAYS);
+        return field;
     }
 
-    private void configureButton(Button button) {
-        button.setBackground(new Background(new BackgroundFill(
-            theme.searchOverlayControlBackground(),
-            CONTROL_RADII,
-            Insets.EMPTY
-        )));
-        button.setBorder(new Border(new BorderStroke(
-            theme.searchOverlayControlBorder(),
-            BorderStrokeStyle.SOLID,
-            CONTROL_RADII,
-            BorderWidths.DEFAULT
-        )));
-        button.setTextFill(theme.searchOverlayPrimaryText());
-        button.setPadding(BUTTON_PADDING);
+    private StackPane createSearchInput() {
+        StackPane input = new StackPane();
+        input.getStyleClass().add("pf-search-input-wrap");
+        SVGPath searchIcon = createIcon(SearchIcons.SEARCH, 11);
+        Label leadingIcon = new Label();
+        leadingIcon.getStyleClass().add("pf-search-leading-icon");
+        leadingIcon.setGraphic(searchIcon);
+        leadingIcon.setMouseTransparent(true);
+        searchField.setPadding(new Insets(0, 6, 0, 20));
+        StackPane.setAlignment(searchField, Pos.CENTER_LEFT);
+        StackPane.setAlignment(leadingIcon, Pos.CENTER_LEFT);
+        input.getChildren().addAll(searchField, leadingIcon);
+        HBox.setHgrow(input, Priority.ALWAYS);
+        return input;
     }
 
-    private void configureToggle(CheckBox toggle) {
-        toggle.setTextFill(theme.searchOverlayPrimaryText());
-        toggle.setFont(SMALL_FONT);
-        toggle.setPadding(CHECKBOX_PADDING);
+    private ToggleButton createChipToggle(String text) {
+        ToggleButton toggle = new ToggleButton(text);
+        toggle.getStyleClass().add("pf-search-chip");
+        return toggle;
+    }
+
+    private Button createIconButton(SVGPath icon, Runnable action) {
+        Button button = new Button();
+        button.getStyleClass().add("pf-search-icon-button");
+        button.setGraphic(icon);
+        button.setOnAction(e -> action.run());
+        return button;
+    }
+
+    private Button createActionButton(String text, Runnable action, boolean secondary) {
+        Button button = new Button(text);
+        button.getStyleClass().add("pf-search-action-button");
+        if (secondary) {
+            button.getStyleClass().add("pf-search-action-secondary");
+        }
+        button.setOnAction(e -> action.run());
+        button.setDisable(true);
+        return button;
+    }
+
+    private SVGPath createIcon(String svgPath, double size) {
+        SVGPath icon = SearchIcons.createIcon(svgPath, size);
+        iconNodes.add(icon);
+        return icon;
+    }
+
+    private void withProgrammaticUpdate(Runnable action) {
+        boolean previous = programmaticUpdate;
+        programmaticUpdate = true;
+        try {
+            action.run();
+        } finally {
+            programmaticUpdate = previous;
+        }
+    }
+
+    private void ensureStylesheetLoaded() {
+        URL stylesheetUrl = SearchController.class.getResource(STYLESHEET_NAME);
+        if (stylesheetUrl == null) {
+            return;
+        }
+        String stylesheet = stylesheetUrl.toExternalForm();
+        if (!getStylesheets().contains(stylesheet)) {
+            getStylesheets().add(stylesheet);
+        }
+    }
+
+    private void applyThemeColors() {
+        setStyle("""
+            -pf-search-bg: %s;
+            -pf-search-panel-border: %s;
+            -pf-search-accent: %s;
+            -pf-search-text: %s;
+            -pf-search-muted-text: %s;
+            -pf-search-control-bg: %s;
+            -pf-search-control-border: %s;
+            -pf-search-control-hover-bg: %s;
+            -pf-search-control-active-bg: %s;
+            -pf-search-control-focused-border: %s;
+            -pf-search-control-disabled-text: %s;
+            -pf-search-no-results-border: %s;
+            -pf-search-shadow: %s;
+            -pf-search-integrated-toggle-active: %s;
+            -pf-search-error-bg: %s;
+            """.formatted(
+            paintToCss(theme.searchOverlayBackground(), "#252526"),
+            paintToCss(theme.searchOverlayPanelBorder(), "#3f3f46"),
+            paintToCss(theme.searchOverlayAccentBorder(), "#007acc"),
+            paintToCss(theme.searchOverlayPrimaryText(), "#d4d4d4"),
+            paintToCss(theme.searchOverlaySecondaryText(), "#858585"),
+            paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
+            paintToCss(theme.searchOverlayControlBorder(), "#555555"),
+            paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
+            paintToCss(theme.searchOverlayControlActiveBackground(), "#164f7a"),
+            paintToCss(theme.searchOverlayControlFocusedBorder(), "#007acc"),
+            paintToCss(theme.searchOverlayControlDisabledText(), "#7a7a7a"),
+            paintToCss(theme.searchOverlayNoResultsBorder(), "#d16969"),
+            paintToCss(theme.searchOverlayShadowColor(), "rgba(0, 0, 0, 0.25)"),
+            paintToCss(theme.searchOverlayIntegratedToggleActive(), "#007acc"),
+            paintToCss(theme.searchOverlayErrorBackground(), "rgba(209, 105, 105, 0.16)")
+        ));
+        Color iconColor = asColor(theme.searchOverlayPrimaryText(), Color.web("#d4d4d4"));
+        for (SVGPath icon : iconNodes) {
+            icon.setFill(iconColor);
+        }
+        Color shadowColor = asColor(theme.searchOverlayShadowColor(), Color.color(0, 0, 0, 0.25));
+        setEffect(new DropShadow(10, shadowColor));
+    }
+
+    private static Color asColor(Paint paint, Color fallback) {
+        if (paint instanceof Color color) {
+            return color;
+        }
+        return fallback;
+    }
+
+    private static String paintToCss(Paint paint, String fallback) {
+        if (paint instanceof Color color) {
+            int red = (int) Math.round(color.getRed() * 255.0);
+            int green = (int) Math.round(color.getGreen() * 255.0);
+            int blue = (int) Math.round(color.getBlue() * 255.0);
+            return String.format(Locale.ROOT, "rgba(%d, %d, %d, %.3f)", red, green, blue, color.getOpacity());
+        }
+        return fallback;
     }
 }

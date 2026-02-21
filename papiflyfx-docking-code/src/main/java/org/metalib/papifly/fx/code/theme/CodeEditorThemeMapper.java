@@ -61,7 +61,16 @@ public final class CodeEditorThemeMapper {
             base.searchOverlayControlBackground(),
             base.searchOverlayControlBorder(),
             base.searchOverlayPrimaryText(),
-            base.searchOverlaySecondaryText()
+            base.searchOverlaySecondaryText(),
+            base.searchOverlayPanelBorder(),
+            base.searchOverlayControlHoverBackground(),
+            base.searchOverlayControlActiveBackground(),
+            accent,                             // searchOverlayControlFocusedBorder from accent
+            base.searchOverlayControlDisabledText(),
+            base.searchOverlayNoResultsBorder(),
+            base.searchOverlayShadowColor(),
+            accent,                             // searchOverlayIntegratedToggleActive from accent
+            base.searchOverlayErrorBackground()
         );
     }
 

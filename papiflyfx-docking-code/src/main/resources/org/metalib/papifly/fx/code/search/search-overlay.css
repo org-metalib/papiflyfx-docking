@@ -1,0 +1,160 @@
+.pf-search-overlay {
+    -pf-search-bg: #252526;
+    -pf-search-panel-border: #3f3f46;
+    -pf-search-accent: #007acc;
+    -pf-search-text: #d4d4d4;
+    -pf-search-muted-text: #858585;
+    -pf-search-control-bg: #3c3c3c;
+    -pf-search-control-border: #555555;
+    -pf-search-control-hover-bg: #4a4a4a;
+    -pf-search-control-active-bg: #164f7a;
+    -pf-search-control-focused-border: #007acc;
+    -pf-search-control-disabled-text: #7a7a7a;
+    -pf-search-no-results-border: #d16969;
+    -pf-search-shadow: rgba(0, 0, 0, 0.25);
+    -pf-search-integrated-toggle-active: #007acc;
+    -pf-search-error-bg: rgba(209, 105, 105, 0.16);
+
+    -fx-background-color: -pf-search-bg;
+    -fx-border-color: -pf-search-panel-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.pf-search-row {
+    -fx-spacing: 2;
+    -fx-alignment: center-left;
+}
+
+.pf-search-input-wrap {
+    -fx-alignment: center-left;
+}
+
+.pf-search-leading-icon {
+    -fx-padding: 0 0 0 6;
+}
+
+.pf-search-field {
+    -fx-font-size: 11px;
+    -fx-min-height: 24;
+    -fx-pref-height: 24;
+    -fx-max-height: 24;
+    -fx-background-color: -pf-search-control-bg;
+    -fx-background-radius: 5;
+    -fx-border-color: -pf-search-control-border;
+    -fx-border-radius: 5;
+    -fx-border-width: 1;
+    -fx-text-fill: -pf-search-text;
+    -fx-prompt-text-fill: -pf-search-muted-text;
+}
+
+.pf-search-field:focused {
+    -fx-border-color: -pf-search-control-focused-border;
+}
+
+.pf-search-field:no-results {
+    -fx-border-color: -pf-search-no-results-border;
+    -fx-background-color: -pf-search-error-bg;
+}
+
+.pf-search-result-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: -pf-search-muted-text;
+    -fx-padding: 0 4 0 4;
+}
+
+.pf-search-chip {
+    -fx-font-size: 11px;
+    -fx-min-height: 22;
+    -fx-pref-height: 22;
+    -fx-max-height: 22;
+    -fx-min-width: 24;
+    -fx-background-color: transparent;
+    -fx-border-color: -pf-search-control-border;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-border-width: 1;
+    -fx-text-fill: -pf-search-text;
+    -fx-padding: 0 6 0 6;
+    -fx-content-display: left;
+    -fx-graphic-text-gap: 4;
+}
+
+.pf-search-chip:hover {
+    -fx-background-color: -pf-search-control-hover-bg;
+}
+
+.pf-search-chip:selected {
+    -fx-background-color: -pf-search-integrated-toggle-active;
+    -fx-border-color: -pf-search-integrated-toggle-active;
+}
+
+.pf-search-chip:focused {
+    -fx-border-color: -pf-search-control-focused-border;
+}
+
+.pf-search-chip:disabled {
+    -fx-text-fill: -pf-search-control-disabled-text;
+    -fx-opacity: 1.0;
+}
+
+.pf-search-icon-button {
+    -fx-min-width: 22;
+    -fx-pref-width: 22;
+    -fx-max-width: 22;
+    -fx-min-height: 22;
+    -fx-pref-height: 22;
+    -fx-max-height: 22;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+}
+
+.pf-search-icon-button:hover {
+    -fx-background-color: -pf-search-control-hover-bg;
+}
+
+.pf-search-icon-button:focused {
+    -fx-border-color: -pf-search-control-focused-border;
+}
+
+.pf-search-action-button {
+    -fx-font-size: 11px;
+    -fx-min-height: 22;
+    -fx-pref-height: 22;
+    -fx-max-height: 22;
+    -fx-background-color: -pf-search-control-bg;
+    -fx-border-color: -pf-search-control-border;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-text-fill: -pf-search-text;
+    -fx-padding: 0 8 0 8;
+}
+
+.pf-search-action-button:hover {
+    -fx-background-color: -pf-search-control-hover-bg;
+}
+
+.pf-search-action-button:focused {
+    -fx-border-color: -pf-search-control-focused-border;
+}
+
+.pf-search-action-button:disabled {
+    -fx-text-fill: -pf-search-control-disabled-text;
+    -fx-opacity: 1.0;
+}
+
+.pf-search-action-secondary {
+    -fx-background-color: transparent;
+}
+
+.pf-search-action-secondary:hover {
+    -fx-background-color: -pf-search-control-hover-bg;
+}
+
+.pf-search-icon {
+    -fx-fill: -pf-search-text;
+}

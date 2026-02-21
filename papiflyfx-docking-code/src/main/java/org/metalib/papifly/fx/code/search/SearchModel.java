@@ -5,6 +5,7 @@ import org.metalib.papifly.fx.code.document.Document;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -21,6 +22,10 @@ public class SearchModel {
     private boolean regexMode;
     private boolean caseSensitive;
     private boolean wholeWord;
+    private boolean preserveCase;
+    private boolean searchInSelection;
+    private int selectionStartOffset = -1;
+    private int selectionEndOffset = -1;
     private List<SearchMatch> matches = List.of();
     private int currentMatchIndex = -1;
 
@@ -95,6 +100,52 @@ public class SearchModel {
     }
 
     /**
+     * Returns true if replacement should preserve the case pattern of each match.
+     */
+    public boolean isPreserveCase() {
+        return preserveCase;
+    }
+
+    /**
+     * Enables or disables preserve-case replacement behavior.
+     */
+    public void setPreserveCase(boolean preserveCase) {
+        this.preserveCase = preserveCase;
+    }
+
+    /**
+     * Returns true if search should be constrained to the active selection scope.
+     */
+    public boolean isSearchInSelection() {
+        return searchInSelection;
+    }
+
+    /**
+     * Enables or disables in-selection search scope.
+     */
+    public void setSearchInSelection(boolean searchInSelection) {
+        this.searchInSelection = searchInSelection;
+    }
+
+    /**
+     * Sets the active selection scope using document offsets.
+     */
+    public void setSelectionScope(int startOffset, int endOffset) {
+        int normalizedStart = Math.max(0, Math.min(startOffset, endOffset));
+        int normalizedEnd = Math.max(0, Math.max(startOffset, endOffset));
+        this.selectionStartOffset = normalizedStart;
+        this.selectionEndOffset = normalizedEnd;
+    }
+
+    /**
+     * Clears any previously configured selection scope.
+     */
+    public void clearSelectionScope() {
+        this.selectionStartOffset = -1;
+        this.selectionEndOffset = -1;
+    }
+
+    /**
      * Returns the current list of matches (unmodifiable).
      */
     public List<SearchMatch> getMatches() {
@@ -137,12 +188,19 @@ public class SearchModel {
         }
 
         String text = document.getText();
+        int[] range = resolveSearchRange(text.length());
+        if (range == null) {
+            matches = List.of();
+            return 0;
+        }
+        int scopeStart = range[0];
+        int scopeEnd = range[1];
         List<SearchMatch> found;
 
         if (regexMode) {
-            found = searchRegex(text, document);
+            found = searchRegex(text, document, scopeStart, scopeEnd);
         } else {
-            found = searchPlainText(text, document);
+            found = searchPlainText(text, document, scopeStart, scopeEnd);
         }
 
         matches = Collections.unmodifiableList(found);
@@ -207,7 +265,9 @@ public class SearchModel {
         if (match == null || document == null) {
             return false;
         }
-        String effectiveReplacement = computeReplacement(document.getText(), match);
+        String matchedText = document.getSubstring(match.startOffset(), match.endOffset());
+        String effectiveReplacement = computeReplacement(matchedText);
+        effectiveReplacement = applyPreserveCaseIfNeeded(effectiveReplacement, matchedText);
         document.replace(match.startOffset(), match.endOffset(), effectiveReplacement);
         search(document);
         return true;
@@ -215,25 +275,25 @@ public class SearchModel {
 
     /**
      * Replaces all matches in the document.
-     * When regex mode is active, uses {@link Matcher#replaceAll} for correct
-     * capture-group expansion in a single pass.
+     * Replacements are applied from end to start to preserve match offsets and
+     * to support per-match preserve-case behavior.
      * Returns the number of replacements made.
      */
     public int replaceAll(Document document) {
         if (matches.isEmpty() || document == null) {
             return 0;
         }
-        if (regexMode) {
-            return replaceAllRegex(document);
-        }
-        int count = matches.size();
+        int count = 0;
         // Replace from end to start to preserve offsets
         for (int i = matches.size() - 1; i >= 0; i--) {
             SearchMatch match = matches.get(i);
-            document.replace(match.startOffset(), match.endOffset(), replacement);
+            String matchedText = document.getSubstring(match.startOffset(), match.endOffset());
+            String effectiveReplacement = computeReplacement(matchedText);
+            effectiveReplacement = applyPreserveCaseIfNeeded(effectiveReplacement, matchedText);
+            document.replace(match.startOffset(), match.endOffset(), effectiveReplacement);
+            count++;
         }
-        matches = List.of();
-        currentMatchIndex = -1;
+        search(document);
         return count;
     }
 
@@ -245,17 +305,18 @@ public class SearchModel {
         replacement = "";
         matches = List.of();
         currentMatchIndex = -1;
+        clearSelectionScope();
     }
 
-    private String computeReplacement(String text, SearchMatch match) {
+    private String computeReplacement(String matchedText) {
         if (!regexMode) {
             return replacement;
         }
         try {
-            int flags = caseSensitive ? 0 : Pattern.CASE_INSENSITIVE;
-            String patternStr = wholeWord ? "\\b" + query + "\\b" : query;
-            Pattern pattern = Pattern.compile(patternStr, flags);
-            String matchedText = text.substring(match.startOffset(), match.endOffset());
+            Pattern pattern = compilePattern();
+            if (pattern == null) {
+                return replacement;
+            }
             Matcher matcher = pattern.matcher(matchedText);
             if (matcher.matches()) {
                 return matcher.replaceFirst(replacement);
@@ -266,95 +327,148 @@ public class SearchModel {
         return replacement;
     }
 
-    private int replaceAllRegex(Document document) {
+    private Pattern compilePattern() {
         try {
             int flags = caseSensitive ? 0 : Pattern.CASE_INSENSITIVE;
             String patternStr = wholeWord ? "\\b" + query + "\\b" : query;
-            Pattern pattern = Pattern.compile(patternStr, flags);
-            String text = document.getText();
-            Matcher matcher = pattern.matcher(text);
-            int count = 0;
-            // Count matches first (we already know from matches.size() but re-count for safety)
-            StringBuilder sb = new StringBuilder();
-            while (matcher.find()) {
-                if (matcher.start() == matcher.end()) {
-                    continue; // skip zero-length
-                }
-                int startLine = document.getLineForOffset(matcher.start());
-                int endLine = document.getLineForOffset(Math.max(matcher.start(), matcher.end() - 1));
-                if (startLine != endLine) {
-                    continue; // skip multi-line
-                }
-                matcher.appendReplacement(sb, replacement);
-                count++;
-            }
-            matcher.appendTail(sb);
-            if (count > 0) {
-                document.replace(0, text.length(), sb.toString());
-            }
-            matches = List.of();
-            currentMatchIndex = -1;
-            return count;
-        } catch (PatternSyntaxException | IndexOutOfBoundsException e) {
-            return 0;
+            return Pattern.compile(patternStr, flags);
+        } catch (PatternSyntaxException e) {
+            return null;
         }
     }
 
-    private List<SearchMatch> searchPlainText(String text, Document document) {
+    private List<SearchMatch> searchPlainText(String text, Document document, int scopeStart, int scopeEnd) {
         List<SearchMatch> found = new ArrayList<>();
-        String searchIn = caseSensitive ? text : text.toLowerCase();
-        String searchFor = caseSensitive ? query : query.toLowerCase();
+        String searchIn = caseSensitive ? text : text.toLowerCase(Locale.ROOT);
+        String searchFor = caseSensitive ? query : query.toLowerCase(Locale.ROOT);
 
-        int index = 0;
-        while ((index = searchIn.indexOf(searchFor, index)) >= 0) {
+        int index = scopeStart;
+        int step = Math.max(1, searchFor.length());
+        while (index < scopeEnd && (index = searchIn.indexOf(searchFor, index)) >= 0) {
             int endIndex = index + query.length();
+            if (endIndex > scopeEnd) {
+                break;
+            }
             if (wholeWord && !isWordBoundary(text, index, endIndex)) {
-                index += searchFor.length();
+                index += step;
                 continue;
             }
             int line = document.getLineForOffset(index);
             int endLine = document.getLineForOffset(Math.max(index, endIndex - 1));
             if (line != endLine) {
-                index += searchFor.length();
+                index += step;
                 continue;
             }
             int lineStart = document.getLineStartOffset(line);
             int startCol = index - lineStart;
             int endCol = endIndex - lineStart;
             found.add(new SearchMatch(index, endIndex, line, startCol, endCol));
-            index += searchFor.length();
+            index += step;
         }
         return found;
     }
 
-    private List<SearchMatch> searchRegex(String text, Document document) {
+    private List<SearchMatch> searchRegex(String text, Document document, int scopeStart, int scopeEnd) {
         List<SearchMatch> found = new ArrayList<>();
-        try {
-            int flags = caseSensitive ? 0 : Pattern.CASE_INSENSITIVE;
-            String patternStr = wholeWord ? "\\b" + query + "\\b" : query;
-            Pattern pattern = Pattern.compile(patternStr, flags);
-            Matcher matcher = pattern.matcher(text);
-            while (matcher.find()) {
-                int start = matcher.start();
-                int end = matcher.end();
-                if (start == end) {
-                    // Skip zero-length matches to avoid infinite loop
-                    continue;
-                }
-                int startLine = document.getLineForOffset(start);
-                int endLine = document.getLineForOffset(Math.max(start, end - 1));
-                if (startLine != endLine) {
-                    continue;
-                }
-                int lineStart = document.getLineStartOffset(startLine);
-                int startCol = start - lineStart;
-                int endCol = end - lineStart;
-                found.add(new SearchMatch(start, end, startLine, startCol, endCol));
+        Pattern pattern = compilePattern();
+        if (pattern == null) {
+            return found;
+        }
+        Matcher matcher = pattern.matcher(text);
+        matcher.region(scopeStart, scopeEnd);
+        while (matcher.find()) {
+            int start = matcher.start();
+            int end = matcher.end();
+            if (start == end) {
+                // Skip zero-length matches to avoid infinite loop
+                continue;
             }
-        } catch (PatternSyntaxException e) {
-            // Invalid regex: return empty
+            int startLine = document.getLineForOffset(start);
+            int endLine = document.getLineForOffset(Math.max(start, end - 1));
+            if (startLine != endLine) {
+                continue;
+            }
+            int lineStart = document.getLineStartOffset(startLine);
+            int startCol = start - lineStart;
+            int endCol = end - lineStart;
+            found.add(new SearchMatch(start, end, startLine, startCol, endCol));
         }
         return found;
+    }
+
+    private int[] resolveSearchRange(int textLength) {
+        if (!searchInSelection) {
+            return new int[]{0, textLength};
+        }
+        if (selectionStartOffset < 0 || selectionEndOffset <= selectionStartOffset || selectionEndOffset > textLength) {
+            return null;
+        }
+        return new int[]{selectionStartOffset, selectionEndOffset};
+    }
+
+    private String applyPreserveCaseIfNeeded(String replacementValue, String matchedText) {
+        if (!preserveCase || replacementValue.isEmpty() || matchedText.isEmpty()) {
+            return replacementValue;
+        }
+        if (isAllLowerCase(matchedText)) {
+            return replacementValue.toLowerCase(Locale.ROOT);
+        }
+        if (isAllUpperCase(matchedText)) {
+            return replacementValue.toUpperCase(Locale.ROOT);
+        }
+        if (isInitialCapital(matchedText)) {
+            String lower = replacementValue.toLowerCase(Locale.ROOT);
+            return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+        }
+        return replacementValue;
+    }
+
+    private static boolean isAllLowerCase(String text) {
+        boolean hasLetters = false;
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (Character.isLetter(ch)) {
+                hasLetters = true;
+                if (!Character.isLowerCase(ch)) {
+                    return false;
+                }
+            }
+        }
+        return hasLetters;
+    }
+
+    private static boolean isAllUpperCase(String text) {
+        boolean hasLetters = false;
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (Character.isLetter(ch)) {
+                hasLetters = true;
+                if (!Character.isUpperCase(ch)) {
+                    return false;
+                }
+            }
+        }
+        return hasLetters;
+    }
+
+    private static boolean isInitialCapital(String text) {
+        int firstLetter = -1;
+        for (int i = 0; i < text.length(); i++) {
+            if (Character.isLetter(text.charAt(i))) {
+                firstLetter = i;
+                break;
+            }
+        }
+        if (firstLetter < 0 || !Character.isUpperCase(text.charAt(firstLetter))) {
+            return false;
+        }
+        for (int i = firstLetter + 1; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (Character.isLetter(ch) && !Character.isLowerCase(ch)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isWordBoundary(String text, int start, int end) {

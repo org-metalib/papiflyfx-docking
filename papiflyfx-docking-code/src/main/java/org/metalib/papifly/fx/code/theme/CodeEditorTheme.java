@@ -51,7 +51,16 @@ public record CodeEditorTheme(
     Paint searchOverlayControlBackground,
     Paint searchOverlayControlBorder,
     Paint searchOverlayPrimaryText,
-    Paint searchOverlaySecondaryText
+    Paint searchOverlaySecondaryText,
+    Paint searchOverlayPanelBorder,
+    Paint searchOverlayControlHoverBackground,
+    Paint searchOverlayControlActiveBackground,
+    Paint searchOverlayControlFocusedBorder,
+    Paint searchOverlayControlDisabledText,
+    Paint searchOverlayNoResultsBorder,
+    Paint searchOverlayShadowColor,
+    Paint searchOverlayIntegratedToggleActive,
+    Paint searchOverlayErrorBackground
 ) {
     /**
      * Default dark palette matching the previously hardcoded values.
@@ -87,7 +96,16 @@ public record CodeEditorTheme(
             Color.web("#3c3c3c"),   // searchOverlayControlBackground
             Color.web("#555555"),   // searchOverlayControlBorder
             Color.web("#d4d4d4"),   // searchOverlayPrimaryText
-            Color.web("#858585")    // searchOverlaySecondaryText
+            Color.web("#858585"),   // searchOverlaySecondaryText
+            Color.web("#3f3f46"),   // searchOverlayPanelBorder
+            Color.web("#4a4a4a"),   // searchOverlayControlHoverBackground
+            Color.web("#164f7a"),   // searchOverlayControlActiveBackground
+            Color.web("#007acc"),   // searchOverlayControlFocusedBorder
+            Color.web("#7a7a7a"),   // searchOverlayControlDisabledText
+            Color.web("#d16969"),   // searchOverlayNoResultsBorder
+            Color.rgb(0, 0, 0, 0.25), // searchOverlayShadowColor
+            Color.web("#007acc"),   // searchOverlayIntegratedToggleActive
+            Color.rgb(209, 105, 105, 0.16) // searchOverlayErrorBackground
         );
     }
 
@@ -125,7 +143,16 @@ public record CodeEditorTheme(
             Color.web("#ffffff"),   // searchOverlayControlBackground
             Color.web("#c8c8c8"),   // searchOverlayControlBorder
             Color.web("#1e1e1e"),   // searchOverlayPrimaryText
-            Color.web("#999999")    // searchOverlaySecondaryText
+            Color.web("#999999"),   // searchOverlaySecondaryText
+            Color.web("#d0d0d0"),   // searchOverlayPanelBorder
+            Color.web("#eaeaea"),   // searchOverlayControlHoverBackground
+            Color.web("#cde8ff"),   // searchOverlayControlActiveBackground
+            Color.web("#007acc"),   // searchOverlayControlFocusedBorder
+            Color.web("#b3b3b3"),   // searchOverlayControlDisabledText
+            Color.web("#bf4f4f"),   // searchOverlayNoResultsBorder
+            Color.rgb(0, 0, 0, 0.18), // searchOverlayShadowColor
+            Color.web("#007acc"),   // searchOverlayIntegratedToggleActive
+            Color.rgb(191, 79, 79, 0.12) // searchOverlayErrorBackground
         );
     }
 }

@@ -142,6 +142,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.searchModel = new SearchModel();
         this.searchController = new SearchController(searchModel);
         this.searchController.setDocument(document);
+        this.searchController.setSelectionRangeSupplier(this::currentSelectionRange);
         this.searchController.setOnNavigate(this::navigateToSearchMatch);
         this.searchController.setOnClose(this::onSearchClosed);
         this.searchController.setOnSearchChanged(this::onSearchResultsChanged);
@@ -1374,6 +1375,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
             return;
         }
         int caretOffset = selectionModel.getCaretOffset(document);
+        searchController.refreshSelectionScope();
         searchModel.search(document);
         searchModel.selectNearestMatch(caretOffset);
         onSearchResultsChanged();
@@ -1387,6 +1389,16 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     private void onSearchResultsChanged() {
         viewport.setSearchMatches(searchModel.getMatches(), searchModel.getCurrentMatchIndex());
+    }
+
+    private int[] currentSelectionRange() {
+        if (!selectionModel.hasSelection()) {
+            return null;
+        }
+        return new int[]{
+            selectionModel.getSelectionStartOffset(document),
+            selectionModel.getSelectionEndOffset(document)
+        };
     }
 
     // --- Helpers ---
@@ -1688,6 +1700,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         searchController.setOnNavigate(null);
         searchController.setOnClose(null);
         searchController.setOnSearchChanged(null);
+        searchController.setSelectionRangeSupplier(null);
         searchController.setDocument(null);
         searchController.close();
         searchRefreshDebounce.stop();

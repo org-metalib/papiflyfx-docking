@@ -113,6 +113,21 @@ class CodeEditorThemeIntegrationTest {
         assertEquals(expected, editor.getSearchController().getTheme());
     }
 
+    @Test
+    void searchOverlayStyleVariablesUpdateAfterThemeSwitch() {
+        runOnFx(() -> editor.bindThemeProperty(themeProperty));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        String darkStyle = editor.getSearchController().getStyle();
+
+        runOnFx(() -> themeProperty.set(Theme.light()));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        String lightStyle = editor.getSearchController().getStyle();
+        assertNotEquals(darkStyle, lightStyle);
+        assertTrue(lightStyle.contains("-pf-search-bg"));
+    }
+
     private void runOnFx(Runnable action) {
         if (javafx.application.Platform.isFxApplicationThread()) {
             action.run();

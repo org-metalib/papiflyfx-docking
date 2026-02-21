@@ -325,4 +325,69 @@ class SearchModelTest {
 
         assertEquals(0, count);
     }
+
+    @Test
+    void replaceCurrentPreserveCaseAllLower() {
+        Document doc = new Document("hello");
+        SearchModel model = new SearchModel();
+        model.setQuery("hello");
+        model.setReplacement("World");
+        model.setPreserveCase(true);
+        model.search(doc);
+
+        assertTrue(model.replaceCurrent(doc));
+        assertEquals("world", doc.getText());
+    }
+
+    @Test
+    void replaceCurrentPreserveCaseInitialCapital() {
+        Document doc = new Document("Hello");
+        SearchModel model = new SearchModel();
+        model.setQuery("Hello");
+        model.setReplacement("wORLD");
+        model.setPreserveCase(true);
+        model.search(doc);
+
+        assertTrue(model.replaceCurrent(doc));
+        assertEquals("World", doc.getText());
+    }
+
+    @Test
+    void replaceCurrentPreserveCaseAllUpper() {
+        Document doc = new Document("HELLO");
+        SearchModel model = new SearchModel();
+        model.setQuery("HELLO");
+        model.setReplacement("World");
+        model.setPreserveCase(true);
+        model.search(doc);
+
+        assertTrue(model.replaceCurrent(doc));
+        assertEquals("WORLD", doc.getText());
+    }
+
+    @Test
+    void searchInSelectionRestrictsMatches() {
+        Document doc = new Document("alpha beta alpha");
+        SearchModel model = new SearchModel();
+        model.setQuery("alpha");
+        model.setSelectionScope(6, 16);
+        model.setSearchInSelection(true);
+
+        int count = model.search(doc);
+
+        assertEquals(1, count);
+        assertEquals(11, model.getCurrentMatch().startOffset());
+    }
+
+    @Test
+    void searchInSelectionWithoutScopeReturnsNoMatches() {
+        Document doc = new Document("alpha beta alpha");
+        SearchModel model = new SearchModel();
+        model.setQuery("alpha");
+        model.setSearchInSelection(true);
+
+        int count = model.search(doc);
+
+        assertEquals(0, count);
+    }
 }
