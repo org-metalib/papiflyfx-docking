@@ -35,6 +35,7 @@ public class MinimizeSample implements SampleScene {
     public Node build(Stage ownerStage, ObjectProperty<Theme> themeProperty) {
         DockManager dm = new DockManager();
         dm.themeProperty().bind(themeProperty);
+        dm.setOwnerStage(ownerStage);
 
         DockTabGroup mainGroup = dm.createTabGroup();
         mainGroup.addLeaf(dm.createLeaf("Main", centeredLabel("Main Panel — always visible")));

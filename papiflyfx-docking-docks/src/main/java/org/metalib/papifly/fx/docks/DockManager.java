@@ -180,7 +180,7 @@ public class DockManager {
 
     /**
      * Sets the owner stage for floating windows.
-     * Must be called before using floating functionality.
+     * Recommended before using floating functionality.
      */
     public void setOwnerStage(Stage stage) {
         this.ownerStage = stage;
@@ -189,6 +189,35 @@ public class DockManager {
         // Setup callbacks for floating window manager
         floatingWindowManager.setOnDockBack(this::dockLeaf);
         floatingWindowManager.setOnClose(this::closeLeaf);
+    }
+
+    private boolean ensureFloatingWindowManager(String operation) {
+        if (floatingWindowManager != null) {
+            return true;
+        }
+        Stage stage = resolveOwnerStage();
+        if (stage == null) {
+            LOG.warning(() -> "Cannot " + operation
+                + ": owner stage not set and no Stage is attached to the DockManager root. "
+                + "Call setOwnerStage(stage) first.");
+            return false;
+        }
+        setOwnerStage(stage);
+        return true;
+    }
+
+    private Stage resolveOwnerStage() {
+        if (ownerStage != null) {
+            return ownerStage;
+        }
+        if (rootPane.getScene() == null) {
+            return null;
+        }
+        if (rootPane.getScene().getWindow() instanceof Stage stage) {
+            ownerStage = stage;
+            return stage;
+        }
+        return null;
     }
 
     /**
@@ -656,6 +685,10 @@ public class DockManager {
         }
 
         // Restore floating leaves
+        boolean canRestoreFloating = true;
+        if (session.floating() != null && !session.floating().isEmpty()) {
+            canRestoreFloating = ensureFloatingWindowManager("restore floating leaves");
+        }
         if (session.floating() != null) {
             for (FloatingLeafData floatingData : session.floating()) {
                 if (floatingData.leaf() != null) {
@@ -678,8 +711,16 @@ public class DockManager {
                         hint = new RestoreHint(hd.parentId(), zone, hd.tabIndex(), hd.splitPosition(), hd.siblingId());
                     }
 
-                    // Restore floating state
-                    restoreFloating(leaf, hint, bounds);
+                    // Restore floating state, or dock as fallback when floating is unavailable
+                    if (canRestoreFloating && restoreFloating(leaf, hint, bounds)) {
+                        continue;
+                    }
+                    if (hint != null && tryRestoreWithHint(leaf, hint)) {
+                        updateLeafState(leaf, DockState.DOCKED);
+                        continue;
+                    }
+                    insertLeafIntoDock(leaf);
+                    updateLeafState(leaf, DockState.DOCKED);
                 }
             }
         }
@@ -774,9 +815,9 @@ public class DockManager {
      * @param restoreHint the restore hint for docking back
      * @param bounds      the window bounds, or null for default
      */
-    private void restoreFloating(DockLeaf leaf, RestoreHint restoreHint, Rectangle2D bounds) {
-        if (floatingWindowManager == null) {
-            throw new IllegalStateException("Owner stage not set. Call setOwnerStage() first.");
+    private boolean restoreFloating(DockLeaf leaf, RestoreHint restoreHint, Rectangle2D bounds) {
+        if (!ensureFloatingWindowManager("restore floating leaf")) {
+            return false;
         }
 
         String leafId = leaf.getMetadata().id();
@@ -799,6 +840,7 @@ public class DockManager {
 
         // Show window
         window.show();
+        return true;
     }
 
     /**
@@ -847,8 +889,8 @@ public class DockManager {
      * Floats a leaf from the dock tree into a floating window.
      */
     public void floatLeaf(DockLeaf leaf) {
-        if (floatingWindowManager == null) {
-            throw new IllegalStateException("Owner stage not set. Call setOwnerStage() first.");
+        if (!ensureFloatingWindowManager("float leaf")) {
+            return;
         }
 
         if (maximizedLeaf == leaf) {
@@ -880,8 +922,8 @@ public class DockManager {
      * Floats a leaf at a specific position.
      */
     public void floatLeaf(DockLeaf leaf, double x, double y) {
-        if (floatingWindowManager == null) {
-            throw new IllegalStateException("Owner stage not set. Call setOwnerStage() first.");
+        if (!ensureFloatingWindowManager("float leaf")) {
+            return;
         }
 
         if (maximizedLeaf == leaf) {

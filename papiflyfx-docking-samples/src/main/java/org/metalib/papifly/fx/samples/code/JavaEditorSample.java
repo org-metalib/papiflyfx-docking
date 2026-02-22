@@ -63,6 +63,7 @@ public class JavaEditorSample implements SampleScene {
     public Node build(Stage ownerStage, ObjectProperty<Theme> themeProperty) {
         DockManager dm = new DockManager();
         dm.themeProperty().bind(themeProperty);
+        dm.setOwnerStage(ownerStage);
 
         ContentStateRegistry registry = new ContentStateRegistry();
         registry.register(new CodeEditorStateAdapter());

@@ -39,6 +39,7 @@ public class PersistSample implements SampleScene {
     public Node build(Stage ownerStage, ObjectProperty<Theme> themeProperty) {
         DockManager dm = new DockManager();
         dm.themeProperty().bind(themeProperty);
+        dm.setOwnerStage(ownerStage);
 
         // IDE-style layout: sidebar | editor + console
         DockTabGroup sidebarGroup = dm.createTabGroup();

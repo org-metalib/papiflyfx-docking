@@ -30,6 +30,7 @@ public class NestedSplitSample implements SampleScene {
     public Node build(Stage ownerStage, ObjectProperty<Theme> themeProperty) {
         DockManager dm = new DockManager();
         dm.themeProperty().bind(themeProperty);
+        dm.setOwnerStage(ownerStage);
 
         DockTabGroup sidebarGroup = dm.createTabGroup();
         sidebarGroup.addLeaf(dm.createLeaf("Sidebar", centeredLabel("Sidebar")));

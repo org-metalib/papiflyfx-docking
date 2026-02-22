@@ -30,6 +30,7 @@ public class TabGroupSample implements SampleScene {
     public Node build(Stage ownerStage, ObjectProperty<Theme> themeProperty) {
         DockManager dm = new DockManager();
         dm.themeProperty().bind(themeProperty);
+        dm.setOwnerStage(ownerStage);
 
         DockTabGroup leftGroup = dm.createTabGroup();
         leftGroup.addLeaf(dm.createLeaf("Tab 1", centeredLabel("Tab 1 Content")));

@@ -29,6 +29,7 @@ public class BasicSplitSample implements SampleScene {
     public Node build(Stage ownerStage, ObjectProperty<Theme> themeProperty) {
         DockManager dm = new DockManager();
         dm.themeProperty().bind(themeProperty);
+        dm.setOwnerStage(ownerStage);
 
         var leafA = dm.createLeaf("Panel A", centeredLabel("Panel A Content"));
         var leafB = dm.createLeaf("Panel B", centeredLabel("Panel B Content"));
