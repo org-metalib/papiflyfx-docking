@@ -380,14 +380,7 @@ public class SearchController extends VBox {
         if (document != null) {
             searchModel.search(document);
         }
-        updateMatchLabel();
-        if (onSearchChanged != null) {
-            onSearchChanged.run();
-        }
-        SearchMatch current = searchModel.getCurrentMatch();
-        if (current != null && onNavigate != null) {
-            onNavigate.accept(current);
-        }
+        publishSearchState(true);
     }
 
     private void navigateNext() {
@@ -411,16 +404,25 @@ public class SearchController extends VBox {
     }
 
     private void replaceCurrent() {
-        if (document != null && searchModel.replaceCurrent(document)) {
-            executeSearch();
+        if (document == null) {
+            return;
         }
+        if (searchModel.replaceCurrent(document)) {
+            publishSearchState(true);
+            return;
+        }
+        updateMatchLabel();
     }
 
     private void replaceAll() {
-        if (document != null) {
-            searchModel.replaceAll(document);
-            executeSearch();
+        if (document == null) {
+            return;
         }
+        if (searchModel.replaceAll(document) > 0) {
+            publishSearchState(true);
+            return;
+        }
+        updateMatchLabel();
     }
 
     private void updateMatchLabel() {
@@ -436,6 +438,20 @@ public class SearchController extends VBox {
         skipButton.setDisable(count == 0);
         replaceButton.setDisable(count == 0);
         replaceAllButton.setDisable(count == 0);
+    }
+
+    private void publishSearchState(boolean navigateCurrent) {
+        updateMatchLabel();
+        if (onSearchChanged != null) {
+            onSearchChanged.run();
+        }
+        if (!navigateCurrent || onNavigate == null) {
+            return;
+        }
+        SearchMatch current = searchModel.getCurrentMatch();
+        if (current != null) {
+            onNavigate.accept(current);
+        }
     }
 
     private TextField createTextField(String promptText) {

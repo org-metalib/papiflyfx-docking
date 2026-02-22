@@ -35,7 +35,6 @@ import org.metalib.papifly.fx.code.lexer.TokenMap;
 import org.metalib.papifly.fx.code.render.SelectionModel;
 import org.metalib.papifly.fx.code.render.Viewport;
 import org.metalib.papifly.fx.code.search.SearchController;
-import org.metalib.papifly.fx.code.search.SearchMatch;
 import org.metalib.papifly.fx.code.search.SearchModel;
 import org.metalib.papifly.fx.code.state.EditorStateData;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
@@ -43,7 +42,9 @@ import org.metalib.papifly.fx.code.theme.CodeEditorThemeMapper;
 import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
@@ -60,6 +61,11 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private static final String DEFAULT_LANGUAGE = "plain-text";
     private static final double SCROLL_LINE_FACTOR = 3.0;
     private static final int MAX_RESTORED_SECONDARY_CARETS = 2_048;
+
+    private enum WordDirection {
+        LEFT,
+        RIGHT
+    }
 
     private final StringProperty filePath = new SimpleStringProperty(this, "filePath", "");
     private final IntegerProperty cursorLine = new SimpleIntegerProperty(this, "cursorLine", 0);
@@ -84,6 +90,10 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final EditorInputController inputController;
     private final EditorEditController editController;
     private final EditorPointerController pointerController;
+    private final EditorCommandRegistry commandRegistry;
+    private final EditorLifecycleService lifecycleService;
+    private final OccurrenceSelectionService occurrenceSelectionService;
+    private final EditorSearchCoordinator searchCoordinator;
 
     private final ChangeListener<Number> caretLineListener;
     private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) ->
@@ -142,6 +152,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
             MAX_RESTORED_SECONDARY_CARETS,
             this::clearPreferredVerticalColumn
         );
+        this.commandRegistry = new EditorCommandRegistry();
+        this.lifecycleService = new EditorLifecycleService();
 
         // Gutter
         this.markerModel = new MarkerModel();
@@ -150,9 +162,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.gutterView.setMarkerModel(markerModel);
         this.gutterDigits = computeGutterDigits(this.document.getLineCount());
         this.gutterWidthListener = event -> refreshGutterWidthIfNeeded();
-        this.document.addChangeListener(gutterWidthListener);
         this.markerModelChangeListener = gutterView::markDirty;
-        this.markerModel.addChangeListener(markerModelChangeListener);
         this.caretLineListener = (obs, oldValue, newValue) -> {
             cursorLine.set(newValue.intValue());
             gutterView.setActiveLineIndex(newValue.intValue());
@@ -161,24 +171,28 @@ public class CodeEditor extends StackPane implements DisposableContent {
         // Search
         this.searchModel = searchModel == null ? new SearchModel() : searchModel;
         this.searchController = searchController == null ? new SearchController(this.searchModel) : searchController;
-        this.searchController.setDocument(this.document);
-        this.searchController.setSelectionRangeSupplier(this::currentSelectionRange);
-        this.searchController.setOnNavigate(this::navigateToSearchMatch);
-        this.searchController.setOnClose(this::onSearchClosed);
-        this.searchController.setOnSearchChanged(this::onSearchResultsChanged);
         this.goToLineController = goToLineController == null ? new GoToLineController() : goToLineController;
         this.goToLineController.setOnGoToLine(this::goToLine);
         this.goToLineController.setOnClose(this::onGoToLineClosed);
+        this.searchCoordinator = new EditorSearchCoordinator(
+            this.document,
+            this.selectionModel,
+            this.searchModel,
+            this.searchController,
+            this.viewport,
+            (line, column) -> moveCaret(line, column, false),
+            this::requestFocus
+        );
+        this.searchCoordinator.bind();
 
         // Debounced search refresh on document edits
         this.searchRefreshDebounce = new PauseTransition(Duration.millis(150));
-        this.searchRefreshDebounce.setOnFinished(evt -> refreshSearchIfOpen());
+        this.searchRefreshDebounce.setOnFinished(evt -> searchCoordinator.refreshIfOpen());
         this.searchRefreshListener = event -> {
             if (this.searchController.isOpen()) {
                 searchRefreshDebounce.playFromStart();
             }
         };
-        this.document.addChangeListener(searchRefreshListener);
 
         // Layout: gutter left, viewport center, search overlay on top
         BorderPane editorArea = new BorderPane();
@@ -199,34 +213,47 @@ public class CodeEditor extends StackPane implements DisposableContent {
         StackPane.setMargin(this.goToLineController, new Insets(6, 16, 0, 0));
         getChildren().add(this.goToLineController);
 
-        // Bind cursor properties to selection model
-        selectionModel.caretLineProperty().addListener(caretLineListener);
-        selectionModel.caretColumnProperty().addListener(caretColumnListener);
-
-        // Bind vertical scroll offset
-        verticalScrollOffset.addListener(scrollOffsetListener);
-
         BiFunction<Document, Consumer<TokenMap>, IncrementalLexerPipeline> resolvedLexerPipelineFactory =
             lexerPipelineFactory == null ? IncrementalLexerPipeline::new : lexerPipelineFactory;
         this.lexerPipeline = resolvedLexerPipelineFactory.apply(this.document, viewport::setTokenMap);
         this.languageListener = (obs, oldValue, newValue) -> lexerPipeline.setLanguageId(newValue);
         this.focusListener = (obs, oldFocused, focused) -> viewport.setCaretBlinkActive(focused);
-        languageId.addListener(languageListener);
         lexerPipeline.setLanguageId(languageId.get());
+        this.occurrenceSelectionService = new OccurrenceSelectionService(
+            this.document,
+            this.selectionModel,
+            this.multiCaretModel,
+            viewport::markDirty
+        );
         this.editController = createEditController();
         this.pointerController = createPointerController();
         this.commandExecutor = createCommandExecutor();
         this.inputController = createInputController();
-
-        // Input handlers
-        setOnKeyPressed(this::handleKeyPressed);
-        setOnKeyTyped(this::handleKeyTyped);
-        setOnMousePressed(this::handleMousePressed);
-        setOnMouseDragged(this::handleMouseDragged);
-        setOnMouseReleased(this::handleMouseReleased);
-        setOnScroll(this::handleScroll);
-        focusedProperty().addListener(focusListener);
-        viewport.setCaretBlinkActive(isFocused());
+        lifecycleService.bindListeners(
+            selectionModel,
+            caretLineListener,
+            caretColumnListener,
+            this.document,
+            gutterWidthListener,
+            searchRefreshListener,
+            markerModel,
+            markerModelChangeListener,
+            verticalScrollOffset,
+            scrollOffsetListener,
+            languageId,
+            languageListener
+        );
+        lifecycleService.bindInputHandlers(
+            this,
+            this::handleKeyPressed,
+            this::handleKeyTyped,
+            this::handleMousePressed,
+            this::handleMouseDragged,
+            this::handleMouseReleased,
+            this::handleScroll,
+            focusListener,
+            () -> viewport.setCaretBlinkActive(isFocused())
+        );
     }
 
     /**
@@ -423,75 +450,81 @@ public class CodeEditor extends StackPane implements DisposableContent {
             this::isVerticalCaretCommand,
             () -> disposed
         );
+        commandRegistry.register(executor, buildCommandHandlers());
+        return executor;
+    }
+
+    private Map<EditorCommand, Runnable> buildCommandHandlers() {
+        Map<EditorCommand, Runnable> handlers = new EnumMap<>(EditorCommand.class);
 
         // Navigation
-        executor.register(EditorCommand.MOVE_LEFT, () -> handleLeft(false));
-        executor.register(EditorCommand.MOVE_RIGHT, () -> handleRight(false));
-        executor.register(EditorCommand.MOVE_UP, () -> handleUp(false));
-        executor.register(EditorCommand.MOVE_DOWN, () -> handleDown(false));
-        executor.register(EditorCommand.MOVE_PAGE_UP, () -> handlePageUp(false));
-        executor.register(EditorCommand.MOVE_PAGE_DOWN, () -> handlePageDown(false));
-        executor.register(EditorCommand.SELECT_LEFT, () -> handleLeft(true));
-        executor.register(EditorCommand.SELECT_RIGHT, () -> handleRight(true));
-        executor.register(EditorCommand.SELECT_UP, () -> handleUp(true));
-        executor.register(EditorCommand.SELECT_DOWN, () -> handleDown(true));
-        executor.register(EditorCommand.SELECT_PAGE_UP, () -> handlePageUp(true));
-        executor.register(EditorCommand.SELECT_PAGE_DOWN, () -> handlePageDown(true));
-        executor.register(EditorCommand.SCROLL_PAGE_UP, this::handleScrollPageUp);
-        executor.register(EditorCommand.SCROLL_PAGE_DOWN, this::handleScrollPageDown);
-        executor.register(EditorCommand.LINE_START, () -> handleHome(false));
-        executor.register(EditorCommand.LINE_END, () -> handleEnd(false));
-        executor.register(EditorCommand.SELECT_TO_LINE_START, () -> handleHome(true));
-        executor.register(EditorCommand.SELECT_TO_LINE_END, () -> handleEnd(true));
+        handlers.put(EditorCommand.MOVE_LEFT, () -> handleLeft(false));
+        handlers.put(EditorCommand.MOVE_RIGHT, () -> handleRight(false));
+        handlers.put(EditorCommand.MOVE_UP, () -> handleUp(false));
+        handlers.put(EditorCommand.MOVE_DOWN, () -> handleDown(false));
+        handlers.put(EditorCommand.MOVE_PAGE_UP, () -> handlePageUp(false));
+        handlers.put(EditorCommand.MOVE_PAGE_DOWN, () -> handlePageDown(false));
+        handlers.put(EditorCommand.SELECT_LEFT, () -> handleLeft(true));
+        handlers.put(EditorCommand.SELECT_RIGHT, () -> handleRight(true));
+        handlers.put(EditorCommand.SELECT_UP, () -> handleUp(true));
+        handlers.put(EditorCommand.SELECT_DOWN, () -> handleDown(true));
+        handlers.put(EditorCommand.SELECT_PAGE_UP, () -> handlePageUp(true));
+        handlers.put(EditorCommand.SELECT_PAGE_DOWN, () -> handlePageDown(true));
+        handlers.put(EditorCommand.SCROLL_PAGE_UP, this::handleScrollPageUp);
+        handlers.put(EditorCommand.SCROLL_PAGE_DOWN, this::handleScrollPageDown);
+        handlers.put(EditorCommand.LINE_START, () -> handleHome(false));
+        handlers.put(EditorCommand.LINE_END, () -> handleEnd(false));
+        handlers.put(EditorCommand.SELECT_TO_LINE_START, () -> handleHome(true));
+        handlers.put(EditorCommand.SELECT_TO_LINE_END, () -> handleEnd(true));
 
         // Editing
-        executor.register(EditorCommand.BACKSPACE, this::handleBackspace);
-        executor.register(EditorCommand.DELETE, this::handleDelete);
-        executor.register(EditorCommand.ENTER, this::handleEnter);
+        handlers.put(EditorCommand.BACKSPACE, this::handleBackspace);
+        handlers.put(EditorCommand.DELETE, this::handleDelete);
+        handlers.put(EditorCommand.ENTER, this::handleEnter);
 
         // Clipboard and undo
-        executor.register(EditorCommand.SELECT_ALL, this::handleSelectAll);
-        executor.register(EditorCommand.UNDO, this::handleUndo);
-        executor.register(EditorCommand.REDO, this::handleRedo);
-        executor.register(EditorCommand.COPY, this::handleCopy);
-        executor.register(EditorCommand.CUT, this::handleCut);
-        executor.register(EditorCommand.PASTE, this::handlePaste);
+        handlers.put(EditorCommand.SELECT_ALL, this::handleSelectAll);
+        handlers.put(EditorCommand.UNDO, this::handleUndo);
+        handlers.put(EditorCommand.REDO, this::handleRedo);
+        handlers.put(EditorCommand.COPY, this::handleCopy);
+        handlers.put(EditorCommand.CUT, this::handleCut);
+        handlers.put(EditorCommand.PASTE, this::handlePaste);
 
         // Search
-        executor.register(EditorCommand.OPEN_SEARCH, this::openSearch);
-        executor.register(EditorCommand.OPEN_REPLACE, this::openReplace);
-        executor.register(EditorCommand.GO_TO_LINE, this::goToLine);
+        handlers.put(EditorCommand.OPEN_SEARCH, this::openSearch);
+        handlers.put(EditorCommand.OPEN_REPLACE, this::openReplace);
+        handlers.put(EditorCommand.GO_TO_LINE, this::goToLine);
 
         // Word navigation
-        executor.register(EditorCommand.MOVE_WORD_LEFT, this::handleMoveWordLeft);
-        executor.register(EditorCommand.MOVE_WORD_RIGHT, this::handleMoveWordRight);
-        executor.register(EditorCommand.SELECT_WORD_LEFT, this::handleSelectWordLeft);
-        executor.register(EditorCommand.SELECT_WORD_RIGHT, this::handleSelectWordRight);
-        executor.register(EditorCommand.DELETE_WORD_LEFT, this::handleDeleteWordLeft);
-        executor.register(EditorCommand.DELETE_WORD_RIGHT, this::handleDeleteWordRight);
+        handlers.put(EditorCommand.MOVE_WORD_LEFT, this::handleMoveWordLeft);
+        handlers.put(EditorCommand.MOVE_WORD_RIGHT, this::handleMoveWordRight);
+        handlers.put(EditorCommand.SELECT_WORD_LEFT, this::handleSelectWordLeft);
+        handlers.put(EditorCommand.SELECT_WORD_RIGHT, this::handleSelectWordRight);
+        handlers.put(EditorCommand.DELETE_WORD_LEFT, this::handleDeleteWordLeft);
+        handlers.put(EditorCommand.DELETE_WORD_RIGHT, this::handleDeleteWordRight);
 
         // Document boundaries
-        executor.register(EditorCommand.DOCUMENT_START, () -> handleDocumentStart(false));
-        executor.register(EditorCommand.DOCUMENT_END, () -> handleDocumentEnd(false));
-        executor.register(EditorCommand.SELECT_TO_DOCUMENT_START, () -> handleDocumentStart(true));
-        executor.register(EditorCommand.SELECT_TO_DOCUMENT_END, () -> handleDocumentEnd(true));
+        handlers.put(EditorCommand.DOCUMENT_START, () -> handleDocumentStart(false));
+        handlers.put(EditorCommand.DOCUMENT_END, () -> handleDocumentEnd(false));
+        handlers.put(EditorCommand.SELECT_TO_DOCUMENT_START, () -> handleDocumentStart(true));
+        handlers.put(EditorCommand.SELECT_TO_DOCUMENT_END, () -> handleDocumentEnd(true));
 
         // Line operations
-        executor.register(EditorCommand.DELETE_LINE, this::handleDeleteLine);
-        executor.register(EditorCommand.MOVE_LINE_UP, this::handleMoveLineUp);
-        executor.register(EditorCommand.MOVE_LINE_DOWN, this::handleMoveLineDown);
-        executor.register(EditorCommand.DUPLICATE_LINE_UP, this::handleDuplicateLineUp);
-        executor.register(EditorCommand.DUPLICATE_LINE_DOWN, this::handleDuplicateLineDown);
-        executor.register(EditorCommand.JOIN_LINES, this::handleJoinLines);
+        handlers.put(EditorCommand.DELETE_LINE, this::handleDeleteLine);
+        handlers.put(EditorCommand.MOVE_LINE_UP, this::handleMoveLineUp);
+        handlers.put(EditorCommand.MOVE_LINE_DOWN, this::handleMoveLineDown);
+        handlers.put(EditorCommand.DUPLICATE_LINE_UP, this::handleDuplicateLineUp);
+        handlers.put(EditorCommand.DUPLICATE_LINE_DOWN, this::handleDuplicateLineDown);
+        handlers.put(EditorCommand.JOIN_LINES, this::handleJoinLines);
 
         // Multi-caret
-        executor.register(EditorCommand.SELECT_NEXT_OCCURRENCE, this::handleSelectNextOccurrence);
-        executor.register(EditorCommand.SELECT_ALL_OCCURRENCES, this::handleSelectAllOccurrences);
-        executor.register(EditorCommand.ADD_CURSOR_UP, this::handleAddCursorUp);
-        executor.register(EditorCommand.ADD_CURSOR_DOWN, this::handleAddCursorDown);
-        executor.register(EditorCommand.UNDO_LAST_OCCURRENCE, this::handleUndoLastOccurrence);
+        handlers.put(EditorCommand.SELECT_NEXT_OCCURRENCE, this::handleSelectNextOccurrence);
+        handlers.put(EditorCommand.SELECT_ALL_OCCURRENCES, this::handleSelectAllOccurrences);
+        handlers.put(EditorCommand.ADD_CURSOR_UP, this::handleAddCursorUp);
+        handlers.put(EditorCommand.ADD_CURSOR_DOWN, this::handleAddCursorDown);
+        handlers.put(EditorCommand.UNDO_LAST_OCCURRENCE, this::handleUndoLastOccurrence);
 
-        return executor;
+        return handlers;
     }
 
     private EditorInputController createInputController() {
@@ -674,90 +707,78 @@ public class CodeEditor extends StackPane implements DisposableContent {
     // --- Phase 1: word / document navigation ---
 
     private void handleMoveWordLeft() {
-        int line = selectionModel.getCaretLine();
-        int col = selectionModel.getCaretColumn();
-        int target = WordBoundary.findWordLeft(document.getLineText(line), col);
-        if (target == col && line > 0) {
-            // At line start — jump to end of previous line
-            line--;
-            target = document.getLineText(line).length();
-        }
-        moveCaret(line, target, false);
+        moveWord(WordDirection.LEFT, false);
     }
 
     private void handleMoveWordRight() {
-        int line = selectionModel.getCaretLine();
-        int col = selectionModel.getCaretColumn();
-        String lineText = document.getLineText(line);
-        int target = WordBoundary.findWordRight(lineText, col);
-        if (target == col && line < document.getLineCount() - 1) {
-            // At line end — jump to start of next line
-            line++;
-            target = 0;
-        }
-        moveCaret(line, target, false);
+        moveWord(WordDirection.RIGHT, false);
     }
 
     private void handleSelectWordLeft() {
-        int line = selectionModel.getCaretLine();
-        int col = selectionModel.getCaretColumn();
-        int target = WordBoundary.findWordLeft(document.getLineText(line), col);
-        if (target == col && line > 0) {
-            line--;
-            target = document.getLineText(line).length();
-        }
-        moveCaret(line, target, true);
+        moveWord(WordDirection.LEFT, true);
     }
 
     private void handleSelectWordRight() {
-        int line = selectionModel.getCaretLine();
-        int col = selectionModel.getCaretColumn();
-        String lineText = document.getLineText(line);
-        int target = WordBoundary.findWordRight(lineText, col);
-        if (target == col && line < document.getLineCount() - 1) {
-            line++;
-            target = 0;
-        }
-        moveCaret(line, target, true);
+        moveWord(WordDirection.RIGHT, true);
     }
 
     private void handleDeleteWordLeft() {
-        if (selectionModel.hasSelection()) {
-            deleteSelectionIfAny();
-            return;
-        }
-        int line = selectionModel.getCaretLine();
-        int col = selectionModel.getCaretColumn();
-        int targetCol = WordBoundary.findWordLeft(document.getLineText(line), col);
-        if (targetCol == col && line > 0) {
-            // Delete back to end of previous line (joining lines)
-            int caretOffset = selectionModel.getCaretOffset(document);
-            document.delete(caretOffset - 1, caretOffset);
-            moveCaretToOffset(caretOffset - 1);
-            return;
-        }
-        int lineStart = document.getLineStartOffset(line);
-        document.delete(lineStart + targetCol, lineStart + col);
-        moveCaret(line, targetCol, false);
+        deleteWord(WordDirection.LEFT);
     }
 
     private void handleDeleteWordRight() {
+        deleteWord(WordDirection.RIGHT);
+    }
+
+    private void moveWord(WordDirection direction, boolean extendSelection) {
+        int line = selectionModel.getCaretLine();
+        int column = selectionModel.getCaretColumn();
+        String lineText = document.getLineText(line);
+        int target = findWordBoundary(lineText, column, direction);
+        if (target == column) {
+            if (direction == WordDirection.LEFT && line > 0) {
+                line--;
+                target = document.getLineText(line).length();
+            } else if (direction == WordDirection.RIGHT && line < document.getLineCount() - 1) {
+                line++;
+                target = 0;
+            }
+        }
+        moveCaret(line, target, extendSelection);
+    }
+
+    private void deleteWord(WordDirection direction) {
         if (selectionModel.hasSelection()) {
             deleteSelectionIfAny();
             return;
         }
         int line = selectionModel.getCaretLine();
-        int col = selectionModel.getCaretColumn();
+        int column = selectionModel.getCaretColumn();
         String lineText = document.getLineText(line);
-        int targetCol = WordBoundary.findWordRight(lineText, col);
-        if (targetCol == col && line < document.getLineCount() - 1) {
-            // Delete forward to start of next line (joining lines)
+        int targetColumn = findWordBoundary(lineText, column, direction);
+        if (targetColumn == column) {
             int caretOffset = selectionModel.getCaretOffset(document);
-            document.delete(caretOffset, caretOffset + 1);
+            if (direction == WordDirection.LEFT && line > 0) {
+                document.delete(caretOffset - 1, caretOffset);
+                moveCaretToOffset(caretOffset - 1);
+            } else if (direction == WordDirection.RIGHT && line < document.getLineCount() - 1) {
+                document.delete(caretOffset, caretOffset + 1);
+            }
             return;
         }
         int lineStart = document.getLineStartOffset(line);
-        document.delete(lineStart + col, lineStart + targetCol);
+        if (direction == WordDirection.LEFT) {
+            document.delete(lineStart + targetColumn, lineStart + column);
+            moveCaret(line, targetColumn, false);
+            return;
+        }
+        document.delete(lineStart + column, lineStart + targetColumn);
+    }
+
+    private int findWordBoundary(String lineText, int column, WordDirection direction) {
+        return direction == WordDirection.LEFT
+            ? WordBoundary.findWordLeft(lineText, column)
+            : WordBoundary.findWordRight(lineText, column);
     }
 
     private void handleDocumentStart(boolean shift) {
@@ -818,116 +839,11 @@ public class CodeEditor extends StackPane implements DisposableContent {
     // --- Phase 3: multi-caret handlers ---
 
     private void handleSelectNextOccurrence() {
-        String selectedText;
-        if (selectionModel.hasSelection()) {
-            selectedText = selectionModel.getSelectedText(document);
-        } else {
-            // Select the word under the caret
-            int line = selectionModel.getCaretLine();
-            int col = selectionModel.getCaretColumn();
-            String lineText = document.getLineText(line);
-            if (lineText.isEmpty() || col >= lineText.length() && col > 0) {
-                return;
-            }
-            int wordStart = col;
-            while (wordStart > 0 && WordBoundary.isWordChar(lineText.charAt(wordStart - 1))) {
-                wordStart--;
-            }
-            int wordEnd = col;
-            while (wordEnd < lineText.length() && WordBoundary.isWordChar(lineText.charAt(wordEnd))) {
-                wordEnd++;
-            }
-            if (wordStart == wordEnd) {
-                return;
-            }
-            // Select the word under caret as primary
-            selectionModel.moveCaret(line, wordStart);
-            selectionModel.moveCaretWithSelection(line, wordEnd);
-            viewport.markDirty();
-            return;
-        }
-
-        if (selectedText.isEmpty()) {
-            return;
-        }
-
-        // Find next occurrence after the last caret
-        String fullText = document.getText();
-        List<CaretRange> all = multiCaretModel.allCarets(document);
-        CaretRange lastCaret = all.get(all.size() - 1);
-        int searchFrom = lastCaret.getEndOffset(document);
-
-        int found = fullText.indexOf(selectedText, searchFrom);
-        if (found < 0) {
-            // Wrap around
-            found = fullText.indexOf(selectedText);
-        }
-        if (found < 0) {
-            return;
-        }
-
-        // Check we don't already have a caret at this position
-        int foundEnd = found + selectedText.length();
-        int anchorLine = document.getLineForOffset(found);
-        int anchorCol = document.getColumnForOffset(found);
-        int caretLine = document.getLineForOffset(foundEnd);
-        int caretCol = document.getColumnForOffset(foundEnd);
-        CaretRange newCaret = new CaretRange(anchorLine, anchorCol, caretLine, caretCol);
-
-        // Don't add duplicates
-        for (CaretRange existing : all) {
-            if (existing.getStartOffset(document) == found && existing.getEndOffset(document) == foundEnd) {
-                return;
-            }
-        }
-
-        multiCaretModel.addCaret(newCaret);
-        viewport.markDirty();
+        occurrenceSelectionService.selectNextOccurrence();
     }
 
     private void handleSelectAllOccurrences() {
-        String selectedText;
-        if (selectionModel.hasSelection()) {
-            selectedText = selectionModel.getSelectedText(document);
-        } else {
-            // Select word under caret first (same as first Ctrl+D)
-            handleSelectNextOccurrence();
-            if (!selectionModel.hasSelection()) {
-                return;
-            }
-            selectedText = selectionModel.getSelectedText(document);
-        }
-
-        if (selectedText.isEmpty()) {
-            return;
-        }
-
-        String fullText = document.getText();
-        int searchFrom = 0;
-        boolean first = true;
-        while (true) {
-            int found = fullText.indexOf(selectedText, searchFrom);
-            if (found < 0) {
-                break;
-            }
-            int foundEnd = found + selectedText.length();
-            int anchorLine = document.getLineForOffset(found);
-            int anchorCol = document.getColumnForOffset(found);
-            int caretLine = document.getLineForOffset(foundEnd);
-            int caretCol = document.getColumnForOffset(foundEnd);
-
-            if (first) {
-                // Make the first occurrence the primary
-                selectionModel.moveCaret(anchorLine, anchorCol);
-                selectionModel.moveCaretWithSelection(caretLine, caretCol);
-                first = false;
-            } else {
-                multiCaretModel.addCaretNoStack(
-                    new CaretRange(anchorLine, anchorCol, caretLine, caretCol));
-            }
-            searchFrom = foundEnd;
-        }
-        viewport.markDirty();
+        occurrenceSelectionService.selectAllOccurrences();
     }
 
     private void handleAddCursorUp() {
@@ -977,46 +893,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
         pointerController.handleScroll(event);
     }
 
-    // --- Search navigation ---
-
-    private void navigateToSearchMatch(SearchMatch match) {
-        moveCaret(match.line(), match.startColumn(), false);
-        onSearchResultsChanged();
-    }
-
-    private void refreshSearchIfOpen() {
-        if (!searchController.isOpen()) {
-            return;
-        }
-        int caretOffset = selectionModel.getCaretOffset(document);
-        searchController.refreshSelectionScope();
-        searchModel.search(document);
-        searchModel.selectNearestMatch(caretOffset);
-        onSearchResultsChanged();
-        searchController.refreshMatchDisplay();
-    }
-
-    private void onSearchClosed() {
-        viewport.setSearchMatches(List.of(), -1);
-        requestFocus();
-    }
-
     private void onGoToLineClosed() {
         requestFocus();
-    }
-
-    private void onSearchResultsChanged() {
-        viewport.setSearchMatches(searchModel.getMatches(), searchModel.getCurrentMatchIndex());
-    }
-
-    private int[] currentSelectionRange() {
-        if (!selectionModel.hasSelection()) {
-            return null;
-        }
-        return new int[]{
-            selectionModel.getSelectionStartOffset(document),
-            selectionModel.getSelectionEndOffset(document)
-        };
     }
 
     // --- Helpers ---
@@ -1237,32 +1115,28 @@ public class CodeEditor extends StackPane implements DisposableContent {
         disposed = true;
         pointerController.dispose();
         multiCaretModel.clearSecondaryCarets();
-        searchController.setOnNavigate(null);
-        searchController.setOnClose(null);
-        searchController.setOnSearchChanged(null);
-        searchController.setSelectionRangeSupplier(null);
-        searchController.setDocument(null);
-        searchController.close();
+        searchCoordinator.clearAndDispose();
         goToLineController.setOnGoToLine(null);
         goToLineController.setOnClose(null);
         goToLineController.close();
         searchRefreshDebounce.stop();
-        document.removeChangeListener(searchRefreshListener);
         unbindThemeProperty();
-        setOnKeyPressed(null);
-        setOnKeyTyped(null);
-        setOnMousePressed(null);
-        setOnMouseDragged(null);
-        setOnMouseReleased(null);
-        setOnScroll(null);
-        focusedProperty().removeListener(focusListener);
+        lifecycleService.unbindInputHandlers(this, focusListener);
         viewport.setCaretBlinkActive(false);
-        selectionModel.caretLineProperty().removeListener(caretLineListener);
-        selectionModel.caretColumnProperty().removeListener(caretColumnListener);
-        document.removeChangeListener(gutterWidthListener);
-        markerModel.removeChangeListener(markerModelChangeListener);
-        verticalScrollOffset.removeListener(scrollOffsetListener);
-        languageId.removeListener(languageListener);
+        lifecycleService.unbindListeners(
+            selectionModel,
+            caretLineListener,
+            caretColumnListener,
+            document,
+            gutterWidthListener,
+            searchRefreshListener,
+            markerModel,
+            markerModelChangeListener,
+            verticalScrollOffset,
+            scrollOffsetListener,
+            languageId,
+            languageListener
+        );
         lexerPipeline.dispose();
         viewport.dispose();
     }

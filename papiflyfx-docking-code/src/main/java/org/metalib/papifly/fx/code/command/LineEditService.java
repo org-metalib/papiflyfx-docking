@@ -43,7 +43,7 @@ public class LineEditService {
         }
         LineBlock previousLine = LineBlock.fromLines(document, block.startLine() - 1, block.startLine() - 1);
         String combined = ensureTrailingNewline(block.text()) + ensureTrailingNewline(previousLine.text());
-        if (block.reachesDocumentEnd() && !document.getText().endsWith("\n")) {
+        if (block.reachesDocumentEnd() && !document.endsWithNewline()) {
             combined = stripSingleTrailingNewline(combined);
         }
         document.replace(previousLine.startOffset(), block.endOffset(), combined);
@@ -59,7 +59,7 @@ public class LineEditService {
         }
         LineBlock nextLine = LineBlock.fromLines(document, block.endLine() + 1, block.endLine() + 1);
         String combined = ensureTrailingNewline(nextLine.text()) + ensureTrailingNewline(block.text());
-        if (nextLine.reachesDocumentEnd() && !document.getText().endsWith("\n")) {
+        if (nextLine.reachesDocumentEnd() && !document.endsWithNewline()) {
             combined = stripSingleTrailingNewline(combined);
         }
         document.replace(block.startOffset(), nextLine.endOffset(), combined);

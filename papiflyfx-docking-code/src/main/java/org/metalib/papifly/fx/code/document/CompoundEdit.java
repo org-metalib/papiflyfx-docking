@@ -28,4 +28,24 @@ final class CompoundEdit implements EditCommand {
             edits.get(i).undo(textSource);
         }
     }
+
+    @Override
+    public boolean applyLineIndex(LineIndex lineIndex) {
+        for (EditCommand edit : edits) {
+            if (!edit.applyLineIndex(lineIndex)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean undoLineIndex(LineIndex lineIndex) {
+        for (int i = edits.size() - 1; i >= 0; i--) {
+            if (!edits.get(i).undoLineIndex(lineIndex)) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

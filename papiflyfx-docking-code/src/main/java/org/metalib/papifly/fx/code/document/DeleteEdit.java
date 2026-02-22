@@ -33,4 +33,30 @@ public final class DeleteEdit implements EditCommand {
         }
         textSource.insert(startOffset, deletedText);
     }
+
+    @Override
+    public boolean applyLineIndex(LineIndex lineIndex) {
+        int length = deletedLength();
+        if (length == 0) {
+            return true;
+        }
+        lineIndex.applyDelete(startOffset, startOffset + length);
+        return true;
+    }
+
+    @Override
+    public boolean undoLineIndex(LineIndex lineIndex) {
+        if (deletedText == null || deletedText.isEmpty()) {
+            return true;
+        }
+        lineIndex.applyInsert(startOffset, deletedText);
+        return true;
+    }
+
+    private int deletedLength() {
+        if (deletedText != null) {
+            return deletedText.length();
+        }
+        return Math.max(0, endOffset - startOffset);
+    }
 }

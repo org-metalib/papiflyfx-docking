@@ -47,6 +47,7 @@ public class Viewport extends Region {
     private final ChangeListener<Number> anchorColumnListener = (obs, oldValue, newValue) -> onSelectionAnchorChanged();
     private final PauseTransition caretBlinkDelay = new PauseTransition(DEFAULT_CARET_BLINK_DELAY);
     private final Timeline caretBlinkTimeline = new Timeline();
+    private final ViewportInvalidationPlanner invalidationPlanner = new ViewportInvalidationPlanner();
 
     private CodeEditorTheme theme = CodeEditorTheme.dark();
     private Document document;
@@ -365,10 +366,20 @@ public class Viewport extends Region {
             return;
         }
         resetCaretBlink();
-        int startLine = document.getLineForOffset(Math.min(event.offset(), document.length()));
-        // For inserts/deletes that may affect all lines from startLine onward
-        int endLine = document.getLineCount() - 1;
-        markLinesDirty(startLine, endLine);
+        ViewportInvalidationPlanner.InvalidationPlan plan = invalidationPlanner.plan(
+            document,
+            event,
+            firstVisibleLine,
+            visibleLineCount,
+            PREFETCH_LINES
+        );
+        if (plan.fullRedraw()) {
+            markDirty();
+            return;
+        }
+        if (plan.hasLineRange()) {
+            markLinesDirty(plan.startLine(), plan.endLine());
+        }
     }
 
     private void onCaretLineChanged(int oldLine, int newLine) {

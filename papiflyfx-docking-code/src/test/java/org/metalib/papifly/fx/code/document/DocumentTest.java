@@ -69,6 +69,35 @@ class DocumentTest {
     }
 
     @Test
+    void endsWithNewlineReflectsDocumentTail() {
+        Document document = new Document("hello\n");
+        assertTrue(document.endsWithNewline());
+
+        document.delete(document.length() - 1, document.length());
+        assertFalse(document.endsWithNewline());
+    }
+
+    @Test
+    void undoRedoPreservesLineIndexAfterMultilineReplace() {
+        Document document = new Document("a\nb\nc");
+
+        document.replace(2, 3, "x\ny");
+        assertEquals("a\nx\ny\nc", document.getText());
+        assertEquals(4, document.getLineCount());
+        assertEquals(6, document.getLineStartOffset(3));
+
+        assertTrue(document.undo());
+        assertEquals("a\nb\nc", document.getText());
+        assertEquals(3, document.getLineCount());
+        assertEquals(4, document.getLineStartOffset(2));
+
+        assertTrue(document.redo());
+        assertEquals("a\nx\ny\nc", document.getText());
+        assertEquals(4, document.getLineCount());
+        assertEquals(6, document.getLineStartOffset(3));
+    }
+
+    @Test
     void setTextClearsUndoHistory() {
         Document document = new Document();
         document.insert(0, "abc");

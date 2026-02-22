@@ -41,7 +41,7 @@ public record LineBlock(
         int endOffset = safeEndLine < document.getLineCount() - 1
             ? document.getLineStartOffset(safeEndLine + 1)
             : document.length();
-        String text = document.getText().substring(startOffset, endOffset);
+        String text = document.getSubstring(startOffset, endOffset);
         return new LineBlock(safeStartLine, safeEndLine, startOffset, endOffset, text, endOffset == document.length());
     }
 

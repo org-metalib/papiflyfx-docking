@@ -70,6 +70,17 @@ public class Document {
     }
 
     /**
+     * Returns true when the document ends with a newline.
+     */
+    public boolean endsWithNewline() {
+        int length = textSource.length();
+        if (length == 0) {
+            return false;
+        }
+        return textSource.substring(length - 1, length).charAt(0) == '\n';
+    }
+
+    /**
      * Returns substring in the range [startOffset, endOffset).
      */
     public String getSubstring(int startOffset, int endOffset) {
@@ -218,7 +229,7 @@ public class Document {
         int lengthBefore = textSource.length();
         EditCommand command = undoStack.pop();
         command.undo(textSource);
-        rebuildIndex();
+        applyUndoIndexOrRebuild(command);
         redoStack.push(command);
         fireChange(new DocumentChangeEvent(0, lengthBefore, textSource.length(),
             DocumentChangeEvent.ChangeType.UNDO));
@@ -235,7 +246,7 @@ public class Document {
         int lengthBefore = textSource.length();
         EditCommand command = redoStack.pop();
         command.apply(textSource);
-        rebuildIndex();
+        applyRedoIndexOrRebuild(command);
         undoStack.push(command);
         fireChange(new DocumentChangeEvent(0, lengthBefore, textSource.length(),
             DocumentChangeEvent.ChangeType.REDO));
@@ -291,6 +302,18 @@ public class Document {
 
     private void rebuildIndex() {
         lineIndex.rebuild(textSource.getText());
+    }
+
+    private void applyUndoIndexOrRebuild(EditCommand command) {
+        if (!command.undoLineIndex(lineIndex)) {
+            rebuildIndex();
+        }
+    }
+
+    private void applyRedoIndexOrRebuild(EditCommand command) {
+        if (!command.applyLineIndex(lineIndex)) {
+            rebuildIndex();
+        }
     }
 
     private void fireChange(DocumentChangeEvent event) {

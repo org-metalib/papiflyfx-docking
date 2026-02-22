@@ -30,4 +30,22 @@ public final class InsertEdit implements EditCommand {
         }
         textSource.delete(offset, offset + text.length());
     }
+
+    @Override
+    public boolean applyLineIndex(LineIndex lineIndex) {
+        if (text.isEmpty()) {
+            return true;
+        }
+        lineIndex.applyInsert(offset, text);
+        return true;
+    }
+
+    @Override
+    public boolean undoLineIndex(LineIndex lineIndex) {
+        if (text.isEmpty()) {
+            return true;
+        }
+        lineIndex.applyDelete(offset, offset + text.length());
+        return true;
+    }
 }
