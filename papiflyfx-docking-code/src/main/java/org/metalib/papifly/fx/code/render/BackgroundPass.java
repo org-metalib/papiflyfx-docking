@@ -12,26 +12,40 @@ final class BackgroundPass implements RenderPass {
         GraphicsContext gc = context.graphics();
         gc.setFill(context.theme().editorBackground());
         gc.fillRect(0, 0, context.viewportWidth(), context.viewportHeight());
-        paintCurrentLineHighlight(context, context.selectionModel().getCaretLine(), context.lineToY(context.selectionModel().getCaretLine()));
+        paintCurrentLineHighlight(context);
     }
 
     @Override
     public void renderLine(RenderContext context, RenderLine renderLine) {
         GraphicsContext gc = context.graphics();
         gc.setFill(context.theme().editorBackground());
-        gc.fillRect(0, renderLine.y(), context.viewportWidth(), context.lineHeight());
-        paintCurrentLineHighlight(context, renderLine.lineIndex(), renderLine.y());
+        gc.fillRect(0, renderLine.y(), context.effectiveTextWidth(), context.lineHeight());
+        paintCurrentLineHighlight(context, renderLine);
     }
 
-    private void paintCurrentLineHighlight(RenderContext context, int lineIndex, double y) {
-        if (lineIndex != context.selectionModel().getCaretLine() || context.selectionModel().hasSelection()) {
+    private void paintCurrentLineHighlight(RenderContext context) {
+        if (context.selectionModel().hasSelection()) {
             return;
         }
-        if (!context.isLineVisible(lineIndex)) {
+        int caretLine = context.selectionModel().getCaretLine();
+        GraphicsContext gc = context.graphics();
+        gc.setFill(context.theme().currentLineColor());
+        for (RenderLine renderLine : context.renderLines()) {
+            if (renderLine.lineIndex() == caretLine) {
+                gc.fillRect(0, renderLine.y(), context.effectiveTextWidth(), context.lineHeight());
+            }
+        }
+    }
+
+    private void paintCurrentLineHighlight(RenderContext context, RenderLine renderLine) {
+        if (context.selectionModel().hasSelection()) {
+            return;
+        }
+        if (renderLine.lineIndex() != context.selectionModel().getCaretLine()) {
             return;
         }
         GraphicsContext gc = context.graphics();
         gc.setFill(context.theme().currentLineColor());
-        gc.fillRect(0, y, context.viewportWidth(), context.lineHeight());
+        gc.fillRect(0, renderLine.y(), context.effectiveTextWidth(), context.lineHeight());
     }
 }

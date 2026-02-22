@@ -6,6 +6,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.paint.Paint;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.render.GlyphCache;
+import org.metalib.papifly.fx.code.render.WrapMap;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 
 /**
@@ -29,6 +30,8 @@ public class GutterView extends Region {
     private int activeLineIndex = -1;
     private boolean dirty = true;
     private double computedWidth;
+    private boolean wordWrap;
+    private WrapMap wrapMap;
 
     public GutterView(GlyphCache glyphCache) {
         this.glyphCache = glyphCache;
@@ -80,6 +83,25 @@ public class GutterView extends Region {
      */
     public void setScrollOffset(double offset) {
         this.scrollOffset = offset;
+        markDirty();
+    }
+
+    /**
+     * Enables/disables wrap-aware gutter layout.
+     */
+    public void setWordWrap(boolean wordWrap) {
+        if (this.wordWrap == wordWrap) {
+            return;
+        }
+        this.wordWrap = wordWrap;
+        markDirty();
+    }
+
+    /**
+     * Sets wrap metadata shared by the viewport in wrap mode.
+     */
+    public void setWrapMap(WrapMap wrapMap) {
+        this.wrapMap = wrapMap;
         markDirty();
     }
 
@@ -147,39 +169,53 @@ public class GutterView extends Region {
         GraphicsContext gc = canvas.getGraphicsContext2D();
         double lineHeight = glyphCache.getLineHeight();
         double baseline = glyphCache.getBaselineOffset();
-        int totalLines = document.getLineCount();
-
         // Clear
         gc.setFill(theme.gutterBackground());
         gc.fillRect(0, 0, w, h);
 
-        // Compute visible range
-        int firstLine = Math.max(0, (int) (scrollOffset / lineHeight));
-        int lastLine = Math.min(totalLines - 1, (int) ((scrollOffset + h) / lineHeight) + 1);
-
         gc.setFont(glyphCache.getFont());
 
+        if (wordWrap && wrapMap != null && wrapMap.hasData() && wrapMap.totalVisualRows() > 0) {
+            int totalRows = wrapMap.totalVisualRows();
+            int firstRow = Math.max(0, (int) (scrollOffset / lineHeight));
+            int lastRow = Math.min(totalRows - 1, (int) ((scrollOffset + h) / lineHeight) + 1);
+            for (int row = firstRow; row <= lastRow; row++) {
+                WrapMap.VisualRow visualRow = wrapMap.visualRow(row);
+                if (visualRow.startColumn() != 0) {
+                    continue;
+                }
+                int line = visualRow.lineIndex();
+                double y = row * lineHeight - scrollOffset;
+                paintGutterLine(gc, w, baseline, lineHeight, line, y);
+            }
+            return;
+        }
+
+        int totalLines = document.getLineCount();
+        int firstLine = Math.max(0, (int) (scrollOffset / lineHeight));
+        int lastLine = Math.min(totalLines - 1, (int) ((scrollOffset + h) / lineHeight) + 1);
         for (int line = firstLine; line <= lastLine; line++) {
             double y = line * lineHeight - scrollOffset;
-
-            // Draw marker indicator
-            if (markerModel != null && markerModel.hasMarkers(line)) {
-                MarkerType type = markerModel.getHighestPriorityType(line);
-                if (type != null) {
-                    gc.setFill(markerColor(type));
-                    double markerSize = Math.min(lineHeight - 4, MARKER_LANE_WIDTH - 4);
-                    double markerX = (MARKER_LANE_WIDTH - markerSize) / 2;
-                    double markerY = y + (lineHeight - markerSize) / 2;
-                    gc.fillOval(markerX, markerY, markerSize, markerSize);
-                }
-            }
-
-            // Draw line number
-            String lineNum = String.valueOf(line + 1);
-            double textX = w - LINE_NUMBER_RIGHT_PADDING - (lineNum.length() * glyphCache.getCharWidth());
-            gc.setFill(line == activeLineIndex ? theme.lineNumberActiveColor() : theme.lineNumberColor());
-            gc.fillText(lineNum, textX, y + baseline);
+            paintGutterLine(gc, w, baseline, lineHeight, line, y);
         }
+    }
+
+    private void paintGutterLine(GraphicsContext gc, double width, double baseline, double lineHeight, int line, double y) {
+        if (markerModel != null && markerModel.hasMarkers(line)) {
+            MarkerType type = markerModel.getHighestPriorityType(line);
+            if (type != null) {
+                gc.setFill(markerColor(type));
+                double markerSize = Math.min(lineHeight - 4, MARKER_LANE_WIDTH - 4);
+                double markerX = (MARKER_LANE_WIDTH - markerSize) / 2;
+                double markerY = y + (lineHeight - markerSize) / 2;
+                gc.fillOval(markerX, markerY, markerSize, markerSize);
+            }
+        }
+
+        String lineNum = String.valueOf(line + 1);
+        double textX = width - LINE_NUMBER_RIGHT_PADDING - (lineNum.length() * glyphCache.getCharWidth());
+        gc.setFill(line == activeLineIndex ? theme.lineNumberActiveColor() : theme.lineNumberColor());
+        gc.fillText(lineNum, textX, y + baseline);
     }
 
     private Paint markerColor(MarkerType type) {

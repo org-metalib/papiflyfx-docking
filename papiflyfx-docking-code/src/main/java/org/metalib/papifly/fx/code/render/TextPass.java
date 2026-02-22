@@ -35,28 +35,33 @@ final class TextPass implements RenderPass {
         if (text.isEmpty()) {
             return;
         }
+        double baseX = context.textOriginX();
         Paint foreground = context.theme().editorForeground();
         gc.setFill(foreground);
-        gc.fillText(text, 0, renderLine.y() + context.baseline());
+        gc.fillText(text, baseX, renderLine.y() + context.baseline());
         List<Token> tokens = renderLine.tokens();
         if (tokens.isEmpty()) {
             return;
         }
 
+        int rowStart = renderLine.startColumn();
+        int rowEnd = renderLine.endColumn();
         int runStart = -1;
         int runEnd = -1;
         Paint runColor = null;
         int textLength = text.length();
         for (Token token : tokens) {
-            int start = Math.max(0, Math.min(token.startColumn(), textLength));
-            int end = Math.max(start, Math.min(token.endColumn(), textLength));
+            int tokenStart = Math.max(rowStart, token.startColumn());
+            int tokenEnd = Math.min(rowEnd, token.endColumn());
+            int start = Math.max(0, Math.min(tokenStart - rowStart, textLength));
+            int end = Math.max(start, Math.min(tokenEnd - rowStart, textLength));
             if (end <= start) {
                 continue;
             }
             Paint color = tokenColor(context, token.type());
             if (samePaint(color, foreground)) {
                 if (runColor != null) {
-                    drawSegment(context, text, runStart, runEnd, renderLine.y(), runColor);
+                    drawSegment(context, text, runStart, runEnd, renderLine.y(), runColor, baseX);
                     runStart = -1;
                     runEnd = -1;
                     runColor = null;
@@ -68,14 +73,14 @@ final class TextPass implements RenderPass {
                 continue;
             }
             if (runColor != null) {
-                drawSegment(context, text, runStart, runEnd, renderLine.y(), runColor);
+                drawSegment(context, text, runStart, runEnd, renderLine.y(), runColor, baseX);
             }
             runStart = start;
             runEnd = end;
             runColor = color;
         }
         if (runColor != null) {
-            drawSegment(context, text, runStart, runEnd, renderLine.y(), runColor);
+            drawSegment(context, text, runStart, runEnd, renderLine.y(), runColor, baseX);
         }
     }
 
@@ -85,7 +90,8 @@ final class TextPass implements RenderPass {
         int startColumn,
         int endColumn,
         double y,
-        Paint color
+        Paint color,
+        double baseX
     ) {
         if (endColumn <= startColumn) {
             return;
@@ -94,7 +100,7 @@ final class TextPass implements RenderPass {
         gc.setFill(color);
         gc.fillText(
             text.substring(startColumn, endColumn),
-            startColumn * context.charWidth(),
+            baseX + (startColumn * context.charWidth()),
             y + context.baseline()
         );
     }

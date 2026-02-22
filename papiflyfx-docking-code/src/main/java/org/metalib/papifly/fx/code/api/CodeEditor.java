@@ -2,9 +2,11 @@ package org.metalib.papifly.fx.code.api;
 
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -58,6 +60,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final IntegerProperty cursorLine = new SimpleIntegerProperty(this, "cursorLine", 0);
     private final IntegerProperty cursorColumn = new SimpleIntegerProperty(this, "cursorColumn", 0);
     private final DoubleProperty verticalScrollOffset = new SimpleDoubleProperty(this, "verticalScrollOffset", 0.0);
+    private final DoubleProperty horizontalScrollOffset = new SimpleDoubleProperty(this, "horizontalScrollOffset", 0.0);
+    private final BooleanProperty wordWrap = new SimpleBooleanProperty(this, "wordWrap", false);
     private final StringProperty languageId = new SimpleStringProperty(this, "languageId", DEFAULT_LANGUAGE);
 
     private List<Integer> foldedLines = List.of();
@@ -87,6 +91,10 @@ public class CodeEditor extends StackPane implements DisposableContent {
         cursorColumn.set(newValue.intValue());
     private final ChangeListener<Number> scrollOffsetListener = (obs, oldValue, newValue) ->
         applyScrollOffset(newValue.doubleValue());
+    private final ChangeListener<Number> horizontalScrollOffsetListener = (obs, oldValue, newValue) ->
+        applyHorizontalScrollOffset(newValue.doubleValue());
+    private final ChangeListener<Boolean> wordWrapListener = (obs, oldValue, newValue) ->
+        applyWordWrap(newValue);
     private final ChangeListener<String> languageListener;
     private final ChangeListener<Boolean> focusListener;
     private final DocumentChangeListener gutterWidthListener;
@@ -137,8 +145,13 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.gutterView = new GutterView(viewport.getGlyphCache());
         this.gutterView.setDocument(this.document);
         this.gutterView.setMarkerModel(markerModel);
+        this.gutterView.setWrapMap(viewport.getWrapMap());
+        this.gutterView.setWordWrap(wordWrap.get());
         this.gutterDigits = computeGutterDigits(this.document.getLineCount());
-        this.gutterWidthListener = event -> refreshGutterWidthIfNeeded();
+        this.gutterWidthListener = event -> {
+            refreshGutterWidthIfNeeded();
+            gutterView.markDirty();
+        };
         this.markerModelChangeListener = gutterView::markDirty;
         this.caretLineListener = (obs, oldValue, newValue) -> {
             cursorLine.set(newValue.intValue());
@@ -150,6 +163,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
             this.viewport,
             this.gutterView,
             this.verticalScrollOffset,
+            this.horizontalScrollOffset,
             () -> disposed
         );
         this.stateCoordinator = new EditorStateCoordinator(
@@ -199,12 +213,12 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
         // Search overlay anchored to top-right
         StackPane.setAlignment(this.searchController, Pos.TOP_RIGHT);
-        StackPane.setMargin(this.searchController, new Insets(0, 16, 0, 0));
         getChildren().add(this.searchController);
         // Go-to-line overlay anchored to top-right
         StackPane.setAlignment(this.goToLineController, Pos.TOP_RIGHT);
-        StackPane.setMargin(this.goToLineController, new Insets(6, 16, 0, 0));
         getChildren().add(this.goToLineController);
+        this.viewport.setOnScrollbarVisibilityChanged(this::updateOverlayMargins);
+        updateOverlayMargins();
 
         BiFunction<Document, Consumer<TokenMap>, IncrementalLexerPipeline> resolvedLexerPipelineFactory =
             lexerPipelineFactory == null ? IncrementalLexerPipeline::new : lexerPipelineFactory;
@@ -226,6 +240,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
             resolvedLineEditService,
             resolvedOccurrenceSelectionService,
             this.caretCoordinator,
+            this.viewport,
             this.viewport::markDirty,
             this::setVerticalScrollOffset,
             this.viewport::getScrollOffset
@@ -244,6 +259,10 @@ public class CodeEditor extends StackPane implements DisposableContent {
             markerModelChangeListener,
             verticalScrollOffset,
             scrollOffsetListener,
+            horizontalScrollOffset,
+            horizontalScrollOffsetListener,
+            wordWrap,
+            wordWrapListener,
             languageId,
             languageListener
         );
@@ -253,7 +272,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
             event -> inputController.handleKeyTyped(event),
             event -> pointerController.handleMousePressed(event),
             event -> pointerController.handleMouseDragged(event),
-            event -> pointerController.handleMouseReleased(),
+            event -> pointerController.handleMouseReleased(event),
+            event -> pointerController.handleMouseMoved(event),
             event -> pointerController.handleScroll(event),
             focusListener,
             () -> viewport.setCaretBlinkActive(isFocused())
@@ -275,6 +295,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         caretCoordinator.clearPreferredVerticalColumn();
         selectionModel.moveCaret(0, 0);
         setVerticalScrollOffset(0);
+        setHorizontalScrollOffset(0);
         gutterView.recomputeWidth();
     }
 
@@ -497,6 +518,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
             multiCaretModel,
             viewport::markDirty,
             this::setVerticalScrollOffset,
+            this::setHorizontalScrollOffset,
+            this::isWordWrap,
             SCROLL_LINE_FACTOR
         );
     }
@@ -515,8 +538,33 @@ public class CodeEditor extends StackPane implements DisposableContent {
         caretCoordinator.applyScrollOffset(requestedOffset);
     }
 
+    private void applyHorizontalScrollOffset(double requestedOffset) {
+        caretCoordinator.applyHorizontalScrollOffset(requestedOffset);
+    }
+
+    private void applyWordWrap(boolean enabled) {
+        viewport.setWordWrap(enabled);
+        gutterView.setWordWrap(enabled);
+        if (enabled) {
+            setHorizontalScrollOffset(0.0);
+        } else {
+            syncHorizontalScrollOffsetFromViewport();
+        }
+        updateOverlayMargins();
+    }
+
     private void syncVerticalScrollOffsetFromViewport() {
         caretCoordinator.syncVerticalScrollOffsetFromViewport();
+    }
+
+    private void syncHorizontalScrollOffsetFromViewport() {
+        caretCoordinator.syncHorizontalScrollOffsetFromViewport();
+    }
+
+    private void updateOverlayMargins() {
+        double rightInset = viewport.isVerticalScrollbarVisible() ? Viewport.SCROLLBAR_WIDTH + 6.0 : 16.0;
+        StackPane.setMargin(this.searchController, new Insets(0, rightInset, 0, 0));
+        StackPane.setMargin(this.goToLineController, new Insets(6, rightInset, 0, 0));
     }
 
     // --- State properties ---
@@ -526,15 +574,33 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public EditorStateData captureState() {
         syncVerticalScrollOffsetFromViewport();
-        return stateCoordinator.captureState(filePath::get, languageId::get, this::getFoldedLines);
+        syncHorizontalScrollOffsetFromViewport();
+        return stateCoordinator.captureState(filePath::get, languageId::get, this::getFoldedLines, this::isWordWrap);
     }
 
     /**
      * Applies state to the editor.
      */
     public void applyState(EditorStateData state) {
-        stateCoordinator.applyState(state, this::setFilePath, this::setLanguageId, this::setFoldedLines,
-            this::setVerticalScrollOffset);
+        stateCoordinator.applyState(
+            state,
+            this::setFilePath,
+            this::setLanguageId,
+            this::setFoldedLines,
+            this::setWordWrap,
+            this::setVerticalScrollOffset,
+            this::setHorizontalScrollOffset
+        );
+        if (state == null) {
+            return;
+        }
+        Platform.runLater(() -> {
+            if (disposed) {
+                return;
+            }
+            setVerticalScrollOffset(state.verticalScrollOffset());
+            setHorizontalScrollOffset(state.horizontalScrollOffset());
+        });
     }
 
     public String getFilePath() {
@@ -589,6 +655,37 @@ public class CodeEditor extends StackPane implements DisposableContent {
         return verticalScrollOffset;
     }
 
+    public double getHorizontalScrollOffset() {
+        return horizontalScrollOffset.get();
+    }
+
+    public void setHorizontalScrollOffset(double horizontalScrollOffset) {
+        double safeOffset = wordWrap.get() ? 0.0 : Math.max(0.0, horizontalScrollOffset);
+        if (Double.compare(this.horizontalScrollOffset.get(), safeOffset) == 0) {
+            return;
+        }
+        this.horizontalScrollOffset.set(safeOffset);
+    }
+
+    public DoubleProperty horizontalScrollOffsetProperty() {
+        return horizontalScrollOffset;
+    }
+
+    public boolean isWordWrap() {
+        return wordWrap.get();
+    }
+
+    public void setWordWrap(boolean wordWrap) {
+        if (wordWrap) {
+            setHorizontalScrollOffset(0.0);
+        }
+        this.wordWrap.set(wordWrap);
+    }
+
+    public BooleanProperty wordWrapProperty() {
+        return wordWrap;
+    }
+
     public String getLanguageId() {
         return languageId.get();
     }
@@ -639,6 +736,10 @@ public class CodeEditor extends StackPane implements DisposableContent {
             markerModelChangeListener,
             verticalScrollOffset,
             scrollOffsetListener,
+            horizontalScrollOffset,
+            horizontalScrollOffsetListener,
+            wordWrap,
+            wordWrapListener,
             languageId,
             languageListener
         );

@@ -22,6 +22,12 @@ import java.util.function.DoubleConsumer;
  */
 final class EditorPointerController {
 
+    private enum ScrollbarDragTarget {
+        NONE,
+        VERTICAL,
+        HORIZONTAL
+    }
+
     private final BooleanSupplier disposedSupplier;
     private final Runnable clearPreferredVerticalColumn;
     private final Runnable requestFocusAction;
@@ -32,11 +38,16 @@ final class EditorPointerController {
     private final MultiCaretModel multiCaretModel;
     private final Runnable markViewportDirty;
     private final DoubleConsumer setVerticalScrollOffset;
+    private final DoubleConsumer setHorizontalScrollOffset;
+    private final BooleanSupplier wordWrapSupplier;
     private final double scrollLineFactor;
 
     private boolean boxSelectionActive;
     private int boxAnchorLine;
     private int boxAnchorCol;
+
+    private ScrollbarDragTarget scrollbarDragTarget = ScrollbarDragTarget.NONE;
+    private double scrollbarDragPointerOffset;
 
     EditorPointerController(
         BooleanSupplier disposedSupplier,
@@ -49,6 +60,8 @@ final class EditorPointerController {
         MultiCaretModel multiCaretModel,
         Runnable markViewportDirty,
         DoubleConsumer setVerticalScrollOffset,
+        DoubleConsumer setHorizontalScrollOffset,
+        BooleanSupplier wordWrapSupplier,
         double scrollLineFactor
     ) {
         this.disposedSupplier = Objects.requireNonNull(disposedSupplier, "disposedSupplier");
@@ -62,6 +75,8 @@ final class EditorPointerController {
         this.multiCaretModel = Objects.requireNonNull(multiCaretModel, "multiCaretModel");
         this.markViewportDirty = Objects.requireNonNull(markViewportDirty, "markViewportDirty");
         this.setVerticalScrollOffset = Objects.requireNonNull(setVerticalScrollOffset, "setVerticalScrollOffset");
+        this.setHorizontalScrollOffset = Objects.requireNonNull(setHorizontalScrollOffset, "setHorizontalScrollOffset");
+        this.wordWrapSupplier = Objects.requireNonNull(wordWrapSupplier, "wordWrapSupplier");
         this.scrollLineFactor = scrollLineFactor;
     }
 
@@ -78,11 +93,16 @@ final class EditorPointerController {
             return;
         }
 
-        int line = viewport.getLineAtY(viewportPoint.getY());
+        if (handleScrollbarPressed(viewportPoint, event)) {
+            return;
+        }
+
+        Viewport.HitPosition hit = viewport.getHitPosition(viewportPoint.getX(), viewportPoint.getY());
+        int line = hit.line();
         if (line < 0) {
             return;
         }
-        int col = clampColumn(line, viewport.getColumnAtX(viewportPoint.getX()));
+        int col = clampColumn(line, hit.column());
 
         if (event.getClickCount() >= 3) {
             handleTripleClick(line);
@@ -96,7 +116,7 @@ final class EditorPointerController {
             handleAltClick(line, col);
             return;
         }
-        if ((event.isShiftDown() && event.isAltDown()) || event.getButton() == MouseButton.MIDDLE) {
+        if (!isWordWrapEnabled() && ((event.isShiftDown() && event.isAltDown()) || event.getButton() == MouseButton.MIDDLE)) {
             startBoxSelection(line, col);
             return;
         }
@@ -122,41 +142,161 @@ final class EditorPointerController {
             return;
         }
 
-        int line = viewport.getLineAtY(viewportPoint.getY());
+        if (handleScrollbarDrag(viewportPoint, event)) {
+            return;
+        }
+
+        Viewport.HitPosition hit = viewport.getHitPosition(viewportPoint.getX(), viewportPoint.getY());
+        int line = hit.line();
         if (line < 0) {
             return;
         }
-        int col = clampColumn(line, viewport.getColumnAtX(viewportPoint.getX()));
+        int col = clampColumn(line, hit.column());
         if (boxSelectionActive) {
-            updateBoxSelection(line, col);
-            return;
+            if (isWordWrapEnabled()) {
+                boxSelectionActive = false;
+                multiCaretModel.clearSecondaryCarets();
+            } else {
+                updateBoxSelection(line, col);
+                return;
+            }
         }
         selectionModel.moveCaretWithSelection(line, col);
         markViewportDirty.run();
     }
 
-    void handleMouseReleased() {
+    void handleMouseReleased(MouseEvent event) {
         if (disposedSupplier.getAsBoolean()) {
             return;
         }
         boxSelectionActive = false;
+        if (scrollbarDragTarget != ScrollbarDragTarget.NONE) {
+            scrollbarDragTarget = ScrollbarDragTarget.NONE;
+            viewport.setScrollbarActivePart(Viewport.ScrollbarPart.NONE);
+            Point2D viewportPoint = toViewportLocalPoint(event);
+            updateScrollbarHover(viewportPoint);
+        }
+    }
+
+    void handleMouseMoved(MouseEvent event) {
+        if (disposedSupplier.getAsBoolean()) {
+            return;
+        }
+        Point2D viewportPoint = toViewportLocalPoint(event);
+        updateScrollbarHover(viewportPoint);
     }
 
     void handleScroll(ScrollEvent event) {
         if (disposedSupplier.getAsBoolean()) {
             return;
         }
-        double delta = -event.getDeltaY() * scrollLineFactor;
-        double newOffset = viewport.getScrollOffset() + delta;
-        setVerticalScrollOffset.accept(newOffset);
+
+        boolean wrapMode = isWordWrapEnabled();
+        double verticalDelta = -event.getDeltaY() * scrollLineFactor;
+        double horizontalDelta = -event.getDeltaX() * scrollLineFactor;
+
+        boolean shiftMapsToHorizontal = !wrapMode
+            && event.isShiftDown()
+            && Math.abs(event.getDeltaY()) > Math.abs(event.getDeltaX());
+        if (shiftMapsToHorizontal) {
+            horizontalDelta += -event.getDeltaY() * scrollLineFactor;
+            verticalDelta = 0.0;
+        }
+
+        if (!wrapMode && Math.abs(horizontalDelta) > 0.0) {
+            setHorizontalScrollOffset.accept(viewport.getHorizontalScrollOffset() + horizontalDelta);
+        }
+        if (Math.abs(verticalDelta) > 0.0) {
+            setVerticalScrollOffset.accept(viewport.getScrollOffset() + verticalDelta);
+        }
+
         event.consume();
     }
 
     void dispose() {
         boxSelectionActive = false;
+        scrollbarDragTarget = ScrollbarDragTarget.NONE;
+        viewport.setScrollbarActivePart(Viewport.ScrollbarPart.NONE);
+        viewport.setScrollbarHoverPart(Viewport.ScrollbarPart.NONE);
+    }
+
+    private boolean handleScrollbarPressed(Point2D viewportPoint, MouseEvent event) {
+        Viewport.ScrollbarGeometry vertical = viewport.getVerticalScrollbarGeometry();
+        if (viewport.isVerticalScrollbarVisible() && vertical != null && vertical.containsTrack(viewportPoint.getX(), viewportPoint.getY())) {
+            viewport.setScrollbarHoverPart(Viewport.ScrollbarPart.VERTICAL_THUMB);
+            viewport.setScrollbarActivePart(Viewport.ScrollbarPart.VERTICAL_THUMB);
+            if (vertical.containsThumb(viewportPoint.getX(), viewportPoint.getY())) {
+                scrollbarDragTarget = ScrollbarDragTarget.VERTICAL;
+                scrollbarDragPointerOffset = viewportPoint.getY() - vertical.thumbY();
+            } else {
+                setVerticalScrollOffset.accept(viewport.verticalOffsetForTrackClick(viewportPoint.getY()));
+            }
+            event.consume();
+            return true;
+        }
+
+        Viewport.ScrollbarGeometry horizontal = viewport.getHorizontalScrollbarGeometry();
+        if (viewport.isHorizontalScrollbarVisible()
+            && horizontal != null
+            && horizontal.containsTrack(viewportPoint.getX(), viewportPoint.getY())) {
+            viewport.setScrollbarHoverPart(Viewport.ScrollbarPart.HORIZONTAL_THUMB);
+            viewport.setScrollbarActivePart(Viewport.ScrollbarPart.HORIZONTAL_THUMB);
+            if (horizontal.containsThumb(viewportPoint.getX(), viewportPoint.getY())) {
+                scrollbarDragTarget = ScrollbarDragTarget.HORIZONTAL;
+                scrollbarDragPointerOffset = viewportPoint.getX() - horizontal.thumbX();
+            } else {
+                setHorizontalScrollOffset.accept(viewport.horizontalOffsetForTrackClick(viewportPoint.getX()));
+            }
+            event.consume();
+            return true;
+        }
+
+        viewport.setScrollbarActivePart(Viewport.ScrollbarPart.NONE);
+        updateScrollbarHover(viewportPoint);
+        return false;
+    }
+
+    private boolean handleScrollbarDrag(Point2D viewportPoint, MouseEvent event) {
+        if (scrollbarDragTarget == ScrollbarDragTarget.NONE) {
+            return false;
+        }
+        if (scrollbarDragTarget == ScrollbarDragTarget.VERTICAL) {
+            setVerticalScrollOffset.accept(viewport.verticalOffsetForThumbTop(viewportPoint.getY() - scrollbarDragPointerOffset));
+            event.consume();
+            return true;
+        }
+        if (scrollbarDragTarget == ScrollbarDragTarget.HORIZONTAL) {
+            setHorizontalScrollOffset.accept(viewport.horizontalOffsetForThumbLeft(viewportPoint.getX() - scrollbarDragPointerOffset));
+            event.consume();
+            return true;
+        }
+        return false;
+    }
+
+    private void updateScrollbarHover(Point2D viewportPoint) {
+        if (viewportPoint == null) {
+            viewport.setScrollbarHoverPart(Viewport.ScrollbarPart.NONE);
+            return;
+        }
+        Viewport.ScrollbarGeometry vertical = viewport.getVerticalScrollbarGeometry();
+        if (viewport.isVerticalScrollbarVisible() && vertical != null && vertical.containsThumb(viewportPoint.getX(), viewportPoint.getY())) {
+            viewport.setScrollbarHoverPart(Viewport.ScrollbarPart.VERTICAL_THUMB);
+            return;
+        }
+        Viewport.ScrollbarGeometry horizontal = viewport.getHorizontalScrollbarGeometry();
+        if (viewport.isHorizontalScrollbarVisible()
+            && horizontal != null
+            && horizontal.containsThumb(viewportPoint.getX(), viewportPoint.getY())) {
+            viewport.setScrollbarHoverPart(Viewport.ScrollbarPart.HORIZONTAL_THUMB);
+            return;
+        }
+        viewport.setScrollbarHoverPart(Viewport.ScrollbarPart.NONE);
     }
 
     private Point2D toViewportLocalPoint(MouseEvent event) {
+        if (event == null) {
+            return null;
+        }
         Point2D viewportPoint = viewport.sceneToLocal(event.getSceneX(), event.getSceneY());
         if (viewportPoint == null) {
             return null;
@@ -173,6 +313,10 @@ final class EditorPointerController {
 
     private int clampColumn(int line, int column) {
         return Math.min(column, document.getLineText(line).length());
+    }
+
+    private boolean isWordWrapEnabled() {
+        return wordWrapSupplier.getAsBoolean();
     }
 
     private void handleDoubleClick(int line, int col) {

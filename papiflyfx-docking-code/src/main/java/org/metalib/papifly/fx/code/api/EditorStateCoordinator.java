@@ -46,7 +46,8 @@ final class EditorStateCoordinator {
     EditorStateData captureState(
         Supplier<String> filePathSupplier,
         Supplier<String> languageIdSupplier,
-        Supplier<List<Integer>> foldedLinesSupplier
+        Supplier<List<Integer>> foldedLinesSupplier,
+        Supplier<Boolean> wordWrapSupplier
     ) {
         List<CaretStateData> secondaryCarets = multiCaretModel.getSecondaryCarets()
             .stream()
@@ -62,6 +63,8 @@ final class EditorStateCoordinator {
             selectionModel.getCaretLine(),
             selectionModel.getCaretColumn(),
             viewport.getScrollOffset(),
+            viewport.getHorizontalScrollOffset(),
+            Boolean.TRUE.equals(wordWrapSupplier.get()),
             languageIdSupplier.get(),
             foldedLinesSupplier.get(),
             selectionModel.getAnchorLine(),
@@ -75,7 +78,9 @@ final class EditorStateCoordinator {
         Consumer<String> filePathSetter,
         Consumer<String> languageIdSetter,
         Consumer<List<Integer>> foldedLinesSetter,
-        DoubleConsumer verticalScrollSetter
+        Consumer<Boolean> wordWrapSetter,
+        DoubleConsumer verticalScrollSetter,
+        DoubleConsumer horizontalScrollSetter
     ) {
         if (state == null) {
             return;
@@ -83,9 +88,11 @@ final class EditorStateCoordinator {
         filePathSetter.accept(state.filePath());
         languageIdSetter.accept(state.languageId());
         foldedLinesSetter.accept(state.foldedLines());
+        wordWrapSetter.accept(state.wordWrap());
         applyPrimaryCaretState(state.anchorLine(), state.anchorColumn(), state.cursorLine(), state.cursorColumn());
         applySecondaryCaretState(state.secondaryCarets());
         verticalScrollSetter.accept(state.verticalScrollOffset());
+        horizontalScrollSetter.accept(state.horizontalScrollOffset());
     }
 
     void movePrimaryCaret(int line, int column) {

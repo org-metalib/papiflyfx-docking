@@ -23,21 +23,42 @@ record RenderContext(
     List<SearchMatch> searchMatches,
     Map<Integer, List<Integer>> searchMatchIndexesByLine,
     int currentSearchMatchIndex,
-    int firstVisibleLine,
-    int visibleLineCount,
     double viewportWidth,
     double viewportHeight,
+    double effectiveTextWidth,
+    double effectiveTextHeight,
     double lineHeight,
     double charWidth,
     double baseline,
-    double scrollOffset
+    double scrollOffset,
+    double horizontalScrollOffset,
+    boolean wordWrap,
+    WrapMap wrapMap,
+    boolean verticalScrollbarVisible,
+    boolean horizontalScrollbarVisible,
+    Viewport.ScrollbarGeometry verticalScrollbarGeometry,
+    Viewport.ScrollbarGeometry horizontalScrollbarGeometry,
+    Viewport.ScrollbarPart scrollbarHoverPart,
+    Viewport.ScrollbarPart scrollbarActivePart
 ) {
 
     boolean isLineVisible(int line) {
-        return line >= firstVisibleLine && line < firstVisibleLine + visibleLineCount;
+        for (RenderLine renderLine : renderLines) {
+            if (renderLine.lineIndex() == line) {
+                return true;
+            }
+        }
+        return false;
     }
 
     double lineToY(int line) {
-        return line * lineHeight - scrollOffset;
+        if (!wordWrap || wrapMap == null) {
+            return line * lineHeight - scrollOffset;
+        }
+        return wrapMap.lineToFirstVisualRow(line) * lineHeight - scrollOffset;
+    }
+
+    double textOriginX() {
+        return wordWrap ? 0.0 : -horizontalScrollOffset;
     }
 }

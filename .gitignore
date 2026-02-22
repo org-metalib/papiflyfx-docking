@@ -41,3 +41,5 @@ build/
 claude.json
 .claude-session
 *.claude
+.gemini/
+gha-creds-*.json

@@ -109,6 +109,31 @@ class ViewportTest {
     }
 
     @Test
+    void horizontalOffsetShiftsHitTestColumnsWhenWrapIsOff() {
+        runOnFx(() -> {
+            document.setText("0123456789abcdef".repeat(20));
+            viewport.setHorizontalScrollOffset(viewport.getGlyphCache().getCharWidth() * 5);
+        });
+        flushLayout();
+
+        int columnAtLeftEdge = callOnFx(() -> viewport.getHitPosition(0, 0).column());
+        assertEquals(5, columnAtLeftEdge);
+    }
+
+    @Test
+    void horizontalOffsetIsForcedToZeroInWrapMode() {
+        runOnFx(() -> {
+            document.setText("x".repeat(500));
+            viewport.setHorizontalScrollOffset(200);
+            viewport.setWordWrap(true);
+        });
+        flushLayout();
+
+        assertEquals(0.0, callOnFx(viewport::getHorizontalScrollOffset), 0.0001);
+        assertFalse(callOnFx(viewport::isHorizontalScrollbarVisible));
+    }
+
+    @Test
     void setDocumentNullRemovesListener() {
         flushLayout();
         runOnFx(() -> viewport.setDocument(null));
@@ -285,7 +310,7 @@ class ViewportTest {
             double lineHeight = viewport.getGlyphCache().getLineHeight();
             double y = lineIndex * lineHeight + (lineHeight / 2.0);
             WritableImage image = viewport.snapshot(null, null);
-            int sampleX = Math.max(0, (int) Math.min(image.getWidth() - 2, image.getWidth() * 0.75));
+            int sampleX = Math.max(0, (int) Math.min(image.getWidth() - 2, image.getWidth() * 0.25));
             int sampleY = Math.max(0, (int) Math.min(image.getHeight() - 2, y));
             color[0] = image.getPixelReader().getColor(sampleX, sampleY);
         });

@@ -45,6 +45,12 @@ public record CodeEditorTheme(
     Paint markerBreakpointColor,
     Paint markerBookmarkColor,
 
+    // Canvas scrollbars
+    Paint scrollbarTrackColor,
+    Paint scrollbarThumbColor,
+    Paint scrollbarThumbHoverColor,
+    Paint scrollbarThumbActiveColor,
+
     // Search overlay
     Paint searchOverlayBackground,
     Paint searchOverlayAccentBorder,
@@ -91,6 +97,10 @@ public record CodeEditorTheme(
             Color.web("#75beff"),   // markerInfoColor
             Color.web("#e51400"),   // markerBreakpointColor
             Color.web("#569cd6"),   // markerBookmarkColor
+            Color.rgb(255, 255, 255, 0.08), // scrollbarTrackColor
+            Color.rgb(255, 255, 255, 0.32), // scrollbarThumbColor
+            Color.rgb(255, 255, 255, 0.46), // scrollbarThumbHoverColor
+            Color.rgb(255, 255, 255, 0.58), // scrollbarThumbActiveColor
             Color.web("#252526"),   // searchOverlayBackground
             Color.web("#007acc"),   // searchOverlayAccentBorder
             Color.web("#3c3c3c"),   // searchOverlayControlBackground
@@ -138,6 +148,10 @@ public record CodeEditorTheme(
             Color.web("#1a85ff"),   // markerInfoColor
             Color.web("#e51400"),   // markerBreakpointColor
             Color.web("#0000ff"),   // markerBookmarkColor
+            Color.rgb(0, 0, 0, 0.08), // scrollbarTrackColor
+            Color.rgb(0, 0, 0, 0.24), // scrollbarThumbColor
+            Color.rgb(0, 0, 0, 0.38), // scrollbarThumbHoverColor
+            Color.rgb(0, 0, 0, 0.5), // scrollbarThumbActiveColor
             Color.web("#f3f3f3"),   // searchOverlayBackground
             Color.web("#007acc"),   // searchOverlayAccentBorder
             Color.web("#ffffff"),   // searchOverlayControlBackground

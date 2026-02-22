@@ -20,6 +20,8 @@ public final class EditorStateCodec {
     private static final String KEY_ANCHOR_LINE = "anchorLine";
     private static final String KEY_ANCHOR_COLUMN = "anchorColumn";
     private static final String KEY_VERTICAL_SCROLL_OFFSET = "verticalScrollOffset";
+    private static final String KEY_HORIZONTAL_SCROLL_OFFSET = "horizontalScrollOffset";
+    private static final String KEY_WORD_WRAP = "wordWrap";
     private static final String KEY_LANGUAGE_ID = "languageId";
     private static final String KEY_FOLDED_LINES = "foldedLines";
     private static final String KEY_SECONDARY_CARETS = "secondaryCarets";
@@ -41,6 +43,8 @@ public final class EditorStateCodec {
         map.put(KEY_ANCHOR_LINE, safe.anchorLine());
         map.put(KEY_ANCHOR_COLUMN, safe.anchorColumn());
         map.put(KEY_VERTICAL_SCROLL_OFFSET, safe.verticalScrollOffset());
+        map.put(KEY_HORIZONTAL_SCROLL_OFFSET, safe.horizontalScrollOffset());
+        map.put(KEY_WORD_WRAP, safe.wordWrap());
         map.put(KEY_LANGUAGE_ID, safe.languageId());
         map.put(KEY_FOLDED_LINES, safe.foldedLines());
         map.put(KEY_SECONDARY_CARETS, toCaretMapList(safe.secondaryCarets()));
@@ -61,6 +65,8 @@ public final class EditorStateCodec {
             cursorLine,
             cursorColumn,
             asDouble(state.get(KEY_VERTICAL_SCROLL_OFFSET), 0.0),
+            asDouble(state.get(KEY_HORIZONTAL_SCROLL_OFFSET), 0.0),
+            asBoolean(state.get(KEY_WORD_WRAP), false),
             asString(state.get(KEY_LANGUAGE_ID), "plain-text"),
             asIntList(state.get(KEY_FOLDED_LINES)),
             asInt(state.get(KEY_ANCHOR_LINE), cursorLine),
@@ -86,6 +92,13 @@ public final class EditorStateCodec {
     private static double asDouble(Object value, double fallback) {
         if (value instanceof Number number) {
             return number.doubleValue();
+        }
+        return fallback;
+    }
+
+    private static boolean asBoolean(Object value, boolean fallback) {
+        if (value instanceof Boolean bool) {
+            return bool;
         }
         return fallback;
     }

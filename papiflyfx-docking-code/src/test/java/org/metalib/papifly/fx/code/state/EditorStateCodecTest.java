@@ -77,6 +77,8 @@ class EditorStateCodecTest {
         assertEquals(0, result.cursorLine());
         assertEquals(0, result.cursorColumn());
         assertEquals(0.0, result.verticalScrollOffset());
+        assertEquals(0.0, result.horizontalScrollOffset());
+        assertEquals(false, result.wordWrap());
         assertEquals("plain-text", result.languageId());
         assertEquals(List.of(), result.foldedLines());
         assertEquals(0, result.anchorLine());
@@ -105,6 +107,8 @@ class EditorStateCodecTest {
         assertEquals(0, result.anchorLine());
         assertEquals(0, result.anchorColumn());
         assertEquals(0.0, result.verticalScrollOffset());
+        assertEquals(0.0, result.horizontalScrollOffset());
+        assertEquals(false, result.wordWrap());
         assertEquals("plain-text", result.languageId());
         assertEquals(List.of(), result.foldedLines());
         assertEquals(List.of(), result.secondaryCarets());
@@ -219,12 +223,14 @@ class EditorStateCodecTest {
     }
 
     @Test
-    void roundTripPreservesAllV2Fields() {
+    void roundTripPreservesAllV3Fields() {
         EditorStateData state = new EditorStateData(
             "/home/user/project/Main.java",
             42,
             15,
             350.75,
+            128.5,
+            true,
             "java",
             List.of(10, 20, 30),
             42,
@@ -241,25 +247,29 @@ class EditorStateCodecTest {
         assertEquals(state.anchorLine(), restored.anchorLine());
         assertEquals(state.anchorColumn(), restored.anchorColumn());
         assertEquals(state.verticalScrollOffset(), restored.verticalScrollOffset());
+        assertEquals(state.horizontalScrollOffset(), restored.horizontalScrollOffset());
+        assertEquals(state.wordWrap(), restored.wordWrap());
         assertEquals(state.languageId(), restored.languageId());
         assertEquals(state.foldedLines(), restored.foldedLines());
         assertEquals(state.secondaryCarets(), restored.secondaryCarets());
     }
 
     @Test
-    void toMapContainsExactV2KeySet() {
+    void toMapContainsExactV3KeySet() {
         EditorStateData state = new EditorStateData(
             "/file.txt", 1, 2, 3.0, "json", List.of(5), 1, 0, List.of()
         );
         Map<String, Object> map = EditorStateCodec.toMap(state);
 
-        assertEquals(9, map.size());
+        assertEquals(11, map.size());
         assertTrue(map.containsKey("filePath"));
         assertTrue(map.containsKey("cursorLine"));
         assertTrue(map.containsKey("cursorColumn"));
         assertTrue(map.containsKey("anchorLine"));
         assertTrue(map.containsKey("anchorColumn"));
         assertTrue(map.containsKey("verticalScrollOffset"));
+        assertTrue(map.containsKey("horizontalScrollOffset"));
+        assertTrue(map.containsKey("wordWrap"));
         assertTrue(map.containsKey("languageId"));
         assertTrue(map.containsKey("foldedLines"));
         assertTrue(map.containsKey("secondaryCarets"));

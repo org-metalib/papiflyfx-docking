@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.code.api;
 
+import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
@@ -24,6 +25,7 @@ final class EditorLifecycleService {
         EventHandler<? super MouseEvent> mousePressed,
         EventHandler<? super MouseEvent> mouseDragged,
         EventHandler<? super MouseEvent> mouseReleased,
+        EventHandler<? super MouseEvent> mouseMoved,
         EventHandler<? super ScrollEvent> scroll,
         ChangeListener<Boolean> focusListener,
         Runnable syncCaretBlink
@@ -33,6 +35,7 @@ final class EditorLifecycleService {
         editor.setOnMousePressed(mousePressed);
         editor.setOnMouseDragged(mouseDragged);
         editor.setOnMouseReleased(mouseReleased);
+        editor.setOnMouseMoved(mouseMoved);
         editor.setOnScroll(scroll);
         editor.focusedProperty().addListener(focusListener);
         syncCaretBlink.run();
@@ -44,6 +47,7 @@ final class EditorLifecycleService {
         editor.setOnMousePressed(null);
         editor.setOnMouseDragged(null);
         editor.setOnMouseReleased(null);
+        editor.setOnMouseMoved(null);
         editor.setOnScroll(null);
         editor.focusedProperty().removeListener(focusListener);
     }
@@ -59,6 +63,10 @@ final class EditorLifecycleService {
         MarkerModel.MarkerChangeListener markerModelChangeListener,
         DoubleProperty verticalScrollOffset,
         ChangeListener<Number> scrollOffsetListener,
+        DoubleProperty horizontalScrollOffset,
+        ChangeListener<Number> horizontalScrollOffsetListener,
+        BooleanProperty wordWrap,
+        ChangeListener<Boolean> wordWrapListener,
         StringProperty languageId,
         ChangeListener<String> languageListener
     ) {
@@ -68,6 +76,8 @@ final class EditorLifecycleService {
         document.addChangeListener(searchRefreshListener);
         markerModel.addChangeListener(markerModelChangeListener);
         verticalScrollOffset.addListener(scrollOffsetListener);
+        horizontalScrollOffset.addListener(horizontalScrollOffsetListener);
+        wordWrap.addListener(wordWrapListener);
         languageId.addListener(languageListener);
     }
 
@@ -82,6 +92,10 @@ final class EditorLifecycleService {
         MarkerModel.MarkerChangeListener markerModelChangeListener,
         DoubleProperty verticalScrollOffset,
         ChangeListener<Number> scrollOffsetListener,
+        DoubleProperty horizontalScrollOffset,
+        ChangeListener<Number> horizontalScrollOffsetListener,
+        BooleanProperty wordWrap,
+        ChangeListener<Boolean> wordWrapListener,
         StringProperty languageId,
         ChangeListener<String> languageListener
     ) {
@@ -91,7 +105,8 @@ final class EditorLifecycleService {
         document.removeChangeListener(searchRefreshListener);
         markerModel.removeChangeListener(markerModelChangeListener);
         verticalScrollOffset.removeListener(scrollOffsetListener);
+        horizontalScrollOffset.removeListener(horizontalScrollOffsetListener);
+        wordWrap.removeListener(wordWrapListener);
         languageId.removeListener(languageListener);
     }
 }
-

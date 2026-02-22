@@ -7,14 +7,18 @@ import java.util.List;
 /**
  * Per-line render data used by the viewport.
  *
- * @param lineIndex zero-based line number in the document
- * @param text      the line text content (without trailing newline)
- * @param y         y-coordinate in the canvas for this line
- * @param tokens    syntax tokens for this line
+ * @param lineIndex   zero-based logical line number in the document
+ * @param startColumn start column (inclusive) represented by this visual row
+ * @param endColumn   end column (exclusive) represented by this visual row
+ * @param text        the visual row text content (without trailing newline)
+ * @param y           y-coordinate in the canvas for this visual row
+ * @param tokens      syntax tokens for the logical line (clipped by row in passes)
  */
-public record RenderLine(int lineIndex, String text, double y, List<Token> tokens) {
+public record RenderLine(int lineIndex, int startColumn, int endColumn, String text, double y, List<Token> tokens) {
 
     public RenderLine {
+        startColumn = Math.max(0, startColumn);
+        endColumn = Math.max(startColumn, endColumn);
         text = text == null ? "" : text;
         tokens = tokens == null ? List.of() : tokens;
     }

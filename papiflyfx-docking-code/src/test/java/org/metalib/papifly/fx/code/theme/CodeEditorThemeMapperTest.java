@@ -74,6 +74,10 @@ class CodeEditorThemeMapperTest {
         assertNotNull(dark.selectionColor());
         assertNotNull(dark.lineNumberColor());
         assertNotNull(dark.lineNumberActiveColor());
+        assertNotNull(dark.scrollbarTrackColor());
+        assertNotNull(dark.scrollbarThumbColor());
+        assertNotNull(dark.scrollbarThumbHoverColor());
+        assertNotNull(dark.scrollbarThumbActiveColor());
     }
 
     @Test
@@ -88,6 +92,10 @@ class CodeEditorThemeMapperTest {
         assertNotNull(light.selectionColor());
         assertNotNull(light.lineNumberColor());
         assertNotNull(light.lineNumberActiveColor());
+        assertNotNull(light.scrollbarTrackColor());
+        assertNotNull(light.scrollbarThumbColor());
+        assertNotNull(light.scrollbarThumbHoverColor());
+        assertNotNull(light.scrollbarThumbActiveColor());
     }
 
     @Test

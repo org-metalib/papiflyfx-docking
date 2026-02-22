@@ -307,6 +307,28 @@ class MouseGestureTest {
         assertEquals(2, line1Caret.getEndColumn());
     }
 
+    @Test
+    void boxSelectionGesturesAreDisabledInWrapMode() {
+        runOnFx(() -> {
+            editor.setText("abcdef\nghijkl\nmnopqr");
+            editor.setWordWrap(true);
+            editor.applyCss();
+            editor.layout();
+            initMetrics();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        fireMousePressed(charWidth, lineHeight * 0.5, MouseButton.PRIMARY, 1, true, true);
+        WaitForAsyncUtils.waitForFxEvents();
+        fireMouseDragged(charWidth * 4, lineHeight * 2.5);
+        WaitForAsyncUtils.waitForFxEvents();
+        fireMouseReleased(charWidth * 4, lineHeight * 2.5);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertFalse(callOnFx(() -> editor.getMultiCaretModel().hasMultipleCarets()));
+        assertTrue(callOnFx(() -> editor.getSelectionModel().hasSelection()));
+    }
+
     // --- Middle-click box selection ---
 
     @Test

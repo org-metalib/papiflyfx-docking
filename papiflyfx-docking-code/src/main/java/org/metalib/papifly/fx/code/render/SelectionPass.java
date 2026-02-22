@@ -66,9 +66,12 @@ final class SelectionPass implements RenderPass {
         int endLine,
         int endCol
     ) {
-        SelectionGeometry.SelectionSpan span = SelectionGeometry.spanForLine(
-            renderLine.lineIndex(),
-            context.viewportWidth(),
+        if (!context.wordWrap()) {
+            paintUnwrappedRange(context, renderLine, startLine, startCol, endLine, endCol);
+            return;
+        }
+        SelectionGeometry.SelectionSpan span = SelectionGeometry.spanForVisualRow(
+            renderLine,
             context.charWidth(),
             startLine,
             startCol,
@@ -78,6 +81,48 @@ final class SelectionPass implements RenderPass {
         if (span == null) {
             return;
         }
-        context.graphics().fillRect(span.x(), renderLine.y(), span.width(), context.lineHeight());
+        double x = context.textOriginX() + span.x();
+        double left = Math.max(0.0, x);
+        double right = Math.min(context.effectiveTextWidth(), x + span.width());
+        if (right <= left) {
+            return;
+        }
+        context.graphics().fillRect(left, renderLine.y(), right - left, context.lineHeight());
+    }
+
+    private void paintUnwrappedRange(
+        RenderContext context,
+        RenderLine renderLine,
+        int startLine,
+        int startCol,
+        int endLine,
+        int endCol
+    ) {
+        int line = renderLine.lineIndex();
+        if (line < startLine || line > endLine) {
+            return;
+        }
+        double baseX = context.textOriginX();
+        double left;
+        double right;
+        if (line == startLine && line == endLine) {
+            left = baseX + (startCol * context.charWidth());
+            right = baseX + (endCol * context.charWidth());
+        } else if (line == startLine) {
+            left = baseX + (startCol * context.charWidth());
+            right = context.effectiveTextWidth();
+        } else if (line == endLine) {
+            left = 0.0;
+            right = baseX + (endCol * context.charWidth());
+        } else {
+            left = 0.0;
+            right = context.effectiveTextWidth();
+        }
+        left = Math.max(0.0, left);
+        right = Math.min(context.effectiveTextWidth(), right);
+        if (right <= left) {
+            return;
+        }
+        context.graphics().fillRect(left, renderLine.y(), right - left, context.lineHeight());
     }
 }

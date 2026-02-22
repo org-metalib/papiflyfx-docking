@@ -15,33 +15,19 @@ final class CaretPass implements RenderPass {
         if (!context.paintCaret()) {
             return;
         }
+        GraphicsContext gc = context.graphics();
+        gc.setFill(context.theme().caretColor());
         if (context.hasMultiCarets()) {
-            GraphicsContext gc = context.graphics();
-            gc.setFill(context.theme().caretColor());
             for (CaretRange caret : context.activeCarets()) {
-                if (!context.isLineVisible(caret.caretLine())) {
-                    continue;
-                }
-                gc.fillRect(
-                    caret.caretColumn() * context.charWidth(),
-                    context.lineToY(caret.caretLine()),
-                    CARET_WIDTH,
-                    context.lineHeight()
-                );
+                paintCaret(context, gc, caret.caretLine(), caret.caretColumn());
             }
             return;
         }
-        int caretLine = context.selectionModel().getCaretLine();
-        if (!context.isLineVisible(caretLine)) {
-            return;
-        }
-        GraphicsContext gc = context.graphics();
-        gc.setFill(context.theme().caretColor());
-        gc.fillRect(
-            context.selectionModel().getCaretColumn() * context.charWidth(),
-            context.lineToY(caretLine),
-            CARET_WIDTH,
-            context.lineHeight()
+        paintCaret(
+            context,
+            gc,
+            context.selectionModel().getCaretLine(),
+            context.selectionModel().getCaretColumn()
         );
     }
 
@@ -51,29 +37,74 @@ final class CaretPass implements RenderPass {
             return;
         }
         GraphicsContext gc = context.graphics();
+        gc.setFill(context.theme().caretColor());
         if (context.hasMultiCarets()) {
-            gc.setFill(context.theme().caretColor());
             for (CaretRange caret : context.activeCarets()) {
-                if (renderLine.lineIndex() == caret.caretLine()) {
-                    gc.fillRect(
-                        caret.caretColumn() * context.charWidth(),
-                        renderLine.y(),
-                        CARET_WIDTH,
-                        context.lineHeight()
-                    );
-                }
+                paintCaretIfOnRenderLine(context, renderLine, gc, caret.caretLine(), caret.caretColumn());
             }
             return;
         }
-        if (renderLine.lineIndex() != context.selectionModel().getCaretLine()) {
+        paintCaretIfOnRenderLine(
+            context,
+            renderLine,
+            gc,
+            context.selectionModel().getCaretLine(),
+            context.selectionModel().getCaretColumn()
+        );
+    }
+
+    private void paintCaret(RenderContext context, GraphicsContext gc, int line, int column) {
+        RenderLine target = resolveRenderLine(context, line, column);
+        if (target == null) {
             return;
         }
-        gc.setFill(context.theme().caretColor());
-        gc.fillRect(
-            context.selectionModel().getCaretColumn() * context.charWidth(),
-            renderLine.y(),
-            CARET_WIDTH,
-            context.lineHeight()
-        );
+        double x = context.textOriginX() + ((column - target.startColumn()) * context.charWidth());
+        if (x + CARET_WIDTH < 0 || x > context.effectiveTextWidth()) {
+            return;
+        }
+        gc.fillRect(x, target.y(), CARET_WIDTH, context.lineHeight());
+    }
+
+    private void paintCaretIfOnRenderLine(
+        RenderContext context,
+        RenderLine renderLine,
+        GraphicsContext gc,
+        int line,
+        int column
+    ) {
+        RenderLine resolved = resolveRenderLine(context, line, column);
+        if (resolved == null || resolved.lineIndex() != renderLine.lineIndex()
+            || resolved.startColumn() != renderLine.startColumn()) {
+            return;
+        }
+        double x = context.textOriginX() + ((column - renderLine.startColumn()) * context.charWidth());
+        if (x + CARET_WIDTH < 0 || x > context.effectiveTextWidth()) {
+            return;
+        }
+        gc.fillRect(x, renderLine.y(), CARET_WIDTH, context.lineHeight());
+    }
+
+    private RenderLine resolveRenderLine(RenderContext context, int line, int column) {
+        if (context.renderLines().isEmpty()) {
+            return null;
+        }
+        if (!context.wordWrap() || context.wrapMap() == null) {
+            for (RenderLine renderLine : context.renderLines()) {
+                if (renderLine.lineIndex() == line) {
+                    return renderLine;
+                }
+            }
+            return null;
+        }
+        int visualRow = context.wrapMap().lineColumnToVisualRow(line, column);
+        WrapMap.VisualRow targetRow = context.wrapMap().visualRow(visualRow);
+        for (RenderLine renderLine : context.renderLines()) {
+            if (renderLine.lineIndex() == targetRow.lineIndex()
+                && renderLine.startColumn() == targetRow.startColumn()
+                && renderLine.endColumn() == targetRow.endColumn()) {
+                return renderLine;
+            }
+        }
+        return null;
     }
 }

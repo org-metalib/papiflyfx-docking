@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.render.GlyphCache;
+import org.metalib.papifly.fx.code.render.WrapMap;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
@@ -100,6 +101,23 @@ class GutterViewTest {
         // 2 digits * charWidth + marker lane + padding
         assertTrue(gutterView.getComputedWidth() >= charWidth * 2,
             "Gutter should have at least 2-digit width");
+    }
+
+    @Test
+    void wrapModeUsesWrapMapWithoutErrors() {
+        Document wrapDoc = new Document("abcdefghijklmnopqrstuvwxyz\nline2");
+        WrapMap wrapMap = new WrapMap();
+        wrapMap.rebuild(wrapDoc, glyphCache.getCharWidth() * 8, glyphCache.getCharWidth());
+
+        runOnFx(() -> {
+            gutterView.setDocument(wrapDoc);
+            gutterView.setWrapMap(wrapMap);
+            gutterView.setWordWrap(true);
+            gutterView.setScrollOffset(glyphCache.getLineHeight());
+        });
+        flushLayout();
+
+        assertTrue(gutterView.getComputedWidth() > 0);
     }
 
     private void flushLayout() {

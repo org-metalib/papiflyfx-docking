@@ -8,36 +8,40 @@ final class SelectionGeometry {
     private SelectionGeometry() {
     }
 
-    static SelectionSpan spanForLine(
-        int line,
-        double viewportWidth,
+    static SelectionSpan spanForVisualRow(
+        RenderLine renderLine,
         double charWidth,
         int startLine,
         int startCol,
         int endLine,
         int endCol
     ) {
-        if (line < startLine || line > endLine) {
+        int line = renderLine.lineIndex();
+        if (line < startLine || line > endLine || renderLine.endColumn() < renderLine.startColumn()) {
             return null;
         }
-        double x;
-        double width;
+        int rowStart = renderLine.startColumn();
+        int rowEnd = renderLine.endColumn();
+        int segmentStart;
+        int segmentEnd;
         if (line == startLine && line == endLine) {
-            x = startCol * charWidth;
-            width = (endCol - startCol) * charWidth;
+            segmentStart = Math.max(rowStart, startCol);
+            segmentEnd = Math.min(rowEnd, endCol);
         } else if (line == startLine) {
-            x = startCol * charWidth;
-            width = viewportWidth - x;
+            segmentStart = Math.max(rowStart, startCol);
+            segmentEnd = rowEnd;
         } else if (line == endLine) {
-            x = 0;
-            width = endCol * charWidth;
+            segmentStart = rowStart;
+            segmentEnd = Math.min(rowEnd, endCol);
         } else {
-            x = 0;
-            width = viewportWidth;
+            segmentStart = rowStart;
+            segmentEnd = rowEnd;
         }
-        if (width <= 0) {
+        if (segmentEnd <= segmentStart) {
             return null;
         }
+        double x = (segmentStart - rowStart) * charWidth;
+        double width = (segmentEnd - segmentStart) * charWidth;
         return new SelectionSpan(x, width);
     }
 

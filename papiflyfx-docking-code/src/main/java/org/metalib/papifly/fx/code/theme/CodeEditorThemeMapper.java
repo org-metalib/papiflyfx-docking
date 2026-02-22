@@ -56,6 +56,10 @@ public final class CodeEditorThemeMapper {
             base.markerInfoColor(),
             base.markerBreakpointColor(),
             accent,                             // markerBookmarkColor from accent
+            base.scrollbarTrackColor(),
+            base.scrollbarThumbColor(),
+            base.scrollbarThumbHoverColor(),
+            base.scrollbarThumbActiveColor(),
             base.searchOverlayBackground(),
             accent,                             // searchOverlayAccentBorder from accent
             base.searchOverlayControlBackground(),

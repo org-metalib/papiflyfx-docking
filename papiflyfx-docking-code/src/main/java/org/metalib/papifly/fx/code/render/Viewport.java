@@ -28,30 +28,40 @@ import java.util.Map;
 /**
  * Canvas-based virtualized text renderer.
  * <p>
- * Draws only the visible lines of a {@link Document} on a {@link Canvas},
- * with caret and selection rendering. Listens for document changes and
- * redraws as needed.
+ * Draws visible text rows from a {@link Document} onto a {@link Canvas},
+ * including selection, caret, search highlights, and custom scrollbars.
  */
 public class Viewport extends Region {
 
     private static final int PREFETCH_LINES = 2;
     private static final Duration DEFAULT_CARET_BLINK_DELAY = Duration.millis(500);
     private static final Duration DEFAULT_CARET_BLINK_PERIOD = Duration.millis(500);
+    private static final double METRIC_EPSILON = 0.01;
+
+    public static final double SCROLLBAR_WIDTH = 12.0;
+    public static final double SCROLLBAR_THUMB_PAD = 2.0;
+    public static final double MIN_THUMB_SIZE = 24.0;
+    public static final double SCROLLBAR_RADIUS = 8.0;
 
     private final Canvas canvas;
     private final GlyphCache glyphCache;
     private final SelectionModel selectionModel;
-    private final ChangeListener<Number> caretLineListener = (obs, oldValue, newValue) -> onCaretLineChanged(oldValue.intValue(), newValue.intValue());
+    private final ChangeListener<Number> caretLineListener =
+        (obs, oldValue, newValue) -> onCaretLineChanged(oldValue.intValue(), newValue.intValue());
     private final ChangeListener<Number> caretColumnListener = (obs, oldValue, newValue) -> onCaretColumnChanged();
     private final ChangeListener<Number> anchorLineListener = (obs, oldValue, newValue) -> onSelectionAnchorChanged();
     private final ChangeListener<Number> anchorColumnListener = (obs, oldValue, newValue) -> onSelectionAnchorChanged();
     private final PauseTransition caretBlinkDelay = new PauseTransition(DEFAULT_CARET_BLINK_DELAY);
     private final Timeline caretBlinkTimeline = new Timeline();
     private final ViewportInvalidationPlanner invalidationPlanner = new ViewportInvalidationPlanner();
+    private final WrapMap wrapMap = new WrapMap();
 
     private CodeEditorTheme theme = CodeEditorTheme.dark();
     private Document document;
     private double scrollOffset;
+    private double horizontalScrollOffset;
+    private boolean wordWrap;
+
     private boolean dirty = true;
     private boolean fullRedrawRequired = true;
     private final BitSet dirtyLines = new BitSet();
@@ -64,17 +74,36 @@ public class Viewport extends Region {
 
     private int firstVisibleLine;
     private int visibleLineCount;
+    private int firstVisibleVisualRow;
+    private int visibleVisualRowCount;
     private int previousCaretLine = -1;
     private boolean previousSelectionActive;
     private int previousSelectionStartLine = -1;
     private int previousSelectionEndLine = -1;
+    private int longestLineLength;
+
+    private double effectiveTextWidth;
+    private double effectiveTextHeight;
+    private boolean verticalScrollbarVisible;
+    private boolean horizontalScrollbarVisible;
+    private ScrollbarGeometry verticalScrollbarGeometry;
+    private ScrollbarGeometry horizontalScrollbarGeometry;
+    private ScrollbarPart scrollbarHoverPart = ScrollbarPart.NONE;
+    private ScrollbarPart scrollbarActivePart = ScrollbarPart.NONE;
+    private Runnable scrollbarVisibilityListener;
+
+    private boolean wrapMapDirty = true;
+    private double lastWrapViewportWidth = -1;
+    private double lastWrapCharWidth = -1;
+
     private final List<RenderLine> renderLines = new ArrayList<>();
     private final List<RenderPass> renderPasses = List.of(
         new BackgroundPass(),
         new SearchPass(),
         new SelectionPass(),
         new TextPass(),
-        new CaretPass()
+        new CaretPass(),
+        new ScrollbarPass()
     );
     private boolean caretBlinkActive;
     private boolean caretVisible = true;
@@ -91,7 +120,6 @@ public class Viewport extends Region {
 
         getChildren().add(canvas);
 
-        // Redraw on caret move
         selectionModel.caretLineProperty().addListener(caretLineListener);
         selectionModel.caretColumnProperty().addListener(caretColumnListener);
         selectionModel.anchorLineProperty().addListener(anchorLineListener);
@@ -116,6 +144,8 @@ public class Viewport extends Region {
         if (this.document != null) {
             this.document.addChangeListener(changeListener);
         }
+        recomputeLongestLineLength();
+        wrapMapDirty = true;
         markDirty();
     }
 
@@ -131,6 +161,13 @@ public class Viewport extends Region {
      */
     public GlyphCache getGlyphCache() {
         return glyphCache;
+    }
+
+    /**
+     * Returns the wrap map used in wrap mode.
+     */
+    public WrapMap getWrapMap() {
+        return wrapMap;
     }
 
     /**
@@ -156,7 +193,7 @@ public class Viewport extends Region {
     }
 
     /**
-     * Sets syntax token map used for per-line rendering.
+     * Sets syntax token map used for rendering.
      */
     public void setTokenMap(TokenMap tokenMap) {
         this.tokenMap = tokenMap == null ? TokenMap.empty() : tokenMap;
@@ -196,8 +233,6 @@ public class Viewport extends Region {
 
     /**
      * Enables/disables caret blinking and caret visibility.
-     * <p>
-     * Typically bound to editor focus state.
      */
     public void setCaretBlinkActive(boolean active) {
         if (caretBlinkActive == active) {
@@ -241,6 +276,7 @@ public class Viewport extends Region {
      */
     public void setFont(Font font) {
         glyphCache.setFont(font);
+        wrapMapDirty = true;
         markDirty();
     }
 
@@ -248,8 +284,12 @@ public class Viewport extends Region {
      * Sets the vertical scroll offset in pixels.
      */
     public void setScrollOffset(double offset) {
-        double maxScroll = computeMaxScrollOffset();
-        this.scrollOffset = Math.max(0, Math.min(offset, maxScroll));
+        double maxScroll = computeMaxScrollOffset(currentEffectiveTextHeight(), glyphCache.getLineHeight());
+        double clamped = clampDouble(offset, 0.0, maxScroll);
+        if (Double.compare(this.scrollOffset, clamped) == 0) {
+            return;
+        }
+        this.scrollOffset = clamped;
         markDirty();
     }
 
@@ -261,14 +301,227 @@ public class Viewport extends Region {
     }
 
     /**
-     * Returns the first visible line index.
+     * Returns the maximum vertical scroll offset for current metrics.
+     */
+    public double getMaxScrollOffset() {
+        return computeMaxScrollOffset(currentEffectiveTextHeight(), glyphCache.getLineHeight());
+    }
+
+    /**
+     * Sets horizontal scroll offset in pixels.
+     */
+    public void setHorizontalScrollOffset(double offset) {
+        if (wordWrap) {
+            if (Double.compare(horizontalScrollOffset, 0.0) == 0) {
+                return;
+            }
+            horizontalScrollOffset = 0.0;
+            markDirty();
+            return;
+        }
+        double maxScroll = computeMaxHorizontalScrollOffset(currentEffectiveTextWidth(), glyphCache.getCharWidth());
+        double clamped = clampDouble(offset, 0.0, maxScroll);
+        if (Double.compare(horizontalScrollOffset, clamped) == 0) {
+            return;
+        }
+        horizontalScrollOffset = clamped;
+        markDirty();
+    }
+
+    /**
+     * Returns current horizontal scroll offset.
+     */
+    public double getHorizontalScrollOffset() {
+        return horizontalScrollOffset;
+    }
+
+    /**
+     * Returns maximum horizontal scroll offset for current metrics.
+     */
+    public double getMaxHorizontalScrollOffset() {
+        return computeMaxHorizontalScrollOffset(currentEffectiveTextWidth(), glyphCache.getCharWidth());
+    }
+
+    /**
+     * Enables/disables soft wrap mode.
+     */
+    public void setWordWrap(boolean wordWrap) {
+        if (this.wordWrap == wordWrap) {
+            return;
+        }
+        this.wordWrap = wordWrap;
+        if (wordWrap) {
+            horizontalScrollOffset = 0.0;
+            if (scrollbarHoverPart == ScrollbarPart.HORIZONTAL_THUMB || scrollbarActivePart == ScrollbarPart.HORIZONTAL_THUMB) {
+                scrollbarHoverPart = ScrollbarPart.NONE;
+                scrollbarActivePart = ScrollbarPart.NONE;
+            }
+        }
+        wrapMapDirty = true;
+        markDirty();
+    }
+
+    /**
+     * Returns whether wrap mode is active.
+     */
+    public boolean isWordWrap() {
+        return wordWrap;
+    }
+
+    /**
+     * Returns true when vertical scrollbar is visible.
+     */
+    public boolean isVerticalScrollbarVisible() {
+        return verticalScrollbarVisible;
+    }
+
+    /**
+     * Returns true when horizontal scrollbar is visible.
+     */
+    public boolean isHorizontalScrollbarVisible() {
+        return horizontalScrollbarVisible;
+    }
+
+    /**
+     * Returns effective drawable text width excluding scrollbar reservations.
+     */
+    public double getEffectiveTextWidth() {
+        return currentEffectiveTextWidth();
+    }
+
+    /**
+     * Returns effective drawable text height excluding scrollbar reservations.
+     */
+    public double getEffectiveTextHeight() {
+        return currentEffectiveTextHeight();
+    }
+
+    /**
+     * Returns current vertical scrollbar geometry.
+     */
+    public ScrollbarGeometry getVerticalScrollbarGeometry() {
+        return verticalScrollbarGeometry;
+    }
+
+    /**
+     * Returns current horizontal scrollbar geometry.
+     */
+    public ScrollbarGeometry getHorizontalScrollbarGeometry() {
+        return horizontalScrollbarGeometry;
+    }
+
+    /**
+     * Returns active scrollbar hover part.
+     */
+    public ScrollbarPart getScrollbarHoverPart() {
+        return scrollbarHoverPart;
+    }
+
+    /**
+     * Returns active scrollbar drag part.
+     */
+    public ScrollbarPart getScrollbarActivePart() {
+        return scrollbarActivePart;
+    }
+
+    /**
+     * Sets hovered scrollbar part for visual state.
+     */
+    public void setScrollbarHoverPart(ScrollbarPart scrollbarHoverPart) {
+        ScrollbarPart next = scrollbarHoverPart == null ? ScrollbarPart.NONE : scrollbarHoverPart;
+        if (this.scrollbarHoverPart == next) {
+            return;
+        }
+        this.scrollbarHoverPart = next;
+        markDirty();
+    }
+
+    /**
+     * Sets active scrollbar part for drag visuals.
+     */
+    public void setScrollbarActivePart(ScrollbarPart scrollbarActivePart) {
+        ScrollbarPart next = scrollbarActivePart == null ? ScrollbarPart.NONE : scrollbarActivePart;
+        if (this.scrollbarActivePart == next) {
+            return;
+        }
+        this.scrollbarActivePart = next;
+        markDirty();
+    }
+
+    /**
+     * Registers a listener invoked when scrollbar visibility changes.
+     */
+    public void setOnScrollbarVisibilityChanged(Runnable listener) {
+        this.scrollbarVisibilityListener = listener;
+    }
+
+    /**
+     * Converts a vertical thumb top position to scroll offset.
+     */
+    public double verticalOffsetForThumbTop(double thumbTop) {
+        if (!verticalScrollbarVisible || verticalScrollbarGeometry == null) {
+            return scrollOffset;
+        }
+        double maxScroll = computeMaxScrollOffset(currentEffectiveTextHeight(), glyphCache.getLineHeight());
+        double trackStart = verticalScrollbarGeometry.trackY() + SCROLLBAR_THUMB_PAD;
+        double travel = Math.max(0.0,
+            verticalScrollbarGeometry.trackHeight() - (2 * SCROLLBAR_THUMB_PAD) - verticalScrollbarGeometry.thumbHeight());
+        if (maxScroll <= 0 || travel <= 0) {
+            return 0.0;
+        }
+        double clampedTop = clampDouble(thumbTop, trackStart, trackStart + travel);
+        double ratio = (clampedTop - trackStart) / travel;
+        return ratio * maxScroll;
+    }
+
+    /**
+     * Converts a horizontal thumb left position to scroll offset.
+     */
+    public double horizontalOffsetForThumbLeft(double thumbLeft) {
+        if (!horizontalScrollbarVisible || horizontalScrollbarGeometry == null) {
+            return horizontalScrollOffset;
+        }
+        double maxScroll = computeMaxHorizontalScrollOffset(currentEffectiveTextWidth(), glyphCache.getCharWidth());
+        double trackStart = horizontalScrollbarGeometry.trackX() + SCROLLBAR_THUMB_PAD;
+        double travel = Math.max(0.0,
+            horizontalScrollbarGeometry.trackWidth() - (2 * SCROLLBAR_THUMB_PAD) - horizontalScrollbarGeometry.thumbWidth());
+        if (maxScroll <= 0 || travel <= 0) {
+            return 0.0;
+        }
+        double clampedLeft = clampDouble(thumbLeft, trackStart, trackStart + travel);
+        double ratio = (clampedLeft - trackStart) / travel;
+        return ratio * maxScroll;
+    }
+
+    /**
+     * Computes scroll offset for a vertical track click using centered-thumb behavior.
+     */
+    public double verticalOffsetForTrackClick(double y) {
+        if (!verticalScrollbarVisible || verticalScrollbarGeometry == null) {
+            return scrollOffset;
+        }
+        return verticalOffsetForThumbTop(y - (verticalScrollbarGeometry.thumbHeight() * 0.5));
+    }
+
+    /**
+     * Computes scroll offset for a horizontal track click using centered-thumb behavior.
+     */
+    public double horizontalOffsetForTrackClick(double x) {
+        if (!horizontalScrollbarVisible || horizontalScrollbarGeometry == null) {
+            return horizontalScrollOffset;
+        }
+        return horizontalOffsetForThumbLeft(x - (horizontalScrollbarGeometry.thumbWidth() * 0.5));
+    }
+
+    /**
+     * Returns the first visible logical line index.
      */
     public int getFirstVisibleLine() {
         return firstVisibleLine;
     }
 
     /**
-     * Returns the count of visible lines.
+     * Returns the count of visible logical lines.
      */
     public int getVisibleLineCount() {
         return visibleLineCount;
@@ -284,7 +537,7 @@ public class Viewport extends Region {
     }
 
     /**
-     * Marks specific document lines as dirty for incremental redraw.
+     * Marks specific logical lines as dirty for incremental redraw.
      */
     public void markLinesDirty(int startLine, int endLine) {
         for (int i = startLine; i <= endLine; i++) {
@@ -315,7 +568,7 @@ public class Viewport extends Region {
     }
 
     /**
-     * Ensures the caret line is visible by adjusting scroll offset.
+     * Ensures the caret row is visible by adjusting vertical scroll offset.
      */
     public void ensureCaretVisible() {
         if (document == null) {
@@ -323,8 +576,16 @@ public class Viewport extends Region {
         }
         double lineHeight = glyphCache.getLineHeight();
         int caretLine = selectionModel.getCaretLine();
-        double caretY = caretLine * lineHeight;
-        double viewportHeight = getHeight();
+        int caretColumn = selectionModel.getCaretColumn();
+        double caretY;
+        if (wordWrap) {
+            ensureWrapMap(currentEffectiveTextWidth(), glyphCache.getCharWidth());
+            int caretRow = wrapMap.lineColumnToVisualRow(caretLine, caretColumn);
+            caretY = caretRow * lineHeight;
+        } else {
+            caretY = caretLine * lineHeight;
+        }
+        double viewportHeight = currentEffectiveTextHeight();
 
         if (caretY < scrollOffset) {
             setScrollOffset(caretY);
@@ -334,38 +595,83 @@ public class Viewport extends Region {
     }
 
     /**
-     * Returns the line index at the given y pixel coordinate, or -1 if outside.
+     * Ensures the caret column is visible by adjusting horizontal scroll offset.
      */
-    public int getLineAtY(double y) {
-        if (document == null) {
-            return -1;
+    public void ensureCaretVisibleHorizontally() {
+        if (document == null || wordWrap) {
+            return;
         }
-        double lineHeight = glyphCache.getLineHeight();
-        int line = (int) Math.floor((y + scrollOffset) / lineHeight);
-        if (line < 0) {
-            return -1;
+        double charWidth = glyphCache.getCharWidth();
+        double caretX = selectionModel.getCaretColumn() * charWidth;
+        double viewportWidth = currentEffectiveTextWidth();
+
+        if (caretX < horizontalScrollOffset) {
+            setHorizontalScrollOffset(caretX);
+        } else if (caretX + charWidth > horizontalScrollOffset + viewportWidth) {
+            setHorizontalScrollOffset(caretX + charWidth - viewportWidth);
         }
-        if (line >= document.getLineCount()) {
-            return document.getLineCount() - 1;
-        }
-        return line;
     }
 
     /**
-     * Returns the column index at the given x pixel coordinate for a line.
+     * Returns logical line index at y coordinate, or -1 when above content.
+     */
+    public int getLineAtY(double y) {
+        HitPosition hit = getHitPosition(0.0, y);
+        return hit.line();
+    }
+
+    /**
+     * Returns column index at x coordinate in current mode.
      */
     public int getColumnAtX(double x) {
         double charWidth = glyphCache.getCharWidth();
-        int col = (int) Math.round(x / charWidth);
-        return Math.max(0, col);
+        if (wordWrap) {
+            int column = (int) Math.round(x / charWidth);
+            return Math.max(0, column);
+        }
+        int column = (int) Math.round((x + horizontalScrollOffset) / charWidth);
+        return Math.max(0, column);
+    }
+
+    /**
+     * Resolves a wrap-aware hit position for local viewport coordinates.
+     */
+    public HitPosition getHitPosition(double localX, double localY) {
+        if (document == null || document.getLineCount() <= 0) {
+            return new HitPosition(-1, 0);
+        }
+        double lineHeight = glyphCache.getLineHeight();
+        double charWidth = glyphCache.getCharWidth();
+        if (wordWrap) {
+            ensureWrapMap(currentEffectiveTextWidth(), charWidth);
+            int totalRows = Math.max(1, wrapMap.totalVisualRows());
+            int visualRow = clamp((int) Math.floor((localY + scrollOffset) / lineHeight), 0, totalRows - 1);
+            WrapMap.VisualRow row = wrapMap.visualRow(visualRow);
+            int column = (int) Math.round(localX / charWidth) + row.startColumn();
+            int clampedColumn = clamp(column, row.startColumn(), row.endColumn());
+            return new HitPosition(row.lineIndex(), clampColumn(row.lineIndex(), clampedColumn));
+        }
+        int line = (int) Math.floor((localY + scrollOffset) / lineHeight);
+        if (line < 0) {
+            return new HitPosition(-1, 0);
+        }
+        int safeLine = clamp(line, 0, document.getLineCount() - 1);
+        int column = (int) Math.round((localX + horizontalScrollOffset) / charWidth);
+        return new HitPosition(safeLine, clampColumn(safeLine, Math.max(0, column)));
     }
 
     private void onDocumentChanged(DocumentChangeEvent event) {
+        recomputeLongestLineLength();
+        wrapMapDirty = true;
         if (document == null) {
             markDirty();
             return;
         }
         resetCaretBlink();
+        if (wordWrap) {
+            markDirty();
+            return;
+        }
         ViewportInvalidationPlanner.InvalidationPlan plan = invalidationPlanner.plan(
             document,
             event,
@@ -383,7 +689,6 @@ public class Viewport extends Region {
     }
 
     private void onCaretLineChanged(int oldLine, int newLine) {
-        // Dirty both old and new caret lines for highlight update
         dirtyLines.set(oldLine);
         dirtyLines.set(newLine);
         markSelectionRangeDirty();
@@ -393,7 +698,6 @@ public class Viewport extends Region {
     }
 
     private void onCaretColumnChanged() {
-        // Dirty the current caret line for caret position update
         int caretLine = selectionModel.getCaretLine();
         dirtyLines.set(caretLine);
         markSelectionRangeDirty();
@@ -471,15 +775,17 @@ public class Viewport extends Region {
         boolean hasMultiCarets = !activeCarets.isEmpty();
         boolean paintCaret = shouldPaintCaret();
 
-        int previousFirstVisible = firstVisibleLine;
+        int previousVisibleAnchor = wordWrap ? firstVisibleVisualRow : firstVisibleLine;
 
-        // Compute visible range
-        computeVisibleRange(h, lineHeight);
-        buildRenderLines();
+        resolveViewportMetrics(w, h, lineHeight, charWidth);
+        computeVisibleRange(lineHeight);
+        buildRenderLines(lineHeight);
 
-        // Determine if we need full redraw or can do incremental
-        boolean doFullRedraw = fullRedrawRequired || previousFirstVisible != firstVisibleLine;
+        int currentVisibleAnchor = wordWrap ? firstVisibleVisualRow : firstVisibleLine;
+
+        boolean doFullRedraw = fullRedrawRequired || previousVisibleAnchor != currentVisibleAnchor;
         fullRedrawRequired = false;
+
         RenderContext renderContext = new RenderContext(
             gc,
             theme,
@@ -492,14 +798,23 @@ public class Viewport extends Region {
             searchMatches,
             searchMatchIndexesByLine,
             currentSearchMatchIndex,
-            firstVisibleLine,
-            visibleLineCount,
             w,
             h,
+            effectiveTextWidth,
+            effectiveTextHeight,
             lineHeight,
             charWidth,
             glyphCache.getBaselineOffset(),
-            scrollOffset
+            scrollOffset,
+            horizontalScrollOffset,
+            wordWrap,
+            wrapMap,
+            verticalScrollbarVisible,
+            horizontalScrollbarVisible,
+            verticalScrollbarGeometry,
+            horizontalScrollbarGeometry,
+            scrollbarHoverPart,
+            scrollbarActivePart
         );
 
         if (doFullRedraw) {
@@ -526,37 +841,320 @@ public class Viewport extends Region {
         previousCaretLine = selectionModel.getCaretLine();
     }
 
+    private void resolveViewportMetrics(double width, double height, double lineHeight, double charWidth) {
+        boolean previousVerticalVisible = verticalScrollbarVisible;
+        boolean previousHorizontalVisible = horizontalScrollbarVisible;
+
+        boolean nextVerticalVisible = previousVerticalVisible;
+        boolean nextHorizontalVisible = !wordWrap && previousHorizontalVisible;
+
+        for (int i = 0; i < 4; i++) {
+            double candidateWidth = Math.max(0.0, width - (nextVerticalVisible ? SCROLLBAR_WIDTH : 0.0));
+            double candidateHeight = Math.max(0.0, height - (nextHorizontalVisible ? SCROLLBAR_WIDTH : 0.0));
+
+            if (wordWrap) {
+                ensureWrapMap(candidateWidth, charWidth);
+            }
+
+            double maxVertical = computeMaxScrollOffset(candidateHeight, lineHeight);
+            boolean computedVerticalVisible = maxVertical > 0.0;
+            double maxHorizontal = wordWrap ? 0.0 : computeMaxHorizontalScrollOffset(candidateWidth, charWidth);
+            boolean computedHorizontalVisible = !wordWrap && maxHorizontal > 0.0;
+
+            if (computedVerticalVisible == nextVerticalVisible
+                && computedHorizontalVisible == nextHorizontalVisible) {
+                break;
+            }
+            nextVerticalVisible = computedVerticalVisible;
+            nextHorizontalVisible = computedHorizontalVisible;
+        }
+
+        verticalScrollbarVisible = nextVerticalVisible;
+        horizontalScrollbarVisible = !wordWrap && nextHorizontalVisible;
+
+        effectiveTextWidth = Math.max(0.0, width - (verticalScrollbarVisible ? SCROLLBAR_WIDTH : 0.0));
+        effectiveTextHeight = Math.max(0.0, height - (horizontalScrollbarVisible ? SCROLLBAR_WIDTH : 0.0));
+
+        if (wordWrap) {
+            ensureWrapMap(effectiveTextWidth, charWidth);
+            horizontalScrollOffset = 0.0;
+        }
+
+        double maxVerticalOffset = computeMaxScrollOffset(effectiveTextHeight, lineHeight);
+        scrollOffset = clampDouble(scrollOffset, 0.0, maxVerticalOffset);
+
+        double maxHorizontalOffset = computeMaxHorizontalScrollOffset(effectiveTextWidth, charWidth);
+        horizontalScrollOffset = wordWrap
+            ? 0.0
+            : clampDouble(horizontalScrollOffset, 0.0, maxHorizontalOffset);
+
+        double contentHeight = computeContentHeight(lineHeight);
+        double contentWidth = computeContentWidth(charWidth);
+
+        verticalScrollbarGeometry = verticalScrollbarVisible
+            ? buildVerticalScrollbarGeometry(contentHeight, maxVerticalOffset)
+            : null;
+        horizontalScrollbarGeometry = horizontalScrollbarVisible
+            ? buildHorizontalScrollbarGeometry(contentWidth, maxHorizontalOffset)
+            : null;
+
+        normalizeScrollbarInteractionState();
+
+        if ((previousVerticalVisible != verticalScrollbarVisible
+            || previousHorizontalVisible != horizontalScrollbarVisible)
+            && scrollbarVisibilityListener != null) {
+            scrollbarVisibilityListener.run();
+        }
+    }
+
+    private void computeVisibleRange(double lineHeight) {
+        if (document == null || document.getLineCount() <= 0) {
+            firstVisibleLine = 0;
+            visibleLineCount = 0;
+            firstVisibleVisualRow = 0;
+            visibleVisualRowCount = 0;
+            return;
+        }
+
+        if (wordWrap) {
+            int totalRows = Math.max(1, wrapMap.totalVisualRows());
+            firstVisibleVisualRow = Math.max(0, (int) (scrollOffset / lineHeight) - PREFETCH_LINES);
+            int lastVisibleRow = Math.min(
+                totalRows - 1,
+                (int) ((scrollOffset + effectiveTextHeight) / lineHeight) + PREFETCH_LINES
+            );
+            visibleVisualRowCount = Math.max(0, lastVisibleRow - firstVisibleVisualRow + 1);
+            WrapMap.VisualRow firstRow = wrapMap.visualRow(firstVisibleVisualRow);
+            firstVisibleLine = firstRow.lineIndex();
+            return;
+        }
+
+        int totalLines = document.getLineCount();
+        firstVisibleLine = Math.max(0, (int) (scrollOffset / lineHeight) - PREFETCH_LINES);
+        int lastVisibleLine = Math.min(
+            totalLines - 1,
+            (int) ((scrollOffset + effectiveTextHeight) / lineHeight) + PREFETCH_LINES
+        );
+        visibleLineCount = Math.max(0, lastVisibleLine - firstVisibleLine + 1);
+        firstVisibleVisualRow = firstVisibleLine;
+        visibleVisualRowCount = visibleLineCount;
+    }
+
+    private void buildRenderLines(double lineHeight) {
+        renderLines.clear();
+        if (document == null) {
+            visibleLineCount = 0;
+            return;
+        }
+
+        if (wordWrap) {
+            int totalRows = Math.max(1, wrapMap.totalVisualRows());
+            for (int i = 0; i < visibleVisualRowCount; i++) {
+                int visualRow = firstVisibleVisualRow + i;
+                if (visualRow >= totalRows) {
+                    break;
+                }
+                WrapMap.VisualRow row = wrapMap.visualRow(visualRow);
+                int lineIndex = row.lineIndex();
+                String lineText = document.getLineText(lineIndex);
+                int start = clamp(row.startColumn(), 0, lineText.length());
+                int end = clamp(row.endColumn(), start, lineText.length());
+                String text = lineText.substring(start, end);
+                double y = visualRow * lineHeight - scrollOffset;
+                renderLines.add(new RenderLine(
+                    lineIndex,
+                    start,
+                    end,
+                    text,
+                    y,
+                    tokenMap.tokensForLine(lineIndex)
+                ));
+            }
+            int count = 0;
+            int previousLine = -1;
+            for (RenderLine renderLine : renderLines) {
+                if (renderLine.lineIndex() != previousLine) {
+                    count++;
+                    previousLine = renderLine.lineIndex();
+                }
+            }
+            visibleLineCount = count;
+            return;
+        }
+
+        for (int i = 0; i < visibleLineCount; i++) {
+            int lineIndex = firstVisibleLine + i;
+            if (lineIndex >= document.getLineCount()) {
+                break;
+            }
+            String text = document.getLineText(lineIndex);
+            double y = lineIndex * lineHeight - scrollOffset;
+            renderLines.add(new RenderLine(
+                lineIndex,
+                0,
+                text.length(),
+                text,
+                y,
+                tokenMap.tokensForLine(lineIndex)
+            ));
+        }
+    }
+
+    private void ensureWrapMap(double viewportWidth, double charWidth) {
+        if (!wordWrap) {
+            return;
+        }
+        boolean viewportChanged = Math.abs(viewportWidth - lastWrapViewportWidth) > METRIC_EPSILON;
+        boolean charWidthChanged = Math.abs(charWidth - lastWrapCharWidth) > METRIC_EPSILON;
+        if (!wrapMapDirty && !viewportChanged && !charWidthChanged) {
+            return;
+        }
+        wrapMap.rebuild(document, viewportWidth, charWidth);
+        wrapMapDirty = false;
+        lastWrapViewportWidth = viewportWidth;
+        lastWrapCharWidth = charWidth;
+    }
+
+    private ScrollbarGeometry buildVerticalScrollbarGeometry(double contentHeight, double maxOffset) {
+        double trackX = effectiveTextWidth;
+        double trackY = 0.0;
+        double trackWidth = SCROLLBAR_WIDTH;
+        double trackHeight = effectiveTextHeight;
+        double thumbWidth = Math.max(1.0, trackWidth - (SCROLLBAR_THUMB_PAD * 2));
+        double usableTrack = Math.max(0.0, trackHeight - (SCROLLBAR_THUMB_PAD * 2));
+
+        double ratio = contentHeight <= 0 ? 1.0 : effectiveTextHeight / contentHeight;
+        double thumbHeight = clampDouble(Math.max(MIN_THUMB_SIZE, usableTrack * ratio), 0.0, usableTrack);
+        double thumbTravel = Math.max(0.0, usableTrack - thumbHeight);
+        double thumbY = trackY + SCROLLBAR_THUMB_PAD
+            + (maxOffset <= 0 ? 0.0 : (scrollOffset / maxOffset) * thumbTravel);
+        double thumbX = trackX + SCROLLBAR_THUMB_PAD;
+
+        return new ScrollbarGeometry(
+            trackX,
+            trackY,
+            trackWidth,
+            trackHeight,
+            thumbX,
+            thumbY,
+            thumbWidth,
+            thumbHeight
+        );
+    }
+
+    private ScrollbarGeometry buildHorizontalScrollbarGeometry(double contentWidth, double maxOffset) {
+        double trackX = 0.0;
+        double trackY = effectiveTextHeight;
+        double trackWidth = effectiveTextWidth;
+        double trackHeight = SCROLLBAR_WIDTH;
+        double thumbHeight = Math.max(1.0, trackHeight - (SCROLLBAR_THUMB_PAD * 2));
+        double usableTrack = Math.max(0.0, trackWidth - (SCROLLBAR_THUMB_PAD * 2));
+
+        double ratio = contentWidth <= 0 ? 1.0 : effectiveTextWidth / contentWidth;
+        double thumbWidth = clampDouble(Math.max(MIN_THUMB_SIZE, usableTrack * ratio), 0.0, usableTrack);
+        double thumbTravel = Math.max(0.0, usableTrack - thumbWidth);
+        double thumbX = trackX + SCROLLBAR_THUMB_PAD
+            + (maxOffset <= 0 ? 0.0 : (horizontalScrollOffset / maxOffset) * thumbTravel);
+        double thumbY = trackY + SCROLLBAR_THUMB_PAD;
+
+        return new ScrollbarGeometry(
+            trackX,
+            trackY,
+            trackWidth,
+            trackHeight,
+            thumbX,
+            thumbY,
+            thumbWidth,
+            thumbHeight
+        );
+    }
+
+    private void normalizeScrollbarInteractionState() {
+        if (!verticalScrollbarVisible
+            && (scrollbarHoverPart == ScrollbarPart.VERTICAL_THUMB || scrollbarActivePart == ScrollbarPart.VERTICAL_THUMB)) {
+            scrollbarHoverPart = ScrollbarPart.NONE;
+            scrollbarActivePart = ScrollbarPart.NONE;
+        }
+        if (!horizontalScrollbarVisible
+            && (scrollbarHoverPart == ScrollbarPart.HORIZONTAL_THUMB
+            || scrollbarActivePart == ScrollbarPart.HORIZONTAL_THUMB)) {
+            scrollbarHoverPart = ScrollbarPart.NONE;
+            scrollbarActivePart = ScrollbarPart.NONE;
+        }
+    }
+
+    private void recomputeLongestLineLength() {
+        if (document == null) {
+            longestLineLength = 0;
+            return;
+        }
+        int max = 0;
+        int lineCount = document.getLineCount();
+        for (int line = 0; line < lineCount; line++) {
+            max = Math.max(max, document.getLineText(line).length());
+        }
+        longestLineLength = max;
+    }
+
+    private double computeContentHeight(double lineHeight) {
+        if (document == null) {
+            return 0.0;
+        }
+        if (wordWrap) {
+            int totalRows = Math.max(1, wrapMap.totalVisualRows());
+            return totalRows * lineHeight;
+        }
+        return document.getLineCount() * lineHeight;
+    }
+
+    private double computeContentWidth(double charWidth) {
+        if (document == null) {
+            return 0.0;
+        }
+        return Math.max(0.0, longestLineLength * charWidth);
+    }
+
+    private double computeMaxScrollOffset(double viewportHeight, double lineHeight) {
+        double contentHeight = computeContentHeight(lineHeight);
+        return Math.max(0.0, contentHeight - Math.max(0.0, viewportHeight));
+    }
+
+    private double computeMaxHorizontalScrollOffset(double viewportWidth, double charWidth) {
+        if (document == null || wordWrap) {
+            return 0.0;
+        }
+        double contentWidth = computeContentWidth(charWidth);
+        return Math.max(0.0, contentWidth - Math.max(0.0, viewportWidth));
+    }
+
+    private double currentEffectiveTextWidth() {
+        if (effectiveTextWidth > 0) {
+            return effectiveTextWidth;
+        }
+        return getWidth();
+    }
+
+    private double currentEffectiveTextHeight() {
+        if (effectiveTextHeight > 0) {
+            return effectiveTextHeight;
+        }
+        return getHeight();
+    }
+
+    private int clampColumn(int line, int column) {
+        if (document == null || document.getLineCount() == 0) {
+            return 0;
+        }
+        int safeLine = clamp(line, 0, document.getLineCount() - 1);
+        int maxColumn = document.getLineText(safeLine).length();
+        return clamp(column, 0, maxColumn);
+    }
+
     private List<CaretRange> collectActiveCarets() {
         if (document == null || multiCaretModel == null || !multiCaretModel.hasMultipleCarets()) {
             return List.of();
         }
         return multiCaretModel.allCarets(document);
-    }
-
-    private void computeVisibleRange(double viewportHeight, double lineHeight) {
-        int totalLines = document.getLineCount();
-        firstVisibleLine = Math.max(0, (int) (scrollOffset / lineHeight) - PREFETCH_LINES);
-        int lastVisible = Math.min(totalLines - 1,
-            (int) ((scrollOffset + viewportHeight) / lineHeight) + PREFETCH_LINES);
-        visibleLineCount = lastVisible - firstVisibleLine + 1;
-    }
-
-    private void buildRenderLines() {
-        renderLines.clear();
-        double lineHeight = glyphCache.getLineHeight();
-        for (int i = 0; i < visibleLineCount; i++) {
-            int lineIdx = firstVisibleLine + i;
-            if (lineIdx >= document.getLineCount()) {
-                break;
-            }
-            double y = lineIdx * lineHeight - scrollOffset;
-            renderLines.add(new RenderLine(
-                lineIdx,
-                document.getLineText(lineIdx),
-                y,
-                tokenMap.tokensForLine(lineIdx)
-            ));
-        }
     }
 
     private Map<Integer, List<Integer>> indexMatchesByLine(List<SearchMatch> matches) {
@@ -635,12 +1233,12 @@ public class Viewport extends Region {
         return value;
     }
 
-    private double computeMaxScrollOffset() {
-        if (document == null) {
-            return 0;
-        }
-        double totalHeight = document.getLineCount() * glyphCache.getLineHeight();
-        return Math.max(0, totalHeight - getHeight());
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
+    private static double clampDouble(double value, double min, double max) {
+        return Math.max(min, Math.min(value, max));
     }
 
     /**
@@ -665,5 +1263,46 @@ public class Viewport extends Region {
         searchMatches = List.of();
         searchMatchIndexesByLine = Map.of();
         currentSearchMatchIndex = -1;
+        verticalScrollbarGeometry = null;
+        horizontalScrollbarGeometry = null;
+        scrollbarHoverPart = ScrollbarPart.NONE;
+        scrollbarActivePart = ScrollbarPart.NONE;
+    }
+
+    /**
+     * Logical hit-test result in editor coordinates.
+     */
+    public record HitPosition(int line, int column) {
+    }
+
+    /**
+     * Scrollbar geometry snapshot for pointer hit-testing and rendering.
+     */
+    public record ScrollbarGeometry(
+        double trackX,
+        double trackY,
+        double trackWidth,
+        double trackHeight,
+        double thumbX,
+        double thumbY,
+        double thumbWidth,
+        double thumbHeight
+    ) {
+        public boolean containsTrack(double x, double y) {
+            return x >= trackX && x <= trackX + trackWidth && y >= trackY && y <= trackY + trackHeight;
+        }
+
+        public boolean containsThumb(double x, double y) {
+            return x >= thumbX && x <= thumbX + thumbWidth && y >= thumbY && y <= thumbY + thumbHeight;
+        }
+    }
+
+    /**
+     * Scrollbar part state used for hover/active visuals.
+     */
+    public enum ScrollbarPart {
+        NONE,
+        VERTICAL_THUMB,
+        HORIZONTAL_THUMB
     }
 }

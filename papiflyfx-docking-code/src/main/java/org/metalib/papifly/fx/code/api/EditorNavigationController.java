@@ -7,6 +7,8 @@ import org.metalib.papifly.fx.code.command.MultiCaretModel;
 import org.metalib.papifly.fx.code.command.WordBoundary;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.render.SelectionModel;
+import org.metalib.papifly.fx.code.render.Viewport;
+import org.metalib.papifly.fx.code.render.WrapMap;
 
 import java.util.Objects;
 import java.util.function.DoubleConsumer;
@@ -28,6 +30,7 @@ final class EditorNavigationController {
     private final LineEditService lineEditService;
     private final OccurrenceSelectionService occurrenceSelectionService;
     private final EditorCaretCoordinator caretCoordinator;
+    private final Viewport viewport;
     private final Runnable markViewportDirty;
     private final DoubleConsumer setVerticalScrollOffset;
     private final DoubleSupplier currentScrollOffsetSupplier;
@@ -39,6 +42,7 @@ final class EditorNavigationController {
         LineEditService lineEditService,
         OccurrenceSelectionService occurrenceSelectionService,
         EditorCaretCoordinator caretCoordinator,
+        Viewport viewport,
         Runnable markViewportDirty,
         DoubleConsumer setVerticalScrollOffset,
         DoubleSupplier currentScrollOffsetSupplier
@@ -49,6 +53,7 @@ final class EditorNavigationController {
         this.lineEditService = Objects.requireNonNull(lineEditService, "lineEditService");
         this.occurrenceSelectionService = Objects.requireNonNull(occurrenceSelectionService, "occurrenceSelectionService");
         this.caretCoordinator = Objects.requireNonNull(caretCoordinator, "caretCoordinator");
+        this.viewport = Objects.requireNonNull(viewport, "viewport");
         this.markViewportDirty = Objects.requireNonNull(markViewportDirty, "markViewportDirty");
         this.setVerticalScrollOffset = Objects.requireNonNull(setVerticalScrollOffset, "setVerticalScrollOffset");
         this.currentScrollOffsetSupplier = Objects.requireNonNull(currentScrollOffsetSupplier,
@@ -256,10 +261,34 @@ final class EditorNavigationController {
     }
 
     private void handlePageMove(int direction, boolean shift) {
+        if (viewport.isWordWrap()) {
+            handleWrappedPageMove(direction, shift);
+            return;
+        }
         int lineDelta = caretCoordinator.computePageLineDelta();
         int caretLine = selectionModel.getCaretLine();
         int targetLine = Math.max(0, Math.min(caretLine + (direction * lineDelta), document.getLineCount() - 1));
         caretCoordinator.moveCaretVertically(targetLine, shift);
+    }
+
+    private void handleWrappedPageMove(int direction, boolean shift) {
+        WrapMap wrapMap = viewport.getWrapMap();
+        if (wrapMap == null || wrapMap.totalVisualRows() <= 0) {
+            int lineDelta = caretCoordinator.computePageLineDelta();
+            int caretLine = selectionModel.getCaretLine();
+            int targetLine = Math.max(0, Math.min(caretLine + (direction * lineDelta), document.getLineCount() - 1));
+            caretCoordinator.moveCaretVertically(targetLine, shift);
+            return;
+        }
+        int caretLine = selectionModel.getCaretLine();
+        int caretColumn = selectionModel.getCaretColumn();
+        int currentVisualRow = wrapMap.lineColumnToVisualRow(caretLine, caretColumn);
+        int rowDelta = caretCoordinator.computePageLineDelta();
+        int targetVisualRow = Math.max(0,
+            Math.min(currentVisualRow + (direction * rowDelta), wrapMap.totalVisualRows() - 1));
+        WrapMap.VisualRow row = wrapMap.visualRow(targetVisualRow);
+        int targetColumn = Math.max(row.startColumn(), Math.min(caretColumn, row.endColumn()));
+        caretCoordinator.moveCaret(row.lineIndex(), targetColumn, shift);
     }
 
     private void handleScrollPage(int direction) {

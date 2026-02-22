@@ -19,9 +19,11 @@ final class EditorCaretCoordinator {
     private final Viewport viewport;
     private final GutterView gutterView;
     private final DoubleProperty verticalScrollOffset;
+    private final DoubleProperty horizontalScrollOffset;
     private final BooleanSupplier disposedSupplier;
 
     private boolean syncingScrollOffset;
+    private boolean syncingHorizontalScrollOffset;
     private int preferredVerticalColumn = -1;
 
     EditorCaretCoordinator(
@@ -30,6 +32,7 @@ final class EditorCaretCoordinator {
         Viewport viewport,
         GutterView gutterView,
         DoubleProperty verticalScrollOffset,
+        DoubleProperty horizontalScrollOffset,
         BooleanSupplier disposedSupplier
     ) {
         this.document = Objects.requireNonNull(document, "document");
@@ -37,6 +40,7 @@ final class EditorCaretCoordinator {
         this.viewport = Objects.requireNonNull(viewport, "viewport");
         this.gutterView = Objects.requireNonNull(gutterView, "gutterView");
         this.verticalScrollOffset = Objects.requireNonNull(verticalScrollOffset, "verticalScrollOffset");
+        this.horizontalScrollOffset = Objects.requireNonNull(horizontalScrollOffset, "horizontalScrollOffset");
         this.disposedSupplier = Objects.requireNonNull(disposedSupplier, "disposedSupplier");
     }
 
@@ -66,7 +70,9 @@ final class EditorCaretCoordinator {
         int col = document.getColumnForOffset(safeOffset);
         selectionModel.moveCaret(line, col);
         viewport.ensureCaretVisible();
+        viewport.ensureCaretVisibleHorizontally();
         syncVerticalScrollOffsetFromViewport();
+        syncHorizontalScrollOffsetFromViewport();
         syncGutterScroll();
     }
 
@@ -79,6 +85,14 @@ final class EditorCaretCoordinator {
         syncGutterScroll();
     }
 
+    void applyHorizontalScrollOffset(double requestedOffset) {
+        if (disposedSupplier.getAsBoolean() || syncingHorizontalScrollOffset) {
+            return;
+        }
+        viewport.setHorizontalScrollOffset(requestedOffset);
+        syncHorizontalScrollOffsetFromViewport();
+    }
+
     void syncVerticalScrollOffsetFromViewport() {
         double actualOffset = viewport.getScrollOffset();
         if (Double.compare(verticalScrollOffset.get(), actualOffset) == 0) {
@@ -89,6 +103,19 @@ final class EditorCaretCoordinator {
             verticalScrollOffset.set(actualOffset);
         } finally {
             syncingScrollOffset = false;
+        }
+    }
+
+    void syncHorizontalScrollOffsetFromViewport() {
+        double actualOffset = viewport.getHorizontalScrollOffset();
+        if (Double.compare(horizontalScrollOffset.get(), actualOffset) == 0) {
+            return;
+        }
+        syncingHorizontalScrollOffset = true;
+        try {
+            horizontalScrollOffset.set(actualOffset);
+        } finally {
+            syncingHorizontalScrollOffset = false;
         }
     }
 
@@ -117,7 +144,9 @@ final class EditorCaretCoordinator {
             selectionModel.moveCaret(safeLine, safeColumn);
         }
         viewport.ensureCaretVisible();
+        viewport.ensureCaretVisibleHorizontally();
         syncVerticalScrollOffsetFromViewport();
+        syncHorizontalScrollOffsetFromViewport();
         syncGutterScroll();
     }
 

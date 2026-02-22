@@ -1,9 +1,12 @@
 package org.metalib.papifly.fx.code.api;
 
 import javafx.application.Platform;
+import javafx.geometry.Point2D;
 import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.PickResult;
+import javafx.scene.input.ScrollEvent;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -179,6 +182,57 @@ class CodeEditorIntegrationTest {
     }
 
     @Test
+    void applyStateRestoresHorizontalScrollWhenWrapOff() {
+        runOnFx(() -> {
+            editor.setText("x".repeat(2_000));
+            editor.applyCss();
+            editor.layout();
+            editor.applyState(new EditorStateData(
+                "",
+                0,
+                0,
+                0.0,
+                220.0,
+                false,
+                "plain-text",
+                List.of(),
+                0,
+                0,
+                List.of()
+            ));
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(callOnFx(() -> editor.getHorizontalScrollOffset() > 0.0));
+    }
+
+    @Test
+    void applyStateForWrapModeForcesHorizontalOffsetToZero() {
+        runOnFx(() -> {
+            editor.setText("x".repeat(2_000));
+            editor.applyCss();
+            editor.layout();
+            editor.applyState(new EditorStateData(
+                "",
+                0,
+                0,
+                0.0,
+                220.0,
+                true,
+                "plain-text",
+                List.of(),
+                0,
+                0,
+                List.of()
+            ));
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(callOnFx(editor::isWordWrap));
+        assertEquals(0.0, callOnFx(editor::getHorizontalScrollOffset), 0.0001);
+    }
+
+    @Test
     void captureStateIncludesPrimarySelectionAndSecondaryCarets() {
         runOnFx(() -> {
             editor.setText("alpha\nbeta\ngamma");
@@ -342,6 +396,49 @@ class CodeEditorIntegrationTest {
     }
 
     @Test
+    void horizontalScrollRespondsToTrackpadDeltaX() {
+        runOnFx(() -> {
+            editor.setText("x".repeat(2_000));
+            editor.applyCss();
+            editor.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        fireScroll(-200, 0, false);
+
+        assertTrue(callOnFx(() -> editor.getHorizontalScrollOffset() > 0.0));
+    }
+
+    @Test
+    void shiftWheelMapsVerticalDeltaToHorizontalWhenWrapOff() {
+        runOnFx(() -> {
+            editor.setText("x".repeat(2_000));
+            editor.applyCss();
+            editor.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        fireScroll(0, -120, true);
+
+        assertTrue(callOnFx(() -> editor.getHorizontalScrollOffset() > 0.0));
+    }
+
+    @Test
+    void enablingWordWrapResetsHorizontalOffsetAndHidesHorizontalScrollbar() {
+        runOnFx(() -> {
+            editor.setText("x".repeat(2_000));
+            editor.applyCss();
+            editor.layout();
+            editor.setHorizontalScrollOffset(250);
+            editor.setWordWrap(true);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals(0.0, callOnFx(editor::getHorizontalScrollOffset), 0.0001);
+        assertFalse(callOnFx(() -> editor.getViewport().isHorizontalScrollbarVisible()));
+    }
+
+    @Test
     void verticalMovePreservesPreferredColumnAcrossShortLine() {
         runOnFx(() -> {
             editor.setText("0123456789\nxy\n0123456789");
@@ -414,6 +511,22 @@ class CodeEditorIntegrationTest {
         double actualOffset = callOnFx(() -> editor.getViewport().getScrollOffset());
         EditorStateData state = callOnFx(() -> editor.captureState());
         assertEquals(actualOffset, state.verticalScrollOffset(), 0.0001);
+    }
+
+    @Test
+    void captureStateIncludesHorizontalScrollAndWrapFlag() {
+        runOnFx(() -> {
+            editor.setText("x".repeat(2_000));
+            editor.applyCss();
+            editor.layout();
+            editor.setHorizontalScrollOffset(180);
+            editor.setWordWrap(true);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        EditorStateData state = callOnFx(editor::captureState);
+        assertEquals(0.0, state.horizontalScrollOffset(), 0.0001);
+        assertTrue(state.wordWrap());
     }
 
     @Test
@@ -751,13 +864,15 @@ class CodeEditorIntegrationTest {
     }
 
     @Test
-    void adapterSaveStateReturnsAllV2Fields() {
+    void adapterSaveStateReturnsAllV3Fields() {
         CodeEditorStateAdapter adapter = new CodeEditorStateAdapter();
         runOnFx(() -> {
             editor.setFilePath("/test/save.java");
             editor.setLanguageId("java");
             editor.setText("line0\nline1\nline2");
             editor.getSelectionModel().moveCaret(1, 3);
+            editor.setHorizontalScrollOffset(120);
+            editor.setWordWrap(false);
         });
         WaitForAsyncUtils.waitForFxEvents();
 
@@ -771,6 +886,8 @@ class CodeEditorIntegrationTest {
         assertEquals(3, ((Number) state.get("anchorColumn")).intValue());
         assertEquals("java", state.get("languageId"));
         assertNotNull(state.get("verticalScrollOffset"));
+        assertNotNull(state.get("horizontalScrollOffset"));
+        assertNotNull(state.get("wordWrap"));
         assertNotNull(state.get("foldedLines"));
         assertNotNull(state.get("secondaryCarets"));
     }
@@ -853,6 +970,41 @@ class CodeEditorIntegrationTest {
             false,
             false
         )));
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    private void fireScroll(double deltaX, double deltaY, boolean shiftDown) {
+        runOnFx(() -> {
+            Point2D scenePoint = editor.getViewport().localToScene(20, 20);
+            Point2D editorPoint = editor.sceneToLocal(scenePoint);
+            PickResult pick = new PickResult(editor, editorPoint.getX(), editorPoint.getY());
+            ScrollEvent event = new ScrollEvent(
+                null,
+                editor,
+                ScrollEvent.SCROLL,
+                scenePoint.getX(),
+                scenePoint.getY(),
+                scenePoint.getX(),
+                scenePoint.getY(),
+                shiftDown,
+                false,
+                false,
+                false,
+                false,
+                false,
+                deltaX,
+                deltaY,
+                deltaX,
+                deltaY,
+                ScrollEvent.HorizontalTextScrollUnits.NONE,
+                0,
+                ScrollEvent.VerticalTextScrollUnits.NONE,
+                0,
+                0,
+                pick
+            );
+            editor.fireEvent(event);
+        });
         WaitForAsyncUtils.waitForFxEvents();
     }
 
