@@ -1,6 +1,8 @@
 package org.metalib.papifly.fx.docks.render;
 
+import javafx.geometry.BoundingBox;
 import javafx.geometry.Bounds;
+import javafx.geometry.Point2D;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
@@ -70,15 +72,21 @@ public class OverlayCanvas extends Canvas {
             return;
         }
 
-        // Skip redraw if nothing changed (include tabInsertIndex for tab bar reordering)
-        if (currentHitResult != null
-            && currentHitResult.element() == result.element()
-            && currentHitResult.zone() == result.zone()
-            && currentHitResult.tabInsertIndex() == result.tabInsertIndex()) {
+        HitTestResult normalizedResult = normalizeHitResult(result);
+        if (normalizedResult == null) {
+            clearDropHint();
             return;
         }
 
-        currentHitResult = result;
+        // Skip redraw if nothing changed (include tabInsertIndex for tab bar reordering)
+        if (currentHitResult != null
+            && currentHitResult.element() == normalizedResult.element()
+            && currentHitResult.zone() == normalizedResult.zone()
+            && currentHitResult.tabInsertIndex() == normalizedResult.tabInsertIndex()) {
+            return;
+        }
+
+        currentHitResult = normalizedResult;
         redraw();
     }
 
@@ -232,6 +240,72 @@ public class OverlayCanvas extends Canvas {
     private void clear() {
         GraphicsContext gc = getGraphicsContext2D();
         gc.clearRect(0, 0, getWidth(), getHeight());
+    }
+
+    private HitTestResult normalizeHitResult(HitTestResult result) {
+        Bounds localZoneBounds = toLocalBounds(result.zoneBounds());
+        if (localZoneBounds == null) {
+            return null;
+        }
+
+        double localTabInsertX = result.tabInsertX();
+        if (result.zone() == DropZone.TAB_BAR && localTabInsertX >= 0) {
+            localTabInsertX = toLocalX(result.tabInsertX(), result.zoneBounds().getMinY());
+            if (!isFinite(localTabInsertX)) {
+                return null;
+            }
+        }
+
+        return new HitTestResult(
+            result.element(),
+            result.zone(),
+            localZoneBounds,
+            result.targetBounds(),
+            result.tabInsertIndex(),
+            localTabInsertX
+        );
+    }
+
+    private Bounds toLocalBounds(Bounds sceneBounds) {
+        if (sceneBounds == null || getScene() == null) {
+            return null;
+        }
+        if (!isFinite(sceneBounds.getMinX()) || !isFinite(sceneBounds.getMinY())
+            || !isFinite(sceneBounds.getMaxX()) || !isFinite(sceneBounds.getMaxY())) {
+            return null;
+        }
+
+        Point2D localMin = sceneToLocal(sceneBounds.getMinX(), sceneBounds.getMinY());
+        Point2D localMax = sceneToLocal(sceneBounds.getMaxX(), sceneBounds.getMaxY());
+        if (localMin == null || localMax == null) {
+            return null;
+        }
+        if (!isFinite(localMin.getX()) || !isFinite(localMin.getY())
+            || !isFinite(localMax.getX()) || !isFinite(localMax.getY())) {
+            return null;
+        }
+
+        double minX = Math.min(localMin.getX(), localMax.getX());
+        double minY = Math.min(localMin.getY(), localMax.getY());
+        double maxX = Math.max(localMin.getX(), localMax.getX());
+        double maxY = Math.max(localMin.getY(), localMax.getY());
+
+        return new BoundingBox(minX, minY, Math.max(0, maxX - minX), Math.max(0, maxY - minY));
+    }
+
+    private double toLocalX(double sceneX, double sceneY) {
+        if (getScene() == null || !isFinite(sceneX) || !isFinite(sceneY)) {
+            return Double.NaN;
+        }
+        Point2D localPoint = sceneToLocal(sceneX, sceneY);
+        if (localPoint == null || !isFinite(localPoint.getX())) {
+            return Double.NaN;
+        }
+        return localPoint.getX();
+    }
+
+    private static boolean isFinite(double value) {
+        return Double.isFinite(value);
     }
 
     /**

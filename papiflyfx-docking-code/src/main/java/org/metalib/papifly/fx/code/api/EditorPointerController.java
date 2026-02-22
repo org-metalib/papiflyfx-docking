@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.code.api;
 
+import javafx.geometry.Point2D;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
@@ -72,11 +73,16 @@ final class EditorPointerController {
         requestFocusAction.run();
         resetCaretBlinkAction.run();
 
-        int line = viewport.getLineAtY(event.getY());
+        Point2D viewportPoint = toViewportLocalPoint(event);
+        if (viewportPoint == null) {
+            return;
+        }
+
+        int line = viewport.getLineAtY(viewportPoint.getY());
         if (line < 0) {
             return;
         }
-        int col = clampColumn(line, viewport.getColumnAtX(event.getX()));
+        int col = clampColumn(line, viewport.getColumnAtX(viewportPoint.getX()));
 
         if (event.getClickCount() >= 3) {
             handleTripleClick(line);
@@ -111,11 +117,16 @@ final class EditorPointerController {
         clearPreferredVerticalColumn.run();
         resetCaretBlinkAction.run();
 
-        int line = viewport.getLineAtY(event.getY());
+        Point2D viewportPoint = toViewportLocalPoint(event);
+        if (viewportPoint == null) {
+            return;
+        }
+
+        int line = viewport.getLineAtY(viewportPoint.getY());
         if (line < 0) {
             return;
         }
-        int col = clampColumn(line, viewport.getColumnAtX(event.getX()));
+        int col = clampColumn(line, viewport.getColumnAtX(viewportPoint.getX()));
         if (boxSelectionActive) {
             updateBoxSelection(line, col);
             return;
@@ -143,6 +154,21 @@ final class EditorPointerController {
 
     void dispose() {
         boxSelectionActive = false;
+    }
+
+    private Point2D toViewportLocalPoint(MouseEvent event) {
+        Point2D viewportPoint = viewport.sceneToLocal(event.getSceneX(), event.getSceneY());
+        if (viewportPoint == null) {
+            return null;
+        }
+        if (!isFinite(viewportPoint.getX()) || !isFinite(viewportPoint.getY())) {
+            return null;
+        }
+        return viewportPoint;
+    }
+
+    private static boolean isFinite(double value) {
+        return Double.isFinite(value);
     }
 
     private int clampColumn(int line, int column) {

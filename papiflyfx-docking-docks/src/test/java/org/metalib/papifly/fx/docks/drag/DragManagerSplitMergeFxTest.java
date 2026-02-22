@@ -1,11 +1,16 @@
 package org.metalib.papifly.fx.docks.drag;
 
+import javafx.geometry.BoundingBox;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.PickResult;
+import javafx.geometry.Bounds;
+import javafx.geometry.Point2D;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,12 +24,14 @@ import org.metalib.papifly.fx.docks.testutil.DragSimulator;
 import org.metalib.papifly.fx.docks.testutil.FxTestUtil;
 import org.metalib.papifly.fx.docks.testutil.Merge;
 import org.metalib.papifly.fx.docks.testutil.Split;
+import org.metalib.papifly.fx.docks.render.OverlayCanvas;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
 
+import java.lang.reflect.Field;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,10 +46,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ExtendWith(ApplicationExtension.class)
 class DragManagerSplitMergeFxTest {
 
+    private static final double COORD_TOLERANCE = 1.0;
+
     private DockManager dockManager;
+    private Stage stage;
 
     @Start
     private void start(Stage stage) {
+        this.stage = stage;
         dockManager = new DockManager(Theme.dark());
         stage.setScene(new Scene(dockManager.getRootPane(), 1200, 800));
         stage.show();
@@ -104,6 +115,94 @@ class DragManagerSplitMergeFxTest {
             finalTabGroup.getTabs().stream().map(t -> t.getMetadata().title()).toList());
         assertTrue(finalTitles.containsAll(List.of("Editor 1", "Editor 2")), "Final tab group should contain both editors");
         assertEquals(2, finalTitles.size(), "Final tab group should have exactly 2 tabs");
+    }
+
+    @Test
+    void splitDragHintUsesOverlayLocalCoordinatesInOffsetContainer(FxRobot fxRobot) {
+        fxRobot.interact(() -> {
+            dockManager.setRoot(DemoApp.createInitialLayout(dockManager));
+            installOffsetContainer(56, 130);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        DragManager dragManager = FxTestUtil.callFx(() -> getDragManager(dockManager));
+        OverlayCanvas overlay = FxTestUtil.callFx(() -> getOverlayLayer(dockManager));
+        DockLeaf sourceLeaf = FxTestUtil.callFx(() -> findLeafByTitle(dockManager.getRoot(), "Editor 2"));
+        DockTabGroup targetGroup = FxTestUtil.callFx(() -> findTabGroupContaining(dockManager.getRoot(), "Editor 1"));
+        assertNotNull(sourceLeaf, "Source leaf should exist");
+        assertNotNull(targetGroup, "Target tab group should exist");
+
+        Node sourceTab = FxTestUtil.callFx(() -> findTabForLeaf(sourceLeaf.getParent(), sourceLeaf));
+        assertNotNull(sourceTab, "Source tab node should exist");
+
+        Point2D startPoint = FxTestUtil.callFx(() -> centerOfInScene(sourceTab));
+        Point2D endPoint = FxTestUtil.callFx(() -> eastEdgePointInScene(targetGroup));
+
+        FxTestUtil.runFx(() -> dragManager.startDrag(sourceLeaf,
+            createMouseEvent(MouseEvent.MOUSE_PRESSED, sourceTab, startPoint.getX(), startPoint.getY(), true)));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        FxTestUtil.runFx(() -> dragManager.onDrag(
+            createMouseEvent(MouseEvent.MOUSE_DRAGGED, dockManager.getRootPane(), endPoint.getX(), endPoint.getY(), true)));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        HitTestResult overlayHint = FxTestUtil.callFx(() -> getCurrentOverlayHitResult(overlay));
+        assertNotNull(overlayHint, "Overlay should hold the current drag hint");
+        assertEquals(DropZone.EAST, overlayHint.zone(), "Drag should resolve to EAST split zone");
+
+        Bounds expectedSceneBounds = FxTestUtil.callFx(() -> calculateEastZoneBoundsInScene(targetGroup));
+        Bounds expectedLocalBounds = FxTestUtil.callFx(() -> sceneBoundsToOverlayLocal(overlay, expectedSceneBounds));
+        assertBoundsClose(expectedLocalBounds, overlayHint.zoneBounds(), COORD_TOLERANCE);
+
+        FxTestUtil.runFx(dragManager::cancelDrag);
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    @Test
+    void tabBarDragHintUsesOverlayLocalCoordinatesInOffsetContainer(FxRobot fxRobot) {
+        fxRobot.interact(() -> {
+            dockManager.setRoot(DemoApp.createInitialLayout(dockManager));
+            installOffsetContainer(60, 125);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        DragManager dragManager = FxTestUtil.callFx(() -> getDragManager(dockManager));
+        OverlayCanvas overlay = FxTestUtil.callFx(() -> getOverlayLayer(dockManager));
+        DockLeaf sourceLeaf = FxTestUtil.callFx(() -> findLeafByTitle(dockManager.getRoot(), "Editor 2"));
+        DockTabGroup targetGroup = FxTestUtil.callFx(() -> findTabGroupContaining(dockManager.getRoot(), "Editor 1"));
+        assertNotNull(sourceLeaf, "Source leaf should exist");
+        assertNotNull(targetGroup, "Target tab group should exist");
+
+        Node sourceTab = FxTestUtil.callFx(() -> findTabForLeaf(sourceLeaf.getParent(), sourceLeaf));
+        assertNotNull(sourceTab, "Source tab node should exist");
+
+        Point2D startPoint = FxTestUtil.callFx(() -> centerOfInScene(sourceTab));
+        Point2D endPoint = FxTestUtil.callFx(() -> tabBarPointInScene(targetGroup));
+
+        FxTestUtil.runFx(() -> dragManager.startDrag(sourceLeaf,
+            createMouseEvent(MouseEvent.MOUSE_PRESSED, sourceTab, startPoint.getX(), startPoint.getY(), true)));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        FxTestUtil.runFx(() -> dragManager.onDrag(
+            createMouseEvent(MouseEvent.MOUSE_DRAGGED, dockManager.getRootPane(), endPoint.getX(), endPoint.getY(), true)));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        HitTestResult overlayHint = FxTestUtil.callFx(() -> getCurrentOverlayHitResult(overlay));
+        assertNotNull(overlayHint, "Overlay should hold the current drag hint");
+        assertEquals(DropZone.TAB_BAR, overlayHint.zone(), "Drag should resolve to TAB_BAR zone");
+
+        Bounds tabBarSceneBounds = FxTestUtil.callFx(() -> targetGroup.getTabBar()
+            .localToScene(targetGroup.getTabBar().getBoundsInLocal()));
+        Bounds tabBarLocalBounds = FxTestUtil.callFx(() -> sceneBoundsToOverlayLocal(overlay, tabBarSceneBounds));
+        assertBoundsClose(tabBarLocalBounds, overlayHint.zoneBounds(), COORD_TOLERANCE);
+        assertTrue(
+            overlayHint.tabInsertX() >= tabBarLocalBounds.getMinX() - COORD_TOLERANCE
+                && overlayHint.tabInsertX() <= tabBarLocalBounds.getMaxX() + COORD_TOLERANCE,
+            "Tab insertion X should be in overlay-local tab bar bounds"
+        );
+
+        FxTestUtil.runFx(dragManager::cancelDrag);
+        WaitForAsyncUtils.waitForFxEvents();
     }
 
     private static DockTabGroup findTabGroupContaining(DockElement root, String title) {
@@ -328,6 +427,42 @@ class DragManagerSplitMergeFxTest {
         node.fireEvent(clickEvent);
     }
 
+    private static MouseEvent createMouseEvent(
+        javafx.event.EventType<MouseEvent> eventType,
+        Node target,
+        double sceneX,
+        double sceneY,
+        boolean primaryButtonDown
+    ) {
+        Point2D screenPos = target.localToScreen(target.sceneToLocal(sceneX, sceneY));
+        double screenX = screenPos != null ? screenPos.getX() : sceneX;
+        double screenY = screenPos != null ? screenPos.getY() : sceneY;
+        PickResult pickResult = new PickResult(target, sceneX, sceneY);
+
+        return new MouseEvent(
+            null,
+            target,
+            eventType,
+            sceneX,
+            sceneY,
+            screenX,
+            screenY,
+            MouseButton.PRIMARY,
+            1,
+            false,
+            false,
+            false,
+            false,
+            primaryButtonDown,
+            false,
+            false,
+            true,
+            false,
+            true,
+            pickResult
+        );
+    }
+
     private static DockLeaf findLeafByTitle(DockElement root, String title) {
         if (root == null) return null;
         if (root instanceof DockTabGroup tabGroup) {
@@ -355,6 +490,107 @@ class DragManagerSplitMergeFxTest {
             return countLeavesWithTitle(split.getFirst(), title) + countLeavesWithTitle(split.getSecond(), title);
         }
         return 0;
+    }
+
+    private void installOffsetContainer(double topHeight, double leftWidth) {
+        BorderPane container = new BorderPane();
+        Region top = new Region();
+        top.setPrefHeight(topHeight);
+        Region left = new Region();
+        left.setPrefWidth(leftWidth);
+        container.setTop(top);
+        container.setLeft(left);
+        container.setCenter(dockManager.getRootPane());
+        stage.getScene().setRoot(container);
+        container.applyCss();
+        container.layout();
+    }
+
+    private static Point2D centerOfInScene(Node node) {
+        Bounds bounds = node.localToScene(node.getBoundsInLocal());
+        return new Point2D(
+            bounds.getMinX() + bounds.getWidth() * 0.5,
+            bounds.getMinY() + bounds.getHeight() * 0.5
+        );
+    }
+
+    private static Point2D eastEdgePointInScene(DockTabGroup tabGroup) {
+        Bounds bounds = tabGroup.getNode().localToScene(tabGroup.getNode().getBoundsInLocal());
+        return new Point2D(bounds.getMaxX() - 2.0, bounds.getMinY() + bounds.getHeight() * 0.5);
+    }
+
+    private static Point2D tabBarPointInScene(DockTabGroup tabGroup) {
+        Bounds tabBarBounds = tabGroup.getTabBar().localToScene(tabGroup.getTabBar().getBoundsInLocal());
+        return new Point2D(
+            tabBarBounds.getMinX() + tabBarBounds.getWidth() * 0.25,
+            tabBarBounds.getMinY() + tabBarBounds.getHeight() * 0.5
+        );
+    }
+
+    private static Bounds calculateEastZoneBoundsInScene(DockTabGroup tabGroup) {
+        Bounds tabBounds = tabGroup.getNode().localToScene(tabGroup.getNode().getBoundsInLocal());
+        double tabBarHeight = tabGroup.getTabBar().getHeight();
+        Bounds contentBounds = new BoundingBox(
+            tabBounds.getMinX(),
+            tabBounds.getMinY() + tabBarHeight,
+            tabBounds.getWidth(),
+            tabBounds.getHeight() - tabBarHeight
+        );
+        return new BoundingBox(
+            contentBounds.getMinX() + contentBounds.getWidth() * 0.5,
+            contentBounds.getMinY(),
+            contentBounds.getWidth() * 0.5,
+            contentBounds.getHeight()
+        );
+    }
+
+    private static Bounds sceneBoundsToOverlayLocal(OverlayCanvas overlay, Bounds sceneBounds) {
+        Point2D localMin = overlay.sceneToLocal(sceneBounds.getMinX(), sceneBounds.getMinY());
+        Point2D localMax = overlay.sceneToLocal(sceneBounds.getMaxX(), sceneBounds.getMaxY());
+        return new BoundingBox(
+            Math.min(localMin.getX(), localMax.getX()),
+            Math.min(localMin.getY(), localMax.getY()),
+            Math.abs(localMax.getX() - localMin.getX()),
+            Math.abs(localMax.getY() - localMin.getY())
+        );
+    }
+
+    private static void assertBoundsClose(Bounds expected, Bounds actual, double tolerance) {
+        assertEquals(expected.getMinX(), actual.getMinX(), tolerance, "minX should match");
+        assertEquals(expected.getMinY(), actual.getMinY(), tolerance, "minY should match");
+        assertEquals(expected.getWidth(), actual.getWidth(), tolerance, "width should match");
+        assertEquals(expected.getHeight(), actual.getHeight(), tolerance, "height should match");
+    }
+
+    private static Node findTabForLeaf(DockTabGroup tabGroup, DockLeaf leaf) {
+        for (Node child : tabGroup.getTabsContainer().getChildrenUnmodifiable()) {
+            if (child.getUserData() == leaf) {
+                return child;
+            }
+        }
+        return null;
+    }
+
+    private static DragManager getDragManager(DockManager manager) {
+        return readField(DockManager.class, manager, "dragManager", DragManager.class);
+    }
+
+    private static OverlayCanvas getOverlayLayer(DockManager manager) {
+        return readField(DockManager.class, manager, "overlayLayer", OverlayCanvas.class);
+    }
+
+    private static HitTestResult getCurrentOverlayHitResult(OverlayCanvas overlay) {
+        return readField(OverlayCanvas.class, overlay, "currentHitResult", HitTestResult.class);
+    }
+
+    private static <T> T readField(Class<?> type, Object instance, String fieldName, Class<T> valueType) {
+        try {
+            Field field = type.getDeclaredField(fieldName);
+            field.setAccessible(true);
+            return valueType.cast(field.get(instance));
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

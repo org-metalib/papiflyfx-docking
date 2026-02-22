@@ -122,3 +122,13 @@ This removes dependence on editor container offsets, gutter width, and surroundi
 
 The reported issues are real and share the same category: **mixing coordinate spaces without explicit normalization**.  
 Applying the two focused fixes above should resolve all three sample flaws with minimal behavior risk.
+
+## Status Update (2026-02-22)
+
+Implemented:
+
+1. `OverlayCanvas.showDropHint(HitTestResult)` now normalizes scene-space hit geometry (`zoneBounds`, `tabInsertX`) into overlay-local coordinates before rendering.
+2. `EditorPointerController` now converts mouse pointers from scene-space to viewport-local coordinates before line/column mapping for press and drag handling.
+3. Added offset-container regressions:
+   - `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/api/MouseGestureTest.java` (double-click + box selection using viewport->scene->editor event paths)
+   - `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/drag/DragManagerSplitMergeFxTest.java` (split + tab-bar overlay hint coordinate checks with non-zero top/left offsets)

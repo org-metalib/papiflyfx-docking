@@ -1,9 +1,13 @@
 package org.metalib.papifly.fx.code.api;
 
 import javafx.application.Platform;
+import javafx.geometry.Point2D;
 import javafx.scene.Scene;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.PickResult;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Region;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,11 +28,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MouseGestureTest {
 
     private CodeEditor editor;
+    private Stage stage;
     private double lineHeight;
     private double charWidth;
 
     @Start
     void start(Stage stage) {
+        this.stage = stage;
         editor = new CodeEditor();
         Scene scene = new Scene(editor, 640, 480);
         stage.setScene(scene);
@@ -57,6 +63,25 @@ class MouseGestureTest {
         double x = charWidth * 7;
         double y = lineHeight * 0.5;
         fireMousePressed(x, y, MouseButton.PRIMARY, 2, false, false);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(callOnFx(() -> editor.getSelectionModel().hasSelection()));
+        assertEquals("world", callOnFx(() ->
+            editor.getSelectionModel().getSelectedText(editor.getDocument())));
+    }
+
+    @Test
+    void doubleClickSelectsWordInOffsetContainer() {
+        runOnFx(() -> {
+            editor.setText("hello world foo");
+            installOffsetContainer(52, 110);
+            initMetrics();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        double viewportX = charWidth * 7;
+        double viewportY = lineHeight * 0.5;
+        fireMousePressed(viewportX, viewportY, MouseButton.PRIMARY, 2, false, false);
         WaitForAsyncUtils.waitForFxEvents();
 
         assertTrue(callOnFx(() -> editor.getSelectionModel().hasSelection()));
@@ -222,6 +247,33 @@ class MouseGestureTest {
     }
 
     @Test
+    void boxSelectionUsesViewportCoordinatesInOffsetContainer() {
+        runOnFx(() -> {
+            editor.setText("abcdef\nghijkl\nmnopqr\nstuvwx");
+            installOffsetContainer(48, 96);
+            initMetrics();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        fireMousePressed(charWidth, lineHeight * 0.5, MouseButton.PRIMARY, 1, true, true);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        fireMouseDragged(charWidth * 4, lineHeight * 2.5);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        fireMouseReleased(charWidth * 4, lineHeight * 2.5);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        List<CaretRange> allCarets = callOnFx(() ->
+            editor.getMultiCaretModel().allCarets(editor.getDocument()));
+        assertEquals(3, allCarets.size());
+        for (CaretRange caret : allCarets) {
+            assertEquals(1, caret.getStartColumn());
+            assertEquals(4, caret.getEndColumn());
+        }
+    }
+
+    @Test
     void boxSelectionClampsToLineLength() {
         runOnFx(() -> {
             editor.setText("abcdefgh\nab\nabcdef");
@@ -287,33 +339,124 @@ class MouseGestureTest {
 
     private void fireMousePressed(double x, double y, MouseButton button, int clickCount,
                                    boolean shift, boolean alt) {
-        runOnFx(() -> editor.fireEvent(new MouseEvent(
-            MouseEvent.MOUSE_PRESSED, x, y, x, y,
-            button, clickCount,
-            shift, false, alt, false,
-            button == MouseButton.PRIMARY, button == MouseButton.MIDDLE, button == MouseButton.SECONDARY,
-            false, false, false, null
-        )));
+        runOnFx(() -> {
+            Point2D scenePoint = toScenePoint(x, y);
+            Point2D editorPoint = editor.sceneToLocal(scenePoint);
+            editor.fireEvent(createMouseEvent(
+                MouseEvent.MOUSE_PRESSED,
+                scenePoint,
+                editorPoint,
+                button,
+                clickCount,
+                shift,
+                alt,
+                button == MouseButton.PRIMARY,
+                button == MouseButton.MIDDLE,
+                button == MouseButton.SECONDARY
+            ));
+        });
     }
 
     private void fireMouseDragged(double x, double y) {
-        runOnFx(() -> editor.fireEvent(new MouseEvent(
-            MouseEvent.MOUSE_DRAGGED, x, y, x, y,
-            MouseButton.PRIMARY, 1,
-            false, false, false, false,
-            true, false, false,
-            false, false, false, null
-        )));
+        runOnFx(() -> {
+            Point2D scenePoint = toScenePoint(x, y);
+            Point2D editorPoint = editor.sceneToLocal(scenePoint);
+            editor.fireEvent(createMouseEvent(
+                MouseEvent.MOUSE_DRAGGED,
+                scenePoint,
+                editorPoint,
+                MouseButton.PRIMARY,
+                1,
+                false,
+                false,
+                true,
+                false,
+                false
+            ));
+        });
     }
 
     private void fireMouseReleased(double x, double y) {
-        runOnFx(() -> editor.fireEvent(new MouseEvent(
-            MouseEvent.MOUSE_RELEASED, x, y, x, y,
-            MouseButton.PRIMARY, 1,
-            false, false, false, false,
-            false, false, false,
-            false, false, false, null
-        )));
+        runOnFx(() -> {
+            Point2D scenePoint = toScenePoint(x, y);
+            Point2D editorPoint = editor.sceneToLocal(scenePoint);
+            editor.fireEvent(createMouseEvent(
+                MouseEvent.MOUSE_RELEASED,
+                scenePoint,
+                editorPoint,
+                MouseButton.PRIMARY,
+                1,
+                false,
+                false,
+                false,
+                false,
+                false
+            ));
+        });
+    }
+
+    private MouseEvent createMouseEvent(
+        javafx.event.EventType<MouseEvent> eventType,
+        Point2D scenePoint,
+        Point2D editorPoint,
+        MouseButton button,
+        int clickCount,
+        boolean shift,
+        boolean alt,
+        boolean primaryDown,
+        boolean middleDown,
+        boolean secondaryDown
+    ) {
+        Point2D screenPoint = editor.localToScreen(editorPoint);
+        double screenX = screenPoint != null ? screenPoint.getX() : scenePoint.getX();
+        double screenY = screenPoint != null ? screenPoint.getY() : scenePoint.getY();
+        PickResult pickResult = new PickResult(editor, editorPoint.getX(), editorPoint.getY());
+        return new MouseEvent(
+            null,
+            editor,
+            eventType,
+            scenePoint.getX(),
+            scenePoint.getY(),
+            screenX,
+            screenY,
+            button,
+            clickCount,
+            shift,
+            false,
+            alt,
+            false,
+            primaryDown,
+            middleDown,
+            secondaryDown,
+            true,
+            false,
+            true,
+            pickResult
+        );
+    }
+
+    private Point2D toScenePoint(double viewportX, double viewportY) {
+        Point2D scenePoint = editor.getViewport().localToScene(viewportX, viewportY);
+        if (scenePoint == null) {
+            throw new IllegalStateException("Unable to map viewport-local point to scene coordinates");
+        }
+        return scenePoint;
+    }
+
+    private void installOffsetContainer(double topHeight, double leftWidth) {
+        BorderPane offsetContainer = new BorderPane();
+        Region top = new Region();
+        top.setPrefHeight(topHeight);
+        Region left = new Region();
+        left.setPrefWidth(leftWidth);
+        offsetContainer.setTop(top);
+        offsetContainer.setLeft(left);
+        offsetContainer.setCenter(editor);
+        stage.getScene().setRoot(offsetContainer);
+        offsetContainer.applyCss();
+        offsetContainer.layout();
+        editor.applyCss();
+        editor.layout();
     }
 
     private void runOnFx(Runnable action) {
