@@ -16,6 +16,6 @@ public record RenderLine(int lineIndex, String text, double y, List<Token> token
 
     public RenderLine {
         text = text == null ? "" : text;
-        tokens = tokens == null ? List.of() : List.copyOf(tokens);
+        tokens = tokens == null ? List.of() : tokens;
     }
 }

@@ -28,6 +28,11 @@ public class SearchModel {
     private int selectionEndOffset = -1;
     private List<SearchMatch> matches = List.of();
     private int currentMatchIndex = -1;
+    private Pattern cachedPattern;
+    private String cachedPatternQuery = "";
+    private boolean cachedPatternCaseSensitive;
+    private boolean cachedPatternWholeWord;
+    private boolean cachedPatternInitialized;
 
     /**
      * Returns the current search query.
@@ -305,6 +310,11 @@ public class SearchModel {
         replacement = "";
         matches = List.of();
         currentMatchIndex = -1;
+        cachedPattern = null;
+        cachedPatternQuery = "";
+        cachedPatternCaseSensitive = false;
+        cachedPatternWholeWord = false;
+        cachedPatternInitialized = false;
         clearSelectionScope();
     }
 
@@ -328,42 +338,57 @@ public class SearchModel {
     }
 
     private Pattern compilePattern() {
+        if (cachedPatternInitialized
+            && query.equals(cachedPatternQuery)
+            && caseSensitive == cachedPatternCaseSensitive
+            && wholeWord == cachedPatternWholeWord) {
+            return cachedPattern;
+        }
+        cachedPatternInitialized = true;
+        cachedPatternQuery = query;
+        cachedPatternCaseSensitive = caseSensitive;
+        cachedPatternWholeWord = wholeWord;
         try {
             int flags = caseSensitive ? 0 : Pattern.CASE_INSENSITIVE;
             String patternStr = wholeWord ? "\\b" + query + "\\b" : query;
-            return Pattern.compile(patternStr, flags);
+            cachedPattern = Pattern.compile(patternStr, flags);
         } catch (PatternSyntaxException e) {
-            return null;
+            cachedPattern = null;
         }
+        return cachedPattern;
     }
 
     private List<SearchMatch> searchPlainText(String text, Document document, int scopeStart, int scopeEnd) {
         List<SearchMatch> found = new ArrayList<>();
-        String searchIn = caseSensitive ? text : text.toLowerCase(Locale.ROOT);
-        String searchFor = caseSensitive ? query : query.toLowerCase(Locale.ROOT);
-
         int index = scopeStart;
-        int step = Math.max(1, searchFor.length());
-        while (index < scopeEnd && (index = searchIn.indexOf(searchFor, index)) >= 0) {
-            int endIndex = index + query.length();
+        int queryLength = query.length();
+        int step = Math.max(1, queryLength);
+        while (index < scopeEnd) {
+            int foundIndex = caseSensitive
+                ? text.indexOf(query, index)
+                : indexOfIgnoreCase(text, query, index, scopeEnd);
+            if (foundIndex < 0 || foundIndex >= scopeEnd) {
+                break;
+            }
+            int endIndex = foundIndex + queryLength;
             if (endIndex > scopeEnd) {
                 break;
             }
-            if (wholeWord && !isWordBoundary(text, index, endIndex)) {
-                index += step;
+            if (wholeWord && !isWordBoundary(text, foundIndex, endIndex)) {
+                index = foundIndex + step;
                 continue;
             }
-            int line = document.getLineForOffset(index);
-            int endLine = document.getLineForOffset(Math.max(index, endIndex - 1));
+            int line = document.getLineForOffset(foundIndex);
+            int endLine = document.getLineForOffset(Math.max(foundIndex, endIndex - 1));
             if (line != endLine) {
-                index += step;
+                index = foundIndex + step;
                 continue;
             }
             int lineStart = document.getLineStartOffset(line);
-            int startCol = index - lineStart;
+            int startCol = foundIndex - lineStart;
             int endCol = endIndex - lineStart;
-            found.add(new SearchMatch(index, endIndex, line, startCol, endCol));
-            index += step;
+            found.add(new SearchMatch(foundIndex, endIndex, line, startCol, endCol));
+            index = foundIndex + step;
         }
         return found;
     }
@@ -469,6 +494,32 @@ public class SearchModel {
             }
         }
         return true;
+    }
+
+    private static int indexOfIgnoreCase(String text, String query, int fromIndex, int scopeEndExclusive) {
+        int queryLength = query.length();
+        if (queryLength == 0) {
+            return fromIndex;
+        }
+        int max = scopeEndExclusive - queryLength;
+        if (fromIndex > max) {
+            return -1;
+        }
+        char first = query.charAt(0);
+        char lower = Character.toLowerCase(first);
+        char upper = Character.toUpperCase(first);
+        for (int i = fromIndex; i <= max; i++) {
+            char current = text.charAt(i);
+            if (current != lower && current != upper
+                && Character.toLowerCase(current) != lower
+                && Character.toUpperCase(current) != upper) {
+                continue;
+            }
+            if (text.regionMatches(true, i, query, 0, queryLength)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private static boolean isWordBoundary(String text, int start, int end) {

@@ -8,24 +8,22 @@ import javafx.beans.value.ChangeListener;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.Region;
-import javafx.scene.paint.Paint;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
 import org.metalib.papifly.fx.code.command.CaretRange;
 import org.metalib.papifly.fx.code.command.MultiCaretModel;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.document.DocumentChangeEvent;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
-import org.metalib.papifly.fx.code.lexer.Token;
 import org.metalib.papifly.fx.code.lexer.TokenMap;
-import org.metalib.papifly.fx.code.lexer.TokenType;
 import org.metalib.papifly.fx.code.search.SearchMatch;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 
-import org.metalib.papifly.fx.code.document.DocumentChangeEvent;
-
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Canvas-based virtualized text renderer.
@@ -59,6 +57,7 @@ public class Viewport extends Region {
     private boolean disposed;
     private TokenMap tokenMap = TokenMap.empty();
     private List<SearchMatch> searchMatches = List.of();
+    private Map<Integer, List<Integer>> searchMatchIndexesByLine = Map.of();
     private int currentSearchMatchIndex = -1;
     private MultiCaretModel multiCaretModel;
 
@@ -69,6 +68,13 @@ public class Viewport extends Region {
     private int previousSelectionStartLine = -1;
     private int previousSelectionEndLine = -1;
     private final List<RenderLine> renderLines = new ArrayList<>();
+    private final List<RenderPass> renderPasses = List.of(
+        new BackgroundPass(),
+        new SearchPass(),
+        new SelectionPass(),
+        new TextPass(),
+        new CaretPass()
+    );
     private boolean caretBlinkActive;
     private boolean caretVisible = true;
 
@@ -169,6 +175,7 @@ public class Viewport extends Region {
     public void setSearchMatches(List<SearchMatch> matches, int currentIndex) {
         this.searchMatches = matches == null ? List.of() : matches;
         this.currentSearchMatchIndex = currentIndex;
+        this.searchMatchIndexesByLine = indexMatchesByLine(this.searchMatches);
         markDirty();
     }
 
@@ -462,63 +469,44 @@ public class Viewport extends Region {
         // Determine if we need full redraw or can do incremental
         boolean doFullRedraw = fullRedrawRequired || previousFirstVisible != firstVisibleLine;
         fullRedrawRequired = false;
+        RenderContext renderContext = new RenderContext(
+            gc,
+            theme,
+            glyphCache,
+            selectionModel,
+            renderLines,
+            activeCarets,
+            hasMultiCarets,
+            paintCaret,
+            searchMatches,
+            searchMatchIndexesByLine,
+            currentSearchMatchIndex,
+            firstVisibleLine,
+            visibleLineCount,
+            w,
+            h,
+            lineHeight,
+            charWidth,
+            glyphCache.getBaselineOffset(),
+            scrollOffset
+        );
 
         if (doFullRedraw) {
-            // Full redraw path
             dirtyLines.clear();
-            gc.setFill(theme.editorBackground());
-            gc.fillRect(0, 0, w, h);
-
-            drawCurrentLineHighlight(gc, w);
-            drawSearchHighlights(gc, lineHeight, charWidth);
-            drawSelection(gc, w, lineHeight, charWidth, activeCarets);
-            drawText(gc, lineHeight, charWidth);
-            if (paintCaret) {
-                drawCaret(gc, lineHeight, charWidth, activeCarets);
+            for (RenderPass renderPass : renderPasses) {
+                renderPass.renderFull(renderContext);
             }
         } else {
-            // Incremental redraw: only repaint dirty lines
             int caretLine = selectionModel.getCaretLine();
-            // Always include caret line and previous caret line
             dirtyLines.set(caretLine);
             if (previousCaretLine >= 0) {
                 dirtyLines.set(previousCaretLine);
             }
 
-            for (RenderLine rl : renderLines) {
-                if (dirtyLines.get(rl.lineIndex())) {
-                    // Clear the line area
-                    gc.setFill(theme.editorBackground());
-                    gc.fillRect(0, rl.y(), w, lineHeight);
-
-                    // Redraw current-line highlight
-                    if (rl.lineIndex() == caretLine && !selectionModel.hasSelection()) {
-                        gc.setFill(theme.currentLineColor());
-                        gc.fillRect(0, rl.y(), w, lineHeight);
-                    }
-
-                    // Redraw search highlights on this line
-                    drawSearchHighlightsForLine(gc, rl, lineHeight, charWidth);
-
-                    // Redraw selection on this line
-                    drawSelectionForLine(gc, rl, w, lineHeight, charWidth, activeCarets);
-
-                    // Redraw text
-                    gc.setFont(glyphCache.getFont());
-                    drawTokenizedLine(gc, rl, charWidth, glyphCache.getBaselineOffset());
-
-                    // Redraw caret(s)
-                    if (paintCaret && hasMultiCarets) {
-                        gc.setFill(theme.caretColor());
-                        for (CaretRange cr : activeCarets) {
-                            if (rl.lineIndex() == cr.caretLine()) {
-                                gc.fillRect(cr.caretColumn() * charWidth, rl.y(), 2, lineHeight);
-                            }
-                        }
-                    } else if (paintCaret && rl.lineIndex() == caretLine) {
-                        double caretX = selectionModel.getCaretColumn() * charWidth;
-                        gc.setFill(theme.caretColor());
-                        gc.fillRect(caretX, rl.y(), 2, lineHeight);
+            for (RenderLine renderLine : renderLines) {
+                if (dirtyLines.get(renderLine.lineIndex())) {
+                    for (RenderPass renderPass : renderPasses) {
+                        renderPass.renderLine(renderContext, renderLine);
                     }
                 }
             }
@@ -560,251 +548,15 @@ public class Viewport extends Region {
         }
     }
 
-    private void drawCurrentLineHighlight(GraphicsContext gc, double w) {
-        int caretLine = selectionModel.getCaretLine();
-        for (RenderLine rl : renderLines) {
-            if (rl.lineIndex() == caretLine && !selectionModel.hasSelection()) {
-                gc.setFill(theme.currentLineColor());
-                gc.fillRect(0, rl.y(), w, glyphCache.getLineHeight());
-                break;
-            }
+    private Map<Integer, List<Integer>> indexMatchesByLine(List<SearchMatch> matches) {
+        if (matches.isEmpty()) {
+            return Map.of();
         }
-    }
-
-    private void drawSelection(
-        GraphicsContext gc,
-        double w,
-        double lineHeight,
-        double charWidth,
-        List<CaretRange> activeCarets
-    ) {
-        if (!activeCarets.isEmpty()) {
-            gc.setFill(theme.selectionColor());
-            for (CaretRange caret : activeCarets) {
-                if (caret.hasSelection()) {
-                    drawSelectionRange(gc, caret.getStartLine(), caret.getStartColumn(),
-                        caret.getEndLine(), caret.getEndColumn(), w, lineHeight, charWidth);
-                }
-            }
-            return;
+        Map<Integer, List<Integer>> byLine = new HashMap<>();
+        for (int i = 0; i < matches.size(); i++) {
+            byLine.computeIfAbsent(matches.get(i).line(), key -> new ArrayList<>()).add(i);
         }
-        if (!selectionModel.hasSelection()) {
-            return;
-        }
-        gc.setFill(theme.selectionColor());
-        drawSelectionRange(gc, selectionModel.getSelectionStartLine(), selectionModel.getSelectionStartColumn(),
-            selectionModel.getSelectionEndLine(), selectionModel.getSelectionEndColumn(),
-            w, lineHeight, charWidth);
-    }
-
-    private void drawSelectionRange(GraphicsContext gc, int startLine, int startCol,
-                                     int endLine, int endCol,
-                                     double w, double lineHeight, double charWidth) {
-        for (RenderLine rl : renderLines) {
-            int line = rl.lineIndex();
-            if (line < startLine || line > endLine) {
-                continue;
-            }
-            double selX;
-            double selW;
-            if (line == startLine && line == endLine) {
-                selX = startCol * charWidth;
-                selW = (endCol - startCol) * charWidth;
-            } else if (line == startLine) {
-                selX = startCol * charWidth;
-                selW = w - selX;
-            } else if (line == endLine) {
-                selX = 0;
-                selW = endCol * charWidth;
-            } else {
-                selX = 0;
-                selW = w;
-            }
-            gc.fillRect(selX, rl.y(), selW, lineHeight);
-        }
-    }
-
-    private void drawText(GraphicsContext gc, double lineHeight, double charWidth) {
-        gc.setFont(glyphCache.getFont());
-
-        // Text baseline offset derived from actual font metrics.
-        double baseline = glyphCache.getBaselineOffset();
-
-        for (RenderLine rl : renderLines) {
-            drawTokenizedLine(gc, rl, charWidth, baseline);
-        }
-    }
-
-    private void drawTokenizedLine(GraphicsContext gc, RenderLine renderLine, double charWidth, double baseline) {
-        String text = renderLine.text();
-        List<Token> tokens = renderLine.tokens();
-        if (tokens.isEmpty()) {
-            gc.setFill(theme.editorForeground());
-            gc.fillText(text, 0, renderLine.y() + baseline);
-            return;
-        }
-
-        int cursor = 0;
-        int textLength = text.length();
-        for (Token token : tokens) {
-            int start = Math.max(0, Math.min(token.startColumn(), textLength));
-            int end = Math.max(start, Math.min(token.endColumn(), textLength));
-            if (start > cursor) {
-                drawSegment(gc, text, cursor, start, renderLine.y(), charWidth, baseline, theme.editorForeground());
-            }
-            if (end > start) {
-                drawSegment(gc, text, start, end, renderLine.y(), charWidth, baseline, tokenColor(token.type()));
-            }
-            cursor = Math.max(cursor, end);
-        }
-        if (cursor < textLength) {
-            drawSegment(gc, text, cursor, textLength, renderLine.y(), charWidth, baseline, theme.editorForeground());
-        }
-    }
-
-    private void drawSegment(
-        GraphicsContext gc,
-        String text,
-        int startColumn,
-        int endColumn,
-        double y,
-        double charWidth,
-        double baseline,
-        Paint color
-    ) {
-        if (endColumn <= startColumn) {
-            return;
-        }
-        gc.setFill(color);
-        gc.fillText(text.substring(startColumn, endColumn), startColumn * charWidth, y + baseline);
-    }
-
-    private Paint tokenColor(TokenType tokenType) {
-        if (tokenType == null) {
-            return theme.editorForeground();
-        }
-        return switch (tokenType) {
-            case KEYWORD -> theme.keywordColor();
-            case STRING -> theme.stringColor();
-            case COMMENT -> theme.commentColor();
-            case NUMBER -> theme.numberColor();
-            case BOOLEAN -> theme.booleanColor();
-            case NULL_LITERAL -> theme.nullLiteralColor();
-            case HEADLINE -> theme.headlineColor();
-            case LIST_ITEM -> theme.listItemColor();
-            case CODE_BLOCK -> theme.codeBlockColor();
-            case TEXT -> theme.editorForeground();
-            default -> theme.editorForeground();
-        };
-    }
-
-    private void drawSearchHighlightsForLine(GraphicsContext gc, RenderLine rl, double lineHeight, double charWidth) {
-        if (searchMatches.isEmpty()) {
-            return;
-        }
-        for (int i = 0; i < searchMatches.size(); i++) {
-            SearchMatch match = searchMatches.get(i);
-            if (rl.lineIndex() == match.line()) {
-                double x = match.startColumn() * charWidth;
-                double w = (match.endColumn() - match.startColumn()) * charWidth;
-                gc.setFill(i == currentSearchMatchIndex ? theme.searchCurrentColor() : theme.searchHighlightColor());
-                gc.fillRect(x, rl.y(), w, lineHeight);
-            }
-        }
-    }
-
-    private void drawSelectionForLine(
-        GraphicsContext gc,
-        RenderLine rl,
-        double w,
-        double lineHeight,
-        double charWidth,
-        List<CaretRange> activeCarets
-    ) {
-        if (!activeCarets.isEmpty()) {
-            gc.setFill(theme.selectionColor());
-            for (CaretRange caret : activeCarets) {
-                if (caret.hasSelection()) {
-                    drawSelectionRangeForLine(gc, rl, caret.getStartLine(), caret.getStartColumn(),
-                        caret.getEndLine(), caret.getEndColumn(), w, lineHeight, charWidth);
-                }
-            }
-            return;
-        }
-        if (!selectionModel.hasSelection()) {
-            return;
-        }
-        gc.setFill(theme.selectionColor());
-        drawSelectionRangeForLine(gc, rl, selectionModel.getSelectionStartLine(), selectionModel.getSelectionStartColumn(),
-            selectionModel.getSelectionEndLine(), selectionModel.getSelectionEndColumn(),
-            w, lineHeight, charWidth);
-    }
-
-    private void drawSelectionRangeForLine(GraphicsContext gc, RenderLine rl,
-                                            int startLine, int startCol, int endLine, int endCol,
-                                            double w, double lineHeight, double charWidth) {
-        int line = rl.lineIndex();
-        if (line < startLine || line > endLine) {
-            return;
-        }
-        double selX;
-        double selW;
-        if (line == startLine && line == endLine) {
-            selX = startCol * charWidth;
-            selW = (endCol - startCol) * charWidth;
-        } else if (line == startLine) {
-            selX = startCol * charWidth;
-            selW = w - selX;
-        } else if (line == endLine) {
-            selX = 0;
-            selW = endCol * charWidth;
-        } else {
-            selX = 0;
-            selW = w;
-        }
-        gc.fillRect(selX, rl.y(), selW, lineHeight);
-    }
-
-    private void drawSearchHighlights(GraphicsContext gc, double lineHeight, double charWidth) {
-        if (searchMatches.isEmpty()) {
-            return;
-        }
-        for (int i = 0; i < searchMatches.size(); i++) {
-            SearchMatch match = searchMatches.get(i);
-            for (RenderLine rl : renderLines) {
-                if (rl.lineIndex() == match.line()) {
-                    double x = match.startColumn() * charWidth;
-                    double w = (match.endColumn() - match.startColumn()) * charWidth;
-                    gc.setFill(i == currentSearchMatchIndex ? theme.searchCurrentColor() : theme.searchHighlightColor());
-                    gc.fillRect(x, rl.y(), w, lineHeight);
-                    break;
-                }
-            }
-        }
-    }
-
-    private void drawCaret(GraphicsContext gc, double lineHeight, double charWidth, List<CaretRange> activeCarets) {
-        if (!activeCarets.isEmpty()) {
-            gc.setFill(theme.caretColor());
-            for (CaretRange caret : activeCarets) {
-                for (RenderLine rl : renderLines) {
-                    if (rl.lineIndex() == caret.caretLine()) {
-                        double caretX = caret.caretColumn() * charWidth;
-                        gc.fillRect(caretX, rl.y(), 2, lineHeight);
-                    }
-                }
-            }
-            return;
-        }
-        int caretLine = selectionModel.getCaretLine();
-        for (RenderLine rl : renderLines) {
-            if (rl.lineIndex() == caretLine) {
-                double caretX = selectionModel.getCaretColumn() * charWidth;
-                gc.setFill(theme.caretColor());
-                gc.fillRect(caretX, rl.y(), 2, lineHeight);
-                break;
-            }
-        }
+        return byLine;
     }
 
     private boolean shouldPaintCaret() {
@@ -900,6 +652,7 @@ public class Viewport extends Region {
         dirtyLines.clear();
         tokenMap = TokenMap.empty();
         searchMatches = List.of();
+        searchMatchIndexesByLine = Map.of();
         currentSearchMatchIndex = -1;
     }
 }

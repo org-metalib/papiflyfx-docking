@@ -390,4 +390,50 @@ class SearchModelTest {
 
         assertEquals(0, count);
     }
+
+    @Test
+    void regexSearchCacheInvalidatesWhenCaseSensitivityChanges() {
+        Document doc = new Document("Foo foo");
+        SearchModel model = new SearchModel();
+        model.setRegexMode(true);
+        model.setQuery("foo");
+        model.setCaseSensitive(false);
+
+        assertEquals(2, model.search(doc));
+
+        model.setCaseSensitive(true);
+        assertEquals(1, model.search(doc));
+        assertEquals(4, model.getCurrentMatch().startOffset());
+    }
+
+    @Test
+    void regexSearchCacheInvalidatesWhenWholeWordChanges() {
+        Document doc = new Document("foo foobar foo");
+        SearchModel model = new SearchModel();
+        model.setRegexMode(true);
+        model.setQuery("foo");
+        model.setWholeWord(false);
+
+        assertEquals(3, model.search(doc));
+
+        model.setWholeWord(true);
+        assertEquals(2, model.search(doc));
+        assertEquals(0, model.getMatches().get(0).startOffset());
+        assertEquals(11, model.getMatches().get(1).startOffset());
+    }
+
+    @Test
+    void regexSearchCacheRecoversAfterInvalidPattern() {
+        Document doc = new Document("aa a");
+        SearchModel model = new SearchModel();
+        model.setRegexMode(true);
+        model.setQuery("[a-");
+
+        assertEquals(0, model.search(doc));
+
+        model.setQuery("a+");
+        assertEquals(2, model.search(doc));
+        assertEquals(0, model.getMatches().get(0).startOffset());
+        assertEquals(3, model.getMatches().get(1).startOffset());
+    }
 }

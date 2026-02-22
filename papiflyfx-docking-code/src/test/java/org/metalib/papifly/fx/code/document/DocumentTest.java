@@ -262,6 +262,51 @@ class DocumentTest {
         assertEquals(2, document.getLineCount());
     }
 
+    @Test
+    void insertCrLfUndoRedoUsesNormalizedLength() {
+        Document document = new Document("ab");
+
+        document.insert(1, "\r\n");
+        assertEquals("a\nb", document.getText());
+
+        assertTrue(document.undo());
+        assertEquals("ab", document.getText());
+
+        assertTrue(document.redo());
+        assertEquals("a\nb", document.getText());
+    }
+
+    @Test
+    void replaceCrLfUndoRedoUsesNormalizedLength() {
+        Document document = new Document("abcd");
+
+        document.replace(1, 3, "\r\n");
+        assertEquals("a\nd", document.getText());
+
+        assertTrue(document.undo());
+        assertEquals("abcd", document.getText());
+
+        assertTrue(document.redo());
+        assertEquals("a\nd", document.getText());
+    }
+
+    @Test
+    void compoundEditsWithCrLfUndoRedoRemainConsistent() {
+        Document document = new Document("0123");
+
+        document.beginCompoundEdit();
+        document.replace(1, 2, "\r\n");
+        document.insert(0, "\r\n");
+        document.endCompoundEdit();
+        assertEquals("\n0\n23", document.getText());
+
+        assertTrue(document.undo());
+        assertEquals("0123", document.getText());
+
+        assertTrue(document.redo());
+        assertEquals("\n0\n23", document.getText());
+    }
+
     // --- Incremental line index correctness ---
 
     @Test

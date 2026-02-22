@@ -153,7 +153,7 @@ public class Document {
             return;
         }
         String normalized = TextSource.normalizeLineEndings(text);
-        EditCommand command = new InsertEdit(offset, text);
+        EditCommand command = new InsertEdit(offset, normalized);
         command.apply(textSource);
         lineIndex.applyInsert(offset, normalized);
         recordEdit(command);
@@ -184,7 +184,7 @@ public class Document {
             return;
         }
         String normalized = TextSource.normalizeLineEndings(safeReplacement);
-        EditCommand command = new ReplaceEdit(startOffset, endOffset, safeReplacement);
+        EditCommand command = new ReplaceEdit(startOffset, endOffset, normalized);
         command.apply(textSource);
         lineIndex.applyDelete(startOffset, endOffset);
         if (!normalized.isEmpty()) {

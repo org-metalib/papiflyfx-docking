@@ -9,8 +9,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.code.command.CaretRange;
 import org.metalib.papifly.fx.code.command.EditorCommand;
+import org.metalib.papifly.fx.code.command.LineEditService;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.lexer.IncrementalLexerPipeline;
 import org.metalib.papifly.fx.code.lexer.TokenType;
+import org.metalib.papifly.fx.code.search.SearchController;
+import org.metalib.papifly.fx.code.search.SearchModel;
 import org.metalib.papifly.fx.code.state.CaretStateData;
 import org.metalib.papifly.fx.code.state.EditorStateCodec;
 import org.metalib.papifly.fx.code.state.EditorStateData;
@@ -473,6 +477,34 @@ class CodeEditorIntegrationTest {
         assertFalse(onCloseCalled.get());
         assertFalse(onSearchChangedCalled.get());
         assertFalse(callOnFx(() -> editor.getSearchController().isOpen()));
+    }
+
+    @Test
+    void packagePrivateConstructorUsesInjectedFactories() {
+        AtomicBoolean lexerFactoryUsed = new AtomicBoolean(false);
+        CodeEditor injected = callOnFx(() -> {
+            SearchModel customSearchModel = new SearchModel();
+            SearchController customSearchController = new SearchController(customSearchModel);
+            GoToLineController customGoToLine = new GoToLineController();
+            return new CodeEditor(
+                new Document("sample"),
+                customSearchModel,
+                customSearchController,
+                customGoToLine,
+                (doc, tokenConsumer) -> {
+                    lexerFactoryUsed.set(true);
+                    return new IncrementalLexerPipeline(doc, tokenConsumer);
+                },
+                new LineEditService()
+            );
+        });
+
+        assertTrue(lexerFactoryUsed.get());
+        assertNotNull(callOnFx(injected::getSearchModel));
+        callOnFx(() -> {
+            injected.dispose();
+            return null;
+        });
     }
 
     @Test

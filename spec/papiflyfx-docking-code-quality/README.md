@@ -127,3 +127,35 @@ Add the findings to spec/papiflyfx-docking-code-quality
 ## Expected score after fixes
 - With fixes 1-3: **7.5/10** (major reliability and maintainability jump)
 - With fixes 4-5: **8/10** (better cohesion and large-file responsiveness)
+
+## Resolution status (2026-02-22)
+- Finding 1 (CRLF undo/redo): `resolved`
+  - Fixed in `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/document/Document.java` with normalized edit payloads.
+  - Covered by CRLF regression tests in `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/document/DocumentTest.java`.
+- Finding 2 (CodeEditor mixed responsibilities): `resolved via extraction`
+  - Extracted collaborators: `EditorInputController`, `EditorCommandExecutor`, `EditorEditController`, `EditorPointerController`, `EditorStateCoordinator`.
+  - `CodeEditor.java` reduced from 1,766 LOC to 1,286 LOC.
+- Finding 3 (Viewport complexity/duplication): `resolved via render pipeline`
+  - Added `RenderContext`, `SelectionGeometry`, and pass classes (`BackgroundPass`, `SearchPass`, `SelectionPass`, `TextPass`, `CaretPass`).
+  - `Viewport.java` reduced from 905 LOC to 658 LOC and now uses shared full/incremental pass flow.
+- Finding 4 (duplicated line operations): `resolved`
+  - Added `LineBlock` + `LineEditService` and replaced duplicated line-edit handlers in `CodeEditor`.
+  - Covered by `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/command/LineOperationsTest.java`.
+- Finding 5 (render/search allocations): `resolved`
+  - Search render now uses line-indexed matches in `Viewport`.
+  - `SearchModel` now uses regex pattern caching and bounded case-insensitive matching without full-text lowercase duplication.
+  - `TextPass` now paints base text once and overlays only styled runs to reduce per-line substring churn.
+- Finding 6 (construction-time coupling): `resolved`
+  - Added package-private injection constructor in `CodeEditor` for model/controller/factory seams.
+  - Covered by targeted integration and collaborator tests.
+
+### Validation snapshot
+- Full headless module suite: `mvn -pl papiflyfx-docking-code -Dtestfx.headless=true test`
+  - Result: 344 tests passed, 0 failed, 0 errors
+- Benchmark suite: `mvn -pl papiflyfx-docking-code -Dtest=CodeEditorBenchmarkTest -Dsurefire.excludedGroups= -Dtestfx.headless=true test`
+  - Large file open+render: `217ms` (baseline `406ms`)
+  - Typing p95: `3.06ms` (baseline `3.38ms`)
+  - Multi-caret typing p95: `10.59ms` (baseline `10.99ms`)
+  - Scroll p95: `0.20ms` (baseline `0.18ms`)
+  - Multi-caret scroll p95: `0.50ms` (baseline `0.55ms`)
+  - Memory overhead: `55MB` (baseline `59MB`)
