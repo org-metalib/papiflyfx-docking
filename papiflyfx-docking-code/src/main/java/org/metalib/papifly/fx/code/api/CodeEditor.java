@@ -15,17 +15,11 @@ import javafx.geometry.Pos;
 import javafx.util.Duration;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
-import org.metalib.papifly.fx.code.command.CaretRange;
 import org.metalib.papifly.fx.code.command.EditorCommand;
-import org.metalib.papifly.fx.code.command.LineBlock;
 import org.metalib.papifly.fx.code.command.LineEditService;
 import org.metalib.papifly.fx.code.command.MultiCaretModel;
-import org.metalib.papifly.fx.code.command.WordBoundary;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
 import org.metalib.papifly.fx.code.gutter.GutterView;
@@ -42,9 +36,7 @@ import org.metalib.papifly.fx.code.theme.CodeEditorThemeMapper;
 import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
 
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
@@ -61,11 +53,6 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private static final String DEFAULT_LANGUAGE = "plain-text";
     private static final double SCROLL_LINE_FACTOR = 3.0;
     private static final int MAX_RESTORED_SECONDARY_CARETS = 2_048;
-
-    private enum WordDirection {
-        LEFT,
-        RIGHT
-    }
 
     private final StringProperty filePath = new SimpleStringProperty(this, "filePath", "");
     private final IntegerProperty cursorLine = new SimpleIntegerProperty(this, "cursorLine", 0);
@@ -84,15 +71,15 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final SearchModel searchModel;
     private final SearchController searchController;
     private final GoToLineController goToLineController;
-    private final LineEditService lineEditService;
     private final EditorCommandExecutor commandExecutor;
     private final EditorStateCoordinator stateCoordinator;
     private final EditorInputController inputController;
     private final EditorEditController editController;
     private final EditorPointerController pointerController;
+    private final EditorCaretCoordinator caretCoordinator;
+    private final EditorNavigationController navigationController;
     private final EditorCommandRegistry commandRegistry;
     private final EditorLifecycleService lifecycleService;
-    private final OccurrenceSelectionService occurrenceSelectionService;
     private final EditorSearchCoordinator searchCoordinator;
 
     private final ChangeListener<Number> caretLineListener;
@@ -111,9 +98,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private ObjectProperty<Theme> boundThemeProperty;
     private ChangeListener<Theme> themeChangeListener;
     private int gutterDigits;
-    private boolean syncingScrollOffset;
     private boolean disposed;
-    private int preferredVerticalColumn = -1;
 
     /**
      * Creates an empty editor.
@@ -143,15 +128,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.viewport = new Viewport(selectionModel);
         this.viewport.setMultiCaretModel(multiCaretModel);
         this.viewport.setDocument(this.document);
-        this.lineEditService = lineEditService == null ? new LineEditService() : lineEditService;
-        this.stateCoordinator = new EditorStateCoordinator(
-            this.document,
-            this.selectionModel,
-            this.multiCaretModel,
-            this.viewport,
-            MAX_RESTORED_SECONDARY_CARETS,
-            this::clearPreferredVerticalColumn
-        );
+        LineEditService resolvedLineEditService = lineEditService == null ? new LineEditService() : lineEditService;
         this.commandRegistry = new EditorCommandRegistry();
         this.lifecycleService = new EditorLifecycleService();
 
@@ -167,6 +144,22 @@ public class CodeEditor extends StackPane implements DisposableContent {
             cursorLine.set(newValue.intValue());
             gutterView.setActiveLineIndex(newValue.intValue());
         };
+        this.caretCoordinator = new EditorCaretCoordinator(
+            this.document,
+            this.selectionModel,
+            this.viewport,
+            this.gutterView,
+            this.verticalScrollOffset,
+            () -> disposed
+        );
+        this.stateCoordinator = new EditorStateCoordinator(
+            this.document,
+            this.selectionModel,
+            this.multiCaretModel,
+            this.viewport,
+            MAX_RESTORED_SECONDARY_CARETS,
+            caretCoordinator::clearPreferredVerticalColumn
+        );
 
         // Search
         this.searchModel = searchModel == null ? new SearchModel() : searchModel;
@@ -180,7 +173,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
             this.searchModel,
             this.searchController,
             this.viewport,
-            (line, column) -> moveCaret(line, column, false),
+            (line, column) -> caretCoordinator.moveCaret(line, column, false),
             this::requestFocus
         );
         this.searchCoordinator.bind();
@@ -219,13 +212,24 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.languageListener = (obs, oldValue, newValue) -> lexerPipeline.setLanguageId(newValue);
         this.focusListener = (obs, oldFocused, focused) -> viewport.setCaretBlinkActive(focused);
         lexerPipeline.setLanguageId(languageId.get());
-        this.occurrenceSelectionService = new OccurrenceSelectionService(
+        OccurrenceSelectionService resolvedOccurrenceSelectionService = new OccurrenceSelectionService(
             this.document,
             this.selectionModel,
             this.multiCaretModel,
             viewport::markDirty
         );
         this.editController = createEditController();
+        this.navigationController = new EditorNavigationController(
+            this.document,
+            this.selectionModel,
+            this.multiCaretModel,
+            resolvedLineEditService,
+            resolvedOccurrenceSelectionService,
+            this.caretCoordinator,
+            this.viewport::markDirty,
+            this::setVerticalScrollOffset,
+            this.viewport::getScrollOffset
+        );
         this.pointerController = createPointerController();
         this.commandExecutor = createCommandExecutor();
         this.inputController = createInputController();
@@ -245,12 +249,12 @@ public class CodeEditor extends StackPane implements DisposableContent {
         );
         lifecycleService.bindInputHandlers(
             this,
-            this::handleKeyPressed,
-            this::handleKeyTyped,
-            this::handleMousePressed,
-            this::handleMouseDragged,
-            this::handleMouseReleased,
-            this::handleScroll,
+            event -> inputController.handleKeyPressed(event),
+            event -> inputController.handleKeyTyped(event),
+            event -> pointerController.handleMousePressed(event),
+            event -> pointerController.handleMouseDragged(event),
+            event -> pointerController.handleMouseReleased(),
+            event -> pointerController.handleScroll(event),
             focusListener,
             () -> viewport.setCaretBlinkActive(isFocused())
         );
@@ -268,7 +272,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public void setText(String text) {
         document.setText(text);
-        clearPreferredVerticalColumn();
+        caretCoordinator.clearPreferredVerticalColumn();
         selectionModel.moveCaret(0, 0);
         setVerticalScrollOffset(0);
         gutterView.recomputeWidth();
@@ -423,18 +427,10 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public void goToLine(int lineNumber) {
         int targetLine = Math.max(1, Math.min(lineNumber, document.getLineCount()));
-        moveCaret(targetLine - 1, 0, false);
+        caretCoordinator.moveCaret(targetLine - 1, 0, false);
     }
 
     // --- Key handling ---
-
-    private void handleKeyTyped(KeyEvent event) {
-        inputController.handleKeyTyped(event);
-    }
-
-    private void handleKeyPressed(KeyEvent event) {
-        inputController.handleKeyPressed(event);
-    }
 
     /**
      * Dispatches an {@link EditorCommand} to the appropriate handler method.
@@ -446,85 +442,19 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private EditorCommandExecutor createCommandExecutor() {
         EditorCommandExecutor executor = new EditorCommandExecutor(
             multiCaretModel,
-            this::clearPreferredVerticalColumn,
-            this::isVerticalCaretCommand,
+            caretCoordinator::clearPreferredVerticalColumn,
+            commandRegistry::isVerticalCaretCommand,
             () -> disposed
         );
-        commandRegistry.register(executor, buildCommandHandlers());
+        commandRegistry.registerDefault(
+            executor,
+            navigationController,
+            editController,
+            this::openSearch,
+            this::openReplace,
+            this::goToLine
+        );
         return executor;
-    }
-
-    private Map<EditorCommand, Runnable> buildCommandHandlers() {
-        Map<EditorCommand, Runnable> handlers = new EnumMap<>(EditorCommand.class);
-
-        // Navigation
-        handlers.put(EditorCommand.MOVE_LEFT, () -> handleLeft(false));
-        handlers.put(EditorCommand.MOVE_RIGHT, () -> handleRight(false));
-        handlers.put(EditorCommand.MOVE_UP, () -> handleUp(false));
-        handlers.put(EditorCommand.MOVE_DOWN, () -> handleDown(false));
-        handlers.put(EditorCommand.MOVE_PAGE_UP, () -> handlePageUp(false));
-        handlers.put(EditorCommand.MOVE_PAGE_DOWN, () -> handlePageDown(false));
-        handlers.put(EditorCommand.SELECT_LEFT, () -> handleLeft(true));
-        handlers.put(EditorCommand.SELECT_RIGHT, () -> handleRight(true));
-        handlers.put(EditorCommand.SELECT_UP, () -> handleUp(true));
-        handlers.put(EditorCommand.SELECT_DOWN, () -> handleDown(true));
-        handlers.put(EditorCommand.SELECT_PAGE_UP, () -> handlePageUp(true));
-        handlers.put(EditorCommand.SELECT_PAGE_DOWN, () -> handlePageDown(true));
-        handlers.put(EditorCommand.SCROLL_PAGE_UP, this::handleScrollPageUp);
-        handlers.put(EditorCommand.SCROLL_PAGE_DOWN, this::handleScrollPageDown);
-        handlers.put(EditorCommand.LINE_START, () -> handleHome(false));
-        handlers.put(EditorCommand.LINE_END, () -> handleEnd(false));
-        handlers.put(EditorCommand.SELECT_TO_LINE_START, () -> handleHome(true));
-        handlers.put(EditorCommand.SELECT_TO_LINE_END, () -> handleEnd(true));
-
-        // Editing
-        handlers.put(EditorCommand.BACKSPACE, this::handleBackspace);
-        handlers.put(EditorCommand.DELETE, this::handleDelete);
-        handlers.put(EditorCommand.ENTER, this::handleEnter);
-
-        // Clipboard and undo
-        handlers.put(EditorCommand.SELECT_ALL, this::handleSelectAll);
-        handlers.put(EditorCommand.UNDO, this::handleUndo);
-        handlers.put(EditorCommand.REDO, this::handleRedo);
-        handlers.put(EditorCommand.COPY, this::handleCopy);
-        handlers.put(EditorCommand.CUT, this::handleCut);
-        handlers.put(EditorCommand.PASTE, this::handlePaste);
-
-        // Search
-        handlers.put(EditorCommand.OPEN_SEARCH, this::openSearch);
-        handlers.put(EditorCommand.OPEN_REPLACE, this::openReplace);
-        handlers.put(EditorCommand.GO_TO_LINE, this::goToLine);
-
-        // Word navigation
-        handlers.put(EditorCommand.MOVE_WORD_LEFT, this::handleMoveWordLeft);
-        handlers.put(EditorCommand.MOVE_WORD_RIGHT, this::handleMoveWordRight);
-        handlers.put(EditorCommand.SELECT_WORD_LEFT, this::handleSelectWordLeft);
-        handlers.put(EditorCommand.SELECT_WORD_RIGHT, this::handleSelectWordRight);
-        handlers.put(EditorCommand.DELETE_WORD_LEFT, this::handleDeleteWordLeft);
-        handlers.put(EditorCommand.DELETE_WORD_RIGHT, this::handleDeleteWordRight);
-
-        // Document boundaries
-        handlers.put(EditorCommand.DOCUMENT_START, () -> handleDocumentStart(false));
-        handlers.put(EditorCommand.DOCUMENT_END, () -> handleDocumentEnd(false));
-        handlers.put(EditorCommand.SELECT_TO_DOCUMENT_START, () -> handleDocumentStart(true));
-        handlers.put(EditorCommand.SELECT_TO_DOCUMENT_END, () -> handleDocumentEnd(true));
-
-        // Line operations
-        handlers.put(EditorCommand.DELETE_LINE, this::handleDeleteLine);
-        handlers.put(EditorCommand.MOVE_LINE_UP, this::handleMoveLineUp);
-        handlers.put(EditorCommand.MOVE_LINE_DOWN, this::handleMoveLineDown);
-        handlers.put(EditorCommand.DUPLICATE_LINE_UP, this::handleDuplicateLineUp);
-        handlers.put(EditorCommand.DUPLICATE_LINE_DOWN, this::handleDuplicateLineDown);
-        handlers.put(EditorCommand.JOIN_LINES, this::handleJoinLines);
-
-        // Multi-caret
-        handlers.put(EditorCommand.SELECT_NEXT_OCCURRENCE, this::handleSelectNextOccurrence);
-        handlers.put(EditorCommand.SELECT_ALL_OCCURRENCES, this::handleSelectAllOccurrences);
-        handlers.put(EditorCommand.ADD_CURSOR_UP, this::handleAddCursorUp);
-        handlers.put(EditorCommand.ADD_CURSOR_DOWN, this::handleAddCursorDown);
-        handlers.put(EditorCommand.UNDO_LAST_OCCURRENCE, this::handleUndoLastOccurrence);
-
-        return handlers;
     }
 
     private EditorInputController createInputController() {
@@ -539,7 +469,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
             this::requestFocus,
             viewport::resetCaretBlink,
             this::executeCommand,
-            this::insertTypedCharacter
+            editController::insertTypedCharacter
         );
     }
 
@@ -549,7 +479,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
             selectionModel,
             multiCaretModel,
             viewport::markDirty,
-            this::moveCaretToOffset,
+            caretCoordinator::moveCaretToOffset,
             () -> Clipboard.getSystemClipboard().getString(),
             this::putClipboardText
         );
@@ -558,7 +488,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private EditorPointerController createPointerController() {
         return new EditorPointerController(
             () -> disposed,
-            this::clearPreferredVerticalColumn,
+            caretCoordinator::clearPreferredVerticalColumn,
             this::requestFocus,
             viewport::resetCaretBlink,
             viewport,
@@ -577,441 +507,16 @@ public class CodeEditor extends StackPane implements DisposableContent {
         Clipboard.getSystemClipboard().setContent(content);
     }
 
-    private void insertTypedCharacter(String character) {
-        editController.insertTypedCharacter(character);
-    }
-
-    private void handleBackspace() {
-        editController.handleBackspace();
-    }
-
-    private void handleDelete() {
-        editController.handleDelete();
-    }
-
-    private void handleEnter() {
-        editController.handleEnter();
-    }
-
-    private void handleLeft(boolean shift) {
-        int line = selectionModel.getCaretLine();
-        int col = selectionModel.getCaretColumn();
-        if (col > 0) {
-            moveCaret(line, col - 1, shift);
-        } else if (line > 0) {
-            int prevLineLen = document.getLineText(line - 1).length();
-            moveCaret(line - 1, prevLineLen, shift);
-        }
-    }
-
-    private void handleRight(boolean shift) {
-        int line = selectionModel.getCaretLine();
-        int col = selectionModel.getCaretColumn();
-        int lineLen = document.getLineText(line).length();
-        if (col < lineLen) {
-            moveCaret(line, col + 1, shift);
-        } else if (line < document.getLineCount() - 1) {
-            moveCaret(line + 1, 0, shift);
-        }
-    }
-
-    private void handleUp(boolean shift) {
-        int line = selectionModel.getCaretLine();
-        if (line > 0) {
-            moveCaretVertically(line - 1, shift);
-        }
-    }
-
-    private void handleDown(boolean shift) {
-        int line = selectionModel.getCaretLine();
-        if (line < document.getLineCount() - 1) {
-            moveCaretVertically(line + 1, shift);
-        }
-    }
-
-    private void handlePageUp(boolean shift) {
-        handlePageMove(-1, shift);
-    }
-
-    private void handlePageDown(boolean shift) {
-        handlePageMove(1, shift);
-    }
-
-    private void handlePageMove(int direction, boolean shift) {
-        int lineDelta = computePageLineDelta();
-        int caretLine = selectionModel.getCaretLine();
-        int targetLine = clampLine(caretLine + (direction * lineDelta));
-        moveCaretVertically(targetLine, shift);
-    }
-
-    private void handleScrollPageUp() {
-        handleScrollPage(-1);
-    }
-
-    private void handleScrollPageDown() {
-        handleScrollPage(1);
-    }
-
-    private void handleScrollPage(int direction) {
-        double pagePixels = computePagePixelDelta();
-        double newOffset = viewport.getScrollOffset() + (direction * pagePixels);
-        setVerticalScrollOffset(newOffset);
-    }
-
-    private void handleHome(boolean shift) {
-        moveCaret(selectionModel.getCaretLine(), 0, shift);
-    }
-
-    private void handleEnd(boolean shift) {
-        int line = selectionModel.getCaretLine();
-        moveCaret(line, document.getLineText(line).length(), shift);
-    }
-
-    private void handleSelectAll() {
-        selectionModel.selectAll(document);
-        viewport.markDirty();
-    }
-
-    private void handleUndo() {
-        int beforeLength = document.length();
-        int beforeOffset = selectionModel.getCaretOffset(document);
-        if (document.undo()) {
-            int afterLength = document.length();
-            int targetOffset = Math.max(0, Math.min(beforeOffset + (afterLength - beforeLength), afterLength));
-            moveCaretToOffset(targetOffset);
-        }
-    }
-
-    private void handleRedo() {
-        int beforeLength = document.length();
-        int beforeOffset = selectionModel.getCaretOffset(document);
-        if (document.redo()) {
-            int afterLength = document.length();
-            int targetOffset = Math.max(0, Math.min(beforeOffset + (afterLength - beforeLength), afterLength));
-            moveCaretToOffset(targetOffset);
-        }
-    }
-
-    private void handleCopy() {
-        editController.handleCopy();
-    }
-
-    private void handleCut() {
-        editController.handleCut();
-    }
-
-    private void handlePaste() {
-        editController.handlePaste();
-    }
-
-    // --- Phase 1: word / document navigation ---
-
-    private void handleMoveWordLeft() {
-        moveWord(WordDirection.LEFT, false);
-    }
-
-    private void handleMoveWordRight() {
-        moveWord(WordDirection.RIGHT, false);
-    }
-
-    private void handleSelectWordLeft() {
-        moveWord(WordDirection.LEFT, true);
-    }
-
-    private void handleSelectWordRight() {
-        moveWord(WordDirection.RIGHT, true);
-    }
-
-    private void handleDeleteWordLeft() {
-        deleteWord(WordDirection.LEFT);
-    }
-
-    private void handleDeleteWordRight() {
-        deleteWord(WordDirection.RIGHT);
-    }
-
-    private void moveWord(WordDirection direction, boolean extendSelection) {
-        int line = selectionModel.getCaretLine();
-        int column = selectionModel.getCaretColumn();
-        String lineText = document.getLineText(line);
-        int target = findWordBoundary(lineText, column, direction);
-        if (target == column) {
-            if (direction == WordDirection.LEFT && line > 0) {
-                line--;
-                target = document.getLineText(line).length();
-            } else if (direction == WordDirection.RIGHT && line < document.getLineCount() - 1) {
-                line++;
-                target = 0;
-            }
-        }
-        moveCaret(line, target, extendSelection);
-    }
-
-    private void deleteWord(WordDirection direction) {
-        if (selectionModel.hasSelection()) {
-            deleteSelectionIfAny();
-            return;
-        }
-        int line = selectionModel.getCaretLine();
-        int column = selectionModel.getCaretColumn();
-        String lineText = document.getLineText(line);
-        int targetColumn = findWordBoundary(lineText, column, direction);
-        if (targetColumn == column) {
-            int caretOffset = selectionModel.getCaretOffset(document);
-            if (direction == WordDirection.LEFT && line > 0) {
-                document.delete(caretOffset - 1, caretOffset);
-                moveCaretToOffset(caretOffset - 1);
-            } else if (direction == WordDirection.RIGHT && line < document.getLineCount() - 1) {
-                document.delete(caretOffset, caretOffset + 1);
-            }
-            return;
-        }
-        int lineStart = document.getLineStartOffset(line);
-        if (direction == WordDirection.LEFT) {
-            document.delete(lineStart + targetColumn, lineStart + column);
-            moveCaret(line, targetColumn, false);
-            return;
-        }
-        document.delete(lineStart + column, lineStart + targetColumn);
-    }
-
-    private int findWordBoundary(String lineText, int column, WordDirection direction) {
-        return direction == WordDirection.LEFT
-            ? WordBoundary.findWordLeft(lineText, column)
-            : WordBoundary.findWordRight(lineText, column);
-    }
-
-    private void handleDocumentStart(boolean shift) {
-        moveCaret(0, 0, shift);
-    }
-
-    private void handleDocumentEnd(boolean shift) {
-        int lastLine = document.getLineCount() - 1;
-        int lastCol = document.getLineText(lastLine).length();
-        moveCaret(lastLine, lastCol, shift);
-    }
-
-    // --- Phase 2: line operations ---
-
-    private void handleDeleteLine() {
-        LineBlock block = lineEditService.resolveSelectionOrCaretBlock(document, selectionModel);
-        if (lineEditService.deleteBlock(document, block)) {
-            int targetLine = Math.min(block.startLine(), document.getLineCount() - 1);
-            moveCaret(targetLine, 0, false);
-        }
-    }
-
-    private void handleMoveLineUp() {
-        LineBlock block = lineEditService.resolveSelectionOrCaretBlock(document, selectionModel);
-        if (!lineEditService.moveBlockUp(document, block)) {
-            return;
-        }
-        int col = selectionModel.getCaretColumn();
-        moveCaret(selectionModel.getCaretLine() - 1, col, false);
-    }
-
-    private void handleMoveLineDown() {
-        LineBlock block = lineEditService.resolveSelectionOrCaretBlock(document, selectionModel);
-        if (!lineEditService.moveBlockDown(document, block)) {
-            return;
-        }
-        int col = selectionModel.getCaretColumn();
-        moveCaret(selectionModel.getCaretLine() + 1, col, false);
-    }
-
-    private void handleDuplicateLineUp() {
-        LineBlock block = lineEditService.resolveSelectionOrCaretBlock(document, selectionModel);
-        lineEditService.duplicateBlockUp(document, block);
-    }
-
-    private void handleDuplicateLineDown() {
-        LineBlock block = lineEditService.resolveSelectionOrCaretBlock(document, selectionModel);
-        lineEditService.duplicateBlockDown(document, block);
-        int linesInserted = block.lineCount();
-        int col = selectionModel.getCaretColumn();
-        moveCaret(selectionModel.getCaretLine() + linesInserted, col, false);
-    }
-
-    private void handleJoinLines() {
-        lineEditService.joinLineWithNext(document, selectionModel.getCaretLine());
-    }
-
-    // --- Phase 3: multi-caret handlers ---
-
-    private void handleSelectNextOccurrence() {
-        occurrenceSelectionService.selectNextOccurrence();
-    }
-
-    private void handleSelectAllOccurrences() {
-        occurrenceSelectionService.selectAllOccurrences();
-    }
-
-    private void handleAddCursorUp() {
-        int caretLine = selectionModel.getCaretLine();
-        int caretCol = selectionModel.getCaretColumn();
-        if (caretLine <= 0) {
-            return;
-        }
-        int newLine = caretLine - 1;
-        int newCol = Math.min(caretCol, document.getLineText(newLine).length());
-        multiCaretModel.addCaret(new CaretRange(newLine, newCol, newLine, newCol));
-        viewport.markDirty();
-    }
-
-    private void handleAddCursorDown() {
-        int caretLine = selectionModel.getCaretLine();
-        int caretCol = selectionModel.getCaretColumn();
-        if (caretLine >= document.getLineCount() - 1) {
-            return;
-        }
-        int newLine = caretLine + 1;
-        int newCol = Math.min(caretCol, document.getLineText(newLine).length());
-        multiCaretModel.addCaret(new CaretRange(newLine, newCol, newLine, newCol));
-        viewport.markDirty();
-    }
-
-    private void handleUndoLastOccurrence() {
-        multiCaretModel.undoLastOccurrence();
-        viewport.markDirty();
-    }
-
-    // --- Mouse handling ---
-
-    private void handleMousePressed(MouseEvent event) {
-        pointerController.handleMousePressed(event);
-    }
-
-    private void handleMouseDragged(MouseEvent event) {
-        pointerController.handleMouseDragged(event);
-    }
-
-    private void handleMouseReleased(MouseEvent event) {
-        pointerController.handleMouseReleased();
-    }
-
-    private void handleScroll(ScrollEvent event) {
-        pointerController.handleScroll(event);
-    }
-
     private void onGoToLineClosed() {
         requestFocus();
     }
 
-    // --- Helpers ---
-
-    private void moveCaret(int line, int col, boolean extendSelection) {
-        clearPreferredVerticalColumn();
-        moveCaretInternal(line, col, extendSelection);
-    }
-
-    private void moveCaretVertically(int targetLine, boolean extendSelection) {
-        int safeLine = clampLine(targetLine);
-        int preferredColumn = preferredVerticalColumn >= 0
-            ? preferredVerticalColumn
-            : selectionModel.getCaretColumn();
-        int targetColumn = Math.min(preferredColumn, document.getLineText(safeLine).length());
-        moveCaretInternal(safeLine, targetColumn, extendSelection);
-        preferredVerticalColumn = preferredColumn;
-    }
-
-    private void moveCaretInternal(int line, int col, boolean extendSelection) {
-        int safeLine = clampLine(line);
-        int safeColumn = clampColumn(safeLine, col);
-        if (extendSelection) {
-            selectionModel.moveCaretWithSelection(safeLine, safeColumn);
-        } else {
-            selectionModel.moveCaret(safeLine, safeColumn);
-        }
-        viewport.ensureCaretVisible();
-        syncVerticalScrollOffsetFromViewport();
-        syncGutterScroll();
-    }
-
-    private void moveCaretToOffset(int offset) {
-        clearPreferredVerticalColumn();
-        offset = Math.max(0, Math.min(offset, document.length()));
-        int line = document.getLineForOffset(offset);
-        int col = document.getColumnForOffset(offset);
-        selectionModel.moveCaret(line, col);
-        viewport.ensureCaretVisible();
-        syncVerticalScrollOffsetFromViewport();
-        syncGutterScroll();
-    }
-
-    private boolean isVerticalCaretCommand(EditorCommand cmd) {
-        return switch (cmd) {
-            case MOVE_UP, MOVE_DOWN, SELECT_UP, SELECT_DOWN,
-                 MOVE_PAGE_UP, MOVE_PAGE_DOWN, SELECT_PAGE_UP, SELECT_PAGE_DOWN -> true;
-            default -> false;
-        };
-    }
-
-    private void clearPreferredVerticalColumn() {
-        preferredVerticalColumn = -1;
-    }
-
-    private int clampLine(int line) {
-        int maxLine = Math.max(0, document.getLineCount() - 1);
-        return Math.max(0, Math.min(line, maxLine));
-    }
-
-    private int clampColumn(int line, int column) {
-        int maxColumn = document.getLineText(line).length();
-        return Math.max(0, Math.min(column, maxColumn));
-    }
-
     private void applyScrollOffset(double requestedOffset) {
-        if (disposed) {
-            return;
-        }
-        if (syncingScrollOffset) {
-            return;
-        }
-        viewport.setScrollOffset(requestedOffset);
-        syncVerticalScrollOffsetFromViewport();
-        syncGutterScroll();
+        caretCoordinator.applyScrollOffset(requestedOffset);
     }
 
     private void syncVerticalScrollOffsetFromViewport() {
-        double actualOffset = viewport.getScrollOffset();
-        if (Double.compare(verticalScrollOffset.get(), actualOffset) == 0) {
-            return;
-        }
-        syncingScrollOffset = true;
-        try {
-            verticalScrollOffset.set(actualOffset);
-        } finally {
-            syncingScrollOffset = false;
-        }
-    }
-
-    private void syncGutterScroll() {
-        gutterView.setScrollOffset(viewport.getScrollOffset());
-    }
-
-    private int computePageLineDelta() {
-        double lineHeight = viewport.getGlyphCache().getLineHeight();
-        if (lineHeight <= 0) {
-            return 1;
-        }
-        return Math.max(1, (int) Math.floor(computePagePixelDelta() / lineHeight));
-    }
-
-    private double computePagePixelDelta() {
-        double viewportHeight = viewport.getHeight();
-        if (viewportHeight <= 0) {
-            return Math.max(1.0, viewport.getGlyphCache().getLineHeight());
-        }
-        return viewportHeight;
-    }
-
-    private void deleteSelectionIfAny() {
-        if (selectionModel.hasSelection()) {
-            int start = selectionModel.getSelectionStartOffset(document);
-            int end = selectionModel.getSelectionEndOffset(document);
-            document.delete(start, end);
-            moveCaretToOffset(start);
-        }
+        caretCoordinator.syncVerticalScrollOffsetFromViewport();
     }
 
     // --- State properties ---
