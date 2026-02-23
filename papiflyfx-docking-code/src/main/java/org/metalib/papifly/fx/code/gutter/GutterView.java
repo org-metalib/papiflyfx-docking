@@ -2,12 +2,18 @@ package org.metalib.papifly.fx.code.gutter;
 
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Paint;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.folding.FoldMap;
+import org.metalib.papifly.fx.code.folding.VisibleLineMap;
 import org.metalib.papifly.fx.code.render.GlyphCache;
 import org.metalib.papifly.fx.code.render.WrapMap;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
+
+import java.util.function.IntConsumer;
 
 /**
  * Canvas-based gutter rendering line numbers and a marker lane.
@@ -18,6 +24,7 @@ import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 public class GutterView extends Region {
 
     private static final double MARKER_LANE_WIDTH = 12;
+    private static final double FOLD_LANE_WIDTH = 12;
     private static final double LINE_NUMBER_RIGHT_PADDING = 8;
 
     private final Canvas canvas;
@@ -32,6 +39,9 @@ public class GutterView extends Region {
     private double computedWidth;
     private boolean wordWrap;
     private WrapMap wrapMap;
+    private FoldMap foldMap = FoldMap.empty();
+    private VisibleLineMap visibleLineMap = new VisibleLineMap();
+    private IntConsumer foldToggleHandler;
 
     /**
      * Creates a gutter view backed by the provided glyph cache.
@@ -42,6 +52,7 @@ public class GutterView extends Region {
         this.glyphCache = glyphCache;
         this.canvas = new Canvas();
         getChildren().add(canvas);
+        setOnMousePressed(this::handleMousePressed);
     }
 
     /**
@@ -51,6 +62,7 @@ public class GutterView extends Region {
      */
     public void setDocument(Document document) {
         this.document = document;
+        visibleLineMap.rebuild(document == null ? 0 : document.getLineCount(), foldMap);
         recomputeWidth();
         markDirty();
     }
@@ -126,6 +138,21 @@ public class GutterView extends Region {
         markDirty();
     }
 
+    public void setFoldMap(FoldMap foldMap) {
+        this.foldMap = foldMap == null ? FoldMap.empty() : foldMap;
+        visibleLineMap.rebuild(document == null ? 0 : document.getLineCount(), this.foldMap);
+        markDirty();
+    }
+
+    public void setVisibleLineMap(VisibleLineMap visibleLineMap) {
+        this.visibleLineMap = visibleLineMap == null ? new VisibleLineMap() : visibleLineMap;
+        markDirty();
+    }
+
+    public void setOnFoldToggle(IntConsumer foldToggleHandler) {
+        this.foldToggleHandler = foldToggleHandler;
+    }
+
     /**
      * Sets the active (caret) line index for highlighting.
      *
@@ -158,7 +185,7 @@ public class GutterView extends Region {
         int lineCount = document.getLineCount();
         int digits = Math.max(2, String.valueOf(lineCount).length());
         double charWidth = glyphCache.getCharWidth();
-        computedWidth = MARKER_LANE_WIDTH + (digits * charWidth) + LINE_NUMBER_RIGHT_PADDING;
+        computedWidth = MARKER_LANE_WIDTH + FOLD_LANE_WIDTH + (digits * charWidth) + LINE_NUMBER_RIGHT_PADDING;
         setPrefWidth(computedWidth);
         setMinWidth(computedWidth);
         setMaxWidth(computedWidth);
@@ -219,11 +246,15 @@ public class GutterView extends Region {
             return;
         }
 
-        int totalLines = document.getLineCount();
-        int firstLine = Math.max(0, (int) (scrollOffset / lineHeight));
-        int lastLine = Math.min(totalLines - 1, (int) ((scrollOffset + h) / lineHeight) + 1);
-        for (int line = firstLine; line <= lastLine; line++) {
-            double y = line * lineHeight - scrollOffset;
+        int totalVisibleLines = Math.max(0, visibleLineMap.visibleCount());
+        if (totalVisibleLines == 0) {
+            return;
+        }
+        int firstVisibleLine = Math.max(0, (int) (scrollOffset / lineHeight));
+        int lastVisibleLine = Math.min(totalVisibleLines - 1, (int) ((scrollOffset + h) / lineHeight) + 1);
+        for (int visibleLine = firstVisibleLine; visibleLine <= lastVisibleLine; visibleLine++) {
+            int line = visibleLineMap.visibleToLogical(visibleLine);
+            double y = visibleLine * lineHeight - scrollOffset;
             paintGutterLine(gc, w, baseline, lineHeight, line, y);
         }
     }
@@ -240,10 +271,73 @@ public class GutterView extends Region {
             }
         }
 
+        paintFoldGlyph(gc, lineHeight, line, y);
+
         String lineNum = String.valueOf(line + 1);
         double textX = width - LINE_NUMBER_RIGHT_PADDING - (lineNum.length() * glyphCache.getCharWidth());
         gc.setFill(line == activeLineIndex ? theme.lineNumberActiveColor() : theme.lineNumberColor());
         gc.fillText(lineNum, textX, y + baseline);
+    }
+
+    private void paintFoldGlyph(GraphicsContext gc, double lineHeight, int line, double y) {
+        if (!foldMap.hasRegionStartingAt(line)) {
+            return;
+        }
+        double x = MARKER_LANE_WIDTH + 2.0;
+        double centerY = y + (lineHeight * 0.5);
+        gc.setFill(line == activeLineIndex ? theme.lineNumberActiveColor() : theme.lineNumberColor());
+        if (foldMap.isCollapsedHeader(line)) {
+            gc.fillPolygon(
+                new double[]{x, x, x + 6.0},
+                new double[]{centerY - 4.0, centerY + 4.0, centerY},
+                3
+            );
+            return;
+        }
+        gc.fillPolygon(
+            new double[]{x, x + 8.0, x + 4.0},
+            new double[]{centerY - 2.0, centerY - 2.0, centerY + 4.0},
+            3
+        );
+    }
+
+    private void handleMousePressed(MouseEvent event) {
+        if (event == null || event.getButton() != MouseButton.PRIMARY || foldToggleHandler == null) {
+            return;
+        }
+        if (event.getX() < MARKER_LANE_WIDTH || event.getX() > MARKER_LANE_WIDTH + FOLD_LANE_WIDTH) {
+            return;
+        }
+        int line = resolveLineAtY(event.getY());
+        if (line < 0 || !foldMap.hasRegionStartingAt(line)) {
+            return;
+        }
+        foldToggleHandler.accept(line);
+        event.consume();
+    }
+
+    private int resolveLineAtY(double localY) {
+        if (document == null || document.getLineCount() <= 0) {
+            return -1;
+        }
+        double lineHeight = glyphCache.getLineHeight();
+        if (lineHeight <= 0) {
+            return -1;
+        }
+        if (wordWrap && wrapMap != null && wrapMap.hasData() && wrapMap.totalVisualRows() > 0) {
+            int visualRow = Math.max(0, Math.min(
+                (int) Math.floor((localY + scrollOffset) / lineHeight),
+                wrapMap.totalVisualRows() - 1
+            ));
+            return wrapMap.visualRow(visualRow).lineIndex();
+        }
+        int visibleLine = (int) Math.floor((localY + scrollOffset) / lineHeight);
+        if (visibleLineMap.visibleCount() <= 0) {
+            int safeLine = Math.max(0, Math.min(visibleLine, document.getLineCount() - 1));
+            return safeLine;
+        }
+        int safeVisibleLine = Math.max(0, Math.min(visibleLine, visibleLineMap.visibleCount() - 1));
+        return visibleLineMap.visibleToLogical(safeVisibleLine);
     }
 
     private Paint markerColor(MarkerType type) {

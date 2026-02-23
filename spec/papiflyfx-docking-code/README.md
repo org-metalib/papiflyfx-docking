@@ -1,2 +1,3 @@
-#
+# Docking Code Editor Component
+
 

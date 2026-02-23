@@ -24,6 +24,9 @@ import org.metalib.papifly.fx.code.command.LineEditService;
 import org.metalib.papifly.fx.code.command.MultiCaretModel;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
+import org.metalib.papifly.fx.code.folding.FoldMap;
+import org.metalib.papifly.fx.code.folding.FoldRegion;
+import org.metalib.papifly.fx.code.folding.IncrementalFoldingPipeline;
 import org.metalib.papifly.fx.code.gutter.GutterView;
 import org.metalib.papifly.fx.code.gutter.MarkerModel;
 import org.metalib.papifly.fx.code.lexer.IncrementalLexerPipeline;
@@ -33,12 +36,15 @@ import org.metalib.papifly.fx.code.render.Viewport;
 import org.metalib.papifly.fx.code.search.SearchController;
 import org.metalib.papifly.fx.code.search.SearchModel;
 import org.metalib.papifly.fx.code.state.EditorStateData;
+import org.metalib.papifly.fx.code.state.FoldRegionRef;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 import org.metalib.papifly.fx.code.theme.CodeEditorThemeMapper;
 import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
@@ -65,6 +71,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final StringProperty languageId = new SimpleStringProperty(this, "languageId", DEFAULT_LANGUAGE);
 
     private List<Integer> foldedLines = List.of();
+    private List<FoldRegionRef> foldedRegions = List.of();
+    private FoldMap foldMap = FoldMap.empty();
+    private boolean pendingPersistedFoldingRestore;
 
     private final Document document;
     private final Viewport viewport;
@@ -102,6 +111,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final PauseTransition searchRefreshDebounce;
     private final MarkerModel.MarkerChangeListener markerModelChangeListener;
     private final IncrementalLexerPipeline lexerPipeline;
+    private final IncrementalFoldingPipeline foldingPipeline;
 
     private ObjectProperty<Theme> boundThemeProperty;
     private ChangeListener<Theme> themeChangeListener;
@@ -148,6 +158,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.gutterView.setDocument(this.document);
         this.gutterView.setMarkerModel(markerModel);
         this.gutterView.setWrapMap(viewport.getWrapMap());
+        this.gutterView.setVisibleLineMap(viewport.getVisibleLineMap());
+        this.gutterView.setFoldMap(foldMap);
+        this.gutterView.setOnFoldToggle(this::toggleFoldAtLine);
         this.gutterView.setWordWrap(wordWrap.get());
         this.gutterDigits = computeGutterDigits(this.document.getLineCount());
         this.gutterWidthListener = event -> {
@@ -189,7 +202,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
             this.searchModel,
             this.searchController,
             this.viewport,
-            (line, column) -> caretCoordinator.moveCaret(line, column, false),
+            this::moveCaretAndReveal,
             this::requestFocus
         );
         this.searchCoordinator.bind();
@@ -225,9 +238,14 @@ public class CodeEditor extends StackPane implements DisposableContent {
         BiFunction<Document, Consumer<TokenMap>, IncrementalLexerPipeline> resolvedLexerPipelineFactory =
             lexerPipelineFactory == null ? IncrementalLexerPipeline::new : lexerPipelineFactory;
         this.lexerPipeline = resolvedLexerPipelineFactory.apply(this.document, viewport::setTokenMap);
-        this.languageListener = (obs, oldValue, newValue) -> lexerPipeline.setLanguageId(newValue);
+        this.foldingPipeline = new IncrementalFoldingPipeline(this.document, lexerPipeline::getTokenMap, this::applyFoldMap);
+        this.languageListener = (obs, oldValue, newValue) -> {
+            lexerPipeline.setLanguageId(newValue);
+            foldingPipeline.setLanguageId(newValue);
+        };
         this.focusListener = (obs, oldFocused, focused) -> viewport.setCaretBlinkActive(focused);
         lexerPipeline.setLanguageId(languageId.get());
+        foldingPipeline.setLanguageId(languageId.get());
         OccurrenceSelectionService resolvedOccurrenceSelectionService = new OccurrenceSelectionService(
             this.document,
             this.selectionModel,
@@ -298,6 +316,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public void setText(String text) {
         document.setText(text);
+        foldedLines = List.of();
+        foldedRegions = List.of();
+        applyFoldMapAndSyncPipeline(FoldMap.empty());
         caretCoordinator.clearPreferredVerticalColumn();
         selectionModel.moveCaret(0, 0);
         setVerticalScrollOffset(0);
@@ -480,7 +501,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public void goToLine(int lineNumber) {
         int targetLine = Math.max(1, Math.min(lineNumber, document.getLineCount()));
-        caretCoordinator.moveCaret(targetLine - 1, 0, false);
+        moveCaretAndReveal(targetLine - 1, 0);
     }
 
     // --- Key handling ---
@@ -505,7 +526,12 @@ public class CodeEditor extends StackPane implements DisposableContent {
             editController,
             this::openSearch,
             this::openReplace,
-            this::goToLine
+            this::goToLine,
+            () -> toggleFoldAtLine(selectionModel.getCaretLine()),
+            this::foldAll,
+            this::unfoldAll,
+            () -> foldRecursivelyAtLine(selectionModel.getCaretLine()),
+            () -> unfoldRecursivelyAtLine(selectionModel.getCaretLine())
         );
         return executor;
     }
@@ -609,7 +635,13 @@ public class CodeEditor extends StackPane implements DisposableContent {
     public EditorStateData captureState() {
         syncVerticalScrollOffsetFromViewport();
         syncHorizontalScrollOffsetFromViewport();
-        return stateCoordinator.captureState(filePath::get, languageId::get, this::getFoldedLines, this::isWordWrap);
+        return stateCoordinator.captureState(
+            filePath::get,
+            languageId::get,
+            this::getFoldedLines,
+            this::getFoldedRegions,
+            this::isWordWrap
+        );
     }
 
     /**
@@ -618,16 +650,19 @@ public class CodeEditor extends StackPane implements DisposableContent {
      * @param state serialized state to apply; {@code null} leaves current state unchanged
      */
     public void applyState(EditorStateData state) {
+        pendingPersistedFoldingRestore = true;
         stateCoordinator.applyState(
             state,
             this::setFilePath,
             this::setLanguageId,
             this::setFoldedLines,
+            this::setFoldedRegions,
             this::setWordWrap,
             this::setVerticalScrollOffset,
             this::setHorizontalScrollOffset
         );
         if (state == null) {
+            pendingPersistedFoldingRestore = false;
             return;
         }
         Platform.runLater(() -> {
@@ -855,6 +890,201 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public void setFoldedLines(List<Integer> foldedLines) {
         this.foldedLines = foldedLines == null ? List.of() : List.copyOf(foldedLines);
+        if (foldedRegions.isEmpty()) {
+            pendingPersistedFoldingRestore = true;
+            applyPersistedFoldingIfReady();
+        }
+    }
+
+    public List<FoldRegionRef> getFoldedRegions() {
+        return foldedRegions;
+    }
+
+    public void setFoldedRegions(List<FoldRegionRef> foldedRegions) {
+        this.foldedRegions = foldedRegions == null ? List.of() : List.copyOf(foldedRegions);
+        pendingPersistedFoldingRestore = true;
+        applyPersistedFoldingIfReady();
+    }
+
+    public void toggleFoldAtLine(int line) {
+        revealLine(line);
+        FoldMap next = foldMap.toggleAtHeaderLine(line);
+        applyFoldMapAndSyncPipeline(next);
+    }
+
+    public void foldRegion(int line) {
+        revealLine(line);
+        FoldMap next = foldMap.withCollapsedHeaders(withAdded(foldMap.collapsedHeaderLines(), line));
+        applyFoldMapAndSyncPipeline(next);
+    }
+
+    public void unfoldRegion(int line) {
+        FoldMap next = foldMap.withCollapsedHeaders(withRemoved(foldMap.collapsedHeaderLines(), line));
+        applyFoldMapAndSyncPipeline(next);
+    }
+
+    public void foldAll() {
+        applyFoldMapAndSyncPipeline(foldMap.collapseAll());
+    }
+
+    public void unfoldAll() {
+        applyFoldMapAndSyncPipeline(foldMap.expandAll());
+    }
+
+    public void foldRecursivelyAtLine(int line) {
+        revealLine(line);
+        FoldRegion root = foldMap.headerRegionAt(line);
+        if (root == null) {
+            foldRegion(line);
+            return;
+        }
+        Set<Integer> headers = new LinkedHashSet<>(foldMap.collapsedHeaderLines());
+        for (FoldRegion region : foldMap.regions()) {
+            if (region.startLine() < root.startLine() || region.endLine() > root.endLine()) {
+                continue;
+            }
+            headers.add(region.startLine());
+        }
+        applyFoldMapAndSyncPipeline(foldMap.withCollapsedHeaders(headers));
+    }
+
+    public void unfoldRecursivelyAtLine(int line) {
+        FoldRegion root = foldMap.headerRegionAt(line);
+        if (root == null) {
+            unfoldRegion(line);
+            return;
+        }
+        Set<Integer> headers = new LinkedHashSet<>(foldMap.collapsedHeaderLines());
+        for (FoldRegion region : foldMap.regions()) {
+            if (region.startLine() < root.startLine() || region.endLine() > root.endLine()) {
+                continue;
+            }
+            headers.remove(region.startLine());
+        }
+        applyFoldMapAndSyncPipeline(foldMap.withCollapsedHeaders(headers));
+    }
+
+    private void moveCaretAndReveal(int line, int column) {
+        revealLine(line);
+        caretCoordinator.moveCaret(line, column, false);
+    }
+
+    private void applyFoldMap(FoldMap nextMap) {
+        applyFoldMap(nextMap, false);
+    }
+
+    private void applyFoldMapAndSyncPipeline(FoldMap nextMap) {
+        applyFoldMap(nextMap, true);
+    }
+
+    private void applyFoldMap(FoldMap nextMap, boolean syncPipeline) {
+        FoldMap safeMap = nextMap == null ? FoldMap.empty() : nextMap;
+        if (pendingPersistedFoldingRestore) {
+            safeMap = applyPersistedFolding(safeMap);
+            pendingPersistedFoldingRestore = false;
+        }
+        foldMap = safeMap;
+        viewport.setFoldMap(safeMap);
+        gutterView.setFoldMap(safeMap);
+        ensurePrimaryCaretVisibleAfterFoldChange();
+        if (syncPipeline || safeMap.hasCollapsedRegions()) {
+            updatePersistedFoldStateFromMap(safeMap);
+        }
+        if (syncPipeline) {
+            foldingPipeline.setCollapsedHeaders(safeMap.collapsedHeaderLines());
+        }
+        viewport.markDirty();
+        gutterView.markDirty();
+    }
+
+    private void applyPersistedFoldingIfReady() {
+        if (disposed || foldMap == null || foldMap.regions().isEmpty()) {
+            return;
+        }
+        FoldMap mapped = applyPersistedFolding(foldMap);
+        pendingPersistedFoldingRestore = false;
+        applyFoldMapAndSyncPipeline(mapped);
+    }
+
+    private FoldMap applyPersistedFolding(FoldMap baseMap) {
+        if (baseMap == null || baseMap.regions().isEmpty()) {
+            return baseMap == null ? FoldMap.empty() : baseMap;
+        }
+        Set<Integer> headers = new LinkedHashSet<>();
+        if (foldedRegions != null && !foldedRegions.isEmpty()) {
+            for (FoldRegionRef ref : foldedRegions) {
+                if (ref == null) {
+                    continue;
+                }
+                FoldRegion region = baseMap.headerRegionAt(ref.startLine());
+                if (region == null) {
+                    continue;
+                }
+                if (!ref.kind().isBlank() && !region.kind().name().equals(ref.kind())) {
+                    continue;
+                }
+                headers.add(region.startLine());
+            }
+        } else if (foldedLines != null && !foldedLines.isEmpty()) {
+            headers.addAll(foldedLines);
+        }
+        return baseMap.withCollapsedHeaders(headers);
+    }
+
+    private void updatePersistedFoldStateFromMap(FoldMap map) {
+        foldedLines = map.collapsedHeaderLines().stream().sorted().toList();
+        foldedRegions = map.collapsedRegions().stream()
+            .map(region -> new FoldRegionRef(region.startLine(), region.kind().name(), region.endLine()))
+            .toList();
+    }
+
+    private void ensurePrimaryCaretVisibleAfterFoldChange() {
+        int caretLine = selectionModel.getCaretLine();
+        if (!viewport.isLogicalLineHidden(caretLine)) {
+            return;
+        }
+        int targetLine = viewport.nearestVisibleLogicalLine(caretLine);
+        int targetColumn = Math.min(selectionModel.getCaretColumn(), document.getLineText(targetLine).length());
+        caretCoordinator.moveCaret(targetLine, targetColumn, false);
+    }
+
+    private void revealLine(int line) {
+        if (line < 0 || line >= document.getLineCount()) {
+            return;
+        }
+        FoldMap next = foldMap;
+        boolean changed = false;
+        boolean searching = true;
+        while (searching) {
+            searching = false;
+            for (FoldRegion region : next.regions()) {
+                if (line <= region.startLine() || line > region.endLine()) {
+                    continue;
+                }
+                if (!next.isCollapsedHeader(region.startLine())) {
+                    continue;
+                }
+                next = next.toggleAtHeaderLine(region.startLine());
+                changed = true;
+                searching = true;
+                break;
+            }
+        }
+        if (changed) {
+            applyFoldMapAndSyncPipeline(next);
+        }
+    }
+
+    private static Set<Integer> withAdded(Set<Integer> values, int line) {
+        Set<Integer> updated = new LinkedHashSet<>(values);
+        updated.add(line);
+        return updated;
+    }
+
+    private static Set<Integer> withRemoved(Set<Integer> values, int line) {
+        Set<Integer> updated = new LinkedHashSet<>(values);
+        updated.remove(line);
+        return updated;
     }
 
     /**
@@ -895,6 +1125,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
             languageListener
         );
         lexerPipeline.dispose();
+        foldingPipeline.dispose();
         viewport.dispose();
     }
 

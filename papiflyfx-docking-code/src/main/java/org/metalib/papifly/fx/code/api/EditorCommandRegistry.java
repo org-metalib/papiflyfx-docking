@@ -25,13 +25,23 @@ final class EditorCommandRegistry {
         EditorEditController editController,
         Runnable openSearchAction,
         Runnable openReplaceAction,
-        Runnable goToLineAction
+        Runnable goToLineAction,
+        Runnable toggleFoldAction,
+        Runnable foldAllAction,
+        Runnable unfoldAllAction,
+        Runnable foldRecursiveAction,
+        Runnable unfoldRecursiveAction
     ) {
         Objects.requireNonNull(navigationController, "navigationController");
         Objects.requireNonNull(editController, "editController");
         Objects.requireNonNull(openSearchAction, "openSearchAction");
         Objects.requireNonNull(openReplaceAction, "openReplaceAction");
         Objects.requireNonNull(goToLineAction, "goToLineAction");
+        Objects.requireNonNull(toggleFoldAction, "toggleFoldAction");
+        Objects.requireNonNull(foldAllAction, "foldAllAction");
+        Objects.requireNonNull(unfoldAllAction, "unfoldAllAction");
+        Objects.requireNonNull(foldRecursiveAction, "foldRecursiveAction");
+        Objects.requireNonNull(unfoldRecursiveAction, "unfoldRecursiveAction");
 
         Map<EditorCommand, Runnable> handlers = new EnumMap<>(EditorCommand.class);
 
@@ -101,6 +111,13 @@ final class EditorCommandRegistry {
         handlers.put(EditorCommand.ADD_CURSOR_UP, navigationController::addCursorUp);
         handlers.put(EditorCommand.ADD_CURSOR_DOWN, navigationController::addCursorDown);
         handlers.put(EditorCommand.UNDO_LAST_OCCURRENCE, navigationController::undoLastOccurrence);
+
+        // Folding
+        handlers.put(EditorCommand.TOGGLE_FOLD, toggleFoldAction);
+        handlers.put(EditorCommand.FOLD_ALL, foldAllAction);
+        handlers.put(EditorCommand.UNFOLD_ALL, unfoldAllAction);
+        handlers.put(EditorCommand.FOLD_RECURSIVE, foldRecursiveAction);
+        handlers.put(EditorCommand.UNFOLD_RECURSIVE, unfoldRecursiveAction);
 
         register(executor, handlers);
     }

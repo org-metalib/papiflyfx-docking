@@ -9,8 +9,9 @@ Goal: implement robust, incremental code folding to improve navigation while pre
 
 - [x] Research completed in `research.md` (architecture + lexer + folding gap analysis).
 - [x] Implementation plan authored in this document.
-- [ ] Start implementation at **Phase 1 (foundation model + folding pipeline skeleton)**.
-- [ ] Deliver first usable UX milestone: fold toggle in gutter + collapsed rendering for structural folds.
+- [x] Start implementation at **Phase 1 (foundation model + folding pipeline skeleton)**.
+- [x] Deliver first usable UX milestone: fold toggle in gutter + collapsed rendering for structural folds.
+- [x] Publish implementation summary report in `summary.md`.
 
 ---
 
@@ -190,7 +191,7 @@ this.languageListener = (obs, oldValue, newValue) -> {
 
 ## Detailed phased implementation plan
 
-## Phase 1 — Foundation model and pipeline skeleton
+## Phase 1 — Foundation model and pipeline skeleton (Completed)
 
 **Objective**: establish fold domain, registry, and async incremental pipeline without changing UX yet.
 
@@ -216,7 +217,7 @@ this.languageListener = (obs, oldValue, newValue) -> {
 
 ---
 
-## Phase 2 — Runtime folding UX (viewport + gutter + interactions)
+## Phase 2 — Runtime folding UX (viewport + gutter + interactions) (Completed)
 
 **Objective**: make folding visible and interactive for structural folds.
 
@@ -255,7 +256,7 @@ for (int i = 0; i < visibleLineCount; i++) {
 
 ---
 
-## Phase 3 — Language-specific folding depth (text blocks + nested templates)
+## Phase 3 — Language-specific folding depth (text blocks + nested templates) (Completed)
 
 **Objective**: add high-value language specifics requested in research.
 
@@ -294,7 +295,7 @@ if (state == STATE_DEFAULT && matches(text, index, "\"\"\"")) {
 
 ---
 
-## Phase 4 — Persistence migration (v4 state)
+## Phase 4 — Persistence migration (v4 state) (Completed)
 
 **Objective**: replace brittle line-only fold persistence with region-aware refs, while preserving backward compatibility.
 
@@ -331,7 +332,7 @@ public record EditorStateData(
 
 ---
 
-## Phase 5 — Commands, keymap, polishing, and hardening
+## Phase 5 — Commands, keymap, polishing, and hardening (Completed)
 
 **Objective**: complete interaction and quality bar.
 
@@ -403,41 +404,41 @@ public record EditorStateData(
 
 ### Phase 1 backlog
 
-- [ ] Create folding model classes (`FoldKind`, `FoldRegion`, `FoldMap`).
-- [ ] Create `VisibleLineMap` and mapping tests.
-- [ ] Create provider API + registry.
-- [ ] Implement plain/structural/markdown-fence providers.
-- [ ] Implement `IncrementalFoldingPipeline`.
-- [ ] Wire lifecycle in `CodeEditor` (construct/dispose).
+- [x] Create folding model classes (`FoldKind`, `FoldRegion`, `FoldMap`).
+- [x] Create `VisibleLineMap` and mapping tests.
+- [x] Create provider API + registry.
+- [x] Implement plain/structural/markdown-fence providers.
+- [x] Implement `IncrementalFoldingPipeline`.
+- [x] Wire lifecycle in `CodeEditor` (construct/dispose).
 
 ### Phase 2 backlog
 
-- [ ] Add fold-aware mappings in `Viewport`.
-- [ ] Add fold glyph painting + hit-test methods in `GutterView`.
-- [ ] Add gutter click routing to fold toggle action.
-- [ ] Add public folding APIs on `CodeEditor`.
-- [ ] Implement reveal-on-navigation for folded target lines.
+- [x] Add fold-aware mappings in `Viewport`.
+- [x] Add fold glyph painting + hit-test methods in `GutterView`.
+- [x] Add gutter click routing to fold toggle action.
+- [x] Add public folding APIs on `CodeEditor`.
+- [x] Implement reveal-on-navigation for folded target lines.
 
 ### Phase 3 backlog
 
-- [ ] Implement Java text block fold detection.
-- [ ] Implement JavaScript nested template fold detection.
-- [ ] Implement Markdown heading section folds.
-- [ ] Tighten JSON structural fold detection.
+- [x] Implement Java text block fold detection.
+- [x] Implement JavaScript nested template fold detection.
+- [x] Implement Markdown heading section folds.
+- [x] Tighten JSON structural fold detection.
 
 ### Phase 4 backlog
 
-- [ ] Add v4 state schema (`foldedRegions`) to DTO/codec.
-- [ ] Add migration logic from `foldedLines` to fold refs.
-- [ ] Bump adapter version and expand migration tests.
-- [ ] Validate backward compatibility against v0/v1/v2/v3 restore paths.
+- [x] Add v4 state schema (`foldedRegions`) to DTO/codec.
+- [x] Add migration logic from `foldedLines` to fold refs.
+- [x] Bump adapter version and expand migration tests.
+- [x] Validate backward compatibility against v0/v1/v2/v3 restore paths.
 
 ### Phase 5 backlog
 
-- [ ] Add fold commands and key bindings.
-- [ ] Register command handlers.
-- [ ] Add performance guards/benchmarks for large files.
-- [ ] Complete full test matrix and fix edge regressions.
+- [x] Add fold commands and key bindings.
+- [x] Register command handlers.
+- [x] Add performance guards/benchmarks for large files.
+- [x] Complete full test matrix and fix edge regressions.
 
 ---
 

@@ -20,3 +20,8 @@ Read this document `spec/papiflyfx-docking-code/2026-02-23-folding/research.md` 
 
 add a detailed todo list to the plan, with all the phases and individual tasks necessary to complete the plan - don’t implement yet
 
+## Implementation
+implement it all. when you’re done with a task or phase, mark it as completed in the plan document. do not stop until
+all tasks and phases are completed. do not add unnecessary comments or jsdocs, do not use any or unknown types.
+continuously run typecheck to make sure you’re not introducing new issues.
+

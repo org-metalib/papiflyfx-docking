@@ -197,6 +197,26 @@ public enum EditorCommand {
      */
     UNDO_LAST_OCCURRENCE,
     /**
+     * Toggle fold state at current line.
+     */
+    TOGGLE_FOLD,
+    /**
+     * Collapse all foldable regions.
+     */
+    FOLD_ALL,
+    /**
+     * Expand all folded regions.
+     */
+    UNFOLD_ALL,
+    /**
+     * Collapse nested regions recursively from current context.
+     */
+    FOLD_RECURSIVE,
+    /**
+     * Expand nested regions recursively from current context.
+     */
+    UNFOLD_RECURSIVE,
+    /**
      * Open search overlay.
      */
     OPEN_SEARCH,

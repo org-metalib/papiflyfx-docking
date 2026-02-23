@@ -2,7 +2,7 @@ package org.metalib.papifly.fx.code.render;
 
 import org.metalib.papifly.fx.code.document.Document;
 
-import java.util.Arrays;
+import java.util.function.IntPredicate;
 
 /**
  * Soft-wrap index mapping logical lines to visual rows.
@@ -32,6 +32,10 @@ public final class WrapMap {
      * @param charWidth average character width in pixels
      */
     public void rebuild(Document document, double viewportWidth, double charWidth) {
+        rebuild(document, viewportWidth, charWidth, ignored -> true);
+    }
+
+    public void rebuild(Document document, double viewportWidth, double charWidth, IntPredicate lineVisiblePredicate) {
         if (document == null) {
             prefixRows = new int[]{0};
             visualRowsPerLine = new int[0];
@@ -48,7 +52,8 @@ public final class WrapMap {
         for (int line = 0; line < lineCount; line++) {
             int length = document.getLineText(line).length();
             lineLengths[line] = length;
-            int rows = rowsForLength(length, wrapColumns);
+            boolean lineVisible = lineVisiblePredicate == null || lineVisiblePredicate.test(line);
+            int rows = lineVisible ? rowsForLength(length, wrapColumns) : 0;
             visualRowsPerLine[line] = rows;
             prefixRows[line + 1] = prefixRows[line] + rows;
         }
@@ -67,7 +72,7 @@ public final class WrapMap {
      * @param charWidth average character width in pixels
      */
     public void update(Document document, int startLine, int endLine, double viewportWidth, double charWidth) {
-        rebuild(document, viewportWidth, charWidth);
+        rebuild(document, viewportWidth, charWidth, ignored -> true);
     }
 
     /**
@@ -127,11 +132,17 @@ public final class WrapMap {
             return 0;
         }
         int safeRow = clamp(visualRowIndex, 0, totalVisualRows() - 1);
-        int idx = Arrays.binarySearch(prefixRows, safeRow + 1);
-        if (idx < 0) {
-            idx = -idx - 1;
+        int low = 0;
+        int high = visualRowsPerLine.length - 1;
+        while (low < high) {
+            int mid = (low + high) >>> 1;
+            if (prefixRows[mid + 1] <= safeRow) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
         }
-        return clamp(idx - 1, 0, visualRowsPerLine.length - 1);
+        return clamp(low, 0, visualRowsPerLine.length - 1);
     }
 
     /**
@@ -165,6 +176,13 @@ public final class WrapMap {
             return 0;
         }
         int safeLine = clamp(lineIndex, 0, visualRowsPerLine.length - 1);
+        if (visualRowsPerLine[safeLine] <= 0) {
+            int totalRows = totalVisualRows();
+            if (totalRows <= 0) {
+                return 0;
+            }
+            return clamp(prefixRows[safeLine], 0, totalRows - 1);
+        }
         int lineLength = lineLengths[safeLine];
         int safeColumn = clamp(column, 0, lineLength);
         if (wrapColumns == Integer.MAX_VALUE || wrapColumns <= 0) {

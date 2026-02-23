@@ -24,9 +24,13 @@ public final class EditorStateCodec {
     private static final String KEY_WORD_WRAP = "wordWrap";
     private static final String KEY_LANGUAGE_ID = "languageId";
     private static final String KEY_FOLDED_LINES = "foldedLines";
+    private static final String KEY_FOLDED_REGIONS = "foldedRegions";
     private static final String KEY_SECONDARY_CARETS = "secondaryCarets";
     private static final String KEY_CARET_LINE = "caretLine";
     private static final String KEY_CARET_COLUMN = "caretColumn";
+    private static final String KEY_FOLD_START_LINE = "startLine";
+    private static final String KEY_FOLD_END_LINE = "endLine";
+    private static final String KEY_FOLD_KIND = "kind";
 
     private EditorStateCodec() {
     }
@@ -50,6 +54,7 @@ public final class EditorStateCodec {
         map.put(KEY_WORD_WRAP, safe.wordWrap());
         map.put(KEY_LANGUAGE_ID, safe.languageId());
         map.put(KEY_FOLDED_LINES, safe.foldedLines());
+        map.put(KEY_FOLDED_REGIONS, toFoldRegionMapList(safe.foldedRegions()));
         map.put(KEY_SECONDARY_CARETS, toCaretMapList(safe.secondaryCarets()));
         return map;
     }
@@ -75,6 +80,7 @@ public final class EditorStateCodec {
             asBoolean(state.get(KEY_WORD_WRAP), false),
             asString(state.get(KEY_LANGUAGE_ID), "plain-text"),
             asIntList(state.get(KEY_FOLDED_LINES)),
+            asFoldRegionRefList(state.get(KEY_FOLDED_REGIONS)),
             asInt(state.get(KEY_ANCHOR_LINE), cursorLine),
             asInt(state.get(KEY_ANCHOR_COLUMN), cursorColumn),
             asCaretStateList(state.get(KEY_SECONDARY_CARETS))
@@ -149,6 +155,26 @@ public final class EditorStateCodec {
         return List.copyOf(result);
     }
 
+    private static List<FoldRegionRef> asFoldRegionRefList(Object value) {
+        if (!(value instanceof List<?> list)) {
+            return List.of();
+        }
+        List<FoldRegionRef> result = new ArrayList<>(list.size());
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> foldMap)) {
+                continue;
+            }
+            Integer startLine = asNullableInt(foldMap.get(KEY_FOLD_START_LINE));
+            Integer endLine = asNullableInt(foldMap.get(KEY_FOLD_END_LINE));
+            if (startLine == null || endLine == null) {
+                continue;
+            }
+            String kind = asString(foldMap.get(KEY_FOLD_KIND), "");
+            result.add(new FoldRegionRef(startLine, kind, endLine));
+        }
+        return List.copyOf(result);
+    }
+
     private static Integer asNullableInt(Object value) {
         if (value instanceof Number number) {
             return number.intValue();
@@ -171,6 +197,24 @@ public final class EditorStateCodec {
             map.put(KEY_ANCHOR_COLUMN, caret.anchorColumn());
             map.put(KEY_CARET_LINE, caret.caretLine());
             map.put(KEY_CARET_COLUMN, caret.caretColumn());
+            result.add(map);
+        }
+        return List.copyOf(result);
+    }
+
+    private static List<Map<String, Object>> toFoldRegionMapList(List<FoldRegionRef> foldRegions) {
+        if (foldRegions == null || foldRegions.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> result = new ArrayList<>(foldRegions.size());
+        for (FoldRegionRef foldRegion : foldRegions) {
+            if (foldRegion == null) {
+                continue;
+            }
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put(KEY_FOLD_START_LINE, foldRegion.startLine());
+            map.put(KEY_FOLD_END_LINE, foldRegion.endLine());
+            map.put(KEY_FOLD_KIND, foldRegion.kind());
             result.add(map);
         }
         return List.copyOf(result);

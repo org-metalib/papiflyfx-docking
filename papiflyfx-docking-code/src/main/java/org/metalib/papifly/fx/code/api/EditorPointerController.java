@@ -81,7 +81,7 @@ final class EditorPointerController {
     }
 
     void handleMousePressed(MouseEvent event) {
-        if (disposedSupplier.getAsBoolean()) {
+        if (disposedSupplier.getAsBoolean() || event == null || event.isConsumed()) {
             return;
         }
         clearPreferredVerticalColumn.run();
@@ -131,7 +131,7 @@ final class EditorPointerController {
     }
 
     void handleMouseDragged(MouseEvent event) {
-        if (disposedSupplier.getAsBoolean()) {
+        if (disposedSupplier.getAsBoolean() || event == null || event.isConsumed()) {
             return;
         }
         clearPreferredVerticalColumn.run();
@@ -166,7 +166,7 @@ final class EditorPointerController {
     }
 
     void handleMouseReleased(MouseEvent event) {
-        if (disposedSupplier.getAsBoolean()) {
+        if (disposedSupplier.getAsBoolean() || event == null || event.isConsumed()) {
             return;
         }
         boxSelectionActive = false;
@@ -179,7 +179,7 @@ final class EditorPointerController {
     }
 
     void handleMouseMoved(MouseEvent event) {
-        if (disposedSupplier.getAsBoolean()) {
+        if (disposedSupplier.getAsBoolean() || event == null || event.isConsumed()) {
             return;
         }
         Point2D viewportPoint = toViewportLocalPoint(event);
@@ -187,7 +187,7 @@ final class EditorPointerController {
     }
 
     void handleScroll(ScrollEvent event) {
-        if (disposedSupplier.getAsBoolean()) {
+        if (disposedSupplier.getAsBoolean() || event == null || event.isConsumed()) {
             return;
         }
 

@@ -7,6 +7,7 @@ import org.metalib.papifly.fx.code.render.SelectionModel;
 import org.metalib.papifly.fx.code.render.Viewport;
 import org.metalib.papifly.fx.code.state.CaretStateData;
 import org.metalib.papifly.fx.code.state.EditorStateData;
+import org.metalib.papifly.fx.code.state.FoldRegionRef;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -47,6 +48,7 @@ final class EditorStateCoordinator {
         Supplier<String> filePathSupplier,
         Supplier<String> languageIdSupplier,
         Supplier<List<Integer>> foldedLinesSupplier,
+        Supplier<List<FoldRegionRef>> foldedRegionsSupplier,
         Supplier<Boolean> wordWrapSupplier
     ) {
         List<CaretStateData> secondaryCarets = multiCaretModel.getSecondaryCarets()
@@ -67,6 +69,7 @@ final class EditorStateCoordinator {
             Boolean.TRUE.equals(wordWrapSupplier.get()),
             languageIdSupplier.get(),
             foldedLinesSupplier.get(),
+            foldedRegionsSupplier.get(),
             selectionModel.getAnchorLine(),
             selectionModel.getAnchorColumn(),
             secondaryCarets
@@ -78,6 +81,7 @@ final class EditorStateCoordinator {
         Consumer<String> filePathSetter,
         Consumer<String> languageIdSetter,
         Consumer<List<Integer>> foldedLinesSetter,
+        Consumer<List<FoldRegionRef>> foldedRegionsSetter,
         Consumer<Boolean> wordWrapSetter,
         DoubleConsumer verticalScrollSetter,
         DoubleConsumer horizontalScrollSetter
@@ -88,6 +92,7 @@ final class EditorStateCoordinator {
         filePathSetter.accept(state.filePath());
         languageIdSetter.accept(state.languageId());
         foldedLinesSetter.accept(state.foldedLines());
+        foldedRegionsSetter.accept(state.foldedRegions());
         wordWrapSetter.accept(state.wordWrap());
         applyPrimaryCaretState(state.anchorLine(), state.anchorColumn(), state.cursorLine(), state.cursorColumn());
         applySecondaryCaretState(state.secondaryCarets());
