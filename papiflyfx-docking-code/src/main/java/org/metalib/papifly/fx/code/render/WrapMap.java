@@ -18,7 +18,18 @@ public final class WrapMap {
     private int wrapColumns = Integer.MAX_VALUE;
 
     /**
+     * Creates an empty wrap map.
+     */
+    public WrapMap() {
+        // Default constructor.
+    }
+
+    /**
      * Rebuilds the entire wrap map from document + viewport metrics.
+     *
+     * @param document source document
+     * @param viewportWidth viewport text width in pixels
+     * @param charWidth average character width in pixels
      */
     public void rebuild(Document document, double viewportWidth, double charWidth) {
         if (document == null) {
@@ -48,6 +59,12 @@ public final class WrapMap {
      * <p>
      * Current implementation performs a full rebuild to keep behavior
      * deterministic; incremental line-range recomputation can be added later.
+     *
+     * @param document source document
+     * @param startLine inclusive start line index
+     * @param endLine inclusive end line index
+     * @param viewportWidth viewport text width in pixels
+     * @param charWidth average character width in pixels
      */
     public void update(Document document, int startLine, int endLine, double viewportWidth, double charWidth) {
         rebuild(document, viewportWidth, charWidth);
@@ -55,6 +72,8 @@ public final class WrapMap {
 
     /**
      * Returns total visual row count across the document.
+     *
+     * @return total number of visual rows
      */
     public int totalVisualRows() {
         return prefixRows.length == 0 ? 0 : prefixRows[prefixRows.length - 1];
@@ -62,6 +81,8 @@ public final class WrapMap {
 
     /**
      * Returns wrap columns used for this map rebuild.
+     *
+     * @return wrap column count
      */
     public int wrapColumns() {
         return wrapColumns;
@@ -69,6 +90,9 @@ public final class WrapMap {
 
     /**
      * Returns the first visual row index for a logical line.
+     *
+     * @param lineIndex zero-based logical line index
+     * @return first visual row index for the line
      */
     public int lineToFirstVisualRow(int lineIndex) {
         if (prefixRows.length <= 1) {
@@ -80,6 +104,9 @@ public final class WrapMap {
 
     /**
      * Returns visual row count for a logical line.
+     *
+     * @param lineIndex zero-based logical line index
+     * @return number of visual rows occupied by the line
      */
     public int lineVisualRowCount(int lineIndex) {
         if (visualRowsPerLine.length == 0) {
@@ -91,6 +118,9 @@ public final class WrapMap {
 
     /**
      * Returns logical line for a visual row index.
+     *
+     * @param visualRowIndex zero-based visual row index
+     * @return corresponding logical line index
      */
     public int visualRowToLine(int visualRowIndex) {
         if (visualRowsPerLine.length == 0 || totalVisualRows() <= 0) {
@@ -106,6 +136,9 @@ public final class WrapMap {
 
     /**
      * Returns visual-row metadata for the given visual row index.
+     *
+     * @param visualRowIndex zero-based visual row index
+     * @return visual-row metadata
      */
     public VisualRow visualRow(int visualRowIndex) {
         if (visualRowsPerLine.length == 0 || totalVisualRows() <= 0) {
@@ -122,6 +155,10 @@ public final class WrapMap {
 
     /**
      * Returns visual row index containing the given logical line/column.
+     *
+     * @param lineIndex zero-based logical line index
+     * @param column zero-based column within the logical line
+     * @return visual row index containing the position
      */
     public int lineColumnToVisualRow(int lineIndex, int column) {
         if (visualRowsPerLine.length == 0) {
@@ -139,6 +176,8 @@ public final class WrapMap {
 
     /**
      * Returns true when map contains data for at least one line.
+     *
+     * @return {@code true} when wrap map has at least one line entry
      */
     public boolean hasData() {
         return visualRowsPerLine.length > 0;

@@ -8,10 +8,19 @@ import java.util.List;
  */
 public final class MarkdownLexer implements Lexer {
 
+    /**
+     * Stable id for Markdown language.
+     */
     public static final String LANGUAGE_ID = "markdown";
 
     private static final int STATE_DEFAULT = 0;
     private static final int STATE_CODE_BLOCK = 1;
+
+    /**
+     * Creates a Markdown lexer instance.
+     */
+    public MarkdownLexer() {
+    }
 
     @Override
     public String languageId() {

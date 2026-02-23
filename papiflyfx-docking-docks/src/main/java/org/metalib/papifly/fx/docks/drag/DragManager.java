@@ -39,6 +39,15 @@ public class DragManager {
     private HitTestResult lastHitResult;
     private long lastHitChangeTime;
 
+    /**
+     * Creates a drag manager for dock drag-and-drop interactions.
+     *
+     * @param rootSupplier supplier returning the current dock root
+     * @param overlay overlay used to render drop hints
+     * @param rootUpdater callback used to update the dock root
+     * @param themeProperty theme property used when creating split groups
+     * @param tabGroupFactory factory for new tab groups during drops
+     */
     public DragManager(Supplier<DockElement> rootSupplier, OverlayCanvas overlay,
                        Consumer<DockElement> rootUpdater, ObjectProperty<Theme> themeProperty,
                        Supplier<DockTabGroup> tabGroupFactory) {
@@ -51,6 +60,9 @@ public class DragManager {
 
     /**
      * Initiates a drag operation from a leaf's title bar or tab.
+     *
+     * @param leaf dragged leaf
+     * @param event mouse press event that started drag tracking
      */
     public void startDrag(DockLeaf leaf, MouseEvent event) {
         if (currentDrag != null) {
@@ -80,6 +92,8 @@ public class DragManager {
 
     /**
      * Handles mouse drag during a drag operation.
+     *
+     * @param event mouse drag event
      */
     public void onDrag(MouseEvent event) {
         if (currentDrag == null) {
@@ -149,6 +163,8 @@ public class DragManager {
 
     /**
      * Handles mouse release to complete or cancel the drag.
+     *
+     * @param event mouse release event
      */
     public void endDrag(MouseEvent event) {
         if (currentDrag == null) {
@@ -195,6 +211,8 @@ public class DragManager {
 
     /**
      * Checks if a drag operation is in progress (threshold crossed).
+     *
+     * @return {@code true} when an active drag is in progress
      */
     public boolean isDragging() {
         return isDragging;
@@ -202,6 +220,8 @@ public class DragManager {
 
     /**
      * Checks if a drag context exists (mouse pressed on draggable element).
+     *
+     * @return {@code true} when drag context is present
      */
     public boolean hasDragContext() {
         return currentDrag != null;

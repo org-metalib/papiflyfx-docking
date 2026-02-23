@@ -55,6 +55,8 @@ public class DockSessionSerializer {
 
     /**
      * Creates a new DockSessionSerializer with custom layout serializer.
+     *
+     * @param layoutSerializer layout serializer used for layout node conversion
      */
     public DockSessionSerializer(LayoutSerializer layoutSerializer) {
         this.layoutSerializer = layoutSerializer;
@@ -62,6 +64,9 @@ public class DockSessionSerializer {
 
     /**
      * Serializes a DockSessionData to a Map.
+     *
+     * @param session session data to serialize
+     * @return serialized session map, or {@code null} when session is {@code null}
      */
     public Map<String, Object> serialize(DockSessionData session) {
         if (session == null) {
@@ -176,6 +181,9 @@ public class DockSessionSerializer {
 
     /**
      * Deserializes a Map to a DockSessionData.
+     *
+     * @param map serialized session map
+     * @return deserialized session data, or {@code null} when input is {@code null}
      */
     @SuppressWarnings("unchecked")
     public DockSessionData deserialize(Map<String, Object> map) {
@@ -310,6 +318,9 @@ public class DockSessionSerializer {
 
     /**
      * Converts a Map to JSON string using LayoutSerializer's JSON utility.
+     *
+     * @param map map to convert
+     * @return JSON representation
      */
     public String toJson(Map<String, Object> map) {
         return layoutSerializer.toJson(map);
@@ -317,6 +328,9 @@ public class DockSessionSerializer {
 
     /**
      * Converts a JSON string to Map using LayoutSerializer's JSON utility.
+     *
+     * @param json JSON payload
+     * @return parsed map structure
      */
     public Map<String, Object> fromJson(String json) {
         return layoutSerializer.fromJson(json);

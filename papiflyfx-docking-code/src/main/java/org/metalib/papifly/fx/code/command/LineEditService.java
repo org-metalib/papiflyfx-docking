@@ -9,7 +9,18 @@ import org.metalib.papifly.fx.code.render.SelectionModel;
 public class LineEditService {
 
     /**
+     * Creates a line-edit service.
+     */
+    public LineEditService() {
+        // Default constructor for editor composition.
+    }
+
+    /**
      * Resolves selected line block or current caret line block.
+     *
+     * @param document source document
+     * @param selectionModel source selection state
+     * @return resolved line block for selection or caret
      */
     public LineBlock resolveSelectionOrCaretBlock(Document document, SelectionModel selectionModel) {
         return LineBlock.fromSelectionOrCaret(document, selectionModel);
@@ -17,6 +28,10 @@ public class LineEditService {
 
     /**
      * Deletes the provided block.
+     *
+     * @param document source document
+     * @param block line block to delete
+     * @return {@code true} when deletion was applied
      */
     public boolean deleteBlock(Document document, LineBlock block) {
         int startOffset = block.startOffset();
@@ -36,6 +51,10 @@ public class LineEditService {
 
     /**
      * Moves the provided block one line up.
+     *
+     * @param document source document
+     * @param block line block to move
+     * @return {@code true} when move was applied
      */
     public boolean moveBlockUp(Document document, LineBlock block) {
         if (block.startLine() <= 0) {
@@ -52,6 +71,10 @@ public class LineEditService {
 
     /**
      * Moves the provided block one line down.
+     *
+     * @param document source document
+     * @param block line block to move
+     * @return {@code true} when move was applied
      */
     public boolean moveBlockDown(Document document, LineBlock block) {
         if (block.endLine() >= document.getLineCount() - 1) {
@@ -68,6 +91,9 @@ public class LineEditService {
 
     /**
      * Duplicates the block above itself.
+     *
+     * @param document source document
+     * @param block line block to duplicate
      */
     public void duplicateBlockUp(Document document, LineBlock block) {
         document.insert(block.startOffset(), ensureTrailingNewline(block.text()));
@@ -75,6 +101,9 @@ public class LineEditService {
 
     /**
      * Duplicates the block below itself.
+     *
+     * @param document source document
+     * @param block line block to duplicate
      */
     public void duplicateBlockDown(Document document, LineBlock block) {
         if (block.reachesDocumentEnd() && !block.text().endsWith("\n")) {
@@ -86,6 +115,10 @@ public class LineEditService {
 
     /**
      * Joins the provided line with the next line using a single space.
+     *
+     * @param document source document
+     * @param line zero-based line index to join with its successor
+     * @return {@code true} when join was applied
      */
     public boolean joinLineWithNext(Document document, int line) {
         if (line >= document.getLineCount() - 1) {

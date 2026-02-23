@@ -16,6 +16,9 @@ import java.util.List;
  */
 public record RenderLine(int lineIndex, int startColumn, int endColumn, String text, double y, List<Token> tokens) {
 
+    /**
+     * Creates a render-line snapshot with normalized bounds and text.
+     */
     public RenderLine {
         startColumn = Math.max(0, startColumn);
         endColumn = Math.max(startColumn, endColumn);

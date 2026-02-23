@@ -22,6 +22,9 @@ public final class JavaLexer extends AbstractCStyleLexer {
      */
     public static final String LANGUAGE_ID = "java";
 
+    /**
+     * Creates a Java lexer instance.
+     */
     public JavaLexer() {
         super(LANGUAGE_ID, KEYWORDS, false);
     }

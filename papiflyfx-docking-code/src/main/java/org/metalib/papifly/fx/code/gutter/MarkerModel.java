@@ -14,10 +14,20 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class MarkerModel {
 
     /**
+     * Creates an empty marker model.
+     */
+    public MarkerModel() {
+        // Default constructor for editor composition.
+    }
+
+    /**
      * Listener notified when markers change.
      */
     @FunctionalInterface
     public interface MarkerChangeListener {
+        /**
+         * Called when marker state has changed.
+         */
         void markersChanged();
     }
 
@@ -26,6 +36,8 @@ public class MarkerModel {
 
     /**
      * Adds a marker change listener.
+     *
+     * @param listener listener to register
      */
     public void addChangeListener(MarkerChangeListener listener) {
         listeners.add(listener);
@@ -33,6 +45,8 @@ public class MarkerModel {
 
     /**
      * Removes a marker change listener.
+     *
+     * @param listener listener to remove
      */
     public void removeChangeListener(MarkerChangeListener listener) {
         listeners.remove(listener);
@@ -40,6 +54,8 @@ public class MarkerModel {
 
     /**
      * Adds a marker.
+     *
+     * @param marker marker to add
      */
     public void addMarker(Marker marker) {
         markersByLine.computeIfAbsent(marker.line(), k -> new CopyOnWriteArrayList<>()).add(marker);
@@ -48,6 +64,8 @@ public class MarkerModel {
 
     /**
      * Removes a specific marker.
+     *
+     * @param marker marker to remove
      */
     public void removeMarker(Marker marker) {
         List<Marker> lineMarkers = markersByLine.get(marker.line());
@@ -61,6 +79,8 @@ public class MarkerModel {
 
     /**
      * Removes all markers for a line.
+     *
+     * @param line zero-based line index
      */
     public void clearLine(int line) {
         if (markersByLine.remove(line) != null) {
@@ -80,6 +100,9 @@ public class MarkerModel {
 
     /**
      * Returns markers for a given line (unmodifiable).
+     *
+     * @param line zero-based line index
+     * @return unmodifiable markers for the line
      */
     public List<Marker> getMarkersForLine(int line) {
         List<Marker> markers = markersByLine.get(line);
@@ -88,6 +111,9 @@ public class MarkerModel {
 
     /**
      * Returns true if any marker exists for the given line.
+     *
+     * @param line zero-based line index
+     * @return {@code true} when at least one marker exists on the line
      */
     public boolean hasMarkers(int line) {
         List<Marker> markers = markersByLine.get(line);
@@ -96,6 +122,8 @@ public class MarkerModel {
 
     /**
      * Returns all markers across all lines.
+     *
+     * @return unmodifiable list of all markers
      */
     public List<Marker> getAllMarkers() {
         List<Marker> all = new ArrayList<>();
@@ -107,6 +135,9 @@ public class MarkerModel {
 
     /**
      * Returns the highest-priority marker type for a line, or null if none.
+     *
+     * @param line zero-based line index
+     * @return highest-priority marker type, or {@code null} when none exist
      */
     public MarkerType getHighestPriorityType(int line) {
         List<Marker> markers = markersByLine.get(line);

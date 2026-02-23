@@ -5,6 +5,13 @@ import org.metalib.papifly.fx.code.render.SelectionModel;
 
 /**
  * Immutable descriptor of a contiguous line block in the document.
+ *
+ * @param startLine zero-based inclusive start line
+ * @param endLine zero-based inclusive end line
+ * @param startOffset document offset of {@code startLine}
+ * @param endOffset document offset immediately after {@code endLine}
+ * @param text text content in the block range
+ * @param reachesDocumentEnd {@code true} when {@code endOffset} equals document length
  */
 public record LineBlock(
     int startLine,
@@ -17,6 +24,10 @@ public record LineBlock(
 
     /**
      * Resolves a block from the current selection or caret line.
+     *
+     * @param document source document
+     * @param selectionModel source selection state
+     * @return block spanning selected lines or caret line
      */
     public static LineBlock fromSelectionOrCaret(Document document, SelectionModel selectionModel) {
         int startLine;
@@ -33,6 +44,11 @@ public record LineBlock(
 
     /**
      * Resolves a block for the inclusive line range.
+     *
+     * @param document source document
+     * @param startLine requested zero-based start line
+     * @param endLine requested zero-based end line
+     * @return normalized block clamped to document bounds
      */
     public static LineBlock fromLines(Document document, int startLine, int endLine) {
         int safeStartLine = Math.max(0, Math.min(startLine, document.getLineCount() - 1));
@@ -47,6 +63,8 @@ public record LineBlock(
 
     /**
      * Returns number of lines in the block.
+     *
+     * @return inclusive line count in this block
      */
     public int lineCount() {
         return endLine - startLine + 1;

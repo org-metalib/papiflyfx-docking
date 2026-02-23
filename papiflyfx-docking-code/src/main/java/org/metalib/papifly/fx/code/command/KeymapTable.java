@@ -22,6 +22,9 @@ public final class KeymapTable {
 
     /**
      * Resolves a JavaFX key event to an editor command.
+     *
+     * @param event key event to resolve
+     * @return mapped editor command when a binding exists
      */
     public static Optional<EditorCommand> resolve(KeyEvent event) {
         boolean shift = event.isShiftDown();

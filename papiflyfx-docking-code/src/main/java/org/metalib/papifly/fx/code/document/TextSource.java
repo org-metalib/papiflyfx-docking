@@ -17,6 +17,8 @@ public class TextSource {
 
     /**
      * Creates a text source initialized with the provided text.
+     *
+     * @param text initial text value
      */
     public TextSource(String text) {
         this.buffer = new StringBuilder(normalizeLineEndings(text));
@@ -24,6 +26,8 @@ public class TextSource {
 
     /**
      * Returns current text length.
+     *
+     * @return current text length
      */
     public int length() {
         return buffer.length();
@@ -31,6 +35,8 @@ public class TextSource {
 
     /**
      * Returns true if text is empty.
+     *
+     * @return {@code true} when no characters are stored
      */
     public boolean isEmpty() {
         return buffer.isEmpty();
@@ -38,6 +44,8 @@ public class TextSource {
 
     /**
      * Returns full text snapshot.
+     *
+     * @return full text snapshot
      */
     public String getText() {
         return buffer.toString();
@@ -45,6 +53,10 @@ public class TextSource {
 
     /**
      * Returns a substring in [start, end).
+     *
+     * @param start inclusive start offset
+     * @param end exclusive end offset
+     * @return substring in the requested range
      */
     public String substring(int start, int end) {
         requireRange(start, end, buffer.length());
@@ -54,6 +66,8 @@ public class TextSource {
     /**
      * Replaces all text with the provided value.
      * Line endings are normalized to {@code '\n'}.
+     *
+     * @param text replacement text
      */
     public void setText(String text) {
         buffer.setLength(0);
@@ -65,6 +79,9 @@ public class TextSource {
     /**
      * Inserts text at the provided offset.
      * Line endings are normalized to {@code '\n'}.
+     *
+     * @param offset insertion offset
+     * @param text text to insert
      */
     public void insert(int offset, String text) {
         requireOffset(offset, buffer.length());
@@ -76,6 +93,10 @@ public class TextSource {
 
     /**
      * Deletes text in [start, end) and returns deleted text.
+     *
+     * @param start inclusive start offset
+     * @param end exclusive end offset
+     * @return deleted text
      */
     public String delete(int start, int end) {
         requireRange(start, end, buffer.length());
@@ -90,6 +111,11 @@ public class TextSource {
     /**
      * Replaces text in [start, end) and returns the replaced text.
      * The replacement text has line endings normalized to {@code '\n'}.
+     *
+     * @param start inclusive start offset
+     * @param end exclusive end offset
+     * @param replacement replacement text
+     * @return replaced text previously stored in the range
      */
     public String replace(int start, int end, String replacement) {
         requireRange(start, end, buffer.length());

@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Serializable editor state payload &mdash; v3 persistence contract.
  *
- * <h3>V3 field invariants</h3>
+ * <h2>V3 field invariants</h2>
  * <ul>
  *   <li>{@code filePath} &ndash; nullable input normalized to {@code ""}.</li>
  *   <li>{@code cursorLine} &ndash; {@code >= 0}.</li>
@@ -27,6 +27,18 @@ import java.util.List;
  * silently ignored; missing keys default to the invariants above. V1 payloads without anchor and
  * secondary caret fields are migrated by defaulting anchor to cursor and secondary carets to empty.
  * V2 payloads default horizontal scroll to {@code 0.0} and wrap to {@code false}.</p>
+ *
+ * @param filePath persisted file path, normalized to non-null
+ * @param cursorLine zero-based primary caret line
+ * @param cursorColumn zero-based primary caret column
+ * @param verticalScrollOffset vertical scroll offset in pixels
+ * @param horizontalScrollOffset horizontal scroll offset in pixels
+ * @param wordWrap persisted wrap-mode flag
+ * @param languageId persisted language id
+ * @param foldedLines persisted folded line indices
+ * @param anchorLine zero-based selection anchor line
+ * @param anchorColumn zero-based selection anchor column
+ * @param secondaryCarets persisted secondary caret snapshots
  */
 public record EditorStateData(
     String filePath,
@@ -59,6 +71,13 @@ public record EditorStateData(
 
     /**
      * Backward-compatible constructor for callers still creating v1-shaped state.
+     *
+     * @param filePath persisted file path
+     * @param cursorLine zero-based primary caret line
+     * @param cursorColumn zero-based primary caret column
+     * @param verticalScrollOffset vertical scroll offset in pixels
+     * @param languageId persisted language id
+     * @param foldedLines persisted folded line indices
      */
     public EditorStateData(
         String filePath,
@@ -85,6 +104,16 @@ public record EditorStateData(
 
     /**
      * Backward-compatible constructor for callers still creating v2-shaped state.
+     *
+     * @param filePath persisted file path
+     * @param cursorLine zero-based primary caret line
+     * @param cursorColumn zero-based primary caret column
+     * @param verticalScrollOffset vertical scroll offset in pixels
+     * @param languageId persisted language id
+     * @param foldedLines persisted folded line indices
+     * @param anchorLine zero-based selection anchor line
+     * @param anchorColumn zero-based selection anchor column
+     * @param secondaryCarets persisted secondary caret snapshots
      */
     public EditorStateData(
         String filePath,
@@ -114,6 +143,8 @@ public record EditorStateData(
 
     /**
      * Returns an empty default state.
+     *
+     * @return immutable default state with zeroed offsets and empty caret collections
      */
     public static EditorStateData empty() {
         return new EditorStateData("", 0, 0, 0.0, 0.0, false, "plain-text", List.of(), 0, 0, List.of());

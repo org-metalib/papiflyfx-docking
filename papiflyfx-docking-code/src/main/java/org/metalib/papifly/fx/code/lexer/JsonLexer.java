@@ -16,6 +16,12 @@ public final class JsonLexer implements Lexer {
      */
     public static final String LANGUAGE_ID = "json";
 
+    /**
+     * Creates a JSON lexer instance.
+     */
+    public JsonLexer() {
+    }
+
     @Override
     public String languageId() {
         return LANGUAGE_ID;

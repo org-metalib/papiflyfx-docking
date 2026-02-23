@@ -30,6 +30,8 @@ public class Document {
 
     /**
      * Creates a document initialized with text.
+     *
+     * @param initialText initial document text, normalized by {@link TextSource}
      */
     public Document(String initialText) {
         this.textSource = new TextSource(initialText);
@@ -38,6 +40,8 @@ public class Document {
 
     /**
      * Returns a snapshot of lines.
+     *
+     * @return immutable snapshot of current document lines
      */
     public List<String> getLinesSnapshot() {
         int count = getLineCount();
@@ -50,6 +54,8 @@ public class Document {
 
     /**
      * Adds a change listener.
+     *
+     * @param listener listener to register
      */
     public void addChangeListener(DocumentChangeListener listener) {
         listeners.add(Objects.requireNonNull(listener, "listener"));
@@ -57,6 +63,8 @@ public class Document {
 
     /**
      * Removes a change listener.
+     *
+     * @param listener listener to remove
      */
     public void removeChangeListener(DocumentChangeListener listener) {
         listeners.remove(listener);
@@ -64,6 +72,8 @@ public class Document {
 
     /**
      * Returns full document text.
+     *
+     * @return full document text
      */
     public String getText() {
         return textSource.getText();
@@ -71,6 +81,8 @@ public class Document {
 
     /**
      * Returns true when the document ends with a newline.
+     *
+     * @return {@code true} when document text is non-empty and ends with '\n'
      */
     public boolean endsWithNewline() {
         int length = textSource.length();
@@ -82,6 +94,10 @@ public class Document {
 
     /**
      * Returns substring in the range [startOffset, endOffset).
+     *
+     * @param startOffset inclusive start offset
+     * @param endOffset exclusive end offset
+     * @return substring in the provided range
      */
     public String getSubstring(int startOffset, int endOffset) {
         return textSource.substring(startOffset, endOffset);
@@ -89,6 +105,8 @@ public class Document {
 
     /**
      * Sets full document text and clears history.
+     *
+     * @param text replacement text for the entire document
      */
     public void setText(String text) {
         int oldLength = textSource.length();
@@ -100,6 +118,8 @@ public class Document {
 
     /**
      * Returns text length.
+     *
+     * @return current document character count
      */
     public int length() {
         return textSource.length();
@@ -107,6 +127,8 @@ public class Document {
 
     /**
      * Returns line count.
+     *
+     * @return number of logical lines in the document
      */
     public int getLineCount() {
         return lineIndex.getLineCount();
@@ -114,6 +136,9 @@ public class Document {
 
     /**
      * Returns line start offset.
+     *
+     * @param line zero-based line index
+     * @return offset of the first character in the line
      */
     public int getLineStartOffset(int line) {
         return lineIndex.getLineStartOffset(line);
@@ -121,6 +146,9 @@ public class Document {
 
     /**
      * Returns line end offset (exclusive, without trailing newline).
+     *
+     * @param line zero-based line index
+     * @return exclusive end offset of line text
      */
     public int getLineEndOffset(int line) {
         return lineIndex.getLineEndOffset(line, length());
@@ -128,6 +156,9 @@ public class Document {
 
     /**
      * Returns line text without trailing newline.
+     *
+     * @param line zero-based line index
+     * @return line text without trailing newline
      */
     public String getLineText(int line) {
         int start = getLineStartOffset(line);
@@ -137,6 +168,9 @@ public class Document {
 
     /**
      * Returns line index for offset.
+     *
+     * @param offset document offset
+     * @return zero-based line index containing the offset
      */
     public int getLineForOffset(int offset) {
         return lineIndex.getLineForOffset(offset, length());
@@ -144,6 +178,9 @@ public class Document {
 
     /**
      * Returns column for offset.
+     *
+     * @param offset document offset
+     * @return zero-based column index for the offset
      */
     public int getColumnForOffset(int offset) {
         return lineIndex.getColumnForOffset(offset, length());
@@ -151,6 +188,10 @@ public class Document {
 
     /**
      * Returns offset for line and column.
+     *
+     * @param line zero-based line index
+     * @param column zero-based column index
+     * @return clamped document offset
      */
     public int toOffset(int line, int column) {
         return lineIndex.toOffset(line, column, length());
@@ -158,6 +199,9 @@ public class Document {
 
     /**
      * Inserts text at offset and records undo.
+     *
+     * @param offset insertion offset
+     * @param text text to insert
      */
     public void insert(int offset, String text) {
         if (text == null || text.isEmpty()) {
@@ -173,6 +217,9 @@ public class Document {
 
     /**
      * Deletes range [start, end) and records undo.
+     *
+     * @param startOffset inclusive start offset
+     * @param endOffset exclusive end offset
      */
     public void delete(int startOffset, int endOffset) {
         if (startOffset == endOffset) {
@@ -187,6 +234,10 @@ public class Document {
 
     /**
      * Replaces range [start, end) with replacement and records undo.
+     *
+     * @param startOffset inclusive start offset
+     * @param endOffset exclusive end offset
+     * @param replacement replacement text, {@code null} treated as empty text
      */
     public void replace(int startOffset, int endOffset, String replacement) {
         String safeReplacement = replacement == null ? "" : replacement;
@@ -207,6 +258,8 @@ public class Document {
 
     /**
      * Returns true when undo is available.
+     *
+     * @return {@code true} when there is at least one command to undo
      */
     public boolean canUndo() {
         return !undoStack.isEmpty();
@@ -214,6 +267,8 @@ public class Document {
 
     /**
      * Returns true when redo is available.
+     *
+     * @return {@code true} when there is at least one command to redo
      */
     public boolean canRedo() {
         return !redoStack.isEmpty();
@@ -221,6 +276,8 @@ public class Document {
 
     /**
      * Undoes the last edit.
+     *
+     * @return {@code true} when an edit was undone
      */
     public boolean undo() {
         if (undoStack.isEmpty()) {
@@ -238,6 +295,8 @@ public class Document {
 
     /**
      * Redoes the last undone edit.
+     *
+     * @return {@code true} when an edit was redone
      */
     public boolean redo() {
         if (redoStack.isEmpty()) {
@@ -278,6 +337,8 @@ public class Document {
 
     /**
      * Returns {@code true} if a compound edit session is currently active.
+     *
+     * @return {@code true} when edits are currently being buffered
      */
     public boolean isCompoundEditActive() {
         return compoundBuffer != null;

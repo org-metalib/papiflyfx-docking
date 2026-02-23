@@ -18,6 +18,13 @@ public class DragContext {
     private double startX;
     private double startY;
 
+    /**
+     * Creates drag context for a drag operation.
+     *
+     * @param sourceLeaf dragged source leaf
+     * @param startX drag start x coordinate in scene space
+     * @param startY drag start y coordinate in scene space
+     */
     public DragContext(DockLeaf sourceLeaf, double startX, double startY) {
         this.sourceLeaf = sourceLeaf;
         this.sourceParent = sourceLeaf.getParent();
@@ -33,52 +40,109 @@ public class DragContext {
         }
     }
 
+    /**
+     * Gets the dragged source leaf.
+     *
+     * @return source leaf
+     */
     public DockLeaf getSourceLeaf() {
         return sourceLeaf;
     }
 
+    /**
+     * Gets the original parent tab group of the source leaf.
+     *
+     * @return source parent tab group, or {@code null}
+     */
     public DockTabGroup getSourceParent() {
         return sourceParent;
     }
 
+    /**
+     * Gets the current drop target element.
+     *
+     * @return current target element
+     */
     public DockElement getTargetElement() {
         return targetElement;
     }
 
+    /**
+     * Sets the current drop target element.
+     *
+     * @param target target element
+     */
     public void setTargetElement(DockElement target) {
         this.targetElement = target;
     }
 
+    /**
+     * Gets the current drop zone.
+     *
+     * @return current drop zone
+     */
     public DropZone getDropZone() {
         return dropZone;
     }
 
+    /**
+     * Sets the current drop zone.
+     *
+     * @param zone drop zone
+     */
     public void setDropZone(DropZone zone) {
         this.dropZone = zone;
     }
 
+    /**
+     * Gets tab insertion index for tab-bar drops.
+     *
+     * @return insertion index, or {@code -1}
+     */
     public int getTabInsertIndex() {
         return tabInsertIndex;
     }
 
+    /**
+     * Sets tab insertion index for tab-bar drops.
+     *
+     * @param index insertion index
+     */
     public void setTabInsertIndex(int index) {
         this.tabInsertIndex = index;
     }
 
+    /**
+     * Gets source tab index in the original parent group.
+     *
+     * @return source tab index, or {@code -1}
+     */
     public int getSourceTabIndex() {
         return sourceTabIndex;
     }
 
+    /**
+     * Gets drag start x coordinate.
+     *
+     * @return drag start x coordinate
+     */
     public double getStartX() {
         return startX;
     }
 
+    /**
+     * Gets drag start y coordinate.
+     *
+     * @return drag start y coordinate
+     */
     public double getStartY() {
         return startY;
     }
 
     /**
      * Checks if this is a valid drop (target exists and zone is not NONE).
+     *
+     * @return {@code true} when drop target and drop zone are valid
      */
     public boolean isValidDrop() {
         return targetElement != null && dropZone != DropZone.NONE;
@@ -86,6 +150,8 @@ public class DragContext {
 
     /**
      * Checks if attempting to drop on self (same leaf or same position in same tab group).
+     *
+     * @return {@code true} when drop would be a self-drop
      */
     public boolean isDropOnSelf() {
         if (targetElement == null || sourceParent == null) {
@@ -103,6 +169,8 @@ public class DragContext {
 
     /**
      * Checks if this is a no-op tab reorder (same position within same tab group).
+     *
+     * @return {@code true} when reorder has no effect
      */
     public boolean isNoOpTabReorder() {
         if (dropZone != DropZone.TAB_BAR && dropZone != DropZone.CENTER) {
@@ -128,6 +196,8 @@ public class DragContext {
 
     /**
      * Checks if this is a tab reorder within the same group.
+     *
+     * @return {@code true} when this drag is reordering tabs within one group
      */
     public boolean isSameGroupReorder() {
         return dropZone == DropZone.TAB_BAR

@@ -37,16 +37,40 @@ public class CodeEditorStateAdapter implements ContentStateAdapter {
      */
     public static final int VERSION = 3;
 
+    /**
+     * Creates a content-state adapter for code editor instances.
+     */
+    public CodeEditorStateAdapter() {
+        // Default constructor for service registration.
+    }
+
+    /**
+     * Returns adapter content type key.
+     *
+     * @return supported content type key
+     */
     @Override
     public String getTypeKey() {
         return CodeEditorFactory.FACTORY_ID;
     }
 
+    /**
+     * Returns persistence schema version.
+     *
+     * @return current state schema version
+     */
     @Override
     public int getVersion() {
         return VERSION;
     }
 
+    /**
+     * Serializes current editor state.
+     *
+     * @param contentId content identifier
+     * @param content content node to serialize
+     * @return serialized state map or empty map for unsupported node types
+     */
     @Override
     public Map<String, Object> saveState(String contentId, Node content) {
         if (!(content instanceof CodeEditor editor)) {
@@ -56,6 +80,12 @@ public class CodeEditorStateAdapter implements ContentStateAdapter {
         return EditorStateCodec.toMap(state);
     }
 
+    /**
+     * Restores a code editor node from persisted content data.
+     *
+     * @param content persisted content payload
+     * @return restored editor instance
+     */
     @Override
     public Node restore(LeafContentData content) {
         CodeEditor editor = new CodeEditor();

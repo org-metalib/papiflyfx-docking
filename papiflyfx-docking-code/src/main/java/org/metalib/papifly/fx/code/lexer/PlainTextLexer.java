@@ -12,6 +12,12 @@ public final class PlainTextLexer implements Lexer {
      */
     public static final String LANGUAGE_ID = "plain-text";
 
+    /**
+     * Creates a plain-text lexer instance.
+     */
+    public PlainTextLexer() {
+    }
+
     @Override
     public String languageId() {
         return LANGUAGE_ID;

@@ -19,11 +19,29 @@ public record DocumentChangeEvent(
      * Types of document changes.
      */
     public enum ChangeType {
+        /**
+         * Text was inserted.
+         */
         INSERT,
+        /**
+         * Text was deleted.
+         */
         DELETE,
+        /**
+         * A range was replaced with new text.
+         */
         REPLACE,
+        /**
+         * Change was produced by undo operation.
+         */
         UNDO,
+        /**
+         * Change was produced by redo operation.
+         */
         REDO,
+        /**
+         * Whole-document replacement via setText.
+         */
         SET_TEXT
     }
 

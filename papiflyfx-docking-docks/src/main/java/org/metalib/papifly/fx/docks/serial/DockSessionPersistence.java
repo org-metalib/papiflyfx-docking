@@ -25,6 +25,8 @@ public class DockSessionPersistence {
 
     /**
      * Creates a new DockSessionPersistence with a custom serializer.
+     *
+     * @param serializer serializer implementation to use
      */
     public DockSessionPersistence(DockSessionSerializer serializer) {
         this.serializer = serializer;
@@ -123,6 +125,8 @@ public class DockSessionPersistence {
 
     /**
      * Gets the underlying DockSessionSerializer.
+     *
+     * @return underlying session serializer
      */
     public DockSessionSerializer getSerializer() {
         return serializer;
@@ -132,10 +136,21 @@ public class DockSessionPersistence {
      * Exception thrown when session serialization/deserialization fails.
      */
     public static class SessionSerializationException extends RuntimeException {
+        /**
+         * Creates an exception with a message.
+         *
+         * @param message error message
+         */
         public SessionSerializationException(String message) {
             super(message);
         }
 
+        /**
+         * Creates an exception with a message and root cause.
+         *
+         * @param message error message
+         * @param cause root cause
+         */
         public SessionSerializationException(String message, Throwable cause) {
             super(message, cause);
         }
@@ -145,10 +160,21 @@ public class DockSessionPersistence {
      * Exception thrown when session file I/O fails.
      */
     public static class SessionFileIOException extends RuntimeException {
+        /**
+         * Creates an exception with a message.
+         *
+         * @param message error message
+         */
         public SessionFileIOException(String message) {
             super(message);
         }
 
+        /**
+         * Creates an exception with a message and root cause.
+         *
+         * @param message error message
+         * @param cause root cause
+         */
         public SessionFileIOException(String message, Throwable cause) {
             super(message, cause);
         }

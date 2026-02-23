@@ -22,12 +22,19 @@ public class MultiCaretModel {
     private final List<CaretRange> secondaryCarets = new ArrayList<>();
     private final Deque<CaretRange> occurrenceStack = new ArrayDeque<>();
 
+    /**
+     * Creates a multi-caret model bound to the primary selection model.
+     *
+     * @param primary primary selection model
+     */
     public MultiCaretModel(SelectionModel primary) {
         this.primary = primary;
     }
 
     /**
      * Returns {@code true} when more than one caret is active.
+     *
+     * @return {@code true} when at least one secondary caret is active
      */
     public boolean hasMultipleCarets() {
         return !secondaryCarets.isEmpty();
@@ -35,6 +42,9 @@ public class MultiCaretModel {
 
     /**
      * Returns all carets (primary + secondaries) sorted by document offset ascending.
+     *
+     * @param document source document for offset ordering
+     * @return ordered list containing primary and secondary carets
      */
     public List<CaretRange> allCarets(Document document) {
         List<CaretRange> all = new ArrayList<>(secondaryCarets.size() + 1);
@@ -46,6 +56,8 @@ public class MultiCaretModel {
 
     /**
      * Returns the secondary carets (excluding the primary).
+     *
+     * @return immutable list of secondary carets
      */
     public List<CaretRange> getSecondaryCarets() {
         return List.copyOf(secondaryCarets);
@@ -53,6 +65,8 @@ public class MultiCaretModel {
 
     /**
      * Adds a secondary caret and pushes it onto the occurrence stack.
+     *
+     * @param caret secondary caret to add
      */
     public void addCaret(CaretRange caret) {
         secondaryCarets.add(caret);
@@ -61,6 +75,8 @@ public class MultiCaretModel {
 
     /**
      * Adds a secondary caret without pushing to the occurrence stack.
+     *
+     * @param caret secondary caret to add
      */
     public void addCaretNoStack(CaretRange caret) {
         secondaryCarets.add(caret);
@@ -69,6 +85,8 @@ public class MultiCaretModel {
     /**
      * Replaces all secondary carets with the given list and clears the occurrence stack.
      * Used by box selection where all secondaries are rebuilt on each drag event.
+     *
+     * @param carets new secondary caret list
      */
     public void setSecondaryCarets(List<CaretRange> carets) {
         secondaryCarets.clear();
@@ -103,6 +121,8 @@ public class MultiCaretModel {
      * Sorts all carets by document offset and merges overlapping or
      * duplicate ranges. After normalization, the primary caret is updated
      * to the first caret in the sorted order and the rest become secondaries.
+     *
+     * @param document source document for offset calculations
      */
     public void normalizeAndMerge(Document document) {
         List<CaretRange> all = allCarets(document);

@@ -21,6 +21,13 @@ import org.metalib.papifly.fx.samples.SampleScene;
  */
 public class MinimizeSample implements SampleScene {
 
+    /**
+     * Creates the minimize sample.
+     */
+    public MinimizeSample() {
+        // Default constructor.
+    }
+
     @Override
     public String category() {
         return "Docks";

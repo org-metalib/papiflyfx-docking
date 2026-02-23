@@ -72,10 +72,21 @@ public class DockTabGroup implements DockElement {
     private boolean isFloating = false;
     private boolean isMaximized = false;
 
+    /**
+     * Creates a tab group with an auto-generated id.
+     *
+     * @param themeProperty theme property used for styling
+     */
     public DockTabGroup(ObjectProperty<Theme> themeProperty) {
         this(UUID.randomUUID().toString(), themeProperty);
     }
 
+    /**
+     * Creates a tab group with an explicit id.
+     *
+     * @param id tab group identifier
+     * @param themeProperty theme property used for styling
+     */
     public DockTabGroup(String id, ObjectProperty<Theme> themeProperty) {
         this.id = id;
         this.themeProperty = themeProperty;
@@ -343,6 +354,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Adds a leaf to this tab group.
+     *
+     * @param leaf leaf to add
      */
     public void addLeaf(DockLeaf leaf) {
         leaf.setParent(this);
@@ -355,6 +368,9 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Inserts a leaf at a specific index.
+     *
+     * @param index insertion index
+     * @param leaf leaf to insert
      */
     public void addLeaf(int index, DockLeaf leaf) {
         leaf.setParent(this);
@@ -365,6 +381,9 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Reorders an existing tab within this group.
+     *
+     * @param fromIndex source index
+     * @param toIndex destination index
      */
     public void moveLeaf(int fromIndex, int toIndex) {
         if (fromIndex == toIndex || fromIndex < 0 || fromIndex >= tabs.size() || toIndex < 0 || toIndex > tabs.size()) {
@@ -377,6 +396,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Removes a leaf from this tab group.
+     *
+     * @param leaf leaf to remove
      */
     public void removeLeaf(DockLeaf leaf) {
         int index = tabs.indexOf(leaf);
@@ -407,6 +428,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Sets the active tab by index.
+     *
+     * @param index active tab index
      */
     public void setActiveTab(int index) {
         if (index >= 0 && index < tabs.size()) {
@@ -416,6 +439,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Sets the active tab by leaf.
+     *
+     * @param leaf leaf to activate
      */
     public void setActiveTab(DockLeaf leaf) {
         int index = tabs.indexOf(leaf);
@@ -435,6 +460,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Gets the active tab.
+     *
+     * @return active leaf, or {@code null} when no tab is active
      */
     public DockLeaf getActiveTab() {
         int index = activeTabIndex.get();
@@ -443,6 +470,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Gets the active tab index.
+     *
+     * @return active tab index, or {@code -1} when no tab is active
      */
     public int getActiveTabIndex() {
         return activeTabIndex.get();
@@ -450,6 +479,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Gets the tab list (unmodifiable view).
+     *
+     * @return unmodifiable view of tabs
      */
     public ObservableList<DockLeaf> getTabs() {
         return tabsView;
@@ -457,6 +488,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Sets the handler for tab close events.
+     *
+     * @param handler callback invoked when a tab is closed
      */
     public void setOnTabClose(Consumer<DockLeaf> handler) {
         this.onTabClose = handler;
@@ -464,6 +497,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Sets the handler for when the group becomes empty.
+     *
+     * @param handler callback invoked when this group becomes empty
      */
     public void setOnGroupEmpty(Consumer<DockTabGroup> handler) {
         this.onGroupEmpty = handler;
@@ -471,6 +506,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Gets the tab bar for drag handling.
+     *
+     * @return tab bar node
      */
     public HBox getTabBar() {
         return tabBar;
@@ -478,6 +515,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Gets the tabs container within the tab bar.
+     *
+     * @return tabs container node
      */
     public HBox getTabsContainer() {
         return tabsContainer;
@@ -486,6 +525,8 @@ public class DockTabGroup implements DockElement {
     /**
      * Sets the handler called when the float/dock button is clicked.
      * The handler should operate on the active tab.
+     *
+     * @param handler float/dock callback
      */
     public void setOnFloat(Runnable handler) {
         this.onFloat = handler;
@@ -494,6 +535,8 @@ public class DockTabGroup implements DockElement {
     /**
      * Sets the handler called when the minimize button is clicked.
      * The handler should operate on the active tab.
+     *
+     * @param handler minimize callback
      */
     public void setOnMinimize(Runnable handler) {
         this.onMinimize = handler;
@@ -502,6 +545,8 @@ public class DockTabGroup implements DockElement {
     /**
      * Sets the handler called when the maximize button is clicked.
      * The handler should operate on the active tab.
+     *
+     * @param handler maximize callback
      */
     public void setOnMaximize(Runnable handler) {
         this.onMaximize = handler;
@@ -510,6 +555,8 @@ public class DockTabGroup implements DockElement {
     /**
      * Updates the visual state when floating status changes.
      * Changes the float button icon to show dock-back when floating.
+     *
+     * @param floating floating state
      */
     public void setFloating(boolean floating) {
         this.isFloating = floating;
@@ -525,6 +572,8 @@ public class DockTabGroup implements DockElement {
     /**
      * Updates the visual state when maximized status changes.
      * Changes the maximize button icon to show restore when maximized.
+     *
+     * @param maximized maximized state
      */
     public void setMaximized(boolean maximized) {
         this.isMaximized = maximized;
@@ -539,6 +588,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Checks if currently floating.
+     *
+     * @return {@code true} when this group is displayed in a floating window
      */
     public boolean isFloating() {
         return isFloating;
@@ -546,6 +597,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Checks if currently maximized.
+     *
+     * @return {@code true} when this group is currently maximized
      */
     public boolean isMaximized() {
         return isMaximized;
@@ -553,6 +606,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Sets the visibility of the float button.
+     *
+     * @param visible whether the float button is visible
      */
     public void setFloatButtonVisible(boolean visible) {
         floatButton.setVisible(visible);
@@ -561,6 +616,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Sets the visibility of the minimize button.
+     *
+     * @param visible whether the minimize button is visible
      */
     public void setMinimizeButtonVisible(boolean visible) {
         minimizeButton.setVisible(visible);
@@ -569,6 +626,8 @@ public class DockTabGroup implements DockElement {
 
     /**
      * Sets the visibility of the maximize button.
+     *
+     * @param visible whether the maximize button is visible
      */
     public void setMaximizeButtonVisible(boolean visible) {
         maximizeButton.setVisible(visible);

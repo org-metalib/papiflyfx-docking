@@ -16,6 +16,13 @@ import org.metalib.papifly.fx.samples.SampleScene;
  */
 public class NestedSplitSample implements SampleScene {
 
+    /**
+     * Creates the nested-split sample.
+     */
+    public NestedSplitSample() {
+        // Default constructor.
+    }
+
     @Override
     public String category() {
         return "Docks";

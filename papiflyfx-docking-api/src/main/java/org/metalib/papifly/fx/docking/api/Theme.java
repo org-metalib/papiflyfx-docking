@@ -9,6 +9,28 @@ import javafx.scene.text.FontWeight;
 /**
  * Theme record for programmatic styling without CSS.
  * Contains all visual properties for the docking framework.
+ *
+ * @param background background paint for dock content areas
+ * @param headerBackground background paint for inactive headers
+ * @param headerBackgroundActive background paint for active headers
+ * @param accentColor accent paint used for highlights and focus states
+ * @param textColor text paint for inactive header labels
+ * @param textColorActive text paint for active header labels
+ * @param borderColor paint used for borders around dock elements
+ * @param dividerColor paint used for split and separator dividers
+ * @param dropHintColor paint used to render drag-and-drop hints
+ * @param headerFont font used for dock header text
+ * @param contentFont font used for dock content text
+ * @param cornerRadius corner radius applied to rounded dock surfaces
+ * @param borderWidth border stroke width for dock outlines
+ * @param headerHeight preferred height for dock headers
+ * @param tabHeight preferred height for dock tabs
+ * @param contentPadding padding applied around dock content
+ * @param buttonHoverBackground background paint for hovered title-bar buttons
+ * @param buttonPressedBackground background paint for pressed title-bar buttons
+ * @param minimizedBarBackground background paint for minimized bar containers
+ * @param buttonSpacing spacing between title-bar buttons
+ * @param minimizedBarHeight preferred height for minimized bar containers
  */
 public record Theme(
     Paint background,
@@ -35,6 +57,8 @@ public record Theme(
 ) {
     /**
      * Default dark theme.
+     *
+     * @return the built-in dark theme preset
      */
     public static Theme dark() {
         return new Theme(
@@ -64,6 +88,8 @@ public record Theme(
 
     /**
      * Default light theme.
+     *
+     * @return the built-in light theme preset
      */
     public static Theme light() {
         return new Theme(

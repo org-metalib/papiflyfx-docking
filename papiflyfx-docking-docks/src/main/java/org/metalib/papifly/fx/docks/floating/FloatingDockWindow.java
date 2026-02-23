@@ -39,6 +39,7 @@ public class FloatingDockWindow {
      * Creates a new floating window for the given leaf.
      *
      * @param leaf          The leaf to host
+     * @param tabGroup      The tab group hosting the leaf inside this window
      * @param ownerStage    The owner stage (main application window)
      * @param themeProperty The theme property for styling
      */
@@ -136,6 +137,9 @@ public class FloatingDockWindow {
 
     /**
      * Shows the floating window at a specific position.
+     *
+     * @param x target x position
+     * @param y target y position
      */
     public void show(double x, double y) {
         stage.setX(x);
@@ -168,6 +172,8 @@ public class FloatingDockWindow {
 
     /**
      * Gets the hosted leaf.
+     *
+     * @return hosted leaf
      */
     public DockLeaf getLeaf() {
         return leaf;
@@ -175,6 +181,8 @@ public class FloatingDockWindow {
 
     /**
      * Gets the tab group hosting the leaf.
+     *
+     * @return tab group hosting the leaf
      */
     public DockTabGroup getTabGroup() {
         return tabGroup;
@@ -182,6 +190,8 @@ public class FloatingDockWindow {
 
     /**
      * Gets the leaf ID.
+     *
+     * @return leaf identifier
      */
     public String getLeafId() {
         return leaf.getMetadata().id();
@@ -189,6 +199,8 @@ public class FloatingDockWindow {
 
     /**
      * Gets the stage.
+     *
+     * @return floating window stage
      */
     public Stage getStage() {
         return stage;
@@ -196,6 +208,8 @@ public class FloatingDockWindow {
 
     /**
      * Gets the current bounds of the floating window.
+     *
+     * @return current bounds, or last stored bounds when hidden
      */
     public Rectangle2D getBounds() {
         if (stage.isShowing()) {
@@ -206,6 +220,8 @@ public class FloatingDockWindow {
 
     /**
      * Sets the bounds of the floating window.
+     *
+     * @param bounds bounds to apply
      */
     public void setBounds(Rectangle2D bounds) {
         this.lastBounds = bounds;
@@ -219,6 +235,8 @@ public class FloatingDockWindow {
 
     /**
      * Sets the handler called when the user wants to dock the leaf back.
+     *
+     * @param handler dock-back callback
      */
     public void setOnDockBack(Consumer<DockLeaf> handler) {
         this.onDockBack = handler;
@@ -226,6 +244,8 @@ public class FloatingDockWindow {
 
     /**
      * Sets the handler called when the window is closed.
+     *
+     * @param handler close callback
      */
     public void setOnClose(Consumer<DockLeaf> handler) {
         this.onClose = handler;
@@ -233,6 +253,8 @@ public class FloatingDockWindow {
 
     /**
      * Checks if the window is currently showing.
+     *
+     * @return {@code true} when stage is visible
      */
     public boolean isShowing() {
         return stage.isShowing();

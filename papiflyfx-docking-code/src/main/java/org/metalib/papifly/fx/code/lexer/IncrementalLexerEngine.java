@@ -15,6 +15,9 @@ public final class IncrementalLexerEngine {
 
     /**
      * Splits document text into line snapshots.
+     *
+     * @param text full document text snapshot
+     * @return list of logical lines (always at least one element)
      */
     public static List<String> splitLines(String text) {
         if (text == null || text.isEmpty()) {
@@ -34,6 +37,12 @@ public final class IncrementalLexerEngine {
 
     /**
      * Re-lexes the document text from a dirty start line.
+     *
+     * @param previous previous token map snapshot
+     * @param text full document text snapshot
+     * @param dirtyStartLine first potentially changed line index
+     * @param lexer lexer implementation to apply
+     * @return recalculated token map
      */
     public static TokenMap relex(TokenMap previous, String text, int dirtyStartLine, Lexer lexer) {
         return relex(previous, splitLines(text), dirtyStartLine, lexer);
@@ -41,6 +50,12 @@ public final class IncrementalLexerEngine {
 
     /**
      * Re-lexes line snapshots from a dirty start line.
+     *
+     * @param previous previous token map snapshot
+     * @param lines line snapshots to lex
+     * @param dirtyStartLine first potentially changed line index
+     * @param lexer lexer implementation to apply
+     * @return recalculated token map
      */
     public static TokenMap relex(TokenMap previous, List<String> lines, int dirtyStartLine, Lexer lexer) {
         Objects.requireNonNull(lexer, "lexer");

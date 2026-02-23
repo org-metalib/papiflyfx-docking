@@ -9,6 +9,50 @@ import javafx.scene.paint.Paint;
  * This record is a separate composition from the docking {@code Theme} record.
  * Instances are created by {@link CodeEditorThemeMapper} which derives editor-
  * specific colors from the base docking theme.
+ *
+ * @param editorBackground editor surface background
+ * @param editorForeground default editor text foreground
+ * @param keywordColor syntax color for keywords
+ * @param stringColor syntax color for string literals
+ * @param commentColor syntax color for comments
+ * @param numberColor syntax color for numeric literals
+ * @param caretColor caret stroke color
+ * @param selectionColor selection highlight fill
+ * @param lineNumberColor gutter line number color
+ * @param lineNumberActiveColor active line number color
+ * @param booleanColor syntax color for boolean literals
+ * @param nullLiteralColor syntax color for null literals
+ * @param headlineColor markdown headline color
+ * @param listItemColor markdown list item color
+ * @param codeBlockColor markdown code block color
+ * @param currentLineColor current line background
+ * @param searchHighlightColor search match highlight color
+ * @param searchCurrentColor active search match color
+ * @param gutterBackground gutter background
+ * @param markerErrorColor error marker color
+ * @param markerWarningColor warning marker color
+ * @param markerInfoColor info marker color
+ * @param markerBreakpointColor breakpoint marker color
+ * @param markerBookmarkColor bookmark marker color
+ * @param scrollbarTrackColor scrollbar track color
+ * @param scrollbarThumbColor scrollbar thumb base color
+ * @param scrollbarThumbHoverColor scrollbar thumb hover color
+ * @param scrollbarThumbActiveColor scrollbar thumb active color
+ * @param searchOverlayBackground search overlay panel background
+ * @param searchOverlayAccentBorder search overlay accent border color
+ * @param searchOverlayControlBackground search overlay control background
+ * @param searchOverlayControlBorder search overlay control border
+ * @param searchOverlayPrimaryText primary search overlay text color
+ * @param searchOverlaySecondaryText secondary search overlay text color
+ * @param searchOverlayPanelBorder search overlay panel border color
+ * @param searchOverlayControlHoverBackground search overlay hover control background
+ * @param searchOverlayControlActiveBackground search overlay active control background
+ * @param searchOverlayControlFocusedBorder search overlay focused control border
+ * @param searchOverlayControlDisabledText search overlay disabled control text color
+ * @param searchOverlayNoResultsBorder no-results border accent color
+ * @param searchOverlayShadowColor search overlay shadow color
+ * @param searchOverlayIntegratedToggleActive integrated-toggle active state color
+ * @param searchOverlayErrorBackground search overlay error-state background
  */
 public record CodeEditorTheme(
     // Core editor colors (from spec)
@@ -70,6 +114,8 @@ public record CodeEditorTheme(
 ) {
     /**
      * Default dark palette matching the previously hardcoded values.
+     *
+     * @return dark code editor theme
      */
     public static CodeEditorTheme dark() {
         return new CodeEditorTheme(
@@ -121,6 +167,8 @@ public record CodeEditorTheme(
 
     /**
      * Default light palette.
+     *
+     * @return light code editor theme
      */
     public static CodeEditorTheme light() {
         return new CodeEditorTheme(

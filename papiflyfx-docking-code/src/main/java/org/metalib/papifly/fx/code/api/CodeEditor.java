@@ -117,6 +117,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Creates an editor with the given document.
+     *
+     * @param document initial document model, or {@code null} to create an empty document
      */
     public CodeEditor(Document document) {
         this(document, null, null, null, null, null);
@@ -282,6 +284,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Returns the document model.
+     *
+     * @return active document model
      */
     public Document getDocument() {
         return document;
@@ -289,6 +293,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Convenience: sets document text content.
+     *
+     * @param text replacement document content
      */
     public void setText(String text) {
         document.setText(text);
@@ -301,6 +307,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Convenience: returns document text content.
+     *
+     * @return full document text
      */
     public String getText() {
         return document.getText();
@@ -308,6 +316,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Returns the viewport for direct access.
+     *
+     * @return viewport instance used to render the document
      */
     public Viewport getViewport() {
         return viewport;
@@ -315,6 +325,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Returns the selection model.
+     *
+     * @return primary selection model
      */
     public SelectionModel getSelectionModel() {
         return selectionModel;
@@ -322,6 +334,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Returns the multi-caret model.
+     *
+     * @return multi-caret model for secondary carets
      */
     public MultiCaretModel getMultiCaretModel() {
         return multiCaretModel;
@@ -329,6 +343,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Returns the gutter view.
+     *
+     * @return gutter view bound to this editor
      */
     public GutterView getGutterView() {
         return gutterView;
@@ -336,6 +352,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Returns the marker model.
+     *
+     * @return marker model used by the gutter
      */
     public MarkerModel getMarkerModel() {
         return markerModel;
@@ -343,6 +361,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Returns the search model.
+     *
+     * @return search model backing the overlay
      */
     public SearchModel getSearchModel() {
         return searchModel;
@@ -350,6 +370,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Returns the search controller (overlay UI).
+     *
+     * @return search overlay controller
      */
     public SearchController getSearchController() {
         return searchController;
@@ -357,6 +379,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Returns the go-to-line overlay controller.
+     *
+     * @return go-to-line overlay controller
      */
     public GoToLineController getGoToLineController() {
         return goToLineController;
@@ -368,6 +392,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
      * The editor listens for changes and maps each new {@link Theme} to a
      * {@link CodeEditorTheme} via {@link CodeEditorThemeMapper}, refreshing
      * all visual components at runtime.
+     *
+     * @param themeProperty observable docking theme source, or {@code null}
      */
     public void bindThemeProperty(ObjectProperty<Theme> themeProperty) {
         unbindThemeProperty();
@@ -393,6 +419,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Directly applies a {@link CodeEditorTheme} to the editor and its sub-components.
+     *
+     * @param editorTheme theme to apply, or {@code null} to use the default dark theme
      */
     public void setEditorTheme(CodeEditorTheme editorTheme) {
         CodeEditorTheme resolved = editorTheme == null ? CodeEditorTheme.dark() : editorTheme;
@@ -404,6 +432,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Returns the current editor theme from the viewport.
+     *
+     * @return current effective editor theme
      */
     public CodeEditorTheme getEditorTheme() {
         return viewport.getTheme();
@@ -445,6 +475,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Navigates to the specified 1-based line number.
+     *
+     * @param lineNumber one-based target line number
      */
     public void goToLine(int lineNumber) {
         int targetLine = Math.max(1, Math.min(lineNumber, document.getLineCount()));
@@ -571,6 +603,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Captures current editor state into a serializable DTO.
+     *
+     * @return serialized editor state snapshot
      */
     public EditorStateData captureState() {
         syncVerticalScrollOffsetFromViewport();
@@ -580,6 +614,8 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     /**
      * Applies state to the editor.
+     *
+     * @param state serialized state to apply; {@code null} leaves current state unchanged
      */
     public void applyState(EditorStateData state) {
         stateCoordinator.applyState(
@@ -603,46 +639,101 @@ public class CodeEditor extends StackPane implements DisposableContent {
         });
     }
 
+    /**
+     * Returns the logical file path associated with this editor.
+     *
+     * @return file path string, never {@code null}
+     */
     public String getFilePath() {
         return filePath.get();
     }
 
+    /**
+     * Sets the logical file path associated with this editor.
+     *
+     * @param filePath file path to store, {@code null} is normalized to empty string
+     */
     public void setFilePath(String filePath) {
         this.filePath.set(filePath == null ? "" : filePath);
     }
 
+    /**
+     * Returns the observable file-path property.
+     *
+     * @return observable file-path property
+     */
     public StringProperty filePathProperty() {
         return filePath;
     }
 
+    /**
+     * Returns the current primary caret line.
+     *
+     * @return zero-based caret line
+     */
     public int getCursorLine() {
         return cursorLine.get();
     }
 
+    /**
+     * Moves the primary caret to the given line, preserving current column.
+     *
+     * @param cursorLine target zero-based line index
+     */
     public void setCursorLine(int cursorLine) {
         stateCoordinator.movePrimaryCaret(cursorLine, selectionModel.getCaretColumn());
     }
 
+    /**
+     * Returns the observable primary caret-line property.
+     *
+     * @return observable caret-line property
+     */
     public IntegerProperty cursorLineProperty() {
         return cursorLine;
     }
 
+    /**
+     * Returns the current primary caret column.
+     *
+     * @return zero-based caret column
+     */
     public int getCursorColumn() {
         return cursorColumn.get();
     }
 
+    /**
+     * Moves the primary caret to the given column on the current line.
+     *
+     * @param cursorColumn target zero-based column index
+     */
     public void setCursorColumn(int cursorColumn) {
         stateCoordinator.movePrimaryCaret(selectionModel.getCaretLine(), cursorColumn);
     }
 
+    /**
+     * Returns the observable primary caret-column property.
+     *
+     * @return observable caret-column property
+     */
     public IntegerProperty cursorColumnProperty() {
         return cursorColumn;
     }
 
+    /**
+     * Returns the current vertical scroll offset.
+     *
+     * @return vertical scroll offset in pixels
+     */
     public double getVerticalScrollOffset() {
         return verticalScrollOffset.get();
     }
 
+    /**
+     * Sets the vertical scroll offset.
+     *
+     * @param verticalScrollOffset requested vertical offset in pixels
+     */
     public void setVerticalScrollOffset(double verticalScrollOffset) {
         double safeOffset = Math.max(0.0, verticalScrollOffset);
         if (Double.compare(this.verticalScrollOffset.get(), safeOffset) == 0) {
@@ -651,14 +742,29 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.verticalScrollOffset.set(safeOffset);
     }
 
+    /**
+     * Returns the observable vertical scroll-offset property.
+     *
+     * @return observable vertical scroll-offset property
+     */
     public DoubleProperty verticalScrollOffsetProperty() {
         return verticalScrollOffset;
     }
 
+    /**
+     * Returns the current horizontal scroll offset.
+     *
+     * @return horizontal scroll offset in pixels
+     */
     public double getHorizontalScrollOffset() {
         return horizontalScrollOffset.get();
     }
 
+    /**
+     * Sets the horizontal scroll offset.
+     *
+     * @param horizontalScrollOffset requested horizontal offset in pixels
+     */
     public void setHorizontalScrollOffset(double horizontalScrollOffset) {
         double safeOffset = wordWrap.get() ? 0.0 : Math.max(0.0, horizontalScrollOffset);
         if (Double.compare(this.horizontalScrollOffset.get(), safeOffset) == 0) {
@@ -667,14 +773,29 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.horizontalScrollOffset.set(safeOffset);
     }
 
+    /**
+     * Returns the observable horizontal scroll-offset property.
+     *
+     * @return observable horizontal scroll-offset property
+     */
     public DoubleProperty horizontalScrollOffsetProperty() {
         return horizontalScrollOffset;
     }
 
+    /**
+     * Returns whether word-wrap is enabled.
+     *
+     * @return {@code true} when soft wrapping is enabled
+     */
     public boolean isWordWrap() {
         return wordWrap.get();
     }
 
+    /**
+     * Enables or disables word-wrap mode.
+     *
+     * @param wordWrap {@code true} to enable wrapping
+     */
     public void setWordWrap(boolean wordWrap) {
         if (wordWrap) {
             setHorizontalScrollOffset(0.0);
@@ -682,26 +803,56 @@ public class CodeEditor extends StackPane implements DisposableContent {
         this.wordWrap.set(wordWrap);
     }
 
+    /**
+     * Returns the observable word-wrap property.
+     *
+     * @return observable word-wrap property
+     */
     public BooleanProperty wordWrapProperty() {
         return wordWrap;
     }
 
+    /**
+     * Returns the active lexer language id.
+     *
+     * @return language id string
+     */
     public String getLanguageId() {
         return languageId.get();
     }
 
+    /**
+     * Sets the active lexer language id.
+     *
+     * @param languageId requested language id, blank/null maps to default language
+     */
     public void setLanguageId(String languageId) {
         this.languageId.set(languageId == null || languageId.isBlank() ? DEFAULT_LANGUAGE : languageId);
     }
 
+    /**
+     * Returns the observable language-id property.
+     *
+     * @return observable language-id property
+     */
     public StringProperty languageIdProperty() {
         return languageId;
     }
 
+    /**
+     * Returns the currently folded line indices.
+     *
+     * @return immutable list of folded line indices
+     */
     public List<Integer> getFoldedLines() {
         return foldedLines;
     }
 
+    /**
+     * Replaces the set of folded line indices.
+     *
+     * @param foldedLines line indices to treat as folded
+     */
     public void setFoldedLines(List<Integer> foldedLines) {
         this.foldedLines = foldedLines == null ? List.of() : List.copyOf(foldedLines);
     }

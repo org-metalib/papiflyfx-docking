@@ -16,7 +16,16 @@ public class SelectionModel {
     private final IntegerProperty anchorColumn = new SimpleIntegerProperty(this, "anchorColumn", 0);
 
     /**
+     * Creates a selection model with caret and anchor at origin.
+     */
+    public SelectionModel() {
+        // Default constructor.
+    }
+
+    /**
      * Returns the caret line (zero-based).
+     *
+     * @return zero-based caret line
      */
     public int getCaretLine() {
         return caretLine.get();
@@ -24,21 +33,35 @@ public class SelectionModel {
 
     /**
      * Returns the caret column (zero-based).
+     *
+     * @return zero-based caret column
      */
     public int getCaretColumn() {
         return caretColumn.get();
     }
 
+    /**
+     * Returns the read-only caret-line property.
+     *
+     * @return read-only caret-line property
+     */
     public ReadOnlyIntegerProperty caretLineProperty() {
         return caretLine;
     }
 
+    /**
+     * Returns the read-only caret-column property.
+     *
+     * @return read-only caret-column property
+     */
     public ReadOnlyIntegerProperty caretColumnProperty() {
         return caretColumn;
     }
 
     /**
      * Returns the read-only anchor line property.
+     *
+     * @return read-only anchor-line property
      */
     public ReadOnlyIntegerProperty anchorLineProperty() {
         return anchorLine;
@@ -46,6 +69,8 @@ public class SelectionModel {
 
     /**
      * Returns the read-only anchor column property.
+     *
+     * @return read-only anchor-column property
      */
     public ReadOnlyIntegerProperty anchorColumnProperty() {
         return anchorColumn;
@@ -53,6 +78,8 @@ public class SelectionModel {
 
     /**
      * Returns the selection anchor line.
+     *
+     * @return zero-based anchor line
      */
     public int getAnchorLine() {
         return anchorLine.get();
@@ -60,6 +87,8 @@ public class SelectionModel {
 
     /**
      * Returns the selection anchor column.
+     *
+     * @return zero-based anchor column
      */
     public int getAnchorColumn() {
         return anchorColumn.get();
@@ -67,6 +96,8 @@ public class SelectionModel {
 
     /**
      * Returns true if there is a non-empty selection.
+     *
+     * @return {@code true} when anchor and caret positions differ
      */
     public boolean hasSelection() {
         return caretLine.get() != anchorLine.get() || caretColumn.get() != anchorColumn.get();
@@ -74,6 +105,9 @@ public class SelectionModel {
 
     /**
      * Moves the caret to the specified position and clears the selection.
+     *
+     * @param line target zero-based line index
+     * @param column target zero-based column index
      */
     public void moveCaret(int line, int column) {
         caretLine.set(line);
@@ -84,6 +118,9 @@ public class SelectionModel {
 
     /**
      * Moves the caret while keeping the anchor fixed, extending the selection.
+     *
+     * @param line target zero-based line index
+     * @param column target zero-based column index
      */
     public void moveCaretWithSelection(int line, int column) {
         caretLine.set(line);
@@ -100,6 +137,8 @@ public class SelectionModel {
 
     /**
      * Selects all text in the document.
+     *
+     * @param document source document
      */
     public void selectAll(Document document) {
         anchorLine.set(0);
@@ -112,6 +151,9 @@ public class SelectionModel {
 
     /**
      * Returns the selected text from the document, or empty string if no selection.
+     *
+     * @param document source document
+     * @return selected text, or empty string when no selection exists
      */
     public String getSelectedText(Document document) {
         if (!hasSelection()) {
@@ -124,6 +166,9 @@ public class SelectionModel {
 
     /**
      * Returns the document offset for the start of the selection (lower bound).
+     *
+     * @param document source document
+     * @return selection start offset
      */
     public int getSelectionStartOffset(Document document) {
         return document.toOffset(getSelectionStartLine(), getSelectionStartColumn());
@@ -131,6 +176,9 @@ public class SelectionModel {
 
     /**
      * Returns the document offset for the end of the selection (upper bound).
+     *
+     * @param document source document
+     * @return selection end offset
      */
     public int getSelectionEndOffset(Document document) {
         return document.toOffset(getSelectionEndLine(), getSelectionEndColumn());
@@ -138,6 +186,8 @@ public class SelectionModel {
 
     /**
      * Returns the line of the selection start (the earlier position).
+     *
+     * @return zero-based selection start line
      */
     public int getSelectionStartLine() {
         if (anchorLine.get() < caretLine.get()) {
@@ -151,6 +201,8 @@ public class SelectionModel {
 
     /**
      * Returns the column of the selection start.
+     *
+     * @return zero-based selection start column
      */
     public int getSelectionStartColumn() {
         if (anchorLine.get() < caretLine.get()) {
@@ -164,6 +216,8 @@ public class SelectionModel {
 
     /**
      * Returns the line of the selection end (the later position).
+     *
+     * @return zero-based selection end line
      */
     public int getSelectionEndLine() {
         if (anchorLine.get() > caretLine.get()) {
@@ -177,6 +231,8 @@ public class SelectionModel {
 
     /**
      * Returns the column of the selection end.
+     *
+     * @return zero-based selection end column
      */
     public int getSelectionEndColumn() {
         if (anchorLine.get() > caretLine.get()) {
@@ -190,6 +246,9 @@ public class SelectionModel {
 
     /**
      * Returns the document offset for the current caret position.
+     *
+     * @param document source document
+     * @return current caret offset
      */
     public int getCaretOffset(Document document) {
         return document.toOffset(caretLine.get(), caretColumn.get());

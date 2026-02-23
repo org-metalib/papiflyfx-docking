@@ -44,6 +44,9 @@ public class IncrementalLexerPipeline implements AutoCloseable {
 
     /**
      * Creates a pipeline with default FX dispatcher and debounce.
+     *
+     * @param document source document model
+     * @param tokenMapConsumer consumer notified with updated token maps
      */
     public IncrementalLexerPipeline(Document document, Consumer<TokenMap> tokenMapConsumer) {
         this(
@@ -94,6 +97,8 @@ public class IncrementalLexerPipeline implements AutoCloseable {
 
     /**
      * Returns current token map snapshot.
+     *
+     * @return latest token map snapshot
      */
     public TokenMap getTokenMap() {
         return tokenMap;
@@ -101,6 +106,8 @@ public class IncrementalLexerPipeline implements AutoCloseable {
 
     /**
      * Sets active language id and requests full re-lex.
+     *
+     * @param languageId requested language id
      */
     public void setLanguageId(String languageId) {
         String normalizedLanguageId = LexerRegistry.normalizeLanguageId(languageId);

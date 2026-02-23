@@ -52,6 +52,13 @@ public class JavaScriptEditorSample implements SampleScene {
         "// Usage\n" +
         "greetAll(['Alice', 'Bob', 'PapiflyFX']);\n";
 
+    /**
+     * Creates the JavaScript editor sample.
+     */
+    public JavaScriptEditorSample() {
+        // Default constructor.
+    }
+
     @Override
     public String category() {
         return "Code";

@@ -35,7 +35,16 @@ public class SearchModel {
     private boolean cachedPatternInitialized;
 
     /**
+     * Creates an empty search model.
+     */
+    public SearchModel() {
+        // Default constructor.
+    }
+
+    /**
      * Returns the current search query.
+     *
+     * @return search query string
      */
     public String getQuery() {
         return query;
@@ -43,6 +52,8 @@ public class SearchModel {
 
     /**
      * Sets the search query.
+     *
+     * @param query search query text
      */
     public void setQuery(String query) {
         this.query = query == null ? "" : query;
@@ -50,6 +61,8 @@ public class SearchModel {
 
     /**
      * Returns the replacement string.
+     *
+     * @return replacement string
      */
     public String getReplacement() {
         return replacement;
@@ -57,6 +70,8 @@ public class SearchModel {
 
     /**
      * Sets the replacement string.
+     *
+     * @param replacement replacement text
      */
     public void setReplacement(String replacement) {
         this.replacement = replacement == null ? "" : replacement;
@@ -64,6 +79,8 @@ public class SearchModel {
 
     /**
      * Returns true if regex mode is enabled.
+     *
+     * @return {@code true} when regex mode is enabled
      */
     public boolean isRegexMode() {
         return regexMode;
@@ -71,6 +88,8 @@ public class SearchModel {
 
     /**
      * Enables or disables regex mode.
+     *
+     * @param regexMode {@code true} to enable regex mode
      */
     public void setRegexMode(boolean regexMode) {
         this.regexMode = regexMode;
@@ -78,6 +97,8 @@ public class SearchModel {
 
     /**
      * Returns true if case-sensitive search is enabled.
+     *
+     * @return {@code true} when case-sensitive matching is enabled
      */
     public boolean isCaseSensitive() {
         return caseSensitive;
@@ -85,6 +106,8 @@ public class SearchModel {
 
     /**
      * Enables or disables case-sensitive search.
+     *
+     * @param caseSensitive {@code true} to enable case-sensitive search
      */
     public void setCaseSensitive(boolean caseSensitive) {
         this.caseSensitive = caseSensitive;
@@ -92,6 +115,8 @@ public class SearchModel {
 
     /**
      * Returns true if whole-word matching is enabled.
+     *
+     * @return {@code true} when whole-word matching is enabled
      */
     public boolean isWholeWord() {
         return wholeWord;
@@ -99,6 +124,8 @@ public class SearchModel {
 
     /**
      * Enables or disables whole-word matching.
+     *
+     * @param wholeWord {@code true} to enable whole-word matching
      */
     public void setWholeWord(boolean wholeWord) {
         this.wholeWord = wholeWord;
@@ -106,6 +133,8 @@ public class SearchModel {
 
     /**
      * Returns true if replacement should preserve the case pattern of each match.
+     *
+     * @return {@code true} when preserve-case replacement is enabled
      */
     public boolean isPreserveCase() {
         return preserveCase;
@@ -113,6 +142,8 @@ public class SearchModel {
 
     /**
      * Enables or disables preserve-case replacement behavior.
+     *
+     * @param preserveCase {@code true} to enable preserve-case replacement
      */
     public void setPreserveCase(boolean preserveCase) {
         this.preserveCase = preserveCase;
@@ -120,6 +151,8 @@ public class SearchModel {
 
     /**
      * Returns true if search should be constrained to the active selection scope.
+     *
+     * @return {@code true} when search is constrained to selection
      */
     public boolean isSearchInSelection() {
         return searchInSelection;
@@ -127,6 +160,8 @@ public class SearchModel {
 
     /**
      * Enables or disables in-selection search scope.
+     *
+     * @param searchInSelection {@code true} to search only inside selection scope
      */
     public void setSearchInSelection(boolean searchInSelection) {
         this.searchInSelection = searchInSelection;
@@ -134,6 +169,9 @@ public class SearchModel {
 
     /**
      * Sets the active selection scope using document offsets.
+     *
+     * @param startOffset one selection boundary offset
+     * @param endOffset other selection boundary offset
      */
     public void setSelectionScope(int startOffset, int endOffset) {
         int normalizedStart = Math.max(0, Math.min(startOffset, endOffset));
@@ -152,6 +190,8 @@ public class SearchModel {
 
     /**
      * Returns the current list of matches (unmodifiable).
+     *
+     * @return immutable list of current matches
      */
     public List<SearchMatch> getMatches() {
         return matches;
@@ -159,6 +199,8 @@ public class SearchModel {
 
     /**
      * Returns the index of the currently selected match, or -1 if none.
+     *
+     * @return current match index, or {@code -1} if no match is selected
      */
     public int getCurrentMatchIndex() {
         return currentMatchIndex;
@@ -166,6 +208,8 @@ public class SearchModel {
 
     /**
      * Returns the currently selected match, or null if none.
+     *
+     * @return current match, or {@code null} when no match is selected
      */
     public SearchMatch getCurrentMatch() {
         if (currentMatchIndex >= 0 && currentMatchIndex < matches.size()) {
@@ -176,6 +220,8 @@ public class SearchModel {
 
     /**
      * Returns the total match count.
+     *
+     * @return number of current matches
      */
     public int getMatchCount() {
         return matches.size();
@@ -184,6 +230,9 @@ public class SearchModel {
     /**
      * Executes the search against the given document and populates matches.
      * Returns the number of matches found.
+     *
+     * @param document document to search
+     * @return number of matches found
      */
     public int search(Document document) {
         currentMatchIndex = -1;
@@ -218,6 +267,8 @@ public class SearchModel {
     /**
      * Advances to the next match. Wraps around to the first match.
      * Returns the new current match, or null if no matches.
+     *
+     * @return next match, or {@code null} when no matches exist
      */
     public SearchMatch nextMatch() {
         if (matches.isEmpty()) {
@@ -230,6 +281,8 @@ public class SearchModel {
     /**
      * Goes to the previous match. Wraps around to the last match.
      * Returns the new current match, or null if no matches.
+     *
+     * @return previous match, or {@code null} when no matches exist
      */
     public SearchMatch previousMatch() {
         if (matches.isEmpty()) {
@@ -241,6 +294,8 @@ public class SearchModel {
 
     /**
      * Selects the match nearest to the given document offset.
+     *
+     * @param offset document offset used as nearest-match anchor
      */
     public void selectNearestMatch(int offset) {
         if (matches.isEmpty()) {
@@ -264,6 +319,9 @@ public class SearchModel {
      * When regex mode is active, capture-group references ($1, $2, etc.) in the
      * replacement string are expanded.
      * Returns true if replacement was performed.
+     *
+     * @param document document to mutate
+     * @return {@code true} when replacement was applied
      */
     public boolean replaceCurrent(Document document) {
         SearchMatch match = getCurrentMatch();
@@ -283,6 +341,9 @@ public class SearchModel {
      * Replacements are applied from end to start to preserve match offsets and
      * to support per-match preserve-case behavior.
      * Returns the number of replacements made.
+     *
+     * @param document document to mutate
+     * @return number of replacements performed
      */
     public int replaceAll(Document document) {
         if (matches.isEmpty() || document == null) {

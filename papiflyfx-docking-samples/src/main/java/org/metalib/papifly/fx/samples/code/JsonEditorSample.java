@@ -42,6 +42,13 @@ public class JsonEditorSample implements SampleScene {
         "  \"published\": false\n" +
         "}\n";
 
+    /**
+     * Creates the JSON editor sample.
+     */
+    public JsonEditorSample() {
+        // Default constructor.
+    }
+
     @Override
     public String category() {
         return "Code";

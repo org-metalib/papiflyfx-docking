@@ -8,6 +8,18 @@ import javafx.application.Application;
  */
 public class SampleLauncher {
 
+    /**
+     * Creates a sample launcher.
+     */
+    public SampleLauncher() {
+        // Default constructor.
+    }
+
+    /**
+     * Launches the sample application.
+     *
+     * @param args launcher arguments
+     */
     public static void main(String[] args) {
         Application.launch(SamplesApp.class, args);
     }

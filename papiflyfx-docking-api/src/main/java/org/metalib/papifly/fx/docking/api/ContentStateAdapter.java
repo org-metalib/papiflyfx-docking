@@ -12,11 +12,15 @@ public interface ContentStateAdapter {
 
     /**
      * Returns the stable type key used for lookup.
+     *
+     * @return stable type key used to resolve this adapter
      */
     String getTypeKey();
 
     /**
      * Returns the current schema version for the content state.
+     *
+     * @return current schema version for serialized content state
      */
     int getVersion();
 

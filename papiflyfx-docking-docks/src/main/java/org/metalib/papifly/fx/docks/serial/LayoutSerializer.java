@@ -40,7 +40,16 @@ public class LayoutSerializer {
     private static final String TYPE_TAB_GROUP = "tabGroup";
 
     /**
+     * Creates a layout serializer.
+     */
+    public LayoutSerializer() {
+    }
+
+    /**
      * Serializes a LayoutNode to a Map.
+     *
+     * @param node layout node to serialize
+     * @return serialized map representation
      */
     public Map<String, Object> serialize(LayoutNode node) {
         if (node == null) {
@@ -111,6 +120,9 @@ public class LayoutSerializer {
 
     /**
      * Deserializes a Map to a LayoutNode.
+     *
+     * @param map serialized layout map
+     * @return deserialized layout node
      */
     @SuppressWarnings("unchecked")
     public LayoutNode deserialize(Map<String, Object> map) {
@@ -188,6 +200,9 @@ public class LayoutSerializer {
 
     /**
      * Converts a map to a simple JSON string (basic implementation without dependencies).
+     *
+     * @param map map to convert
+     * @return JSON representation
      */
     public String toJson(Map<String, Object> map) {
         return toJsonValue(map, 0);
@@ -195,6 +210,9 @@ public class LayoutSerializer {
 
     /**
      * Parses a simple JSON string to a map (basic implementation without dependencies).
+     *
+     * @param json JSON text to parse
+     * @return parsed map
      */
     public Map<String, Object> fromJson(String json) {
         return new SimpleJsonParser(json).parseObject();

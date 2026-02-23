@@ -12,6 +12,9 @@ public final class InsertEdit implements EditCommand {
 
     /**
      * Creates insert command.
+     *
+     * @param offset insertion offset
+     * @param text text to insert
      */
     public InsertEdit(int offset, String text) {
         this.offset = offset;

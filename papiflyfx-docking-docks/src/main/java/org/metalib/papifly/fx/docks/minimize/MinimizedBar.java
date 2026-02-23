@@ -277,6 +277,8 @@ public class MinimizedBar extends StackPane {
 
     /**
      * Sets the handler called when a minimized item is clicked to restore.
+     *
+     * @param handler restore callback
      */
     public void setOnRestore(Consumer<DockLeaf> handler) {
         this.onRestore = handler;
@@ -284,6 +286,8 @@ public class MinimizedBar extends StackPane {
 
     /**
      * Gets the number of items in the bar.
+     *
+     * @return number of minimized items
      */
     public int getItemCount() {
         return leafItems.size();
@@ -291,6 +295,8 @@ public class MinimizedBar extends StackPane {
 
     /**
      * Checks if the bar is currently showing.
+     *
+     * @return {@code true} when the minimized bar is visible
      */
     public boolean isBarVisible() {
         return visible;

@@ -33,6 +33,9 @@ public final class EditorStateCodec {
 
     /**
      * Converts EditorStateData to map payload.
+     *
+     * @param state editor state snapshot
+     * @return serializable map payload
      */
     public static Map<String, Object> toMap(EditorStateData state) {
         EditorStateData safe = state == null ? EditorStateData.empty() : state;
@@ -53,6 +56,9 @@ public final class EditorStateCodec {
 
     /**
      * Converts map payload to EditorStateData.
+     *
+     * @param state serialized map payload
+     * @return decoded editor state snapshot
      */
     public static EditorStateData fromMap(Map<String, Object> state) {
         if (state == null || state.isEmpty()) {

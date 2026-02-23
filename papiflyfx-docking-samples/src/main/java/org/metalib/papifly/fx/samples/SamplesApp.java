@@ -34,6 +34,13 @@ public class SamplesApp extends Application {
     private Stage primaryStage;
     private final StackPane contentArea = new StackPane();
 
+    /**
+     * Creates the samples application.
+     */
+    public SamplesApp() {
+        // Default constructor.
+    }
+
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
@@ -128,6 +135,11 @@ public class SamplesApp extends Application {
         contentArea.setStyle("-fx-background-color: #1e1e1e;");
     }
 
+    /**
+     * Launches the samples application.
+     *
+     * @param args launcher arguments
+     */
     public static void main(String[] args) {
         launch(args);
     }

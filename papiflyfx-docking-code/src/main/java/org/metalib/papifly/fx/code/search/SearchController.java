@@ -66,6 +66,11 @@ public class SearchController extends VBox {
     private Runnable onClose;
     private Runnable onSearchChanged;
 
+    /**
+     * Creates a search overlay controller.
+     *
+     * @param searchModel backing search/replace model
+     */
     public SearchController(SearchModel searchModel) {
         this.searchModel = searchModel;
 
@@ -219,6 +224,8 @@ public class SearchController extends VBox {
 
     /**
      * Sets the document to search in.
+     *
+     * @param document document to search
      */
     public void setDocument(Document document) {
         this.document = document;
@@ -226,6 +233,8 @@ public class SearchController extends VBox {
 
     /**
      * Sets a supplier that provides active selection offsets as {start, end}.
+     *
+     * @param selectionRangeSupplier supplier of current selection range
      */
     public void setSelectionRangeSupplier(Supplier<int[]> selectionRangeSupplier) {
         this.selectionRangeSupplier = selectionRangeSupplier;
@@ -253,6 +262,8 @@ public class SearchController extends VBox {
 
     /**
      * Sets the editor theme and refreshes overlay styling.
+     *
+     * @param theme editor theme palette
      */
     public void setTheme(CodeEditorTheme theme) {
         this.theme = theme == null ? CodeEditorTheme.dark() : theme;
@@ -261,6 +272,8 @@ public class SearchController extends VBox {
 
     /**
      * Returns the current editor theme.
+     *
+     * @return active search overlay theme
      */
     public CodeEditorTheme getTheme() {
         return theme;
@@ -268,6 +281,8 @@ public class SearchController extends VBox {
 
     /**
      * Sets the callback invoked when navigating to a match.
+     *
+     * @param onNavigate callback invoked for match navigation
      */
     public void setOnNavigate(Consumer<SearchMatch> onNavigate) {
         this.onNavigate = onNavigate;
@@ -275,6 +290,8 @@ public class SearchController extends VBox {
 
     /**
      * Sets the callback invoked when the search panel is closed.
+     *
+     * @param onClose callback invoked on close
      */
     public void setOnClose(Runnable onClose) {
         this.onClose = onClose;
@@ -282,6 +299,8 @@ public class SearchController extends VBox {
 
     /**
      * Sets the callback invoked when search results change (for highlight refresh).
+     *
+     * @param onSearchChanged callback invoked when search state changes
      */
     public void setOnSearchChanged(Runnable onSearchChanged) {
         this.onSearchChanged = onSearchChanged;
@@ -300,6 +319,8 @@ public class SearchController extends VBox {
 
     /**
      * Shows the search overlay with existing query text selected.
+     *
+     * @param initialQuery initial query text
      */
     public void open(String initialQuery) {
         if (initialQuery != null && !initialQuery.isEmpty()) {
@@ -312,6 +333,8 @@ public class SearchController extends VBox {
 
     /**
      * Opens the search overlay directly in replace mode.
+     *
+     * @param initialQuery initial query text
      */
     public void openInReplaceMode(String initialQuery) {
         if (!replaceMode) {
@@ -342,6 +365,8 @@ public class SearchController extends VBox {
 
     /**
      * Returns true if the search overlay is currently visible.
+     *
+     * @return {@code true} when overlay is visible
      */
     public boolean isOpen() {
         return isVisible();
@@ -349,6 +374,8 @@ public class SearchController extends VBox {
 
     /**
      * Returns true if replace mode is active (replace row visible).
+     *
+     * @return {@code true} when replace row is visible
      */
     public boolean isReplaceMode() {
         return replaceMode;
@@ -356,6 +383,8 @@ public class SearchController extends VBox {
 
     /**
      * Returns the search model.
+     *
+     * @return backing search model
      */
     public SearchModel getSearchModel() {
         return searchModel;

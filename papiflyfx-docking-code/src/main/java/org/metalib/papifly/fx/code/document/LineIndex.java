@@ -20,6 +20,8 @@ public class LineIndex {
 
     /**
      * Creates an index initialized with given text.
+     *
+     * @param text initial text to index
      */
     public LineIndex(CharSequence text) {
         rebuild(text);
@@ -27,6 +29,8 @@ public class LineIndex {
 
     /**
      * Rebuilds the line index from full text.
+     *
+     * @param text full text to index
      */
     public void rebuild(CharSequence text) {
         lineStarts.clear();
@@ -116,6 +120,8 @@ public class LineIndex {
 
     /**
      * Returns number of lines in the text.
+     *
+     * @return number of indexed lines
      */
     public int getLineCount() {
         return lineStarts.size();
@@ -123,6 +129,8 @@ public class LineIndex {
 
     /**
      * Returns unmodifiable line start offsets.
+     *
+     * @return unmodifiable list of zero-based line start offsets
      */
     public List<Integer> getLineStarts() {
         return Collections.unmodifiableList(lineStarts);
@@ -130,6 +138,9 @@ public class LineIndex {
 
     /**
      * Returns start offset for a line.
+     *
+     * @param line zero-based line index
+     * @return start offset for the given line
      */
     public int getLineStartOffset(int line) {
         requireLine(line);
@@ -138,6 +149,10 @@ public class LineIndex {
 
     /**
      * Returns end offset (exclusive, without trailing newline) for a line.
+     *
+     * @param line zero-based line index
+     * @param textLength total document text length
+     * @return exclusive line end offset without trailing newline
      */
     public int getLineEndOffset(int line, int textLength) {
         requireLine(line);
@@ -151,6 +166,10 @@ public class LineIndex {
 
     /**
      * Returns line index for an offset.
+     *
+     * @param offset document offset
+     * @param textLength total document text length
+     * @return zero-based line index containing {@code offset}
      */
     public int getLineForOffset(int offset, int textLength) {
         requireOffset(offset, textLength);
@@ -164,6 +183,10 @@ public class LineIndex {
 
     /**
      * Returns column for offset.
+     *
+     * @param offset document offset
+     * @param textLength total document text length
+     * @return zero-based column index for {@code offset}
      */
     public int getColumnForOffset(int offset, int textLength) {
         int line = getLineForOffset(offset, textLength);
@@ -172,6 +195,11 @@ public class LineIndex {
 
     /**
      * Returns offset for line and column, clamping column to line bounds.
+     *
+     * @param line zero-based line index
+     * @param column zero-based column index
+     * @param textLength total document text length
+     * @return clamped document offset for the requested line/column
      */
     public int toOffset(int line, int column, int textLength) {
         requireLine(line);

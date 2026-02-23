@@ -33,6 +33,7 @@ public class FloatingWindowManager {
      *
      * @param ownerStage    The main application stage
      * @param themeProperty The theme property for styling
+     * @param tabGroupFactory factory creating tab groups for floating windows
      */
     public FloatingWindowManager(Stage ownerStage, ObjectProperty<Theme> themeProperty,
                                  Supplier<DockTabGroup> tabGroupFactory) {
@@ -209,6 +210,8 @@ public class FloatingWindowManager {
 
     /**
      * Sets the handler called when a floating leaf requests to dock back.
+     *
+     * @param handler dock-back callback
      */
     public void setOnDockBack(Consumer<DockLeaf> handler) {
         this.onDockBack = handler;
@@ -216,6 +219,8 @@ public class FloatingWindowManager {
 
     /**
      * Sets the handler called when a floating window is closed.
+     *
+     * @param handler close callback
      */
     public void setOnClose(Consumer<DockLeaf> handler) {
         this.onClose = handler;

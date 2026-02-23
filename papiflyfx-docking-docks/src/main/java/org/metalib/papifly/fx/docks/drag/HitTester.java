@@ -21,12 +21,19 @@ public class HitTester {
 
     private final DockElement root;
 
+    /**
+     * Creates a hit tester for the provided dock root.
+     *
+     * @param root root dock element used for hit testing
+     */
     public HitTester(DockElement root) {
         this.root = root;
     }
 
     /**
      * Updates the root element for hit testing.
+     *
+     * @param root new root element
      */
     public void setRoot(DockElement root) {
         // This is a workaround for final field - in real impl would use a mutable holder

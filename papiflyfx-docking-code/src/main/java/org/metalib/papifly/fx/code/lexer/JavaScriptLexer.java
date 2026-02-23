@@ -19,6 +19,9 @@ public final class JavaScriptLexer extends AbstractCStyleLexer {
      */
     public static final String LANGUAGE_ID = "javascript";
 
+    /**
+     * Creates a JavaScript lexer instance.
+     */
     public JavaScriptLexer() {
         super(LANGUAGE_ID, KEYWORDS, true);
     }

@@ -27,6 +27,9 @@ public class MinimizedStore {
     private Consumer<DockLeaf> onLeafAdded;
     private Consumer<DockLeaf> onLeafRemoved;
 
+    /**
+     * Creates an empty minimized-leaf store.
+     */
     public MinimizedStore() {
         this.minimizedLeaves = new LinkedHashMap<>();
         this.restoreHints = new HashMap<>();
@@ -179,6 +182,8 @@ public class MinimizedStore {
 
     /**
      * Sets the handler called when a leaf is added.
+     *
+     * @param handler callback invoked when a leaf is added
      */
     public void setOnLeafAdded(Consumer<DockLeaf> handler) {
         this.onLeafAdded = handler;
@@ -186,6 +191,8 @@ public class MinimizedStore {
 
     /**
      * Sets the handler called when a leaf is removed.
+     *
+     * @param handler callback invoked when a leaf is removed
      */
     public void setOnLeafRemoved(Consumer<DockLeaf> handler) {
         this.onLeafRemoved = handler;

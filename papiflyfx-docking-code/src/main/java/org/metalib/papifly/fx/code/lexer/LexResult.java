@@ -11,6 +11,9 @@ import java.util.Objects;
  */
 public record LexResult(List<Token> tokens, LexState exitState) {
 
+    /**
+     * Creates a lex result with normalized immutable values.
+     */
     public LexResult {
         tokens = tokens == null ? List.of() : List.copyOf(tokens);
         exitState = Objects.requireNonNullElse(exitState, LexState.DEFAULT);

@@ -43,10 +43,24 @@ public class DockSplitGroup implements DockElement {
     private double dragStart;
     private double dividerStartPosition;
 
+    /**
+     * Creates a split group with an auto-generated id and default divider position.
+     *
+     * @param orientation split orientation
+     * @param themeProperty theme property used for styling
+     */
     public DockSplitGroup(Orientation orientation, ObjectProperty<Theme> themeProperty) {
         this(UUID.randomUUID().toString(), orientation, 0.5, themeProperty);
     }
 
+    /**
+     * Creates a split group with explicit id and divider position.
+     *
+     * @param id split identifier
+     * @param orientation split orientation
+     * @param initialPosition initial divider position ratio
+     * @param themeProperty theme property used for styling
+     */
     public DockSplitGroup(String id, Orientation orientation, double initialPosition, ObjectProperty<Theme> themeProperty) {
         this.id = id;
         this.orientation = orientation;
@@ -174,6 +188,8 @@ public class DockSplitGroup implements DockElement {
 
     /**
      * Sets the first (left or top) element.
+     *
+     * @param element first child element
      */
     public void setFirst(DockElement element) {
         if (first != null) {
@@ -194,6 +210,8 @@ public class DockSplitGroup implements DockElement {
 
     /**
      * Sets the second (right or bottom) element.
+     *
+     * @param element second child element
      */
     public void setSecond(DockElement element) {
         if (second != null) {
@@ -214,6 +232,9 @@ public class DockSplitGroup implements DockElement {
 
     /**
      * Replaces a child element with a new element.
+     *
+     * @param oldChild child element to replace
+     * @param newChild replacement child element
      */
     public void replaceChild(DockElement oldChild, DockElement newChild) {
         if (first == oldChild) {
@@ -227,6 +248,8 @@ public class DockSplitGroup implements DockElement {
 
     /**
      * Gets the first element.
+     *
+     * @return first child element
      */
     public DockElement getFirst() {
         return first;
@@ -234,6 +257,8 @@ public class DockSplitGroup implements DockElement {
 
     /**
      * Gets the second element.
+     *
+     * @return second child element
      */
     public DockElement getSecond() {
         return second;
@@ -241,6 +266,8 @@ public class DockSplitGroup implements DockElement {
 
     /**
      * Gets the divider position property.
+     *
+     * @return divider position property
      */
     public DoubleProperty dividerPositionProperty() {
         return dividerPosition;
@@ -248,6 +275,8 @@ public class DockSplitGroup implements DockElement {
 
     /**
      * Gets the current divider position (0.0 to 1.0).
+     *
+     * @return divider position ratio
      */
     public double getDividerPosition() {
         return dividerPosition.get();
@@ -255,6 +284,8 @@ public class DockSplitGroup implements DockElement {
 
     /**
      * Sets the divider position.
+     *
+     * @param position divider position ratio
      */
     public void setDividerPosition(double position) {
         dividerPosition.set(position);
@@ -262,6 +293,8 @@ public class DockSplitGroup implements DockElement {
 
     /**
      * Gets the orientation.
+     *
+     * @return split orientation
      */
     public Orientation getOrientation() {
         return orientation;

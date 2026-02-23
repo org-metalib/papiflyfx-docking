@@ -90,6 +90,12 @@ public final class WordBoundary {
         return pos;
     }
 
+    /**
+     * Returns whether a character is treated as part of a word token.
+     *
+     * @param ch character to classify
+     * @return {@code true} when character is alphanumeric or underscore
+     */
     public static boolean isWordChar(char ch) {
         return Character.isLetterOrDigit(ch) || ch == '_';
     }

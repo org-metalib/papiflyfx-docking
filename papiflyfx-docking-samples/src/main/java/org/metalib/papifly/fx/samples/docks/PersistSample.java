@@ -25,6 +25,13 @@ public class PersistSample implements SampleScene {
     /** ID that the smoke test uses to find the JSON TextArea. */
     public static final String JSON_AREA_ID = "persist-sample-json-area";
 
+    /**
+     * Creates the persistence sample.
+     */
+    public PersistSample() {
+        // Default constructor.
+    }
+
     @Override
     public String category() {
         return "Docks";

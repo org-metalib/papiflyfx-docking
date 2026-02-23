@@ -33,6 +33,11 @@ public class GutterView extends Region {
     private boolean wordWrap;
     private WrapMap wrapMap;
 
+    /**
+     * Creates a gutter view backed by the provided glyph cache.
+     *
+     * @param glyphCache glyph metrics cache shared with viewport rendering
+     */
     public GutterView(GlyphCache glyphCache) {
         this.glyphCache = glyphCache;
         this.canvas = new Canvas();
@@ -41,6 +46,8 @@ public class GutterView extends Region {
 
     /**
      * Sets the document to display line numbers for.
+     *
+     * @param document document model to render in the gutter
      */
     public void setDocument(Document document) {
         this.document = document;
@@ -50,6 +57,8 @@ public class GutterView extends Region {
 
     /**
      * Sets the editor theme palette and triggers a redraw.
+     *
+     * @param theme theme palette to apply
      */
     public void setTheme(CodeEditorTheme theme) {
         this.theme = theme == null ? CodeEditorTheme.dark() : theme;
@@ -58,6 +67,8 @@ public class GutterView extends Region {
 
     /**
      * Returns the current editor theme.
+     *
+     * @return active gutter theme
      */
     public CodeEditorTheme getTheme() {
         return theme;
@@ -65,6 +76,8 @@ public class GutterView extends Region {
 
     /**
      * Sets the marker model for the marker lane.
+     *
+     * @param markerModel marker model used to render line markers
      */
     public void setMarkerModel(MarkerModel markerModel) {
         this.markerModel = markerModel;
@@ -73,6 +86,8 @@ public class GutterView extends Region {
 
     /**
      * Returns the current marker model.
+     *
+     * @return marker model used by this gutter, may be {@code null}
      */
     public MarkerModel getMarkerModel() {
         return markerModel;
@@ -80,6 +95,8 @@ public class GutterView extends Region {
 
     /**
      * Synchronizes scroll offset with the viewport.
+     *
+     * @param offset vertical scroll offset in pixels
      */
     public void setScrollOffset(double offset) {
         this.scrollOffset = offset;
@@ -88,6 +105,8 @@ public class GutterView extends Region {
 
     /**
      * Enables/disables wrap-aware gutter layout.
+     *
+     * @param wordWrap {@code true} to render wrap-aware line numbers
      */
     public void setWordWrap(boolean wordWrap) {
         if (this.wordWrap == wordWrap) {
@@ -99,6 +118,8 @@ public class GutterView extends Region {
 
     /**
      * Sets wrap metadata shared by the viewport in wrap mode.
+     *
+     * @param wrapMap wrap metadata for visual row mapping
      */
     public void setWrapMap(WrapMap wrapMap) {
         this.wrapMap = wrapMap;
@@ -107,6 +128,8 @@ public class GutterView extends Region {
 
     /**
      * Sets the active (caret) line index for highlighting.
+     *
+     * @param lineIndex zero-based active line index
      */
     public void setActiveLineIndex(int lineIndex) {
         if (this.activeLineIndex != lineIndex) {
@@ -117,6 +140,8 @@ public class GutterView extends Region {
 
     /**
      * Returns the computed preferred width of the gutter.
+     *
+     * @return computed gutter width in pixels
      */
     public double getComputedWidth() {
         return computedWidth;
@@ -139,6 +164,9 @@ public class GutterView extends Region {
         setMaxWidth(computedWidth);
     }
 
+    /**
+     * Marks gutter render cache dirty and requests layout.
+     */
     public void markDirty() {
         dirty = true;
         requestLayout();

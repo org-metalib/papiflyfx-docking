@@ -25,6 +25,8 @@ public class GlyphCache {
 
     /**
      * Returns the cached line height.
+     *
+     * @return cached line height in pixels
      */
     public double getLineHeight() {
         return lineHeight;
@@ -32,6 +34,8 @@ public class GlyphCache {
 
     /**
      * Returns the cached character width (monospace assumption).
+     *
+     * @return cached monospace character width in pixels
      */
     public double getCharWidth() {
         return charWidth;
@@ -39,6 +43,8 @@ public class GlyphCache {
 
     /**
      * Returns the cached baseline offset from line top.
+     *
+     * @return baseline offset from top of line box in pixels
      */
     public double getBaselineOffset() {
         return baselineOffset;
@@ -46,6 +52,8 @@ public class GlyphCache {
 
     /**
      * Returns the current font.
+     *
+     * @return font currently used for glyph measurements
      */
     public Font getFont() {
         return font;
@@ -53,6 +61,8 @@ public class GlyphCache {
 
     /**
      * Sets the font and recalculates cached metrics.
+     *
+     * @param font font to use for measurements, or {@code null} for default monospace font
      */
     public void setFont(Font font) {
         this.font = font != null ? font : DEFAULT_FONT;

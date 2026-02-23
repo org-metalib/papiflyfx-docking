@@ -8,6 +8,8 @@ public sealed interface LayoutNode permits LeafData, SplitData, TabGroupData {
 
     /**
      * Returns the unique identifier for this layout node.
+     *
+     * @return unique layout node identifier
      */
     String id();
 }

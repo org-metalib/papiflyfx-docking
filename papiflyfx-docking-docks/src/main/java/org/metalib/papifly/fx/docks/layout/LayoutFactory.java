@@ -35,6 +35,9 @@ public class LayoutFactory {
 
     /**
      * Creates a LayoutFactory with the given theme property and content factory.
+     *
+     * @param themeProperty theme property used for created UI elements
+     * @param contentFactory content factory used for content restoration
      */
     public LayoutFactory(ObjectProperty<Theme> themeProperty, ContentFactory contentFactory) {
         this.themeProperty = themeProperty;
@@ -44,6 +47,8 @@ public class LayoutFactory {
 
     /**
      * Creates a LayoutFactory with no content factory (content must be set manually).
+     *
+     * @param themeProperty theme property used for created UI elements
      */
     public LayoutFactory(ObjectProperty<Theme> themeProperty) {
         this(themeProperty, null);
@@ -51,6 +56,8 @@ public class LayoutFactory {
 
     /**
      * Updates the content factory used to recreate leaf contents during restore.
+     *
+     * @param contentFactory content factory used for content restoration
      */
     public void setContentFactory(ContentFactory contentFactory) {
         this.contentFactory = contentFactory;
@@ -58,6 +65,8 @@ public class LayoutFactory {
 
     /**
      * Updates the content state registry used to restore content.
+     *
+     * @param contentStateRegistry content state registry
      */
     public void setContentStateRegistry(ContentStateRegistry contentStateRegistry) {
         this.contentStateRegistry = contentStateRegistry;
@@ -65,6 +74,8 @@ public class LayoutFactory {
 
     /**
      * Gets the content state registry used to restore content.
+     *
+     * @return content state registry
      */
     public ContentStateRegistry getContentStateRegistry() {
         return contentStateRegistry;
@@ -72,6 +83,9 @@ public class LayoutFactory {
 
     /**
      * Builds a DockElement tree from the given layout node.
+     *
+     * @param node layout node to build
+     * @return constructed dock element tree
      */
     public DockElement build(LayoutNode node) {
         if (node == null) {
@@ -88,6 +102,9 @@ public class LayoutFactory {
     /**
      * Builds a DockLeaf from LeafData.
      * Public access for session restoration.
+     *
+     * @param data serialized leaf data
+     * @return reconstructed dock leaf
      */
     public DockLeaf buildLeaf(LeafData data) {
         DockData metadata = DockData.of(data.id(), data.title());
@@ -203,6 +220,10 @@ public class LayoutFactory {
 
     /**
      * Creates a simple leaf with title and content.
+     *
+     * @param title leaf title
+     * @param content content node
+     * @return created leaf
      */
     public DockLeaf createLeaf(String title, Node content) {
         return new DockLeaf()
@@ -212,6 +233,10 @@ public class LayoutFactory {
 
     /**
      * Creates a horizontal split group.
+     *
+     * @param first first child element
+     * @param second second child element
+     * @return horizontal split group
      */
     public DockSplitGroup createHorizontalSplit(DockElement first, DockElement second) {
         return createHorizontalSplit(first, second, 0.5);
@@ -219,6 +244,11 @@ public class LayoutFactory {
 
     /**
      * Creates a horizontal split group with custom divider position.
+     *
+     * @param first first child element
+     * @param second second child element
+     * @param dividerPosition divider position ratio
+     * @return horizontal split group
      */
     public DockSplitGroup createHorizontalSplit(DockElement first, DockElement second, double dividerPosition) {
         DockSplitGroup split = new DockSplitGroup(Orientation.HORIZONTAL, themeProperty);
@@ -230,6 +260,10 @@ public class LayoutFactory {
 
     /**
      * Creates a vertical split group.
+     *
+     * @param first first child element
+     * @param second second child element
+     * @return vertical split group
      */
     public DockSplitGroup createVerticalSplit(DockElement first, DockElement second) {
         return createVerticalSplit(first, second, 0.5);
@@ -237,6 +271,11 @@ public class LayoutFactory {
 
     /**
      * Creates a vertical split group with custom divider position.
+     *
+     * @param first first child element
+     * @param second second child element
+     * @param dividerPosition divider position ratio
+     * @return vertical split group
      */
     public DockSplitGroup createVerticalSplit(DockElement first, DockElement second, double dividerPosition) {
         DockSplitGroup split = new DockSplitGroup(Orientation.VERTICAL, themeProperty);
@@ -248,6 +287,9 @@ public class LayoutFactory {
 
     /**
      * Creates a tab group with the given leaves.
+     *
+     * @param leaves leaves to add to the created tab group
+     * @return created tab group
      */
     public DockTabGroup createTabGroup(DockLeaf... leaves) {
         DockTabGroup tabGroup = new DockTabGroup(themeProperty);

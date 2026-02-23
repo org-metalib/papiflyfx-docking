@@ -33,6 +33,9 @@ public final class LexerRegistry {
 
     /**
      * Resolves a language id to a lexer. Unknown ids fall back to plain text.
+     *
+     * @param languageId requested language identifier
+     * @return resolved lexer implementation
      */
     public static Lexer resolve(String languageId) {
         return LEXERS.getOrDefault(normalizeLanguageId(languageId), PLAIN_TEXT);
@@ -40,6 +43,9 @@ public final class LexerRegistry {
 
     /**
      * Normalizes language ids for registry lookup.
+     *
+     * @param languageId requested language identifier
+     * @return normalized language id used by the registry
      */
     public static String normalizeLanguageId(String languageId) {
         if (languageId == null || languageId.isBlank()) {

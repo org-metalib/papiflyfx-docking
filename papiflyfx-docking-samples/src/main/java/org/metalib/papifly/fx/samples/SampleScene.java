@@ -10,10 +10,18 @@ import org.metalib.papifly.fx.docking.api.Theme;
  */
 public interface SampleScene {
 
-    /** Category label used to group entries in the catalog (e.g. "Docks", "Code"). */
+    /**
+     * Returns category label used to group entries in the catalog.
+     *
+     * @return category label
+     */
     String category();
 
-    /** Display title shown in the sample list and window title bar. */
+    /**
+     * Returns display title shown in the sample list and window title bar.
+     *
+     * @return sample display title
+     */
     String title();
 
     /**

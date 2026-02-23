@@ -15,6 +15,13 @@ import org.metalib.papifly.fx.samples.SampleScene;
  */
 public class BasicSplitSample implements SampleScene {
 
+    /**
+     * Creates the basic split sample.
+     */
+    public BasicSplitSample() {
+        // Default constructor.
+    }
+
     @Override
     public String category() {
         return "Docks";

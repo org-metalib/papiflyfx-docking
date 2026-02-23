@@ -18,6 +18,9 @@ public record LineTokens(
     LexState exitState
 ) {
 
+    /**
+     * Creates a line token snapshot with normalized immutable values.
+     */
     public LineTokens {
         text = text == null ? "" : text;
         tokens = tokens == null ? List.of() : List.copyOf(tokens);

@@ -11,6 +11,9 @@ import java.util.Objects;
  */
 public record Token(int startColumn, int length, TokenType type) {
 
+    /**
+     * Creates a token with validated bounds and type.
+     */
     public Token {
         if (startColumn < 0) {
             throw new IllegalArgumentException("startColumn must be >= 0");
@@ -23,6 +26,8 @@ public record Token(int startColumn, int length, TokenType type) {
 
     /**
      * Returns the end column (exclusive).
+     *
+     * @return end column (exclusive)
      */
     public int endColumn() {
         return startColumn + length;

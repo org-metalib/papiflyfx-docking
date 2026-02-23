@@ -6,10 +6,25 @@ import java.util.Set;
 
 abstract class AbstractCStyleLexer implements Lexer {
 
+    /**
+     * Default lexing state.
+     */
     protected static final int STATE_DEFAULT = 0;
+    /**
+     * Inside block comment state.
+     */
     protected static final int STATE_BLOCK_COMMENT = 1;
+    /**
+     * Inside double-quoted string state.
+     */
     protected static final int STATE_DOUBLE_QUOTE = 2;
+    /**
+     * Inside single-quoted string state.
+     */
     protected static final int STATE_SINGLE_QUOTE = 3;
+    /**
+     * Inside template-quoted string state.
+     */
     protected static final int STATE_TEMPLATE_QUOTE = 4;
 
     private final String languageId;
@@ -124,6 +139,12 @@ abstract class AbstractCStyleLexer implements Lexer {
         return new LexResult(tokens, LexState.of(state));
     }
 
+    /**
+     * Classifies an identifier token candidate.
+     *
+     * @param word candidate word token
+     * @return token classification for the word
+     */
     protected TokenType classifyWord(String word) {
         if ("true".equals(word) || "false".equals(word)) {
             return TokenType.BOOLEAN;

@@ -24,6 +24,8 @@ public final class SampleCatalog {
     /**
      * Returns all samples in catalog display order.
      * Categories: Docks (6 entries), Code (4 entries).
+     *
+     * @return ordered sample scene list
      */
     public static List<SampleScene> all() {
         return List.of(

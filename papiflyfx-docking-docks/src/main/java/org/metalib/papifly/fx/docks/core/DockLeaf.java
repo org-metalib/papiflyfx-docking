@@ -34,6 +34,8 @@ public class DockLeaf {
 
     /**
      * Creates a new DockLeaf with metadata.
+     *
+     * @param data metadata for the new leaf
      */
     public DockLeaf(DockData data) {
         this.metadata = new SimpleObjectProperty<>(data);
@@ -42,6 +44,9 @@ public class DockLeaf {
 
     /**
      * Builder method to set the title.
+     *
+     * @param title new leaf title
+     * @return this leaf instance
      */
     public DockLeaf withTitle(String title) {
         metadata.set(metadata.get().withTitle(title));
@@ -50,6 +55,9 @@ public class DockLeaf {
 
     /**
      * Builder method to set the icon.
+     *
+     * @param icon new leaf icon
+     * @return this leaf instance
      */
     public DockLeaf withIcon(Node icon) {
         metadata.set(metadata.get().withIcon(icon));
@@ -58,6 +66,9 @@ public class DockLeaf {
 
     /**
      * Builder method to set the content factory identifier used for rebuild/serialization.
+     *
+     * @param factoryId content factory identifier
+     * @return this leaf instance
      */
     public DockLeaf withContentFactoryId(String factoryId) {
         this.contentFactoryId = factoryId;
@@ -66,6 +77,8 @@ public class DockLeaf {
 
     /**
      * Sets the content factory identifier used to recreate this leaf's content.
+     *
+     * @param factoryId content factory identifier
      */
     public void setContentFactoryId(String factoryId) {
         this.contentFactoryId = factoryId;
@@ -73,6 +86,8 @@ public class DockLeaf {
 
     /**
      * Gets the content factory identifier used to recreate this leaf's content.
+     *
+     * @return content factory identifier
      */
     public String getContentFactoryId() {
         return contentFactoryId;
@@ -80,6 +95,8 @@ public class DockLeaf {
 
     /**
      * Sets the persisted content data for this leaf.
+     *
+     * @param contentData persisted content identity and state
      */
     public void setContentData(LeafContentData contentData) {
         this.contentData = contentData;
@@ -87,6 +104,8 @@ public class DockLeaf {
 
     /**
      * Gets the persisted content data for this leaf.
+     *
+     * @return persisted content identity and state
      */
     public LeafContentData getContentData() {
         return contentData;
@@ -94,6 +113,9 @@ public class DockLeaf {
 
     /**
      * Builder method to set the content.
+     *
+     * @param node content node
+     * @return this leaf instance
      */
     public DockLeaf content(Node node) {
         content.set(node);
@@ -102,6 +124,9 @@ public class DockLeaf {
 
     /**
      * Sets the close request handler.
+     *
+     * @param handler close callback invoked on {@link #requestClose()}
+     * @return this leaf instance
      */
     public DockLeaf onClose(Consumer<DockLeaf> handler) {
         this.onCloseRequest = handler;
@@ -119,6 +144,8 @@ public class DockLeaf {
 
     /**
      * Gets the content property.
+     *
+     * @return observable content property
      */
     public ObjectProperty<Node> contentProperty() {
         return content;
@@ -126,6 +153,8 @@ public class DockLeaf {
 
     /**
      * Gets the content node.
+     *
+     * @return current content node
      */
     public Node getContent() {
         return content.get();
@@ -133,20 +162,35 @@ public class DockLeaf {
 
     /**
      * Gets the metadata property.
+     *
+     * @return observable metadata property
      */
     public ObjectProperty<DockData> metadataProperty() {
         return metadata;
     }
 
+    /**
+     * Gets the current metadata value.
+     *
+     * @return current leaf metadata
+     */
     public DockData getMetadata() {
         return metadata.get();
     }
 
+    /**
+     * Serializes this leaf into layout data.
+     *
+     * @return serialized leaf layout node
+     */
     public LayoutNode serialize() {
         DockData data = metadata.get();
         return LeafData.of(data.id(), data.title(), contentFactoryId, contentData);
     }
 
+    /**
+     * Disposes this leaf and releases content resources.
+     */
     public void dispose() {
         Node node = content.get();
         if (node instanceof DisposableContent disposable) {
@@ -156,10 +200,20 @@ public class DockLeaf {
         content.set(null);
     }
 
+    /**
+     * Gets the parent tab group.
+     *
+     * @return parent tab group, or {@code null} when detached
+     */
     public DockTabGroup getParent() {
         return parent;
     }
 
+    /**
+     * Sets the parent tab group.
+     *
+     * @param parent parent tab group, or {@code null} when detached
+     */
     public void setParent(DockTabGroup parent) {
         this.parent = parent;
     }

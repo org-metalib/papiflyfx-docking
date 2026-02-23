@@ -11,7 +11,17 @@ import org.metalib.papifly.fx.docking.api.Theme;
 public final class TabGroup {
 
     /**
+     * Utility class.
+     */
+    private TabGroup() {
+    }
+
+    /**
      * Creates a tab group with the given leaves.
+     *
+     * @param themeProperty theme property
+     * @param leaves leaves to add
+     * @return created tab group
      */
     public static DockTabGroup of(ObjectProperty<Theme> themeProperty, DockLeaf... leaves) {
         DockTabGroup tabGroup = new DockTabGroup(themeProperty);
@@ -23,6 +33,9 @@ public final class TabGroup {
 
     /**
      * Creates an empty tab group.
+     *
+     * @param themeProperty theme property
+     * @return created empty tab group
      */
     public static DockTabGroup empty(ObjectProperty<Theme> themeProperty) {
         return new DockTabGroup(themeProperty);

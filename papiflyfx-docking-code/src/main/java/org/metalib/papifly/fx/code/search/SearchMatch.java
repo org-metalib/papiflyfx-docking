@@ -13,6 +13,8 @@ public record SearchMatch(int startOffset, int endOffset, int line, int startCol
 
     /**
      * Returns the length of the match.
+     *
+     * @return match length in characters
      */
     public int length() {
         return endOffset - startOffset;

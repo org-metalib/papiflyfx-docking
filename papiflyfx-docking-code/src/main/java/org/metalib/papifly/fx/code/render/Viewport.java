@@ -38,9 +38,21 @@ public class Viewport extends Region {
     private static final Duration DEFAULT_CARET_BLINK_PERIOD = Duration.millis(500);
     private static final double METRIC_EPSILON = 0.01;
 
+    /**
+     * Scrollbar track thickness in pixels.
+     */
     public static final double SCROLLBAR_WIDTH = 12.0;
+    /**
+     * Thumb inset from track edge in pixels.
+     */
     public static final double SCROLLBAR_THUMB_PAD = 2.0;
+    /**
+     * Minimum scrollbar thumb size in pixels.
+     */
     public static final double MIN_THUMB_SIZE = 24.0;
+    /**
+     * Scrollbar corner radius in pixels.
+     */
     public static final double SCROLLBAR_RADIUS = 8.0;
 
     private final Canvas canvas;
@@ -112,6 +124,8 @@ public class Viewport extends Region {
 
     /**
      * Creates a viewport with the given selection model.
+     *
+     * @param selectionModel selection model bound to caret/anchor changes
      */
     public Viewport(SelectionModel selectionModel) {
         this.selectionModel = selectionModel;
@@ -135,6 +149,8 @@ public class Viewport extends Region {
 
     /**
      * Sets the document to render.
+     *
+     * @param document document model to render
      */
     public void setDocument(Document document) {
         if (this.document != null) {
@@ -151,6 +167,8 @@ public class Viewport extends Region {
 
     /**
      * Returns the current document.
+     *
+     * @return current document model
      */
     public Document getDocument() {
         return document;
@@ -158,6 +176,8 @@ public class Viewport extends Region {
 
     /**
      * Returns the glyph cache for font metrics.
+     *
+     * @return glyph metric cache
      */
     public GlyphCache getGlyphCache() {
         return glyphCache;
@@ -165,6 +185,8 @@ public class Viewport extends Region {
 
     /**
      * Returns the wrap map used in wrap mode.
+     *
+     * @return wrap map used by this viewport
      */
     public WrapMap getWrapMap() {
         return wrapMap;
@@ -172,6 +194,8 @@ public class Viewport extends Region {
 
     /**
      * Sets the editor theme palette and triggers a redraw.
+     *
+     * @param theme theme palette to apply
      */
     public void setTheme(CodeEditorTheme theme) {
         this.theme = theme == null ? CodeEditorTheme.dark() : theme;
@@ -180,6 +204,8 @@ public class Viewport extends Region {
 
     /**
      * Returns the current editor theme.
+     *
+     * @return active editor theme
      */
     public CodeEditorTheme getTheme() {
         return theme;
@@ -187,6 +213,8 @@ public class Viewport extends Region {
 
     /**
      * Returns the selection model.
+     *
+     * @return bound selection model
      */
     public SelectionModel getSelectionModel() {
         return selectionModel;
@@ -194,6 +222,8 @@ public class Viewport extends Region {
 
     /**
      * Sets syntax token map used for rendering.
+     *
+     * @param tokenMap token map to use for syntax coloring
      */
     public void setTokenMap(TokenMap tokenMap) {
         this.tokenMap = tokenMap == null ? TokenMap.empty() : tokenMap;
@@ -202,6 +232,8 @@ public class Viewport extends Region {
 
     /**
      * Returns current token map.
+     *
+     * @return active syntax token map
      */
     public TokenMap getTokenMap() {
         return tokenMap;
@@ -209,6 +241,9 @@ public class Viewport extends Region {
 
     /**
      * Sets search match highlights to render.
+     *
+     * @param matches current search matches
+     * @param currentIndex index of current match in {@code matches}
      */
     public void setSearchMatches(List<SearchMatch> matches, int currentIndex) {
         this.searchMatches = matches == null ? List.of() : matches;
@@ -219,6 +254,8 @@ public class Viewport extends Region {
 
     /**
      * Returns the current search matches.
+     *
+     * @return immutable list of current search matches
      */
     public List<SearchMatch> getSearchMatches() {
         return searchMatches;
@@ -226,6 +263,8 @@ public class Viewport extends Region {
 
     /**
      * Sets the multi-caret model for rendering multiple carets and selections.
+     *
+     * @param multiCaretModel multi-caret model to render
      */
     public void setMultiCaretModel(MultiCaretModel multiCaretModel) {
         this.multiCaretModel = multiCaretModel;
@@ -233,6 +272,8 @@ public class Viewport extends Region {
 
     /**
      * Enables/disables caret blinking and caret visibility.
+     *
+     * @param active {@code true} to enable caret blinking
      */
     public void setCaretBlinkActive(boolean active) {
         if (caretBlinkActive == active) {
@@ -252,6 +293,8 @@ public class Viewport extends Region {
 
     /**
      * Returns true when caret blink animation is active.
+     *
+     * @return {@code true} when caret blink animation is active
      */
     public boolean isCaretBlinkActive() {
         return caretBlinkActive;
@@ -273,6 +316,8 @@ public class Viewport extends Region {
 
     /**
      * Sets the font for rendering.
+     *
+     * @param font font used for text metrics and rendering
      */
     public void setFont(Font font) {
         glyphCache.setFont(font);
@@ -282,6 +327,8 @@ public class Viewport extends Region {
 
     /**
      * Sets the vertical scroll offset in pixels.
+     *
+     * @param offset requested vertical scroll offset
      */
     public void setScrollOffset(double offset) {
         double maxScroll = computeMaxScrollOffset(currentEffectiveTextHeight(), glyphCache.getLineHeight());
@@ -295,6 +342,8 @@ public class Viewport extends Region {
 
     /**
      * Returns the current vertical scroll offset.
+     *
+     * @return current vertical scroll offset in pixels
      */
     public double getScrollOffset() {
         return scrollOffset;
@@ -302,6 +351,8 @@ public class Viewport extends Region {
 
     /**
      * Returns the maximum vertical scroll offset for current metrics.
+     *
+     * @return maximum vertical scroll offset in pixels
      */
     public double getMaxScrollOffset() {
         return computeMaxScrollOffset(currentEffectiveTextHeight(), glyphCache.getLineHeight());
@@ -309,6 +360,8 @@ public class Viewport extends Region {
 
     /**
      * Sets horizontal scroll offset in pixels.
+     *
+     * @param offset requested horizontal scroll offset
      */
     public void setHorizontalScrollOffset(double offset) {
         if (wordWrap) {
@@ -330,6 +383,8 @@ public class Viewport extends Region {
 
     /**
      * Returns current horizontal scroll offset.
+     *
+     * @return current horizontal scroll offset in pixels
      */
     public double getHorizontalScrollOffset() {
         return horizontalScrollOffset;
@@ -337,6 +392,8 @@ public class Viewport extends Region {
 
     /**
      * Returns maximum horizontal scroll offset for current metrics.
+     *
+     * @return maximum horizontal scroll offset in pixels
      */
     public double getMaxHorizontalScrollOffset() {
         return computeMaxHorizontalScrollOffset(currentEffectiveTextWidth(), glyphCache.getCharWidth());
@@ -344,6 +401,8 @@ public class Viewport extends Region {
 
     /**
      * Enables/disables soft wrap mode.
+     *
+     * @param wordWrap {@code true} to enable soft wrapping
      */
     public void setWordWrap(boolean wordWrap) {
         if (this.wordWrap == wordWrap) {
@@ -363,6 +422,8 @@ public class Viewport extends Region {
 
     /**
      * Returns whether wrap mode is active.
+     *
+     * @return {@code true} when soft wrap mode is active
      */
     public boolean isWordWrap() {
         return wordWrap;
@@ -370,6 +431,8 @@ public class Viewport extends Region {
 
     /**
      * Returns true when vertical scrollbar is visible.
+     *
+     * @return {@code true} when vertical scrollbar is visible
      */
     public boolean isVerticalScrollbarVisible() {
         return verticalScrollbarVisible;
@@ -377,6 +440,8 @@ public class Viewport extends Region {
 
     /**
      * Returns true when horizontal scrollbar is visible.
+     *
+     * @return {@code true} when horizontal scrollbar is visible
      */
     public boolean isHorizontalScrollbarVisible() {
         return horizontalScrollbarVisible;
@@ -384,6 +449,8 @@ public class Viewport extends Region {
 
     /**
      * Returns effective drawable text width excluding scrollbar reservations.
+     *
+     * @return effective text width in pixels
      */
     public double getEffectiveTextWidth() {
         return currentEffectiveTextWidth();
@@ -391,6 +458,8 @@ public class Viewport extends Region {
 
     /**
      * Returns effective drawable text height excluding scrollbar reservations.
+     *
+     * @return effective text height in pixels
      */
     public double getEffectiveTextHeight() {
         return currentEffectiveTextHeight();
@@ -398,6 +467,8 @@ public class Viewport extends Region {
 
     /**
      * Returns current vertical scrollbar geometry.
+     *
+     * @return vertical scrollbar geometry, or {@code null} when hidden
      */
     public ScrollbarGeometry getVerticalScrollbarGeometry() {
         return verticalScrollbarGeometry;
@@ -405,6 +476,8 @@ public class Viewport extends Region {
 
     /**
      * Returns current horizontal scrollbar geometry.
+     *
+     * @return horizontal scrollbar geometry, or {@code null} when hidden
      */
     public ScrollbarGeometry getHorizontalScrollbarGeometry() {
         return horizontalScrollbarGeometry;
@@ -412,6 +485,8 @@ public class Viewport extends Region {
 
     /**
      * Returns active scrollbar hover part.
+     *
+     * @return hovered scrollbar part
      */
     public ScrollbarPart getScrollbarHoverPart() {
         return scrollbarHoverPart;
@@ -419,6 +494,8 @@ public class Viewport extends Region {
 
     /**
      * Returns active scrollbar drag part.
+     *
+     * @return actively dragged scrollbar part
      */
     public ScrollbarPart getScrollbarActivePart() {
         return scrollbarActivePart;
@@ -426,6 +503,8 @@ public class Viewport extends Region {
 
     /**
      * Sets hovered scrollbar part for visual state.
+     *
+     * @param scrollbarHoverPart hovered scrollbar part
      */
     public void setScrollbarHoverPart(ScrollbarPart scrollbarHoverPart) {
         ScrollbarPart next = scrollbarHoverPart == null ? ScrollbarPart.NONE : scrollbarHoverPart;
@@ -438,6 +517,8 @@ public class Viewport extends Region {
 
     /**
      * Sets active scrollbar part for drag visuals.
+     *
+     * @param scrollbarActivePart actively dragged scrollbar part
      */
     public void setScrollbarActivePart(ScrollbarPart scrollbarActivePart) {
         ScrollbarPart next = scrollbarActivePart == null ? ScrollbarPart.NONE : scrollbarActivePart;
@@ -450,6 +531,8 @@ public class Viewport extends Region {
 
     /**
      * Registers a listener invoked when scrollbar visibility changes.
+     *
+     * @param listener listener to invoke on scrollbar visibility changes
      */
     public void setOnScrollbarVisibilityChanged(Runnable listener) {
         this.scrollbarVisibilityListener = listener;
@@ -457,6 +540,9 @@ public class Viewport extends Region {
 
     /**
      * Converts a vertical thumb top position to scroll offset.
+     *
+     * @param thumbTop thumb top y-coordinate
+     * @return corresponding vertical scroll offset
      */
     public double verticalOffsetForThumbTop(double thumbTop) {
         if (!verticalScrollbarVisible || verticalScrollbarGeometry == null) {
@@ -476,6 +562,9 @@ public class Viewport extends Region {
 
     /**
      * Converts a horizontal thumb left position to scroll offset.
+     *
+     * @param thumbLeft thumb left x-coordinate
+     * @return corresponding horizontal scroll offset
      */
     public double horizontalOffsetForThumbLeft(double thumbLeft) {
         if (!horizontalScrollbarVisible || horizontalScrollbarGeometry == null) {
@@ -495,6 +584,9 @@ public class Viewport extends Region {
 
     /**
      * Computes scroll offset for a vertical track click using centered-thumb behavior.
+     *
+     * @param y click y-coordinate
+     * @return target vertical scroll offset
      */
     public double verticalOffsetForTrackClick(double y) {
         if (!verticalScrollbarVisible || verticalScrollbarGeometry == null) {
@@ -505,6 +597,9 @@ public class Viewport extends Region {
 
     /**
      * Computes scroll offset for a horizontal track click using centered-thumb behavior.
+     *
+     * @param x click x-coordinate
+     * @return target horizontal scroll offset
      */
     public double horizontalOffsetForTrackClick(double x) {
         if (!horizontalScrollbarVisible || horizontalScrollbarGeometry == null) {
@@ -515,6 +610,8 @@ public class Viewport extends Region {
 
     /**
      * Returns the first visible logical line index.
+     *
+     * @return zero-based first visible logical line index
      */
     public int getFirstVisibleLine() {
         return firstVisibleLine;
@@ -522,6 +619,8 @@ public class Viewport extends Region {
 
     /**
      * Returns the count of visible logical lines.
+     *
+     * @return number of visible logical lines
      */
     public int getVisibleLineCount() {
         return visibleLineCount;
@@ -538,6 +637,9 @@ public class Viewport extends Region {
 
     /**
      * Marks specific logical lines as dirty for incremental redraw.
+     *
+     * @param startLine inclusive start line
+     * @param endLine inclusive end line
      */
     public void markLinesDirty(int startLine, int endLine) {
         for (int i = startLine; i <= endLine; i++) {
@@ -549,6 +651,8 @@ public class Viewport extends Region {
 
     /**
      * Returns true if the viewport needs redrawing.
+     *
+     * @return {@code true} when viewport has pending redraw work
      */
     public boolean isDirty() {
         return dirty;
@@ -614,6 +718,9 @@ public class Viewport extends Region {
 
     /**
      * Returns logical line index at y coordinate, or -1 when above content.
+     *
+     * @param y y-coordinate in local viewport space
+     * @return zero-based logical line index, or {@code -1}
      */
     public int getLineAtY(double y) {
         HitPosition hit = getHitPosition(0.0, y);
@@ -622,6 +729,9 @@ public class Viewport extends Region {
 
     /**
      * Returns column index at x coordinate in current mode.
+     *
+     * @param x x-coordinate in local viewport space
+     * @return zero-based column index
      */
     public int getColumnAtX(double x) {
         double charWidth = glyphCache.getCharWidth();
@@ -635,6 +745,10 @@ public class Viewport extends Region {
 
     /**
      * Resolves a wrap-aware hit position for local viewport coordinates.
+     *
+     * @param localX local x-coordinate
+     * @param localY local y-coordinate
+     * @return resolved hit position
      */
     public HitPosition getHitPosition(double localX, double localY) {
         if (document == null || document.getLineCount() <= 0) {
@@ -1271,12 +1385,24 @@ public class Viewport extends Region {
 
     /**
      * Logical hit-test result in editor coordinates.
+     *
+     * @param line zero-based line index in the document
+     * @param column zero-based column index within {@code line}
      */
     public record HitPosition(int line, int column) {
     }
 
     /**
      * Scrollbar geometry snapshot for pointer hit-testing and rendering.
+     *
+     * @param trackX track left x-coordinate in local coordinates
+     * @param trackY track top y-coordinate in local coordinates
+     * @param trackWidth track width in pixels
+     * @param trackHeight track height in pixels
+     * @param thumbX thumb left x-coordinate in local coordinates
+     * @param thumbY thumb top y-coordinate in local coordinates
+     * @param thumbWidth thumb width in pixels
+     * @param thumbHeight thumb height in pixels
      */
     public record ScrollbarGeometry(
         double trackX,
@@ -1288,10 +1414,24 @@ public class Viewport extends Region {
         double thumbWidth,
         double thumbHeight
     ) {
+        /**
+         * Returns whether the provided point is inside the scrollbar track.
+         *
+         * @param x point x-coordinate in local coordinates
+         * @param y point y-coordinate in local coordinates
+         * @return {@code true} when the point is inside the track bounds
+         */
         public boolean containsTrack(double x, double y) {
             return x >= trackX && x <= trackX + trackWidth && y >= trackY && y <= trackY + trackHeight;
         }
 
+        /**
+         * Returns whether the provided point is inside the scrollbar thumb.
+         *
+         * @param x point x-coordinate in local coordinates
+         * @param y point y-coordinate in local coordinates
+         * @return {@code true} when the point is inside the thumb bounds
+         */
         public boolean containsThumb(double x, double y) {
             return x >= thumbX && x <= thumbX + thumbWidth && y >= thumbY && y <= thumbY + thumbHeight;
         }
@@ -1301,8 +1441,17 @@ public class Viewport extends Region {
      * Scrollbar part state used for hover/active visuals.
      */
     public enum ScrollbarPart {
+        /**
+         * No hovered or active scrollbar part.
+         */
         NONE,
+        /**
+         * Vertical scrollbar thumb.
+         */
         VERTICAL_THUMB,
+        /**
+         * Horizontal scrollbar thumb.
+         */
         HORIZONTAL_THUMB
     }
 }

@@ -15,10 +15,16 @@ public final class CodeEditorThemeMapper {
 
     private static final double DARK_THRESHOLD = 0.5;
 
+    /**
+     * Utility class.
+     */
     private CodeEditorThemeMapper() {}
 
     /**
      * Creates a {@link CodeEditorTheme} derived from the given docking theme.
+     *
+     * @param theme docking theme source, or {@code null} for default dark theme
+     * @return mapped editor theme
      */
     public static CodeEditorTheme map(Theme theme) {
         if (theme == null) {
@@ -80,6 +86,9 @@ public final class CodeEditorThemeMapper {
 
     /**
      * Returns {@code true} if the paint is considered dark.
+     *
+     * @param paint paint to evaluate
+     * @return {@code true} when brightness is below the dark threshold
      */
     static boolean isDark(Paint paint) {
         if (paint instanceof Color c) {

@@ -20,6 +20,13 @@ import org.metalib.papifly.fx.samples.SampleScene;
  */
 public class FloatingSample implements SampleScene {
 
+    /**
+     * Creates the floating-window sample.
+     */
+    public FloatingSample() {
+        // Default constructor.
+    }
+
     @Override
     public String category() {
         return "Docks";

@@ -29,6 +29,9 @@ public class OverlayCanvas extends Canvas {
 
     private HitTestResult currentHitResult;
 
+    /**
+     * Creates an overlay canvas for drop hints.
+     */
     public OverlayCanvas() {
         // Canvas doesn't participate in mouse events
         setMouseTransparent(true);
@@ -36,6 +39,8 @@ public class OverlayCanvas extends Canvas {
 
     /**
      * Sets the split zone hint color.
+     *
+     * @param color fill color for split-zone hints
      */
     public void setSplitHintColor(Paint color) {
         this.splitHintColor = color;
@@ -43,6 +48,8 @@ public class OverlayCanvas extends Canvas {
 
     /**
      * Sets the split zone hint border color.
+     *
+     * @param color border color for split-zone hints
      */
     public void setSplitHintBorderColor(Paint color) {
         this.splitHintBorderColor = color;
@@ -50,6 +57,8 @@ public class OverlayCanvas extends Canvas {
 
     /**
      * Sets the tab zone hint color.
+     *
+     * @param color fill color for tab-zone hints
      */
     public void setTabHintColor(Paint color) {
         this.tabHintColor = color;
@@ -57,6 +66,8 @@ public class OverlayCanvas extends Canvas {
 
     /**
      * Sets the tab zone hint border color.
+     *
+     * @param color border color for tab-zone hints
      */
     public void setTabHintBorderColor(Paint color) {
         this.tabHintBorderColor = color;
@@ -65,6 +76,8 @@ public class OverlayCanvas extends Canvas {
     /**
      * Shows a drop hint for the given hit test result.
      * Only redraws if the result has actually changed.
+     *
+     * @param result hit-test result describing the drop hint
      */
     public void showDropHint(HitTestResult result) {
         if (result == null || !result.isHit()) {
@@ -93,6 +106,8 @@ public class OverlayCanvas extends Canvas {
     /**
      * Shows a drop hint at the specified bounds.
      * @deprecated Use {@link #showDropHint(HitTestResult)} instead
+     *
+     * @param bounds bounds where the legacy hint should be drawn
      */
     @Deprecated
     public void showDropHint(Bounds bounds) {
@@ -310,6 +325,9 @@ public class OverlayCanvas extends Canvas {
 
     /**
      * Resizes the canvas to match the given dimensions.
+     *
+     * @param width target canvas width
+     * @param height target canvas height
      */
     public void resize(double width, double height) {
         setWidth(width);

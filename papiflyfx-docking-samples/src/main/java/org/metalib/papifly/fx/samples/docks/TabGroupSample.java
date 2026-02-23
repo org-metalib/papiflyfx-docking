@@ -16,6 +16,13 @@ import org.metalib.papifly.fx.samples.SampleScene;
  */
 public class TabGroupSample implements SampleScene {
 
+    /**
+     * Creates the tab-group sample.
+     */
+    public TabGroupSample() {
+        // Default constructor.
+    }
+
     @Override
     public String category() {
         return "Docks";

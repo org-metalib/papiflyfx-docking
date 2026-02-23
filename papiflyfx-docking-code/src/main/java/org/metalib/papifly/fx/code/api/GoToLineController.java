@@ -40,6 +40,9 @@ public class GoToLineController extends VBox {
     private Runnable onClose;
     private int maxLine = 1;
 
+    /**
+     * Creates go-to-line overlay controller.
+     */
     public GoToLineController() {
         getStyleClass().add("pf-goto-overlay");
         setPadding(new Insets(4, 6, 4, 6));
@@ -108,6 +111,8 @@ public class GoToLineController extends VBox {
 
     /**
      * Sets callback fired with 1-based line number when user confirms.
+     *
+     * @param onGoToLine callback receiving selected one-based line number
      */
     public void setOnGoToLine(Consumer<Integer> onGoToLine) {
         this.onGoToLine = onGoToLine;
@@ -115,6 +120,8 @@ public class GoToLineController extends VBox {
 
     /**
      * Sets callback fired when overlay is closed.
+     *
+     * @param onClose callback invoked when overlay closes
      */
     public void setOnClose(Runnable onClose) {
         this.onClose = onClose;
@@ -122,6 +129,9 @@ public class GoToLineController extends VBox {
 
     /**
      * Opens the overlay with current line and maximum line count context.
+     *
+     * @param currentLine one-based current line number
+     * @param maxLine maximum one-based line number allowed
      */
     public void open(int currentLine, int maxLine) {
         this.maxLine = Math.max(1, maxLine);
@@ -150,6 +160,8 @@ public class GoToLineController extends VBox {
 
     /**
      * Returns true when overlay is currently visible.
+     *
+     * @return {@code true} when go-to-line overlay is visible
      */
     public boolean isOpen() {
         return isVisible();
@@ -157,6 +169,8 @@ public class GoToLineController extends VBox {
 
     /**
      * Applies editor theme to this overlay.
+     *
+     * @param theme editor theme palette
      */
     public void setTheme(CodeEditorTheme theme) {
         this.theme = theme == null ? CodeEditorTheme.dark() : theme;
@@ -165,6 +179,8 @@ public class GoToLineController extends VBox {
 
     /**
      * Returns active theme used by this controller.
+     *
+     * @return currently applied editor theme
      */
     public CodeEditorTheme getTheme() {
         return theme;

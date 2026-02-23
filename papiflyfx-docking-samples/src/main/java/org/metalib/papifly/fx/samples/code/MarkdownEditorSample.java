@@ -45,6 +45,13 @@ public class MarkdownEditorSample implements SampleScene {
         "Supports `Theme.dark()` and `Theme.light()` with live switching.\n" +
         "Bind the shared `ObjectProperty<Theme>` to every `DockManager`.\n";
 
+    /**
+     * Creates the Markdown editor sample.
+     */
+    public MarkdownEditorSample() {
+        // Default constructor.
+    }
+
     @Override
     public String category() {
         return "Code";

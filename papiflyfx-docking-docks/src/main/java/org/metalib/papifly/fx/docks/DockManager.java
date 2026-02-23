@@ -91,6 +91,8 @@ public class DockManager {
 
     /**
      * Creates a new DockManager with the specified theme.
+     *
+     * @param theme initial dock theme
      */
     public DockManager(Theme theme) {
         this.themeProperty = new SimpleObjectProperty<>(theme);
@@ -173,6 +175,8 @@ public class DockManager {
     /**
      * Gets the root pane to add to your scene.
      * This includes the docking area and minimized bar.
+     *
+     * @return root container region
      */
     public Region getRootPane() {
         return mainContainer;
@@ -181,6 +185,8 @@ public class DockManager {
     /**
      * Sets the owner stage for floating windows.
      * Recommended before using floating functionality.
+     *
+     * @param stage owner stage for floating windows
      */
     public void setOwnerStage(Stage stage) {
         this.ownerStage = stage;
@@ -222,6 +228,8 @@ public class DockManager {
 
     /**
      * Gets the current root dock element.
+     *
+     * @return current root dock element, or {@code null}
      */
     public DockElement getRoot() {
         return rootElement.get();
@@ -229,6 +237,8 @@ public class DockManager {
 
     /**
      * Sets the root dock element.
+     *
+     * @param element new root dock element, or {@code null}
      */
     public void setRoot(DockElement element) {
         DockElement oldRoot = rootElement.get();
@@ -246,6 +256,8 @@ public class DockManager {
 
     /**
      * Builds and sets the root from a layout definition.
+     *
+     * @param layout layout definition to build and apply
      */
     public void setRoot(LayoutNode layout) {
         DockElement element = layoutFactory.build(layout);
@@ -271,6 +283,8 @@ public class DockManager {
 
     /**
      * Gets the root element property.
+     *
+     * @return observable root element property
      */
     public ObjectProperty<DockElement> rootProperty() {
         return rootElement;
@@ -278,6 +292,8 @@ public class DockManager {
 
     /**
      * Gets the theme property.
+     *
+     * @return observable theme property
      */
     public ObjectProperty<Theme> themeProperty() {
         return themeProperty;
@@ -285,6 +301,8 @@ public class DockManager {
 
     /**
      * Gets the current theme.
+     *
+     * @return current theme
      */
     public Theme getTheme() {
         return themeProperty.get();
@@ -292,6 +310,8 @@ public class DockManager {
 
     /**
      * Sets the theme.
+     *
+     * @param theme new theme
      */
     public void setTheme(Theme theme) {
         themeProperty.set(theme);
@@ -299,6 +319,8 @@ public class DockManager {
 
     /**
      * Gets the layout factory for programmatic layout building.
+     *
+     * @return layout factory
      */
     public LayoutFactory getLayoutFactory() {
         return layoutFactory;
@@ -306,6 +328,8 @@ public class DockManager {
 
     /**
      * Gets the floating window manager.
+     *
+     * @return floating window manager, or {@code null} until owner stage is set
      */
     public FloatingWindowManager getFloatingWindowManager() {
         return floatingWindowManager;
@@ -313,6 +337,8 @@ public class DockManager {
 
     /**
      * Gets the minimized store.
+     *
+     * @return minimized leaf store
      */
     public MinimizedStore getMinimizedStore() {
         return minimizedStore;
@@ -320,6 +346,8 @@ public class DockManager {
 
     /**
      * Sets the content factory for layout restoration.
+     *
+     * @param factory content factory used to rebuild leaf content
      */
     public void setContentFactory(ContentFactory factory) {
         this.contentFactory = factory;
@@ -328,6 +356,8 @@ public class DockManager {
 
     /**
      * Sets the content state registry for capture and restore.
+     *
+     * @param registry content state registry
      */
     public void setContentStateRegistry(ContentStateRegistry registry) {
         this.layoutFactory.setContentStateRegistry(registry);
@@ -335,6 +365,8 @@ public class DockManager {
 
     /**
      * Gets the content state registry used for capture and restore.
+     *
+     * @return content state registry
      */
     public ContentStateRegistry getContentStateRegistry() {
         return layoutFactory.getContentStateRegistry();
@@ -342,6 +374,10 @@ public class DockManager {
 
     /**
      * Creates a new leaf with the given title and content.
+     *
+     * @param title leaf title
+     * @param content leaf content node
+     * @return newly created leaf
      */
     public DockLeaf createLeaf(String title, Node content) {
         DockLeaf leaf = layoutFactory.createLeaf(title, content);
@@ -409,6 +445,8 @@ public class DockManager {
 
     /**
      * Creates a new tab group.
+     *
+     * @return newly created tab group with handlers wired
      */
     public DockTabGroup createTabGroup() {
         DockTabGroup tabGroup = new DockTabGroup(themeProperty);
@@ -454,6 +492,10 @@ public class DockManager {
 
     /**
      * Creates a new horizontal split.
+     *
+     * @param first first child element
+     * @param second second child element
+     * @return horizontal split group
      */
     public DockSplitGroup createHorizontalSplit(DockElement first, DockElement second) {
         return layoutFactory.createHorizontalSplit(first, second);
@@ -461,6 +503,11 @@ public class DockManager {
 
     /**
      * Creates a new horizontal split with custom divider position.
+     *
+     * @param first first child element
+     * @param second second child element
+     * @param dividerPosition divider position ratio
+     * @return horizontal split group
      */
     public DockSplitGroup createHorizontalSplit(DockElement first, DockElement second, double dividerPosition) {
         return layoutFactory.createHorizontalSplit(first, second, dividerPosition);
@@ -468,6 +515,10 @@ public class DockManager {
 
     /**
      * Creates a new vertical split.
+     *
+     * @param first first child element
+     * @param second second child element
+     * @return vertical split group
      */
     public DockSplitGroup createVerticalSplit(DockElement first, DockElement second) {
         return layoutFactory.createVerticalSplit(first, second);
@@ -475,6 +526,11 @@ public class DockManager {
 
     /**
      * Creates a new vertical split with custom divider position.
+     *
+     * @param first first child element
+     * @param second second child element
+     * @param dividerPosition divider position ratio
+     * @return vertical split group
      */
     public DockSplitGroup createVerticalSplit(DockElement first, DockElement second, double dividerPosition) {
         return layoutFactory.createVerticalSplit(first, second, dividerPosition);
@@ -482,6 +538,8 @@ public class DockManager {
 
     /**
      * Captures the current layout as a LayoutNode for serialization.
+     *
+     * @return serialized layout tree, or {@code null} when no root is set
      */
     public LayoutNode capture() {
         refreshContentStatesForLayout();
@@ -491,6 +549,8 @@ public class DockManager {
 
     /**
      * Restores a layout from a LayoutNode.
+     *
+     * @param layout serialized layout to restore
      */
     public void restore(LayoutNode layout) {
         setRoot(layout);
@@ -845,6 +905,8 @@ public class DockManager {
 
     /**
      * Sets up drag handlers for a tab group.
+     *
+     * @param tabGroup tab group to wire with drag handlers
      */
     public void setupTabGroupDragHandlers(DockTabGroup tabGroup) {
         // Tab-specific drag handling using event filters to capture events from child tabs
@@ -887,6 +949,8 @@ public class DockManager {
 
     /**
      * Floats a leaf from the dock tree into a floating window.
+     *
+     * @param leaf leaf to float
      */
     public void floatLeaf(DockLeaf leaf) {
         if (!ensureFloatingWindowManager("float leaf")) {
@@ -920,6 +984,10 @@ public class DockManager {
 
     /**
      * Floats a leaf at a specific position.
+     *
+     * @param leaf leaf to float
+     * @param x screen x position for the floating window
+     * @param y screen y position for the floating window
      */
     public void floatLeaf(DockLeaf leaf, double x, double y) {
         if (!ensureFloatingWindowManager("float leaf")) {
@@ -955,6 +1023,8 @@ public class DockManager {
 
     /**
      * Docks a floating leaf back into the dock tree.
+     *
+     * @param leaf leaf to dock
      */
     public void dockLeaf(DockLeaf leaf) {
         if (floatingWindowManager != null && floatingWindowManager.isFloating(leaf)) {
@@ -980,6 +1050,8 @@ public class DockManager {
 
     /**
      * Minimizes a leaf, removing it from the dock tree and adding to minimized bar.
+     *
+     * @param leaf leaf to minimize
      */
     public void minimizeLeaf(DockLeaf leaf) {
         // If maximized, restore first
@@ -1007,6 +1079,8 @@ public class DockManager {
 
     /**
      * Restores a minimized leaf back into the dock tree.
+     *
+     * @param leaf leaf to restore
      */
     public void restoreLeaf(DockLeaf leaf) {
         if (!minimizedStore.isMinimized(leaf)) {
@@ -1026,6 +1100,8 @@ public class DockManager {
 
     /**
      * Restores a minimized leaf by ID.
+     *
+     * @param leafId identifier of the leaf to restore
      */
     public void restoreLeaf(String leafId) {
         DockLeaf leaf = minimizedStore.getLeaf(leafId);
@@ -1039,6 +1115,8 @@ public class DockManager {
     /**
      * Maximizes a leaf to fill the entire dock area.
      * The previous layout is preserved and restored when unmaximizing.
+     *
+     * @param leaf leaf to maximize
      */
     public void maximizeLeaf(DockLeaf leaf) {
         if (maximizedLeaf != null) {
@@ -1144,6 +1222,8 @@ public class DockManager {
 
     /**
      * Checks if any leaf is currently maximized.
+     *
+     * @return {@code true} when a leaf is currently maximized
      */
     public boolean isMaximized() {
         return maximizedLeaf != null;
@@ -1151,6 +1231,8 @@ public class DockManager {
 
     /**
      * Gets the currently maximized leaf, if any.
+     *
+     * @return maximized leaf, or {@code null} when none
      */
     public DockLeaf getMaximizedLeaf() {
         return maximizedLeaf;
@@ -1375,6 +1457,8 @@ public class DockManager {
 
     /**
      * Creates a new DockManager builder.
+     *
+     * @return new builder instance
      */
     public static Builder create() {
         return new Builder();
@@ -1388,21 +1472,50 @@ public class DockManager {
         private LayoutNode layout;
         private ContentFactory contentFactory;
 
+        /**
+         * Creates a builder with default configuration.
+         */
+        public Builder() {
+        }
+
+        /**
+         * Sets the theme to use for the created manager.
+         *
+         * @param theme theme to apply
+         * @return this builder
+         */
         public Builder withTheme(Theme theme) {
             this.theme = theme;
             return this;
         }
 
+        /**
+         * Sets the initial layout to apply.
+         *
+         * @param layout initial layout
+         * @return this builder
+         */
         public Builder withLayout(LayoutNode layout) {
             this.layout = layout;
             return this;
         }
 
+        /**
+         * Sets the content factory for leaf restoration.
+         *
+         * @param factory content factory
+         * @return this builder
+         */
         public Builder withContentFactory(ContentFactory factory) {
             this.contentFactory = factory;
             return this;
         }
 
+        /**
+         * Builds a configured {@link DockManager}.
+         *
+         * @return configured dock manager
+         */
         public DockManager build() {
             DockManager manager = new DockManager(theme);
             if (contentFactory != null) {

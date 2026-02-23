@@ -49,6 +49,13 @@ public class JavaEditorSample implements SampleScene {
         "    }\n" +
         "}\n";
 
+    /**
+     * Creates the Java editor sample.
+     */
+    public JavaEditorSample() {
+        // Default constructor.
+    }
+
     @Override
     public String category() {
         return "Code";

@@ -11,6 +11,9 @@ public final class DeleteEdit implements EditCommand {
 
     /**
      * Creates delete command for range [startOffset, endOffset).
+     *
+     * @param startOffset inclusive start offset
+     * @param endOffset exclusive end offset
      */
     public DeleteEdit(int startOffset, int endOffset) {
         this.startOffset = startOffset;

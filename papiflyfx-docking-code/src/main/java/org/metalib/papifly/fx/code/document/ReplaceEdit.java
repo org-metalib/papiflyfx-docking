@@ -14,6 +14,10 @@ public final class ReplaceEdit implements EditCommand {
 
     /**
      * Creates replace command for range [startOffset, endOffset).
+     *
+     * @param startOffset inclusive start offset
+     * @param endOffset exclusive end offset
+     * @param replacement replacement text
      */
     public ReplaceEdit(int startOffset, int endOffset, String replacement) {
         this.startOffset = startOffset;
