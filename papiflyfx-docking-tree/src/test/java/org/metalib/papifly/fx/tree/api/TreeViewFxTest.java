@@ -6,6 +6,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
+import org.metalib.papifly.fx.tree.render.TreeViewport;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
@@ -17,6 +18,7 @@ import java.util.concurrent.CountDownLatch;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
@@ -64,6 +66,20 @@ class TreeViewFxTest {
         TreeItem<String> focused = callOnFx(() -> treeView.getSelectionModel().getFocusedItem());
         assertNotNull(focused);
         assertEquals("node-0", focused.getValue());
+    }
+
+    @Test
+    void hitTestIgnoresVerticalScrollbarArea() {
+        flushLayout();
+        assertTrue(callOnFx(() -> treeView.getViewport().isVerticalScrollbarVisible()));
+        TreeViewport.ScrollbarGeometry geometry = callOnFx(() -> treeView.getViewport().getVerticalScrollbarGeometry());
+        assertNotNull(geometry);
+
+        TreeViewport.HitInfo<String> hitInfo = callOnFx(() -> treeView.getViewport().hitTest(
+            geometry.trackX() + (geometry.trackWidth() * 0.5),
+            geometry.trackY() + Math.max(1.0, geometry.trackHeight() * 0.5)
+        ));
+        assertNull(hitInfo);
     }
 
     private TreeItem<String> createLargeTree() {

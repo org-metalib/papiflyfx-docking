@@ -3,6 +3,8 @@ package org.metalib.papifly.fx.tree.render;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Paint;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeLineJoin;
 import org.metalib.papifly.fx.tree.api.CellState;
 import org.metalib.papifly.fx.tree.api.TreeItem;
 
@@ -78,18 +80,21 @@ final class TreeContentPass<T> implements TreeRenderPass<T> {
         GraphicsContext graphics = context.graphics();
         double centerX = context.disclosureOriginX(row);
         double centerY = row.y() + (row.height() * 0.5);
-        double size = Math.min(8.0, row.height() * 0.4);
-        graphics.setFill(context.theme().disclosureColor());
+        double size = Math.min(9.0, row.height() * 0.5);
+        graphics.setStroke(context.theme().disclosureColor());
+        graphics.setLineCap(StrokeLineCap.ROUND);
+        graphics.setLineJoin(StrokeLineJoin.ROUND);
+        graphics.setLineWidth(Math.max(1.5, size * 0.22));
         if (row.expanded()) {
-            graphics.fillPolygon(
-                new double[] {centerX - size * 0.5, centerX + size * 0.5, centerX},
-                new double[] {centerY - size * 0.25, centerY - size * 0.25, centerY + size * 0.5},
+            graphics.strokePolyline(
+                new double[] {centerX - size * 0.45, centerX, centerX + size * 0.45},
+                new double[] {centerY - size * 0.2, centerY + size * 0.35, centerY - size * 0.2},
                 3
             );
         } else {
-            graphics.fillPolygon(
-                new double[] {centerX - size * 0.25, centerX - size * 0.25, centerX + size * 0.5},
-                new double[] {centerY - size * 0.5, centerY + size * 0.5, centerY},
+            graphics.strokePolyline(
+                new double[] {centerX - size * 0.2, centerX + size * 0.3, centerX - size * 0.2},
+                new double[] {centerY - size * 0.45, centerY, centerY + size * 0.45},
                 3
             );
         }

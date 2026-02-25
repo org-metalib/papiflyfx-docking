@@ -250,6 +250,9 @@ public class TreeViewport<T> extends Region {
     }
 
     public HitInfo<T> hitTest(double localX, double localY) {
+        if (localX < 0.0 || localY < 0.0 || localX >= effectiveTextWidth || localY >= effectiveTextHeight) {
+            return null;
+        }
         int rowIndex = rowIndexAtY(localY);
         if (rowIndex < 0) {
             return null;
