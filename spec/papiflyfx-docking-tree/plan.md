@@ -34,7 +34,7 @@ This document outlines the step-by-step implementation plan for the `papiflyfx-d
   - Create immutable `TreeRenderContext` and `TreeRenderRow`.
   - Implement `TreeRenderPass` interface.
   - Implement `TreeBackgroundPass` (backgrounds, selection, hover highlights).
-  - Implement `TreeContentPass` (disclosure triangles, indents, icons, labels).
+  - Implement `TreeContentPass` (disclosure chevrons, indents, icons, labels).
   - Implement `TreeScrollbarPass` (vertical and horizontal virtual scrollbars).
   - *(Optional)* Implement `TreeConnectingLinesPass`.
 - [x] **Setup Glyph & Icon Rendering**
@@ -45,7 +45,7 @@ This document outlines the step-by-step implementation plan for the `papiflyfx-d
 - [x] **Implement `TreeInputController`**
   - Keyboard navigation: Up/Down, Left/Right (expand/collapse), Enter, Space, Home/End.
 - [x] **Implement `TreePointerController`**
-  - Mouse clicks (selection, toggle expand/collapse via disclosure triangle hit-testing).
+  - Mouse clicks (selection, toggle expand/collapse via disclosure chevron hit-testing).
   - Hover state management.
   - Scrolling (mouse wheel integration with virtual scroll offset).
 - [x] **Implement `TreeView` Top-Level Component**

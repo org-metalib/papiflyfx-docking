@@ -1,6 +1,4 @@
-# Docking Tree View
-
-## Research & Planning
+# PapiflyFX Docking Tree Spec Index
 
 I need a research document for a new component papiflyfx-docking-tree. Read:
 - spec/papiflyfx-docking-tree/docking-tree-applications.md

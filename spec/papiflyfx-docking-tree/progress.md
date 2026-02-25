@@ -18,7 +18,10 @@
 - Implemented advanced interactions (`TreeDragDropController`, `TreeEditController`) and persistence integration (`TreeViewFactory`, `TreeViewStateAdapter`, service registration).
 - Added tree module tests (`TreeItemTest`, `FlattenedTreeTest`, `TreeSelectionModelTest`, `TreeViewFxTest`).
 - Integrated tree demo into samples (`TreeViewSample`) and wired `papiflyfx-docking-samples` to depend on `papiflyfx-docking-tree`.
+- Fixed viewport hit-testing to ignore scrollbar areas so dragging a scrollbar does not start item drag.
+- Updated disclosure glyph rendering from filled triangles to stroked chevrons.
 - Validation completed:
   - `./mvnw -q -DskipTests compile`
   - `./mvnw -q -pl papiflyfx-docking-tree -am -Dtestfx.headless=true test`
   - `./mvnw -q -pl papiflyfx-docking-samples -am -Dtestfx.headless=true -Dtest=SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false test`
+  - `./mvnw -q -pl papiflyfx-docking-tree -am -Dtestfx.headless=true test` (post-scrollbar-hit-test and chevron updates)

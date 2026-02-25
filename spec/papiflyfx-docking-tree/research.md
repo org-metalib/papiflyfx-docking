@@ -106,7 +106,7 @@ Incremental redraw skips unchanged lines when possible, falling back to full red
 |---------|-------------|------------|
 | Hierarchical data model | Recursive `TreeItem<T>` structure | Medium |
 | Virtualization | Only render visible rows | High |
-| Expand/Collapse | Disclosure triangle toggle | Medium |
+| Expand/Collapse | Disclosure chevron toggle | Medium |
 | Modular cell factory | 5-zone layout (disclosure, prefix, core, spacer, suffix) | Medium |
 | Single selection & focus | Keyboard navigation, highlight states | Medium |
 | Auto-scrolling & indentation | Depth-based indent, scrollbar scaling | Medium |
@@ -306,7 +306,7 @@ papiflyfx-docking-tree/
       TreeRenderRow.java             ← per-visible-row data record
       TreeRenderPass.java            ← interface
       TreeBackgroundPass.java        ← background + selection + hover highlights
-      TreeContentPass.java           ← disclosure triangles, indentation, icons, labels
+      TreeContentPass.java           ← disclosure chevrons, indentation, icons, labels
       TreeConnectingLinesPass.java   ← optional parent-child lines
       TreeScrollbarPass.java         ← vertical + horizontal scrollbar
     theme/
@@ -364,3 +364,11 @@ papiflyfx-docking-tree/
 ## 10. Conclusion
 
 The new `papiflyfx-docking-tree` module is a natural extension of the framework, following the same canvas-based, programmatic-styling architecture established by `papiflyfx-docking-code`. The core challenge is virtualization of hierarchical data with expand/collapse semantics, but the patterns for this (flattened visible-row list, dirty-bit invalidation, render pass pipeline) are well-established in the codebase. The modular design (data model → flattened cache → render passes → controllers) ensures each concern can be developed and tested independently.
+
+---
+
+## 11. Implementation Alignment Notes
+
+- Disclosure rendering is implemented with **chevrons** (right/down) instead of filled triangles.
+- Row hit-testing now explicitly ignores scrollbar track/thumb regions, preventing item drag start while dragging scrollbars.
+- A regression test (`TreeViewFxTest.hitTestIgnoresVerticalScrollbarArea`) validates the scrollbar hit-testing behavior.
