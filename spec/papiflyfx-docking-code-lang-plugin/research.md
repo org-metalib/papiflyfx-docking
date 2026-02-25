@@ -1,407 +1,322 @@
-# papiflyfx-docking-code language plugin research
+# papiflyfx-docking-tree research
 
-## 1) Goal and context
+## 1) Scope and source material
 
-The current editor supports a small built-in language set (`java`, `json`, `javascript`, `markdown`, `plain-text`) 
-and requires manual language selection via `CodeEditor#setLanguageId(...)`.
+This report captures learnings, findings, and implementation ideas for a new `papiflyfx-docking-tree` component, based on:
 
-This research focuses on:
+- `spec/papiflyfx-docking-tree/docking-tree-applications.md`
+- `spec/papiflyfx-docking-tree/docking-tree-features.md`
 
-1. Understanding the current `papiflyfx-docking-code` architecture deeply.
-2. Identifying where language support is hardcoded.
-3. Proposing a pluggable architecture that lets external modules add language support safely and predictably.
+The goal is to translate those notes into a practical architecture and delivery strategy suitable for the PapiflyFX ecosystem.
 
 ---
 
-## 2) What was analyzed
+## 2) Primary learnings from the applications document
 
-I reviewed the code module end-to-end with emphasis on language-related runtime flow:
+The applications document shows a very broad usage surface (30 examples across software tooling, content systems, business systems, design tooling, and niche domains). The key learnings are:
 
-- `api`: `CodeEditor`, `EditorLifecycleService`, `EditorStateCoordinator`, factory/adapter integration.
-- `lexer`: contracts, registries, incremental engine/pipeline, built-in lexers.
-- `folding`: providers, registry, incremental folding pipeline, fold model.
-- `render`: `TextPass` token color mapping and theme coupling.
-- `state`: language persistence in `EditorStateData`/`EditorStateCodec`.
-- Tests: lexer/folding pipeline and integration coverage.
-- Samples: language assignment usage patterns.
+1. **A tree is a relationship viewer, not just a list.**  
+   The component must model parent-child relationships as a first-class concept, including dynamic expansion and mixed node types.
 
----
+2. **Categorization is the dominant usage pattern.**  
+   Most examples (project explorer, DAM, inventory, org chart, taxonomy, library catalog) rely on grouping and drill-down. This strongly favors predictable expansion behavior, stable ordering, and clear visual hierarchy.
 
-## 3) Deep architecture findings (current state)
+3. **Node-level controls matter in real products.**  
+   The pro-tip in the source is important: practical tree UIs frequently require inline controls (visibility, lock, check state). That implies the cell rendering API must support persistent controls plus contextual actions.
 
-## 3.1 Editor orchestration
+4. **The component must be domain-agnostic.**  
+   Use cases range from file systems to scene graphs to support tickets. Hardcoding semantics into the base tree would reduce reusability; the core should be generic and data-driven.
 
-`CodeEditor` is the composition root for language behavior:
-
-- Stores `languageId` as a `StringProperty` (default `"plain-text"`).
-- On language change, updates both:
-  - `IncrementalLexerPipeline#setLanguageId(...)`
-  - `IncrementalFoldingPipeline#setLanguageId(...)`
-- Persists `languageId` through `EditorStateData` and `EditorStateCodec`.
-
-Important detail: `CodeEditor#setLanguageId(...)` stores the provided string (except null/blank fallback). Normalization
-to lowercase happens later in registries/pipelines.
-
-## 3.2 Lexing pipeline design
-
-Lexing is already architected for performance:
-
-- `IncrementalLexerEngine`:
-  - line-based lexing with `LexState` propagation,
-  - dirty-start incremental recompute,
-  - unchanged-suffix reuse.
-- `IncrementalLexerPipeline`:
-  - debounced async worker,
-  - revision gating (drops stale results),
-  - lazy text snapshot strategy,
-  - exception handling with plain-text fallback.
-
-This is strong foundation for pluggable languages: extension should reuse this pipeline rather than replacing it.
-
-## 3.3 Folding pipeline design
-
-Folding mirrors lexing:
-
-- `IncrementalFoldingPipeline` has the same debounce/revision pattern.
-- Uses `FoldProvider` per language.
-- Applies `FoldMap` into `Viewport` and `GutterView`.
-- On provider failure, falls back to empty fold map.
-
-This means pluggable language support must treat lexer + fold provider as one logical unit.
-
-## 3.4 Hardcoded registration points (core limitation)
-
-Language resolution is currently static and closed:
-
-- `LexerRegistry`: immutable static map of language ID -> `Lexer`.
-- `FoldProviderRegistry`: immutable static map of language ID -> `FoldProvider`.
-- Both have separate alias tables and separate normalization logic.
-
-There is no:
-
-- runtime registration API,
-- SPI discovery for lexers/fold providers,
-- language metadata (display name, file extensions, aliases as first-class data),
-- unified language descriptor tying lexer + folding together.
-
-## 3.5 Token rendering constraints
-
-Syntax rendering is based on fixed enum categories:
-
-- `TokenType` is a closed enum.
-- `TextPass` maps `TokenType` to `CodeEditorTheme` colors via `switch`.
-
-Implication: external language plugins can only express semantics representable by existing token categories unless 
-token/theming model is extended later.
-
-## 3.6 State and compatibility behavior
-
-Language persistence behavior is good for plugin evolution:
-
-- `languageId` is persisted as string in editor state.
-- Unknown IDs safely degrade to plain-text behavior through registry fallback.
-
-This provides a safe compatibility path if plugins are missing at restore time.
+5. **Scalability is mandatory.**  
+   Several listed applications naturally produce large hierarchies (dependency trees, schema browsers, scene graphs, taxonomy trees). Virtualization and incremental updates are not optional.
 
 ---
 
-## 4) Why language support is not truly pluggable today
+## 3) Primary learnings from the features document
 
-Even though `Lexer` and `FoldProvider` are interfaces, practical extensibility is blocked because:
+The features document gives a solid architectural direction and practical UI guidance.
 
-1. Registries are static, immutable, and non-extensible.
-2. Default `CodeEditor` constructor does not expose resolver injection publicly.
-3. Pipeline custom resolver constructors are package-private (test-oriented seam, not public extension API).
-4. Language metadata/discovery does not exist.
-5. Lexer and folding resolution are duplicated and can drift.
+### 3.1 Architecture split is correct
 
-So, extension is possible only by modifying core module code directly.
+The recommendation to separate:
+
+- **Data model** (hierarchy),
+- **Virtualization logic** (visible rows only),
+- **Visual representation** (cells),
+
+is the right baseline for long-term maintainability and performance.
+
+### 3.2 MVP feature set is clear and sufficient
+
+The MVP set is coherent:
+
+- recursive hierarchy,
+- virtualization,
+- expand/collapse,
+- modular cell factory,
+- single selection/focus,
+- depth-based indentation and scrolling behavior.
+
+This is enough for an initial usable component without premature complexity.
+
+### 3.3 Advanced features are realistic for enterprise use
+
+The advanced set maps well to real-world needs:
+
+- lazy loading and fixed-size optimizations,
+- contextual cell controls (prefix and suffix),
+- multi-select, DnD, in-place edit, context menus,
+- filtering/search and richer visual polish.
+
+### 3.4 The TreeCell "five-zone" strategy is a key UX finding
+
+The five-zone anatomy is one of the strongest insights from the source:
+
+1. disclosure,
+2. prefix controls,
+3. core data,
+4. flexible spacer,
+5. suffix info/actions.
+
+This structure reduces clutter while preserving interaction density, and is likely the right default composition contract for PapiflyFX tree cells.
 
 ---
 
-## 5) Design goals for a plugin architecture
+## 4) Consolidated findings for papiflyfx-docking-tree
 
-To scale language support safely, the architecture should provide:
+From both source documents, the component should be positioned as:
 
-1. **Unified language definition**: one descriptor for lexer + folding + metadata.
-2. **Deterministic fallback**: missing/failing plugin must degrade to plain text without breaking editor.
-3. **Compatibility is secondary**: allow ID/API cleanup when it materially improves the plugin model.
-4. **Discoverability**: support `ServiceLoader` for zero/low-configuration plugins.
-5. **Manual control**: allow explicit registration/unregistration for tests and host apps.
-6. **Constraint relaxation**: prefer a clean single API over long-lived legacy facades.
-7. **Performance safety**: no changes that break incremental lex/fold architecture.
-8. **Boot-time policy control**: allow built-ins to be enabled, disabled, or explicitly replaced by host apps.
+1. **A reusable tree framework primitive**, not a domain widget.
+2. **Performance-first by design**, with virtualization as a core invariant.
+3. **Composable at the cell level**, enabling different products (docking navigator, scene graph, schema browser) without forking core code.
+4. **Interaction-capable**, with clear extension points for selection models, DnD, editing, and hover actions.
+5. **Safe for dense UIs**, where information and controls can coexist without visual chaos.
 
 ---
 
-## 6) Recommended solution: unified language support registry + SPI
+## 5) Recommended component architecture
 
-## 6.1 New core concepts
+Below is a proposed architecture direction aligned with the findings.
 
-Introduce a new package, e.g. `org.metalib.papifly.fx.code.language`, with:
+### 5.1 Proposed package surface
 
-### `LanguageSupport` descriptor
+`org.metalib.papifly.fx.tree` (or equivalent under docking namespace), with clear layers:
+
+- model,
+- control/state,
+- virtualization,
+- cell rendering,
+- interaction extensions.
+
+### 5.2 Core model types (conceptual)
+
+- `TreeNode<T>`: holds value, children, parent link (or parent resolver), and mutable node state.
+- `TreeModel<T>`: root management, child access policy, mutation events.
+- `TreeNodeState`: expanded, selected, focused, disabled, loading, editable.
+
+Design preference: keep node state separate from business `T` to avoid polluting domain objects.
+
+### 5.3 Virtualization and flattening
+
+Use a flattened visible-row index:
+
+- maintain list of currently visible nodes (`visibleRows`),
+- recompute incrementally on expand/collapse and filtered changes,
+- map row index -> node quickly,
+- render only viewport rows.
+
+This mirrors known high-performance control patterns and satisfies the source requirement for rendering only visible nodes.
+
+### 5.4 Selection and focus model
+
+Start with:
+
+- single selection + focus (MVP),
+- keyboard navigation (up/down/left/right, home/end),
+- deterministic focus vs selection styling.
+
+Then extend to multi-selection with range/toggle semantics.
+
+### 5.5 Cell composition contract
+
+Adopt the five-zone cell structure as a formal API concept:
+
+- disclosure slot,
+- prefix slot,
+- core content slot,
+- spacer,
+- suffix slot.
+
+Expose a `TreeCellFactory<T>` that can provide per-node controls for prefix/suffix while the control manages layout consistency and hover policies.
+
+### 5.6 Interaction extension points
+
+Design dedicated hooks/interfaces for:
+
+- drag source/target behavior,
+- context menu provider,
+- inline edit lifecycle,
+- per-node action handling.
+
+This avoids baking behavior into one monolithic cell class.
+
+---
+
+## 6) API ideas (high-level)
+
+The source docs do not define API signatures, but these ideas fit the required behavior:
 
 ```java
-public record LanguageSupport(
-    String id,
-    String displayName,
-    Set<String> aliases,
-    Set<String> fileExtensions,
-    java.util.function.Supplier<Lexer> lexerFactory,
-    java.util.function.Supplier<FoldProvider> foldProviderFactory
-) {}
-```
+public final class DockTreeView<T> extends Control {
+    public void setModel(TreeModel<T> model);
+    public TreeModel<T> getModel();
 
-Notes:
+    public void setCellFactory(TreeCellFactory<T> factory);
+    public void setSelectionModel(TreeSelectionModel<T> selectionModel);
 
-- `foldProviderFactory` may be optional; default to plain/no-fold provider.
-- aliases and extensions are normalized internally.
+    public void setFixedCellSize(double size);
+    public void setLazyChildrenProvider(LazyChildrenProvider<T> provider);
+}
 
-### `LanguageSupportProvider` SPI
+public interface TreeCellFactory<T> {
+    DockTreeCell<T> createCell();
+}
 
-```java
-public interface LanguageSupportProvider {
-    Collection<LanguageSupport> getLanguageSupports();
+public interface DockTreeCell<T> {
+    Node disclosureNode();
+    Node prefixNode();
+    Node coreNode();
+    Node suffixNode();
+    void update(TreeCellContext<T> context);
 }
 ```
 
-External plugin JARs implement this and publish via `META-INF/services`.
-
-### `LanguageSupportRegistry`
-
-Thread-safe registry responsible for:
-
-- `register(LanguageSupport support)`
-- `register(LanguageSupport support, RegistrationMode mode)` (`REJECT_ON_CONFLICT`/`REPLACE`)
-- `registerAll(Collection<LanguageSupport>)`
-- `unregister(String id)` (optional, mostly test/dev)
-- `bootstrap(BootstrapOptions options)` (`includeBuiltIns`, `loadServiceProviders`)
-- `resolveLexer(String languageId)` -> fallback to plain text lexer
-- `resolveFoldProvider(String languageId)` -> fallback to plain fold provider
-- `normalizeLanguageId(String id)`
-- `detectLanguageId(String fileNameOrPath)` (extension-based)
-- `availableLanguages()`
-- `loadFromServiceLoader(ClassLoader)`
+The intent is not to lock this exact API, but to preserve the architectural split and five-zone cell strategy.
 
 ---
 
-## 6.2 Prefer clean API over compatibility shims
+## 7) Integration ideas within PapiflyFX docking ecosystem
 
-Use `LanguageSupportRegistry` as the single public language resolution surface:
+`papiflyfx-docking-tree` can serve as a foundational side-panel/navigation component across modules:
 
-- `IncrementalLexerPipeline` and `IncrementalFoldingPipeline` resolve directly via `LanguageSupportRegistry`.
-- Retire `LexerRegistry` and `FoldProviderRegistry` (or keep only short-lived deprecated wrappers during migration).
-- Keep normalization/alias logic only in `LanguageSupportRegistry` and remove duplicate paths.
+1. **Docking navigator** (tabs/groups/layout objects as hierarchy).
+2. **Code editor outline** (file symbols/headings/regions).
+3. **Workspace/project explorer** (folders/files/logical groups).
+4. **Scene/layer inspector** for graphical or UI modules.
+5. **Schema/object inspectors** for debugging and tooling surfaces.
 
-This intentionally allows backward-incompatible API cleanup to eliminate duplicated resolution logic.
-
----
-
-## 6.3 Built-ins become optional boot profile, not hardcoded maps
-
-Move built-in language definitions into `BuiltInLanguageSupportProvider`:
-
-- `plain-text`
-- `java`
-- `json`
-- `javascript` (+ `js`)
-- `markdown` (+ `md`)
-
-Boot policy should be explicit:
-
-- Default bootstrap: include built-ins + optionally load external providers using `ServiceLoader`.
-- Minimal bootstrap: do **not** include built-ins at startup (`includeBuiltIns=false`), then register only host/plugin-provided languages.
-- Replacement: allow host/plugins to override built-ins via registry conflict policy (strict or permissive, including last-registration-wins).
-
-Implementation note: keep an internal non-registered plain-text fallback instance for runtime safety, even when built-ins are disabled.
+If kept generic, one tree control can power many panels with custom cell factories.
 
 ---
 
-## 6.4 Optional public API enhancements on `CodeEditor`
+## 8) Delivery roadmap (phased)
 
-Current manual language assignment should stay unchanged.
+### Phase 1: MVP foundation
 
-Add optional convenience:
+- hierarchy model/events,
+- virtualization + visible-row flattening,
+- expand/collapse,
+- single selection/focus + keyboard navigation,
+- basic five-zone-compatible cell layout API.
 
-- `public void detectLanguageFromFilePath()`  
-  Uses registry extension mapping and sets `languageId` if match.
-- `public void setAutoDetectLanguage(boolean enabled)` (default false to avoid behavior surprises).
+### Phase 2: Practical interaction
 
-This enables better UX for opened files while preserving existing semantics.
+- context menus,
+- inline editing hooks,
+- drag and drop (internal tree reorder first),
+- hover actions in suffix zone.
 
----
+### Phase 3: Performance and scalability
 
-## 6.5 Plugin packaging example
+- lazy child loading,
+- fixed cell size optimization path,
+- optimized large-tree mutation handling.
 
-External plugin module:
+### Phase 4: Advanced UX
 
-```java
-public final class PythonLanguageSupportProvider implements LanguageSupportProvider {
-    @Override
-    public Collection<LanguageSupport> getLanguageSupports() {
-        return List.of(
-            new LanguageSupport(
-                "python",
-                "Python",
-                Set.of("py", "python3"),
-                Set.of("py", "pyw"),
-                PythonLexer::new,
-                PythonFoldProvider::new
-            )
-        );
-    }
-}
-```
+- multi-selection,
+- filtering/search,
+- optional tree lines and badge/counter conventions.
 
-`META-INF/services/org.metalib.papifly.fx.code.language.LanguageSupportProvider`:
-
-```text
-com.example.papiflyfx.code.python.PythonLanguageSupportProvider
-```
-
-Host app usage (if explicit load is preferred):
-
-```java
-LanguageSupportRegistry.defaultRegistry().bootstrap(
-    new BootstrapOptions(true, true) // includeBuiltIns, loadServiceProviders
-);
-```
-
-Then existing `editor.setLanguageId("python")` works.
-
-Host app usage (without built-ins at boot):
-
-```java
-LanguageSupportRegistry.defaultRegistry().bootstrap(
-    new BootstrapOptions(false, true) // no built-ins
-);
-```
+This sequencing keeps early value high while controlling implementation risk.
 
 ---
 
-## 7) Migration plan (compatibility-relaxed)
+## 9) Risks and mitigations
 
-## Phase 1: Infrastructure
-
-1. Add language package (`LanguageSupport`, provider SPI, registry).
-2. Extract built-ins into provider + add bootstrap options (`includeBuiltIns` / `loadServiceProviders`).
-3. Switch pipelines to the new registry directly and remove legacy registry dependencies.
-4. Add unit tests for normalize/resolve/fallback/alias collisions.
-
-## Phase 2: Discovery and host registration
-
-1. Add `ServiceLoader` support.
-2. Decide policy:
-   - strict profile (reject conflicts), or
-   - permissive profile (replacement/priority rules allowed).
-3. Add tests using test-only provider classes and document intentional breaking changes.
-
-## Phase 3: UX niceties
-
-1. Add extension-based language detection API.
-2. (Optional) wire auto-detect for `setFilePath(...)` behind explicit toggle.
-3. Update samples/docs.
-
-## Phase 4 (optional advanced): richer token scopes
-
-If needed for better highlighting quality:
-
-- extend token model with optional semantic scope string (`"entity.name.function"`, etc.),
-- keep `TokenType` only as a temporary bridge if needed,
-- use scope->color map fallbacking to `TokenType`.
-
-This should be a separate change set because it touches rendering/theme APIs.
-
----
-
-## 8) Key risks and mitigations
-
-## Risk 1: ID/alias collisions between plugins
+### Risk 1: UI clutter in high-density nodes
 
 Mitigation:
 
-- normalize all IDs/aliases centrally,
-- make conflict handling policy-driven (strict or permissive),
-- emit clear diagnostics when replacement happens.
+- enforce slot-based composition,
+- reserve suffix actions for hover,
+- keep prefix controls intentionally minimal.
 
-## Risk 2: plugin quality/performance
-
-Mitigation:
-
-- document lexer/fold provider contracts (pure, deterministic, no heavy I/O),
-- keep async debounce/revision gating unchanged,
-- preserve failure fallback behavior.
-
-## Risk 3: mismatch between lexer and folding coverage
+### Risk 2: Performance degradation on large trees
 
 Mitigation:
 
-- single `LanguageSupport` descriptor owns both components,
-- fallback to plain folding provider when absent.
+- make virtualization non-optional in core,
+- flatten only visible nodes,
+- add fixed cell size fast-path and incremental recalculation.
 
-## Risk 4: restore behavior when plugin unavailable
+### Risk 3: Over-coupling to a single domain
 
 Mitigation:
 
-- keep persisted `languageId` string,
-- resolve unknown IDs to plain-text safely (already current behavior).
+- generic `T` model payload,
+- domain logic in adapters/cell factories, not in core control.
+
+### Risk 4: Interaction complexity (DnD, editing, selection)
+
+Mitigation:
+
+- layered delivery,
+- explicit extension interfaces,
+- strong test coverage for event ordering and state transitions.
 
 ---
 
-## 9) Test strategy for the plugin architecture
+## 10) Testing strategy recommendations
 
-1. **Registry tests**
-   - registration success/failure rules,
-   - alias normalization,
-   - collision handling,
-   - extension detection,
-   - fallback correctness.
+1. **Model tests**
+   - parent/child integrity,
+   - expand/collapse state propagation,
+   - mutation event correctness.
 
-2. **ServiceLoader tests**
-   - provider auto-discovery,
-   - multiple provider aggregation.
+2. **Virtualization tests**
+   - row-window correctness,
+   - visible-row recalculation on expand/collapse,
+   - large dataset behavior.
 
-3. **Pipeline integration tests**
-   - custom plugin language selected through `setLanguageId`,
-   - token/fold updates visible in viewport,
-   - error in plugin lexer/provider falls back correctly.
+3. **Interaction tests**
+   - keyboard navigation semantics,
+   - selection/focus consistency,
+   - hover action visibility rules.
 
-4. **Persistence tests**
-   - saved plugin `languageId` round-trips,
-   - restore without plugin degrades to plain text.
+4. **Cell layout tests**
+   - slot presence/ordering,
+   - spacer alignment behavior,
+   - suffix visibility on hover.
 
-5. **Migration/breaking-change tests**
-   - validate new bootstrap/conflict policies and explicitly cover removed/deprecated legacy APIs.
-
----
-
-## 10) Alternatives considered
-
-## A) Add `register()` directly to existing registries only
-
-Pros: tiny change.  
-Cons: keeps duplicated lexer/fold registration and no metadata/SPI; error-prone long-term.
-
-## B) Full parser/AST plugin system now
-
-Pros: highest semantic quality.  
-Cons: too large/risky for current architecture and scope.
-
-## C) Recommended middle path (chosen)
-
-Unified language descriptor + registry + SPI discovery, with intentional simplification of legacy APIs and preserved incremental lex/fold runtime design.
+5. **Integration tests**
+   - representative scenarios from source applications (project explorer, scene graph style panel, schema browser pattern).
 
 ---
 
-## 11) Final recommendation
+## 11) Open decisions to finalize before implementation
 
-Implement pluggable language support by introducing a **unified `LanguageSupportRegistry` + `LanguageSupportProvider` 
-SPI** with **boot-time profile control** (include/omit built-ins, conflict-policy-based replacement), and move pipelines to this API directly.
+1. Should the first release include multi-selection or defer it to phase 2/3?
+2. Which DnD behaviors are in-scope initially (reorder only vs external drops)?
+3. How much built-in cell chrome should be provided vs delegated entirely to factories?
+4. Should filtering be view-only (hide rows) or model-aware (stateful query mode)?
 
-This is the smallest architecture change that:
+Resolving these early will reduce redesign churn.
 
-- removes hardcoded language limits,
-- permits deliberate backward-incompatible cleanup where it reduces complexity,
-- supports external language plugins cleanly,
-- and sets up a safe path for future richer syntax theming.
+---
+
+## 12) Final recommendation
+
+Build `papiflyfx-docking-tree` as a reusable, virtualization-first control with a strict separation of model, rendering, and interaction layers. Use the five-zone `TreeCell` composition strategy as the default contract, deliver a strong MVP first, and then layer advanced interactions (multi-select, DnD, editing, filtering) in controlled phases.
+
+This approach directly reflects both source documents and creates a component that is broadly useful across the PapiflyFX docking ecosystem.

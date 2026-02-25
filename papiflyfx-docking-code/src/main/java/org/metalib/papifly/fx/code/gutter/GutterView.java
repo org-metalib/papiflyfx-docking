@@ -42,6 +42,7 @@ public class GutterView extends Region {
     private FoldMap foldMap = FoldMap.empty();
     private VisibleLineMap visibleLineMap = new VisibleLineMap();
     private IntConsumer foldToggleHandler;
+    private boolean mouseOverGutter;
 
     /**
      * Creates a gutter view backed by the provided glyph cache.
@@ -53,6 +54,14 @@ public class GutterView extends Region {
         this.canvas = new Canvas();
         getChildren().add(canvas);
         setOnMousePressed(this::handleMousePressed);
+        setOnMouseEntered(e -> {
+            mouseOverGutter = true;
+            markDirty();
+        });
+        setOnMouseExited(e -> {
+            mouseOverGutter = false;
+            markDirty();
+        });
     }
 
     /**
@@ -185,7 +194,7 @@ public class GutterView extends Region {
         int lineCount = document.getLineCount();
         int digits = Math.max(2, String.valueOf(lineCount).length());
         double charWidth = glyphCache.getCharWidth();
-        computedWidth = MARKER_LANE_WIDTH + FOLD_LANE_WIDTH + (digits * charWidth) + LINE_NUMBER_RIGHT_PADDING;
+        computedWidth = MARKER_LANE_WIDTH + (digits * charWidth) + LINE_NUMBER_RIGHT_PADDING + FOLD_LANE_WIDTH;
         setPrefWidth(computedWidth);
         setMinWidth(computedWidth);
         setMaxWidth(computedWidth);
@@ -271,32 +280,43 @@ public class GutterView extends Region {
             }
         }
 
-        paintFoldGlyph(gc, lineHeight, line, y);
-
         String lineNum = String.valueOf(line + 1);
-        double textX = width - LINE_NUMBER_RIGHT_PADDING - (lineNum.length() * glyphCache.getCharWidth());
+        double lineNumberWidth = lineNum.length() * glyphCache.getCharWidth();
+        double textX = MARKER_LANE_WIDTH + lineNumberWidth; // Right edge of number
+        // We want to align numbers, so we should actually calculate based on max digits
+        int maxDigits = Math.max(2, String.valueOf(document.getLineCount()).length());
+        double maxNumberWidth = maxDigits * glyphCache.getCharWidth();
+        
+        double actualTextX = MARKER_LANE_WIDTH + maxNumberWidth - lineNumberWidth;
         gc.setFill(line == activeLineIndex ? theme.lineNumberActiveColor() : theme.lineNumberColor());
-        gc.fillText(lineNum, textX, y + baseline);
+        gc.fillText(lineNum, actualTextX, y + baseline);
+
+        double foldX = MARKER_LANE_WIDTH + maxNumberWidth + (LINE_NUMBER_RIGHT_PADDING / 2.0);
+        if (mouseOverGutter) {
+            paintFoldGlyph(gc, lineHeight, line, y, foldX);
+        }
     }
 
-    private void paintFoldGlyph(GraphicsContext gc, double lineHeight, int line, double y) {
+    private void paintFoldGlyph(GraphicsContext gc, double lineHeight, int line, double y, double x) {
         if (!foldMap.hasRegionStartingAt(line)) {
             return;
         }
-        double x = MARKER_LANE_WIDTH + 2.0;
         double centerY = y + (lineHeight * 0.5);
-        gc.setFill(line == activeLineIndex ? theme.lineNumberActiveColor() : theme.lineNumberColor());
+        gc.setStroke(line == activeLineIndex ? theme.lineNumberActiveColor() : theme.lineNumberColor());
+        gc.setLineWidth(1.5);
         if (foldMap.isCollapsedHeader(line)) {
-            gc.fillPolygon(
-                new double[]{x, x, x + 6.0},
-                new double[]{centerY - 4.0, centerY + 4.0, centerY},
+            // Chevron Right
+            gc.strokePolyline(
+                new double[]{x + 1.0, x + 5.0, x + 1.0},
+                new double[]{centerY - 4.0, centerY, centerY + 4.0},
                 3
             );
             return;
         }
-        gc.fillPolygon(
-            new double[]{x, x + 8.0, x + 4.0},
-            new double[]{centerY - 2.0, centerY - 2.0, centerY + 4.0},
+        // Chevron Down
+        gc.strokePolyline(
+            new double[]{x, x + 4.0, x + 8.0},
+            new double[]{centerY - 2.0, centerY + 2.0, centerY - 2.0},
             3
         );
     }
@@ -305,7 +325,12 @@ public class GutterView extends Region {
         if (event == null || event.getButton() != MouseButton.PRIMARY || foldToggleHandler == null) {
             return;
         }
-        if (event.getX() < MARKER_LANE_WIDTH || event.getX() > MARKER_LANE_WIDTH + FOLD_LANE_WIDTH) {
+        int maxDigits = Math.max(2, String.valueOf(document.getLineCount()).length());
+        double maxNumberWidth = maxDigits * glyphCache.getCharWidth();
+        double foldXStart = MARKER_LANE_WIDTH + maxNumberWidth;
+        double foldXEnd = foldXStart + LINE_NUMBER_RIGHT_PADDING + FOLD_LANE_WIDTH;
+
+        if (event.getX() < foldXStart || event.getX() > foldXEnd) {
             return;
         }
         int line = resolveLineAtY(event.getY());
