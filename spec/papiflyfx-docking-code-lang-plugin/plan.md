@@ -29,6 +29,11 @@ Goal: implement a plugin-ready language/folding architecture so hosts and extern
    - unknown language -> plain-text lexer + empty folding fallback.
 5. Improve navigation UX by enabling richer folding for additional languages without touching core editor code.
 6. Intentionally relax compatibility constraints where legacy APIs duplicate behavior.
+7. Support dynamic plugin lifecycle events (runtime register/refresh/unregister) so active editors can react without restart.
+8. Support optional user-defined file associations that override static extension mappings.
+9. Provide host-visible diagnostics for provider load failures and runtime factory failures.
+10. Publish naming guidance for third-party language IDs (reverse-DNS recommendation) to reduce accidental collisions.
+11. Keep future theming evolution unblocked by carrying optional token-scope metadata in `LanguageSupport` now.
 
 ---
 
@@ -41,10 +46,14 @@ Goal: implement a plugin-ready language/folding architecture so hosts and extern
 - Optional `CodeEditor` conveniences for extension-based language detection.
 - Built-in language definitions moved out of hardcoded static maps.
 - Tests and docs for plugin registration and boot profiles.
+- Registry listener and diagnostics surfaces for runtime plugin lifecycle.
+- Optional user file-association override service used by language detection.
+- Documentation for third-party language ID naming convention.
+- Forward-compatible token-scope metadata (non-rendered in this phase).
 
 ## Out of scope
 
-- Replacing `TokenType`/rendering model with semantic token scopes (future phase).
+- Replacing `TokenType`/rendering model with semantic token scopes in this phase (metadata only now, renderer changes later).
 - AST-level parser plugins.
 - Reworking existing folding algorithms for built-in languages (except packaging/integration changes).
 
@@ -93,10 +102,15 @@ public record LanguageSupport(
     String displayName,
     Set<String> aliases,
     Set<String> fileExtensions,
+    Set<String> customTokenScopes,
     Supplier<Lexer> lexerFactory,
     Supplier<FoldProvider> foldProviderFactory
 ) {}
 ```
+
+ID guidance:
+- Built-ins keep short IDs (`java`, `json`, ...).
+- Third-party providers should prefer reverse-DNS IDs (`com.example.python`) and expose short names only as aliases.
 
 ### `LanguageSupportProvider` (SPI)
 
@@ -108,6 +122,42 @@ import java.util.Collection;
 public interface LanguageSupportProvider {
     Collection<LanguageSupport> getLanguageSupports();
 }
+```
+
+### `UserFileAssociationMapping` (optional host override)
+
+```java
+package org.metalib.papifly.fx.code.language;
+
+import java.util.Optional;
+
+public interface UserFileAssociationMapping {
+    Optional<String> resolveLanguageId(String fileNameOrPath);
+}
+```
+
+### `LanguageRegistryListener` and diagnostics events
+
+```java
+package org.metalib.papifly.fx.code.language;
+
+public interface LanguageRegistryListener {
+    void onLanguageRegistered(String languageId);
+    void onLanguageReplaced(String languageId);
+    void onLanguageUnregistered(String languageId);
+    void onDiagnostic(RegistryDiagnostic diagnostic);
+}
+```
+
+```java
+package org.metalib.papifly.fx.code.language;
+
+public record RegistryDiagnostic(
+    String languageId,
+    String sourceProvider,
+    String message,
+    Throwable cause
+) {}
 ```
 
 ### `ConflictPolicy` and `BootstrapOptions`
@@ -170,18 +220,26 @@ public final class LanguageSupportRegistry {
     }
 
     public synchronized void bootstrap(BootstrapOptions options) { /* see phases */ }
+    public synchronized void refreshServiceProviders(ClassLoader loader, ConflictPolicy policy) { /* runtime refresh */ }
     public synchronized void register(LanguageSupport support, ConflictPolicy policy) { /* ... */ }
     public synchronized void registerAll(Collection<LanguageSupport> supports, ConflictPolicy policy) { /* ... */ }
     public synchronized void unregister(String id) { /* ... */ }
+    public void addListener(LanguageRegistryListener listener) { /* ... */ }
+    public void removeListener(LanguageRegistryListener listener) { /* ... */ }
+    public void setUserFileAssociationMapping(UserFileAssociationMapping mapping) { /* optional */ }
+    public List<RegistryDiagnostic> diagnosticsSnapshot() { /* immutable snapshot */ }
 
     public Lexer resolveLexer(String languageId) { /* fallback to plain */ }
     public FoldProvider resolveFoldProvider(String languageId) { /* fallback to plain */ }
-    public Optional<String> detectLanguageId(String fileNameOrPath) { /* extension lookup */ }
+    public Optional<String> detectLanguageId(String fileNameOrPath) { /* user mapping first, then extension lookup */ }
     public String normalizeLanguageId(String id) { /* trim + lower + default plain-text */ }
 }
 ```
 
-Implementation note: `resolve*` must never throw for unknown IDs and must always return functional fallback instances.
+Implementation notes:
+- `resolve*` must never throw for unknown IDs and must always return functional fallback instances.
+- Listener notifications should be emitted for register/replace/unregister so host services can re-evaluate active editors.
+- Provider/factory failures should emit `RegistryDiagnostic` entries and continue with fallback behavior.
 
 ---
 
@@ -306,7 +364,7 @@ This improves navigation for newly opened files because folding behavior aligns 
 
 ---
 
-## 5.5 SPI discovery and plugin packaging
+## 5.5 SPI discovery, runtime refresh, and plugin packaging
 
 Registry bootstrap should support both built-ins and service discovery:
 
@@ -324,6 +382,25 @@ public synchronized void bootstrap(BootstrapOptions options) {
     }
 }
 ```
+
+Runtime host refresh path:
+
+```java
+public synchronized void refreshServiceProviders(ClassLoader loader, ConflictPolicy policy) {
+    ServiceLoader<LanguageSupportProvider> serviceLoader =
+        ServiceLoader.load(LanguageSupportProvider.class, loader);
+    for (LanguageSupportProvider provider : serviceLoader) {
+        try {
+            registerAll(provider.getLanguageSupports(), policy);
+        } catch (RuntimeException ex) {
+            publishDiagnostic(new RegistryDiagnostic(null, provider.getClass().getName(),
+                "Failed to load language supports", ex));
+        }
+    }
+}
+```
+
+For plugin unload/disable flows, host code should call `unregister(id)` and react via listeners by downgrading affected editors to plain text.
 
 External plugin JAR adds:
 
@@ -350,19 +427,25 @@ Acceptance:
 ## Phase 1 - Add core language package
 
 1. Create `language` package and add:
-   - `LanguageSupport`,
-   - `LanguageSupportProvider`,
-   - `ConflictPolicy`,
-   - `BootstrapOptions`,
-   - `LanguageSupportRegistry`.
+    - `LanguageSupport`,
+    - `LanguageSupportProvider`,
+    - `ConflictPolicy`,
+    - `BootstrapOptions`,
+    - `LanguageSupportRegistry`,
+    - `UserFileAssociationMapping`,
+    - `LanguageRegistryListener`,
+    - `RegistryDiagnostic`.
 2. Implement normalization and fallback behavior.
 3. Implement conflict handling semantics:
-   - `REJECT_ON_CONFLICT`: throw clear `IllegalStateException`.
-   - `REPLACE_EXISTING`: replace previous binding atomically.
+    - `REJECT_ON_CONFLICT`: throw clear `IllegalStateException`.
+    - `REPLACE_EXISTING`: replace previous binding atomically.
 4. Implement extension detection.
+5. Add reverse-DNS naming convention checks/documented validation for third-party IDs.
+6. Emit listener and diagnostic events on register/replace/unregister and load/runtime failures.
 
 Acceptance:
 - Unit tests prove registration, replacement, alias handling, extension lookup, and fallback.
+- Unit tests prove event emission and diagnostic capture.
 
 ## Phase 2 - Move built-ins into provider model
 
@@ -390,26 +473,32 @@ Acceptance:
 
 1. Add optional auto-detect property and API methods.
 2. Keep `setLanguageId(...)` public API but normalize through registry for consistency.
-3. Ensure no regressions in state capture/apply (`languageId` persisted string remains unchanged in format policy).
-4. Ensure `applyState(...)` behavior remains stable if plugin language is unavailable (fallback path).
+3. Wire detection to consult optional `UserFileAssociationMapping` before extension lookup.
+4. Ensure no regressions in state capture/apply (`languageId` persisted string remains unchanged in format policy).
+5. Ensure `applyState(...)` behavior remains stable if plugin language is unavailable (fallback path).
 
 Acceptance:
 - New integration tests for:
   - `detectLanguageFromFilePath()`,
+  - user association override precedence,
   - auto-detect on `setFilePath(...)`,
   - plugin-missing restore safety.
 
 ## Phase 5 - SPI and host boot profiles
 
 1. Add startup helper docs/examples:
-   - default profile (built-ins + SPI),
-   - plugin-only profile (no built-ins),
-   - conflict strict/permissive modes.
+    - default profile (built-ins + SPI),
+    - plugin-only profile (no built-ins),
+    - conflict strict/permissive modes.
 2. Add service-loading tests with test-only providers.
-3. Add a sample plugin provider in tests or samples module.
+3. Add runtime refresh examples (`refreshServiceProviders(...)`) for hot-load hosts.
+4. Add diagnostics integration examples for host UIs/status bars.
+5. Add third-party naming convention guidance (reverse-DNS IDs + optional aliases).
+6. Add a sample plugin provider in tests or samples module.
 
 Acceptance:
 - `ServiceLoader` providers are discovered and usable by `CodeEditor#setLanguageId(...)`.
+- Runtime refresh/unregister behavior is observable through listener callbacks.
 
 ## Phase 6 - Compatibility-relaxed cleanup
 
@@ -432,6 +521,9 @@ Acceptance:
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/language/ConflictPolicy.java`
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/language/BootstrapOptions.java`
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/language/LanguageSupportRegistry.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/language/UserFileAssociationMapping.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/language/LanguageRegistryListener.java`
+- `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/language/RegistryDiagnostic.java`
 - `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/folding/BuiltInLanguageSupportProvider.java`
 
 ## Modified files (planned)
@@ -454,22 +546,26 @@ Acceptance:
 ## 8.1 New unit tests
 
 1. `language/LanguageSupportRegistryTest`
-   - normalize null/blank IDs,
-   - register + resolve lexer/fold provider,
-   - alias collisions under both policies,
-   - extension detection rules,
-   - unknown language fallback.
+    - normalize null/blank IDs,
+    - register + resolve lexer/fold provider,
+    - alias collisions under both policies,
+    - extension detection rules,
+    - unknown language fallback,
+    - listener callbacks for register/replace/unregister,
+    - diagnostic event capture on provider/factory failures.
 2. `language/LanguageSupportBootstrapTest`
-   - built-ins included by default,
-   - built-ins omitted with `includeBuiltIns=false`,
-   - conflict replacement behavior.
+    - built-ins included by default,
+    - built-ins omitted with `includeBuiltIns=false`,
+    - conflict replacement behavior,
+    - reverse-DNS guidance validation for third-party IDs (if strict mode enabled).
 
 ## 8.2 ServiceLoader tests
 
 1. `language/LanguageSupportServiceLoaderTest`
-   - test-only provider discovery,
-   - multiple providers loaded,
-   - deterministic conflict handling.
+    - test-only provider discovery,
+    - multiple providers loaded,
+    - deterministic conflict handling,
+    - runtime refresh path behavior.
 
 Implementation approach:
 - Add test resources under `src/test/resources/META-INF/services/...LanguageSupportProvider`.
@@ -486,9 +582,10 @@ Implementation approach:
 ## 8.4 Integration tests
 
 1. Extend `CodeEditorIntegrationTest`:
-   - detects language from file extension when enabled,
-   - keeps manual language assignment precedence when auto-detect disabled,
-   - plugin-missing state restore falls back safely.
+    - detects language from file extension when enabled,
+    - respects user association override before extension defaults,
+    - keeps manual language assignment precedence when auto-detect disabled,
+    - plugin-missing state restore falls back safely.
 
 ## 8.5 Full-module verification
 
@@ -509,6 +606,7 @@ Expected breaking changes:
 1. Removal of `LexerRegistry` and `FoldProviderRegistry`.
 2. Language resolution API centralized in `LanguageSupportRegistry`.
 3. Potential normalization change if `CodeEditor#setLanguageId(...)` now stores canonical IDs.
+4. Optional strict validation for third-party language IDs may reject non-conforming plugin IDs.
 
 Migration guidance for host apps:
 
@@ -529,6 +627,9 @@ LanguageSupportRegistry.defaultRegistry().bootstrap(
 ```
 
 - If previously relying on internal registries, migrate to `LanguageSupportRegistry` registration APIs.
+- For third-party plugins, prefer reverse-DNS `LanguageSupport.id` values and expose short aliases for ergonomics.
+- Hosts that support hot plugin install/uninstall should use `refreshServiceProviders(...)`, `unregister(...)`, and registry listeners.
+- Hosts that surface plugin health should consume `diagnosticsSnapshot()` or listener diagnostic events.
 
 ---
 
@@ -541,7 +642,8 @@ LanguageSupportRegistry.defaultRegistry().bootstrap(
 5. Implement Phase 5 SPI tests and documentation.
 6. Remove legacy registries and dead code paths (Phase 6).
 7. Run full module tests headless and fix only regressions introduced by this feature.
-8. Update spec docs with final API examples after code lands.
+8. Validate dynamic refresh/unregister + diagnostics flows with focused tests.
+9. Update spec docs with final API examples after code lands.
 
 ---
 
@@ -553,5 +655,7 @@ Feature is complete when all are true:
 2. Built-ins can be excluded at boot and replaced by plugins/host definitions.
 3. `CodeEditor` can optionally detect language from file path and fold accordingly.
 4. Unknown/missing plugin languages degrade safely to plain text behavior.
-5. All relevant tests pass for `papiflyfx-docking-code` in headless mode.
-
+5. Runtime register/refresh/unregister workflows are observable and safe via registry listener callbacks.
+6. User-defined file associations can override extension defaults when configured.
+7. Plugin load/runtime failures are exposed through diagnostics surfaces (not only logs).
+8. All relevant tests pass for `papiflyfx-docking-code` in headless mode.
