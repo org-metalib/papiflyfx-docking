@@ -22,6 +22,6 @@ add a detailed todo list to the plan, with all the phases and individual tasks n
 
 ## Implementation
 implement it all. when you’re done with a task or phase, mark it as completed in the plan document. do not stop until
-all tasks and phases are completed. do not add unnecessary comments or jsdocs, do not use any or unknown types.
+all tasks and phases are completed. do not add unnecessary comments or javadocs, do not use any or unknown types.
 continuously run typecheck to make sure you’re not introducing new issues.
 
