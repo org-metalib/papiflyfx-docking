@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeEvent;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
+import org.metalib.papifly.fx.code.language.LanguageSupportRegistry;
 import org.metalib.papifly.fx.code.lexer.IncrementalLexerEngine;
 import org.metalib.papifly.fx.code.lexer.PlainTextLexer;
 import org.metalib.papifly.fx.code.lexer.TokenMap;
@@ -54,7 +55,7 @@ public final class IncrementalFoldingPipeline implements AutoCloseable {
             tokenMapSupplier,
             foldMapConsumer,
             IncrementalFoldingPipeline::dispatchOnFxThread,
-            FoldProviderRegistry::resolve,
+            languageId -> LanguageSupportRegistry.defaultRegistry().resolveFoldProvider(languageId),
             DEFAULT_DEBOUNCE_MILLIS
         );
     }
@@ -87,7 +88,7 @@ public final class IncrementalFoldingPipeline implements AutoCloseable {
     }
 
     public void setLanguageId(String languageId) {
-        String normalized = FoldProviderRegistry.normalizeLanguageId(languageId);
+        String normalized = LanguageSupportRegistry.defaultRegistry().normalizeLanguageId(languageId);
         this.languageId = normalized;
         long nextRevision = revision.incrementAndGet();
         enqueue(document.getText(), 0, nextRevision, normalized, true, debounceMillis);

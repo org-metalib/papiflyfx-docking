@@ -17,6 +17,8 @@ Read this document `spec/papiflyfx-docking-code-lang-plugin/research.md` and wri
 Include code snippets.
 
 ## Implementation
-implement it all. when you’re done with a task or phase, mark it as completed in the plan document. do not stop until
-all tasks and phases are completed. do not add unnecessary comments or javadocs, do not use any or unknown types.
+implement everthing from spec/papiflyfx-docking-code-lang-plugin/plan.md. when you’re done with a task or phase, mark it
+as completed in the spec/papiflyfx-docking-code-lang-plugin/plan.md document.
+Add new spec/papiflyfx-docking-code-lang-plugin/progress.md file to track your progress.
+Do not stop until all tasks and phases are completed. do not add unnecessary comments or javadocs, do not use any or unknown types.
 continuously run typecheck to make sure you’re not introducing new issues.

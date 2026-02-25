@@ -414,7 +414,7 @@ com.example.papiflyfx.code.python.PythonLanguageSupportProvider
 
 ## 6) Detailed phased implementation
 
-## Phase 0 - Baseline and branch safety
+## Phase 0 - Baseline and branch safety ✅ COMPLETED
 
 1. Confirm baseline tests for code module:
    - `./mvnw -pl papiflyfx-docking-code -am test -Dtestfx.headless=true`
@@ -422,9 +422,9 @@ com.example.papiflyfx.code.python.PythonLanguageSupportProvider
 3. Implement feature in small, mergeable slices.
 
 Acceptance:
-- Baseline understood before edits.
+- Baseline understood before edits. (380 tests, 0 failures)
 
-## Phase 1 - Add core language package
+## Phase 1 - Add core language package ✅ COMPLETED
 
 1. Create `language` package and add:
     - `LanguageSupport`,
@@ -447,7 +447,7 @@ Acceptance:
 - Unit tests prove registration, replacement, alias handling, extension lookup, and fallback.
 - Unit tests prove event emission and diagnostic capture.
 
-## Phase 2 - Move built-ins into provider model
+## Phase 2 - Move built-ins into provider model ✅ COMPLETED
 
 1. Add `folding/BuiltInLanguageSupportProvider`.
 2. Remove hardcoded maps from `LexerRegistry` / `FoldProviderRegistry`.
@@ -458,7 +458,7 @@ Acceptance:
 - Built-ins still available with default bootstrap.
 - Built-ins omitted when `includeBuiltIns=false`.
 
-## Phase 3 - Wire pipelines to `LanguageSupportRegistry`
+## Phase 3 - Wire pipelines to `LanguageSupportRegistry` ✅ COMPLETED
 
 1. Update `IncrementalLexerPipeline` default resolver and normalization.
 2. Update `IncrementalFoldingPipeline` default resolver and normalization.
@@ -469,7 +469,7 @@ Acceptance:
 - Existing pipeline tests pass with new resolver source.
 - Unknown IDs still resolve to plain-text/empty fold map.
 
-## Phase 4 - `CodeEditor` integration and UX polish
+## Phase 4 - `CodeEditor` integration and UX polish ✅ COMPLETED
 
 1. Add optional auto-detect property and API methods.
 2. Keep `setLanguageId(...)` public API but normalize through registry for consistency.
@@ -484,7 +484,7 @@ Acceptance:
   - auto-detect on `setFilePath(...)`,
   - plugin-missing restore safety.
 
-## Phase 5 - SPI and host boot profiles
+## Phase 5 - SPI and host boot profiles ✅ COMPLETED
 
 1. Add startup helper docs/examples:
     - default profile (built-ins + SPI),
@@ -500,7 +500,7 @@ Acceptance:
 - `ServiceLoader` providers are discovered and usable by `CodeEditor#setLanguageId(...)`.
 - Runtime refresh/unregister behavior is observable through listener callbacks.
 
-## Phase 6 - Compatibility-relaxed cleanup
+## Phase 6 - Compatibility-relaxed cleanup ✅ COMPLETED
 
 1. Remove deprecated/duplicated language resolution APIs once migration is complete.
 2. Update all in-repo call sites to new registry.

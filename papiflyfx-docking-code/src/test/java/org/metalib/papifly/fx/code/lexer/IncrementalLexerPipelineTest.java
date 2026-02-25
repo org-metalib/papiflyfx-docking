@@ -106,7 +106,7 @@ class IncrementalLexerPipelineTest {
         Lexer throwingLexer = new ThrowingLexer(failLexing, throwLexerCalls);
         Function<String, Lexer> resolver = languageId -> "throwing".equals(languageId)
             ? throwingLexer
-            : LexerRegistry.resolve(languageId);
+            : org.metalib.papifly.fx.code.language.LanguageSupportRegistry.defaultRegistry().resolveLexer(languageId);
 
         IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(
             document,

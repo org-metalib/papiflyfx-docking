@@ -22,7 +22,7 @@ class IncrementalFoldingPipelineTest {
             TokenMap::empty,
             applied::set,
             Runnable::run,
-            FoldProviderRegistry::resolve,
+            languageId -> org.metalib.papifly.fx.code.language.LanguageSupportRegistry.defaultRegistry().resolveFoldProvider(languageId),
             5
         );
         try {

@@ -22,6 +22,7 @@ import javafx.scene.layout.StackPane;
 import org.metalib.papifly.fx.code.command.EditorCommand;
 import org.metalib.papifly.fx.code.command.LineEditService;
 import org.metalib.papifly.fx.code.command.MultiCaretModel;
+import org.metalib.papifly.fx.code.language.LanguageSupportRegistry;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
 import org.metalib.papifly.fx.code.folding.FoldMap;
@@ -68,6 +69,7 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final DoubleProperty verticalScrollOffset = new SimpleDoubleProperty(this, "verticalScrollOffset", 0.0);
     private final DoubleProperty horizontalScrollOffset = new SimpleDoubleProperty(this, "horizontalScrollOffset", 0.0);
     private final BooleanProperty wordWrap = new SimpleBooleanProperty(this, "wordWrap", false);
+    private final BooleanProperty autoDetectLanguage = new SimpleBooleanProperty(this, "autoDetectLanguage", false);
     private final StringProperty languageId = new SimpleStringProperty(this, "languageId", DEFAULT_LANGUAGE);
 
     private List<Integer> foldedLines = List.of();
@@ -690,6 +692,9 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public void setFilePath(String filePath) {
         this.filePath.set(filePath == null ? "" : filePath);
+        if (isAutoDetectLanguage()) {
+            detectLanguageFromFilePath();
+        }
     }
 
     /**
@@ -872,6 +877,32 @@ public class CodeEditor extends StackPane implements DisposableContent {
      */
     public StringProperty languageIdProperty() {
         return languageId;
+    }
+
+    public boolean isAutoDetectLanguage() {
+        return autoDetectLanguage.get();
+    }
+
+    public void setAutoDetectLanguage(boolean autoDetect) {
+        this.autoDetectLanguage.set(autoDetect);
+    }
+
+    public BooleanProperty autoDetectLanguageProperty() {
+        return autoDetectLanguage;
+    }
+
+    public boolean detectLanguageFromFilePath() {
+        String path = getFilePath();
+        if (path == null || path.isBlank()) {
+            return false;
+        }
+        return LanguageSupportRegistry.defaultRegistry()
+            .detectLanguageId(path)
+            .map(id -> {
+                setLanguageId(id);
+                return true;
+            })
+            .orElse(false);
     }
 
     /**
