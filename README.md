@@ -41,6 +41,7 @@ mvn javafx:run -pl papiflyfx-docking-docks
 ## References
 - Architecture spec: `spec/papiflyfx-docks/README.md`
 - Implementation plan: `spec/papiflyfx-docks/IMPLEMENTATION_PLAN.md`
+- [](https://component.gallery/components/)
 
 ## Similar Projects
 - [Drombler FX The modular application framework for JavaFX.](https://www.drombler.org/drombler-fx/)

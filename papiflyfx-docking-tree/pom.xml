@@ -7,9 +7,9 @@
         <version>0.0.8-SNAPSHOT</version>
     </parent>
 
-    <name>papiflyfx-docking-samples</name>
-    <description>Runnable samples showcasing PapiflyFX docking features.</description>
-    <artifactId>papiflyfx-docking-samples</artifactId>
+    <name>papiflyfx-docking-tree</name>
+    <description>Canvas-based virtualized tree component for PapiflyFX docking.</description>
+    <artifactId>papiflyfx-docking-tree</artifactId>
 
     <properties>
         <testfx.headless>false</testfx.headless>
@@ -24,18 +24,31 @@
     <dependencies>
         <dependency>
             <groupId>org.metalib.papifly.docking</groupId>
+            <artifactId>papiflyfx-docking-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-graphics</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.metalib.papifly.docking</groupId>
             <artifactId>papiflyfx-docking-docks</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.metalib.papifly.docking</groupId>
-            <artifactId>papiflyfx-docking-code</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.metalib.papifly.docking</groupId>
-            <artifactId>papiflyfx-docking-tree</artifactId>
-            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -92,14 +105,6 @@
                         <prism.text>${prism.text}</prism.text>
                         <java.awt.headless>${java.awt.headless}</java.awt.headless>
                     </systemPropertyVariables>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.openjfx</groupId>
-                <artifactId>javafx-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>org.metalib.papifly.fx.samples.SamplesApp</mainClass>
-                    <jvmArgs>--enable-native-access=javafx.graphics</jvmArgs>
                 </configuration>
             </plugin>
         </plugins>

@@ -10,8 +10,8 @@ Write a detailed report of your learnings, findings and ideas in spec/papiflyfx-
 Write a very detailed `spec/papiflyfx-docking-tree/plan.md` document outlining how to implement this. Include code snippets.
 
 ## Implementation
-implement everything from `spec/papiflyfx-docking-tree/plan.md`. when you’re done with a task or phase, mark it
+Implement everything specified by `spec/papiflyfx-docking-tree/plan.md`. when you’re done with a task or phase, mark it
 as completed in the `spec/papiflyfx-docking-tree/plan.md` document.
 Add new `spec/papiflyfx-docking-tree/progress.md` file to track your progress.
 Do not stop until all tasks and phases are completed. Do not add unnecessary comments or javadocs, do not use any or unknown types.
-continuously run typecheck to make sure you’re not introducing new issues.
+Continuously run typecheck to make sure you’re not introducing new issues.
