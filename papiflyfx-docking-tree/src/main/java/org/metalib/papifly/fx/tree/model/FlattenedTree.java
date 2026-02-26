@@ -21,6 +21,7 @@ public class FlattenedTree<T> {
 
     private TreeItem<T> root;
     private TreeExpansionModel<T> expansionModel;
+    private boolean showRoot = true;
 
     public FlattenedTree() {
         this(new TreeExpansionModel<>());
@@ -54,6 +55,18 @@ public class FlattenedTree<T> {
     public void setExpansionModel(TreeExpansionModel<T> expansionModel) {
         this.expansionModel = expansionModel == null ? new TreeExpansionModel<>() : expansionModel;
         this.expansionModel.addListener((item, expanded) -> rebuild());
+        rebuild();
+    }
+
+    public boolean isShowRoot() {
+        return showRoot;
+    }
+
+    public void setShowRoot(boolean showRoot) {
+        if (this.showRoot == showRoot) {
+            return;
+        }
+        this.showRoot = showRoot;
         rebuild();
     }
 
@@ -108,7 +121,13 @@ public class FlattenedTree<T> {
         rows.clear();
         indexByItem.clear();
         if (root != null) {
-            flatten(root, 0);
+            if (showRoot) {
+                flatten(root, 0);
+            } else {
+                for (TreeItem<T> child : root.getChildren()) {
+                    flatten(child, 0);
+                }
+            }
         }
         notifyChanged();
     }

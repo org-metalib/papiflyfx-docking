@@ -105,6 +105,15 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         return flattenedTree;
     }
 
+    public boolean isShowRoot() {
+        return flattenedTree.isShowRoot();
+    }
+
+    public void setShowRoot(boolean showRoot) {
+        flattenedTree.setShowRoot(showRoot);
+        viewport.markDirty();
+    }
+
     public TreeViewport<T> getViewport() {
         return viewport;
     }

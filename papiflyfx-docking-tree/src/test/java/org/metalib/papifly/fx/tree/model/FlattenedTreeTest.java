@@ -53,4 +53,28 @@ class FlattenedTreeTest {
         root.removeChild(child);
         assertEquals(1, flattenedTree.size());
     }
+
+    @Test
+    void flattenedTreeCanHideRootRow() {
+        TreeItem<String> root = new TreeItem<>("root");
+        TreeItem<String> branch = new TreeItem<>("branch");
+        TreeItem<String> leaf = new TreeItem<>("leaf");
+        root.addChild(branch);
+        branch.addChild(leaf);
+
+        TreeExpansionModel<String> expansionModel = new TreeExpansionModel<>();
+        FlattenedTree<String> flattenedTree = new FlattenedTree<>(expansionModel);
+        flattenedTree.setShowRoot(false);
+        flattenedTree.setRoot(root);
+
+        expansionModel.setExpanded(root, true);
+        expansionModel.setExpanded(branch, true);
+
+        assertEquals(2, flattenedTree.size());
+        assertSame(branch, flattenedTree.getItem(0));
+        assertSame(leaf, flattenedTree.getItem(1));
+        assertEquals(0, flattenedTree.depthOf(branch));
+        assertEquals(1, flattenedTree.depthOf(leaf));
+        assertEquals(-1, flattenedTree.indexOf(root));
+    }
 }
