@@ -69,6 +69,96 @@ class TreeViewFxTest {
     }
 
     @Test
+    void keyboardNavigationSkipsRowsExcludedByNavigationPredicate() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            root.addChild(new TreeItem<>("heading"));
+            root.addChild(new TreeItem<>("sample"));
+            treeView.setRoot(root);
+            treeView.getSelectionModel().clearSelection();
+            treeView.getSelectionModel().setFocusedItem(null);
+            treeView.setNavigationSelectablePredicate(item -> !"heading".equals(item.getValue()));
+        });
+        flushLayout();
+        runOnFx(() -> {
+            treeView.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.HOME, false, false, false, false));
+            treeView.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.DOWN, false, false, false, false));
+        });
+        TreeItem<String> focused = callOnFx(() -> treeView.getSelectionModel().getFocusedItem());
+        assertNotNull(focused);
+        assertEquals("sample", focused.getValue());
+    }
+
+    @Test
+    void keyboardNavigationConsumesBoundaryKeyWhenNoFurtherSelectableRow() {
+        KeyEvent upEvent = new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.UP, false, false, false, false);
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            root.addChild(new TreeItem<>("heading"));
+            root.addChild(new TreeItem<>("sample-1"));
+            root.addChild(new TreeItem<>("sample-2"));
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.getSelectionModel().clearSelection();
+            treeView.getSelectionModel().setFocusedItem(null);
+            treeView.setNavigationSelectablePredicate(item -> !"heading".equals(item.getValue()));
+            treeView.getOnKeyPressed().handle(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.HOME, false, false, false, false));
+            treeView.getOnKeyPressed().handle(upEvent);
+            treeView.getOnKeyPressed().handle(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.DOWN, false, false, false, false));
+        });
+        TreeItem<String> focused = callOnFx(() -> treeView.getSelectionModel().getFocusedItem());
+        assertTrue(upEvent.isConsumed());
+        assertNotNull(focused);
+        assertEquals("sample-2", focused.getValue());
+    }
+
+    @Test
+    void keyboardNavigationConsumesLeftWhenNoSelectableAncestor() {
+        KeyEvent leftEvent = new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.LEFT, false, false, false, false);
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            root.addChild(new TreeItem<>("heading"));
+            root.addChild(new TreeItem<>("sample-1"));
+            root.addChild(new TreeItem<>("sample-2"));
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.getSelectionModel().clearSelection();
+            treeView.getSelectionModel().setFocusedItem(null);
+            treeView.setNavigationSelectablePredicate(item -> item != null && item.getValue() != null && item.getValue().startsWith("sample-"));
+            treeView.getOnKeyPressed().handle(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.HOME, false, false, false, false));
+            treeView.getOnKeyPressed().handle(leftEvent);
+            treeView.getOnKeyPressed().handle(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.DOWN, false, false, false, false));
+        });
+        TreeItem<String> focused = callOnFx(() -> treeView.getSelectionModel().getFocusedItem());
+        assertTrue(leftEvent.isConsumed());
+        assertNotNull(focused);
+        assertEquals("sample-2", focused.getValue());
+    }
+
+    @Test
+    void keyboardNavigationConsumesRightOnLeaf() {
+        KeyEvent rightEvent = new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.RIGHT, false, false, false, false);
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            root.addChild(new TreeItem<>("heading"));
+            root.addChild(new TreeItem<>("sample-1"));
+            root.addChild(new TreeItem<>("sample-2"));
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.getSelectionModel().clearSelection();
+            treeView.getSelectionModel().setFocusedItem(null);
+            treeView.setNavigationSelectablePredicate(item -> item != null && item.getValue() != null && item.getValue().startsWith("sample-"));
+            treeView.getOnKeyPressed().handle(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.HOME, false, false, false, false));
+            treeView.getOnKeyPressed().handle(rightEvent);
+            treeView.getOnKeyPressed().handle(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.DOWN, false, false, false, false));
+        });
+        TreeItem<String> focused = callOnFx(() -> treeView.getSelectionModel().getFocusedItem());
+        assertTrue(rightEvent.isConsumed());
+        assertNotNull(focused);
+        assertEquals("sample-2", focused.getValue());
+    }
+
+    @Test
     void hitTestIgnoresVerticalScrollbarArea() {
         flushLayout();
         assertTrue(callOnFx(() -> treeView.getViewport().isVerticalScrollbarVisible()));

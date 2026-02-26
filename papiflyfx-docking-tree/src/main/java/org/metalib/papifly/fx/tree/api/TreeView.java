@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class TreeView<T> extends StackPane implements DisposableContent {
 
@@ -63,6 +64,7 @@ public class TreeView<T> extends StackPane implements DisposableContent {
     private ObjectProperty<Theme> boundThemeProperty;
     private ChangeListener<Theme> themeChangeListener;
     private BiConsumer<TreeItem<T>, String> editCommitHandler = (item, text) -> {};
+    private Predicate<TreeItem<T>> navigationSelectablePredicate = item -> true;
     private TreeViewStateData pendingState;
     private boolean disposed;
 
@@ -75,6 +77,7 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         getChildren().addAll(viewport, dragDropController.overlayCanvas(), editController.editorNode());
 
         installHandlers();
+        inputController.setNavigationSelectablePredicate(navigationSelectablePredicate);
         root.addListener((obs, oldRoot, newRoot) -> onRootChanged(newRoot));
         selectionModel.addListener(model -> viewport.markDirty());
         expansionModel.addListener((item, expanded) -> viewport.markDirty());
@@ -136,6 +139,15 @@ public class TreeView<T> extends StackPane implements DisposableContent {
 
     public void setEditCommitHandler(BiConsumer<TreeItem<T>, String> editCommitHandler) {
         this.editCommitHandler = editCommitHandler == null ? (item, text) -> {} : editCommitHandler;
+    }
+
+    public void setNavigationSelectablePredicate(Predicate<TreeItem<T>> navigationSelectablePredicate) {
+        this.navigationSelectablePredicate = navigationSelectablePredicate == null ? item -> true : navigationSelectablePredicate;
+        inputController.setNavigationSelectablePredicate(this.navigationSelectablePredicate);
+    }
+
+    public Predicate<TreeItem<T>> getNavigationSelectablePredicate() {
+        return navigationSelectablePredicate;
     }
 
     public void bindThemeProperty(ObjectProperty<Theme> themeProperty) {

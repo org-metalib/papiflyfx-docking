@@ -10,6 +10,7 @@ import org.metalib.papifly.fx.tree.render.TreeViewport;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 public final class TreeInputController<T> {
 
@@ -18,6 +19,7 @@ public final class TreeInputController<T> {
     private final TreeExpansionModel<T> expansionModel;
     private final TreeViewport<T> viewport;
     private final TreeEditController<T> editController;
+    private Predicate<TreeItem<T>> navigationSelectable = item -> true;
 
     public TreeInputController(
         FlattenedTree<T> flattenedTree,
@@ -45,8 +47,8 @@ public final class TreeInputController<T> {
         return switch (code) {
             case UP -> consume(event, moveFocusBy(-1, extendSelection));
             case DOWN -> consume(event, moveFocusBy(1, extendSelection));
-            case HOME -> consume(event, focusByIndex(0, extendSelection));
-            case END -> consume(event, focusByIndex(flattenedTree.size() - 1, extendSelection));
+            case HOME -> consume(event, focusByIndex(0, 1, extendSelection));
+            case END -> consume(event, focusByIndex(flattenedTree.size() - 1, -1, extendSelection));
             case PAGE_UP -> consume(event, moveFocusBy(-pageJumpSize(), extendSelection));
             case PAGE_DOWN -> consume(event, moveFocusBy(pageJumpSize(), extendSelection));
             case LEFT -> consume(event, navigateLeft());
@@ -58,13 +60,34 @@ public final class TreeInputController<T> {
         };
     }
 
+    public void setNavigationSelectablePredicate(Predicate<TreeItem<T>> navigationSelectable) {
+        this.navigationSelectable = navigationSelectable == null ? item -> true : navigationSelectable;
+    }
+
     private boolean moveFocusBy(int delta, boolean extendSelection) {
         TreeItem<T> focused = ensureFocusedItem();
+        if (focused == null) {
+            return false;
+        }
         int currentIndex = flattenedTree.indexOf(focused);
         if (currentIndex < 0) {
             currentIndex = 0;
         }
-        int targetIndex = clamp(currentIndex + delta, 0, flattenedTree.size() - 1);
+        int unclampedTarget = currentIndex + delta;
+        int targetIndex = clamp(unclampedTarget, 0, flattenedTree.size() - 1);
+        int direction = delta < 0 ? -1 : 1;
+        targetIndex = findSelectableIndex(targetIndex, direction);
+        if (targetIndex < 0) {
+            return true;
+        }
+        return focusByIndex(targetIndex, extendSelection);
+    }
+
+    private boolean focusByIndex(int index, int searchDirection, boolean extendSelection) {
+        int targetIndex = findSelectableIndex(index, searchDirection);
+        if (targetIndex < 0) {
+            return selectionModel.getFocusedItem() != null;
+        }
         return focusByIndex(targetIndex, extendSelection);
     }
 
@@ -73,6 +96,9 @@ public final class TreeInputController<T> {
             return false;
         }
         TreeItem<T> target = flattenedTree.getItem(index);
+        if (!isNavigationSelectable(target)) {
+            return false;
+        }
         focusItem(target, extendSelection);
         return true;
     }
@@ -112,29 +138,32 @@ public final class TreeInputController<T> {
             viewport.markDirty();
             return true;
         }
-        TreeItem<T> parent = focused.getParent();
-        if (parent == null) {
-            return false;
+        TreeItem<T> target = findSelectableAncestor(focused.getParent());
+        if (target == null) {
+            return true;
         }
-        focusItem(parent, false);
+        focusItem(target, false);
         return true;
     }
 
     private boolean navigateRight() {
         TreeItem<T> focused = ensureFocusedItem();
-        if (focused == null || focused.isLeaf()) {
+        if (focused == null) {
             return false;
+        }
+        if (focused.isLeaf()) {
+            return true;
         }
         if (!expansionModel.isExpanded(focused)) {
             expansionModel.setExpanded(focused, true);
             viewport.markDirty();
             return true;
         }
-        if (!focused.getChildren().isEmpty()) {
-            focusItem(focused.getChildren().getFirst(), false);
-            return true;
+        TreeItem<T> target = findFirstSelectableDescendant(focused);
+        if (target != null) {
+            focusItem(target, false);
         }
-        return false;
+        return true;
     }
 
     private boolean toggleFocusedExpansion() {
@@ -191,7 +220,11 @@ public final class TreeInputController<T> {
         if (flattenedTree.size() == 0) {
             return null;
         }
-        TreeItem<T> first = flattenedTree.getItem(0);
+        int firstSelectableIndex = findSelectableIndex(0, 1);
+        if (firstSelectableIndex < 0) {
+            return null;
+        }
+        TreeItem<T> first = flattenedTree.getItem(firstSelectableIndex);
         selectionModel.selectOnly(first);
         selectionModel.setFocusedItem(first);
         selectionModel.setAnchorItem(first);
@@ -208,6 +241,53 @@ public final class TreeInputController<T> {
             event.consume();
         }
         return handled;
+    }
+
+    private int findSelectableIndex(int startIndex, int direction) {
+        if (flattenedTree.size() == 0) {
+            return -1;
+        }
+        int step = direction < 0 ? -1 : 1;
+        int index = clamp(startIndex, 0, flattenedTree.size() - 1);
+        while (index >= 0 && index < flattenedTree.size()) {
+            TreeItem<T> item = flattenedTree.getItem(index);
+            if (isNavigationSelectable(item)) {
+                return index;
+            }
+            index += step;
+        }
+        return -1;
+    }
+
+    private boolean isNavigationSelectable(TreeItem<T> item) {
+        return item != null && navigationSelectable.test(item);
+    }
+
+    private TreeItem<T> findSelectableAncestor(TreeItem<T> start) {
+        TreeItem<T> current = start;
+        while (current != null) {
+            if (isNavigationSelectable(current)) {
+                return current;
+            }
+            current = current.getParent();
+        }
+        return null;
+    }
+
+    private TreeItem<T> findFirstSelectableDescendant(TreeItem<T> parent) {
+        if (parent == null) {
+            return null;
+        }
+        for (TreeItem<T> child : parent.getChildren()) {
+            if (isNavigationSelectable(child)) {
+                return child;
+            }
+            TreeItem<T> nested = findFirstSelectableDescendant(child);
+            if (nested != null) {
+                return nested;
+            }
+        }
+        return null;
     }
 
     private static int clamp(int value, int min, int max) {

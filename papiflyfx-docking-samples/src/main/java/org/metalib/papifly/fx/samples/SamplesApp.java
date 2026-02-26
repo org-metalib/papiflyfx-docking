@@ -123,6 +123,7 @@ public class SamplesApp extends Application {
         treeView.setRoot(buildNavigationRoot());
         treeView.setTreeViewTheme(NAVIGATION_THEME);
         treeView.setCellRenderer(this::renderNavigationCell);
+        treeView.setNavigationSelectablePredicate(item -> item != null && item.getValue() != null && !item.getValue().isCategory());
         treeView.setPrefWidth(190);
         treeView.setMinWidth(140);
         treeView.getSelectionModel().addListener(model -> onNavigationSelectionChanged(treeView));
