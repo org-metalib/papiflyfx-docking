@@ -57,6 +57,7 @@ import java.util.logging.Logger;
 public class DockManager {
 
     private static final Logger LOG = Logger.getLogger(DockManager.class.getName());
+    public static final String ROOT_PANE_MANAGER_PROPERTY = DockManager.class.getName() + ".rootPaneManager";
 
     private final BorderPane mainContainer;
     private final StackPane rootPane;
@@ -120,6 +121,7 @@ public class DockManager {
         mainContainer.setCenter(rootPane);
         mainContainer.setBottom(minimizedBar);
         mainContainer.setMinSize(0, 0);
+        mainContainer.getProperties().put(ROOT_PANE_MANAGER_PROPERTY, this);
 
         // Bind overlay size to root
         rootPane.widthProperty().addListener((obs, oldVal, newVal) ->
@@ -1435,9 +1437,16 @@ public class DockManager {
      * Disposes of the dock manager and all elements.
      */
     public void dispose() {
+        if (themeProperty.isBound()) {
+            themeProperty.unbind();
+        }
+        mainContainer.getProperties().remove(ROOT_PANE_MANAGER_PROPERTY);
+        ownerStage = null;
+
         // Dispose floating windows
         if (floatingWindowManager != null) {
             floatingWindowManager.dispose();
+            floatingWindowManager = null;
         }
         floatingRestoreHints.clear();
 
@@ -1451,6 +1460,7 @@ public class DockManager {
         }
         rootElement.set(null);
         dockingLayer.getChildren().clear();
+        contentFactory = null;
     }
 
     // === Fluent Builder API ===

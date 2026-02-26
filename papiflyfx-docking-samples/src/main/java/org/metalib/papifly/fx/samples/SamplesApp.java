@@ -6,6 +6,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Label;
@@ -19,6 +20,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import org.metalib.papifly.fx.docks.DockManager;
+import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.samples.catalog.SampleCatalog;
 import org.metalib.papifly.fx.tree.api.CellState;
@@ -26,6 +29,11 @@ import org.metalib.papifly.fx.tree.api.TreeItem;
 import org.metalib.papifly.fx.tree.api.TreeView;
 import org.metalib.papifly.fx.tree.render.TreeRenderContext;
 import org.metalib.papifly.fx.tree.theme.TreeViewTheme;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Main application shell for the PapiflyFX Docking Samples.
@@ -83,6 +91,7 @@ public class SamplesApp extends Application {
 
         stage.setTitle("PapiflyFX Docking Samples");
         stage.setScene(new Scene(root, 1200, 800));
+        stage.setOnCloseRequest(event -> disposeContentArea());
         stage.show();
     }
 
@@ -159,8 +168,14 @@ public class SamplesApp extends Application {
             return;
         }
         selectedSampleItem = focusedItem;
+        disposeContentArea();
         Node content = entry.sample().build(primaryStage, themeProperty);
         contentArea.getChildren().setAll(content);
+    }
+
+    @Override
+    public void stop() {
+        disposeContentArea();
     }
 
     private void renderNavigationCell(
@@ -193,6 +208,40 @@ public class SamplesApp extends Application {
         placeholder.setStyle("-fx-text-fill: #888888; -fx-font-size: 14px;");
         contentArea.getChildren().add(placeholder);
         contentArea.setStyle("-fx-background-color: #1e1e1e;");
+    }
+
+    private void disposeContentArea() {
+        if (contentArea.getChildren().isEmpty()) {
+            return;
+        }
+        Set<DockManager> disposedManagers = new HashSet<>();
+        List<Node> children = new ArrayList<>(contentArea.getChildren());
+        for (Node child : children) {
+            disposeNodeTree(child, disposedManagers);
+        }
+        contentArea.getChildren().clear();
+    }
+
+    private void disposeNodeTree(Node node, Set<DockManager> disposedManagers) {
+        if (node == null) {
+            return;
+        }
+        Object managerValue = node.getProperties().get(DockManager.ROOT_PANE_MANAGER_PROPERTY);
+        if (managerValue instanceof DockManager dockManager) {
+            if (disposedManagers.add(dockManager)) {
+                dockManager.dispose();
+            }
+            return;
+        }
+        if (node instanceof DisposableContent disposable) {
+            disposable.dispose();
+        }
+        if (node instanceof Parent parent) {
+            List<Node> children = new ArrayList<>(parent.getChildrenUnmodifiable());
+            for (Node child : children) {
+                disposeNodeTree(child, disposedManagers);
+            }
+        }
     }
 
     /**
