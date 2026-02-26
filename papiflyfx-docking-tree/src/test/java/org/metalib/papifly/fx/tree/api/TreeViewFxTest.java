@@ -2,11 +2,15 @@ package org.metalib.papifly.fx.tree.api;
 
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.Region;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
+import org.metalib.papifly.fx.tree.search.TreeSearchOverlay;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
@@ -18,6 +22,7 @@ import java.util.concurrent.CountDownLatch;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -170,6 +175,134 @@ class TreeViewFxTest {
             geometry.trackY() + Math.max(1.0, geometry.trackHeight() * 0.5)
         ));
         assertNull(hitInfo);
+    }
+
+    @Test
+    void cmdOrCtrlFOpensSearchOverlay() {
+        runOnFx(() -> {
+            treeView.requestFocus();
+            treeView.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.F, false, true, false, false));
+        });
+        assertTrue(callOnFx(treeView::isSearchOpen));
+    }
+
+    @Test
+    void searchOverlayRemainsCompactAndUsesSearchStyling() {
+        runOnFx(() -> treeView.openSearch("node"));
+        flushLayout();
+
+        TreeSearchOverlay overlay = callOnFx(() -> treeView.getChildren().stream()
+            .filter(TreeSearchOverlay.class::isInstance)
+            .map(TreeSearchOverlay.class::cast)
+            .findFirst()
+            .orElseThrow());
+        double overlayHeight = callOnFx(overlay::getHeight);
+        double treeHeight = callOnFx(treeView::getHeight);
+
+        assertEquals(Region.USE_PREF_SIZE, callOnFx(overlay::getMaxHeight));
+        assertTrue(overlayHeight < treeHeight * 0.25);
+        assertTrue(callOnFx(() -> overlay.getStyleClass().contains("pf-tree-search-overlay")));
+        assertTrue(callOnFx(() -> overlay.lookupAll(".pf-tree-search-field").size() == 1));
+    }
+
+    @Test
+    void searchOverlayAdaptsToNarrowTreeWidth() {
+        runOnFx(() -> {
+            treeView.getScene().getWindow().setWidth(210.0);
+            treeView.openSearch("sample");
+        });
+        flushLayout();
+
+        TreeSearchOverlay overlay = callOnFx(() -> treeView.getChildren().stream()
+            .filter(TreeSearchOverlay.class::isInstance)
+            .map(TreeSearchOverlay.class::cast)
+            .findFirst()
+            .orElseThrow());
+        TextField searchField = callOnFx(() -> (TextField) overlay.lookup(".pf-tree-search-field"));
+        Label countLabel = callOnFx(() -> (Label) overlay.lookup(".pf-tree-search-result-label"));
+
+        assertNotNull(searchField);
+        assertNotNull(countLabel);
+        assertTrue(callOnFx(overlay::getMaxWidth) <= callOnFx(treeView::getWidth));
+        assertTrue(callOnFx(searchField::getWidth) >= 40.0);
+        assertFalse(callOnFx(countLabel::isVisible));
+    }
+
+    @Test
+    void typingPrintableCharOpensSearchOverlayWithSeedQuery() {
+        runOnFx(() -> {
+            treeView.requestFocus();
+            treeView.fireEvent(new KeyEvent(KeyEvent.KEY_TYPED, "n", "n", KeyCode.UNDEFINED, false, false, false, false));
+        });
+
+        assertTrue(callOnFx(treeView::isSearchOpen));
+        TreeItem<String> focused = callOnFx(() -> treeView.getSelectionModel().getFocusedItem());
+        assertNotNull(focused);
+        assertEquals("node-0", focused.getValue());
+    }
+
+    @Test
+    void searchSelectsAndExpandsAndRevealsMatch() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            for (int i = 0; i < 220; i++) {
+                root.addChild(new TreeItem<>("noise-" + i));
+            }
+            TreeItem<String> branch = new TreeItem<>("branch");
+            TreeItem<String> target = new TreeItem<>("target-node");
+            branch.addChild(target);
+            root.addChild(branch);
+            treeView.setRoot(root);
+            treeView.getExpansionModel().setExpanded(branch, false);
+            treeView.getViewport().setScrollOffset(0.0);
+        });
+        flushLayout();
+
+        TreeItem<String> match = callOnFx(() -> treeView.searchAndRevealFirst("target"));
+        assertNotNull(match);
+        assertEquals("target-node", match.getValue());
+        TreeItem<String> focused = callOnFx(() -> treeView.getSelectionModel().getFocusedItem());
+        assertSame(match, focused);
+        assertTrue(callOnFx(() -> treeView.getExpansionModel().isExpanded(match.getParent())));
+        assertTrue(callOnFx(() -> treeView.getViewport().getScrollOffset()) > 0.0);
+    }
+
+    @Test
+    void searchNextAndPreviousCycleThroughMatches() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            root.addChild(new TreeItem<>("match-1"));
+            root.addChild(new TreeItem<>("match-2"));
+            root.addChild(new TreeItem<>("match-3"));
+            treeView.setRoot(root);
+            treeView.openSearch("match");
+        });
+
+        assertEquals("match-1", callOnFx(() -> treeView.getSelectionModel().getFocusedItem().getValue()));
+
+        runOnFx(treeView::searchNext);
+        assertEquals("match-2", callOnFx(() -> treeView.getSelectionModel().getFocusedItem().getValue()));
+
+        runOnFx(treeView::searchNext);
+        assertEquals("match-3", callOnFx(() -> treeView.getSelectionModel().getFocusedItem().getValue()));
+
+        runOnFx(treeView::searchNext);
+        assertEquals("match-1", callOnFx(() -> treeView.getSelectionModel().getFocusedItem().getValue()));
+
+        runOnFx(treeView::searchPrevious);
+        assertEquals("match-3", callOnFx(() -> treeView.getSelectionModel().getFocusedItem().getValue()));
+    }
+
+    @Test
+    void escapeClosesSearchOverlayAndReturnsFocusToTree() {
+        runOnFx(() -> {
+            treeView.openSearch("node");
+            treeView.requestFocus();
+            treeView.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ESCAPE, false, false, false, false));
+        });
+
+        assertFalse(callOnFx(treeView::isSearchOpen));
+        assertTrue(callOnFx(() -> treeView.getScene().getFocusOwner() == treeView));
     }
 
     private TreeItem<String> createLargeTree() {

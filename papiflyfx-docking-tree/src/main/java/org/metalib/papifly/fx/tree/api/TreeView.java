@@ -1,9 +1,14 @@
 package org.metalib.papifly.fx.tree.api;
 
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
+import javafx.beans.binding.Bindings;
 import javafx.scene.image.Image;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.StackPane;
 import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
@@ -15,6 +20,9 @@ import org.metalib.papifly.fx.tree.model.FlattenedTree;
 import org.metalib.papifly.fx.tree.model.TreeExpansionModel;
 import org.metalib.papifly.fx.tree.model.TreeSelectionModel;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
+import org.metalib.papifly.fx.tree.search.TreeSearchEngine;
+import org.metalib.papifly.fx.tree.search.TreeSearchOverlay;
+import org.metalib.papifly.fx.tree.search.TreeSearchSession;
 import org.metalib.papifly.fx.tree.theme.TreeViewTheme;
 import org.metalib.papifly.fx.tree.theme.TreeViewThemeMapper;
 import org.metalib.papifly.fx.tree.util.TreeStateCodec;
@@ -33,11 +41,24 @@ import java.util.function.Predicate;
 public class TreeView<T> extends StackPane implements DisposableContent {
 
     private final ObjectProperty<TreeItem<T>> root = new SimpleObjectProperty<>(this, "root");
+    private final ObjectProperty<Function<T, String>> searchTextExtractor = new SimpleObjectProperty<>(
+        this,
+        "searchTextExtractor",
+        value -> value == null ? "" : String.valueOf(value)
+    );
     private final TreeSelectionModel<T> selectionModel = new TreeSelectionModel<>();
     private final TreeExpansionModel<T> expansionModel = new TreeExpansionModel<>();
     private final FlattenedTree<T> flattenedTree = new FlattenedTree<>(expansionModel);
     private final TreeViewport<T> viewport = new TreeViewport<>(flattenedTree, selectionModel);
     private final TreeEditController<T> editController = new TreeEditController<>(viewport, viewport::markDirty);
+    private final TreeSearchEngine<T> searchEngine = new TreeSearchEngine<>();
+    private final TreeSearchSession<T> searchSession = new TreeSearchSession<>(
+        searchEngine,
+        this::getRoot,
+        this::getSearchTextExtractor,
+        this::isShowRoot
+    );
+    private final TreeSearchOverlay searchOverlay = new TreeSearchOverlay();
 
     private final TreeInputController<T> inputController = new TreeInputController<>(
         flattenedTree,
@@ -74,8 +95,12 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         setFocusTraversable(true);
 
         editController.setCommitHandler(this::onEditCommit);
-        getChildren().addAll(viewport, dragDropController.overlayCanvas(), editController.editorNode());
+        StackPane.setAlignment(searchOverlay, Pos.TOP_RIGHT);
+        StackPane.setMargin(searchOverlay, new Insets(8.0));
+        searchOverlay.maxWidthProperty().bind(Bindings.max(0.0, widthProperty().subtract(16.0)));
+        getChildren().addAll(viewport, dragDropController.overlayCanvas(), editController.editorNode(), searchOverlay);
 
+        configureSearchOverlay();
         installHandlers();
         inputController.setNavigationSelectablePredicate(navigationSelectablePredicate);
         root.addListener((obs, oldRoot, newRoot) -> onRootChanged(newRoot));
@@ -170,11 +195,30 @@ public class TreeView<T> extends StackPane implements DisposableContent {
     }
 
     public void setTreeViewTheme(TreeViewTheme theme) {
-        viewport.setTheme(theme == null ? TreeViewTheme.dark() : theme);
+        TreeViewTheme resolvedTheme = theme == null ? TreeViewTheme.dark() : theme;
+        viewport.setTheme(resolvedTheme);
+        searchOverlay.setTheme(resolvedTheme);
     }
 
     public TreeViewTheme getTreeViewTheme() {
         return viewport.getTheme();
+    }
+
+    public Function<T, String> getSearchTextExtractor() {
+        return searchTextExtractor.get();
+    }
+
+    public void setSearchTextExtractor(Function<T, String> searchTextExtractor) {
+        this.searchTextExtractor.set(searchTextExtractor == null ? value -> value == null ? "" : String.valueOf(value) : searchTextExtractor);
+        if (searchOverlay.isOpen()) {
+            searchSession.refresh();
+            updateSearchOverlayCount();
+            revealMatch(searchSession.getCurrentMatch());
+        }
+    }
+
+    public ObjectProperty<Function<T, String>> searchTextExtractorProperty() {
+        return searchTextExtractor;
     }
 
     public Map<String, Object> captureState() {
@@ -256,10 +300,12 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         }
         disposed = true;
         unbindThemeProperty();
+        closeSearch();
         editController.dispose();
         pointerController.dispose();
         dragDropController.dispose();
         setOnKeyPressed(null);
+        setOnKeyTyped(null);
         viewport.setOnMousePressed(null);
         viewport.setOnMouseDragged(null);
         viewport.setOnMouseReleased(null);
@@ -317,7 +363,16 @@ public class TreeView<T> extends StackPane implements DisposableContent {
     }
 
     private void installHandlers() {
-        setOnKeyPressed(event -> inputController.handleKeyPressed(event));
+        setOnKeyPressed(event -> {
+            if (handleSearchKeyPressed(event)) {
+                return;
+            }
+            if (searchOverlay.isFocusWithin()) {
+                return;
+            }
+            inputController.handleKeyPressed(event);
+        });
+        setOnKeyTyped(this::handleSearchKeyTyped);
         viewport.setOnMousePressed(event -> {
             requestFocus();
             pointerController.handleMousePressed(event);
@@ -339,6 +394,11 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         } else {
             viewport.markDirty();
         }
+        if (searchOverlay.isOpen()) {
+            searchSession.refresh();
+            updateSearchOverlayCount();
+            revealMatch(searchSession.getCurrentMatch());
+        }
     }
 
     private void onEditCommit(TreeItem<T> item, String text) {
@@ -351,5 +411,147 @@ public class TreeView<T> extends StackPane implements DisposableContent {
 
     private void applyDockingTheme(Theme theme) {
         setTreeViewTheme(TreeViewThemeMapper.map(theme));
+    }
+
+    public void openSearch() {
+        openSearch(seedFromFocusedItem());
+    }
+
+    public void openSearch(String initialQuery) {
+        searchOverlay.open(initialQuery == null ? "" : initialQuery);
+        searchSession.setQuery(searchOverlay.getQuery());
+        updateSearchOverlayCount();
+        revealMatch(searchSession.getCurrentMatch());
+    }
+
+    public void closeSearch() {
+        if (searchOverlay.isOpen()) {
+            searchOverlay.close();
+        }
+    }
+
+    public boolean isSearchOpen() {
+        return searchOverlay.isOpen();
+    }
+
+    public TreeItem<T> searchAndRevealFirst(String query) {
+        return searchAndRevealFirst(query, getSearchTextExtractor());
+    }
+
+    public TreeItem<T> searchAndRevealFirst(String query, Function<T, String> textExtractor) {
+        List<TreeItem<T>> matches = searchEngine.findAll(getRoot(), query, textExtractor, isShowRoot());
+        if (matches.isEmpty()) {
+            return null;
+        }
+        TreeItem<T> match = matches.getFirst();
+        revealMatch(match);
+        return match;
+    }
+
+    public TreeItem<T> searchNext() {
+        TreeItem<T> next = searchSession.next();
+        revealMatch(next);
+        updateSearchOverlayCount();
+        return next;
+    }
+
+    public TreeItem<T> searchPrevious() {
+        TreeItem<T> previous = searchSession.previous();
+        revealMatch(previous);
+        updateSearchOverlayCount();
+        return previous;
+    }
+
+    private void configureSearchOverlay() {
+        searchOverlay.setTheme(getTreeViewTheme());
+        searchOverlay.setOnQueryChanged(query -> {
+            searchSession.setQuery(query);
+            updateSearchOverlayCount();
+            revealMatch(searchSession.getCurrentMatch());
+        });
+        searchOverlay.setOnNext(this::searchNext);
+        searchOverlay.setOnPrevious(this::searchPrevious);
+        searchOverlay.setOnClose(() -> {
+            searchSession.clear();
+            requestFocus();
+            viewport.markDirty();
+        });
+    }
+
+    private boolean handleSearchKeyPressed(KeyEvent event) {
+        if (event == null || event.isConsumed()) {
+            return false;
+        }
+        if (isOpenSearchShortcut(event)) {
+            openSearch();
+            event.consume();
+            return true;
+        }
+        if (event.getCode() == KeyCode.ESCAPE && searchOverlay.isOpen() && !searchOverlay.isFocusWithin()) {
+            closeSearch();
+            event.consume();
+            return true;
+        }
+        return false;
+    }
+
+    private void handleSearchKeyTyped(KeyEvent event) {
+        if (!shouldOpenTypeToSearch(event)) {
+            return;
+        }
+        searchOverlay.appendTyped(event.getCharacter());
+        event.consume();
+    }
+
+    private boolean shouldOpenTypeToSearch(KeyEvent event) {
+        if (event == null || event.isConsumed() || editController.isEditing() || searchOverlay.isFocusWithin()) {
+            return false;
+        }
+        String character = event.getCharacter();
+        if (character == null || character.isEmpty()) {
+            return false;
+        }
+        char ch = character.charAt(0);
+        if (ch < 32 || ch == 127) {
+            return false;
+        }
+        if (event.isControlDown() || event.isMetaDown() || event.isAltDown()) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isOpenSearchShortcut(KeyEvent event) {
+        return event.getCode() == KeyCode.F
+            && (event.isControlDown() || event.isMetaDown())
+            && !event.isAltDown();
+    }
+
+    private String seedFromFocusedItem() {
+        TreeItem<T> focused = selectionModel.getFocusedItem();
+        if (focused == null) {
+            return "";
+        }
+        String text = getSearchTextExtractor().apply(focused.getValue());
+        return text == null ? "" : text;
+    }
+
+    private void updateSearchOverlayCount() {
+        searchOverlay.updateCount(searchSession.getCurrentMatchIndex(), searchSession.getMatchCount());
+    }
+
+    private void revealMatch(TreeItem<T> match) {
+        if (match == null) {
+            return;
+        }
+        TreeItem<T> parent = match.getParent();
+        while (parent != null) {
+            expansionModel.setExpanded(parent, true);
+            parent = parent.getParent();
+        }
+        selectionModel.selectOnly(match);
+        selectionModel.setFocusedItem(match);
+        viewport.ensureItemVisible(match);
+        viewport.markDirty();
     }
 }

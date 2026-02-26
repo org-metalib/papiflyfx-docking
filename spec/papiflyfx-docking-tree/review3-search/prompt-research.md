@@ -1,3 +1,5 @@
+#
+
 Building a search and replace feature for a JavaFX `TreeView` is a great addition, but it can be surprisingly tricky. You have to handle tree traversal, expand parent nodes so the result is visible, and potentially deal with custom `TreeCell` rendering if you want to highlight the text.
 
 To get the best possible code from an AI (or to clarify the requirements for yourself), a good prompt needs to specify your data model, how the UI should react, and how the traversal should happen.
@@ -9,7 +11,7 @@ Here are three prompt templates you can use, ranging from a basic search to a co
 Use this prompt if you just want to find an item, select it in the UI, and automatically expand its parent folders so the user can see it.
 
 > **Prompt:**
-> "I am building a JavaFX application and need a search feature for a `TreeView<String>`. Please write a method that takes
+> "I am building a ¡JavaFX application and need a search feature for a `TreeView<String>`. Please write a method that takes
     a search string and searches the tree starting from the `getRoot()`. It should use a depth-first search. If a matching
      `TreeItem` is found (case-insensitive partial match), the method should:
 > 1. Select the item in the `TreeView`'s SelectionModel.

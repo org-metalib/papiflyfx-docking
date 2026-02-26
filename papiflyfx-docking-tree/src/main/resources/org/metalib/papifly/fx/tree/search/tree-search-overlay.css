@@ -1,0 +1,67 @@
+.pf-tree-search-overlay {
+    -pf-tree-search-bg: #252526;
+    -pf-tree-search-panel-border: #3f3f46;
+    -pf-tree-search-accent: #007acc;
+    -pf-tree-search-text: #d4d4d4;
+    -pf-tree-search-muted-text: #858585;
+    -pf-tree-search-control-bg: #1e1e1e;
+    -pf-tree-search-control-border: #555555;
+    -pf-tree-search-control-hover-bg: #2a2d2e;
+
+    -fx-background-color: -pf-tree-search-bg;
+    -fx-border-color: -pf-tree-search-panel-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.pf-tree-search-row {
+    -fx-spacing: 4;
+    -fx-alignment: center-left;
+}
+
+.pf-tree-search-field {
+    -fx-font-size: 11px;
+    -fx-min-height: 24;
+    -fx-pref-height: 24;
+    -fx-max-height: 24;
+    -fx-background-color: -pf-tree-search-control-bg;
+    -fx-background-radius: 5;
+    -fx-border-color: -pf-tree-search-control-border;
+    -fx-border-radius: 5;
+    -fx-border-width: 1;
+    -fx-text-fill: -pf-tree-search-text;
+    -fx-prompt-text-fill: -pf-tree-search-muted-text;
+}
+
+.pf-tree-search-field:focused {
+    -fx-border-color: -pf-tree-search-accent;
+}
+
+.pf-tree-search-result-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: -pf-tree-search-muted-text;
+    -fx-padding: 0 4 0 4;
+}
+
+.pf-tree-search-icon-button {
+    -fx-min-width: 22;
+    -fx-pref-width: 22;
+    -fx-max-width: 22;
+    -fx-min-height: 22;
+    -fx-pref-height: 22;
+    -fx-max-height: 22;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+}
+
+.pf-tree-search-icon-button:hover {
+    -fx-background-color: -pf-tree-search-control-hover-bg;
+}
+
+.pf-tree-search-icon-button:focused {
+    -fx-border-color: -pf-tree-search-accent;
+}
