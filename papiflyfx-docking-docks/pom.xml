@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.metalib.papifly.docking</groupId>
         <artifactId>papiflyfx-docking</artifactId>
-        <version>0.0.9-SNAPSHOT</version>
+        <version>0.0.9</version>
     </parent>
 
     <name>papiflyfx-docking-docks</name>
