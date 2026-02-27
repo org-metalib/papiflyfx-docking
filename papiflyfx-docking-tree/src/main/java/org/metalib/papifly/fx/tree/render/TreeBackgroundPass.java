@@ -27,19 +27,19 @@ final class TreeBackgroundPass<T> implements TreeRenderPass<T> {
         Paint rowPaint = row.rowIndex() % 2 == 0
             ? context.theme().rowBackground()
             : context.theme().rowBackgroundAlternate();
-        if (context.selectionModel().isSelected(item)) {
+        if (row.isItemRow() && context.selectionModel().isSelected(item)) {
             if (context.selectionModel().getFocusedItem() == item) {
                 rowPaint = context.theme().selectedBackground();
             } else {
                 rowPaint = context.theme().selectedBackgroundUnfocused();
             }
-        } else if (context.hoveredItem() == item) {
+        } else if (row.isItemRow() && context.hoveredItem() == item) {
             rowPaint = context.theme().hoverBackground();
         }
         graphics.setFill(rowPaint);
         graphics.fillRect(0, row.y(), context.effectiveTextWidth(), row.height());
 
-        if (context.selectionModel().getFocusedItem() == item) {
+        if (row.isItemRow() && context.selectionModel().getFocusedItem() == item) {
             graphics.setStroke(context.theme().focusedBorder());
             graphics.strokeRect(0.5, row.y() + 0.5, Math.max(0, context.effectiveTextWidth() - 1), Math.max(0, row.height() - 1));
         }

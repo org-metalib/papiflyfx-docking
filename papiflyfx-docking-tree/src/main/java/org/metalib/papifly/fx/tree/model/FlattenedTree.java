@@ -1,6 +1,7 @@
 package org.metalib.papifly.fx.tree.model;
 
 import org.metalib.papifly.fx.tree.api.TreeItem;
+import org.metalib.papifly.fx.tree.api.TreeNodeInfoProvider;
 
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -15,21 +16,32 @@ public class FlattenedTree<T> {
     }
 
     private final List<FlattenedRow<T>> rows = new ArrayList<>();
-    private final Map<TreeItem<T>, Integer> indexByItem = new IdentityHashMap<>();
+    private final Map<TreeItem<T>, Integer> itemRowIndexByItem = new IdentityHashMap<>();
+    private final Map<TreeItem<T>, Integer> infoRowIndexByItem = new IdentityHashMap<>();
     private final Map<TreeItem<T>, TreeItem.TreeItemListener<T>> treeListeners = new IdentityHashMap<>();
     private final List<FlattenedTreeListener> listeners = new CopyOnWriteArrayList<>();
+    private final TreeExpansionModel.ExpansionListener<T> expansionListener = (item, expanded) -> rebuild();
+    private final TreeNodeInfoModel.Listener<T> infoListener = (item, expanded) -> rebuild();
 
     private TreeItem<T> root;
     private TreeExpansionModel<T> expansionModel;
+    private TreeNodeInfoModel<T> nodeInfoModel;
+    private TreeNodeInfoProvider<T> nodeInfoProvider;
     private boolean showRoot = true;
 
     public FlattenedTree() {
-        this(new TreeExpansionModel<>());
+        this(new TreeExpansionModel<>(), new TreeNodeInfoModel<>());
     }
 
     public FlattenedTree(TreeExpansionModel<T> expansionModel) {
+        this(expansionModel, new TreeNodeInfoModel<>());
+    }
+
+    public FlattenedTree(TreeExpansionModel<T> expansionModel, TreeNodeInfoModel<T> nodeInfoModel) {
         this.expansionModel = expansionModel == null ? new TreeExpansionModel<>() : expansionModel;
-        this.expansionModel.addListener((item, expanded) -> rebuild());
+        this.nodeInfoModel = nodeInfoModel == null ? new TreeNodeInfoModel<>() : nodeInfoModel;
+        this.expansionModel.addListener(expansionListener);
+        this.nodeInfoModel.addListener(infoListener);
     }
 
     public TreeItem<T> getRoot() {
@@ -53,8 +65,40 @@ public class FlattenedTree<T> {
     }
 
     public void setExpansionModel(TreeExpansionModel<T> expansionModel) {
-        this.expansionModel = expansionModel == null ? new TreeExpansionModel<>() : expansionModel;
-        this.expansionModel.addListener((item, expanded) -> rebuild());
+        TreeExpansionModel<T> resolved = expansionModel == null ? new TreeExpansionModel<>() : expansionModel;
+        if (this.expansionModel == resolved) {
+            return;
+        }
+        this.expansionModel.removeListener(expansionListener);
+        this.expansionModel = resolved;
+        this.expansionModel.addListener(expansionListener);
+        rebuild();
+    }
+
+    public TreeNodeInfoModel<T> getNodeInfoModel() {
+        return nodeInfoModel;
+    }
+
+    public void setNodeInfoModel(TreeNodeInfoModel<T> nodeInfoModel) {
+        TreeNodeInfoModel<T> resolved = nodeInfoModel == null ? new TreeNodeInfoModel<>() : nodeInfoModel;
+        if (this.nodeInfoModel == resolved) {
+            return;
+        }
+        this.nodeInfoModel.removeListener(infoListener);
+        this.nodeInfoModel = resolved;
+        this.nodeInfoModel.addListener(infoListener);
+        rebuild();
+    }
+
+    public TreeNodeInfoProvider<T> getNodeInfoProvider() {
+        return nodeInfoProvider;
+    }
+
+    public void setNodeInfoProvider(TreeNodeInfoProvider<T> nodeInfoProvider) {
+        if (this.nodeInfoProvider == nodeInfoProvider) {
+            return;
+        }
+        this.nodeInfoProvider = nodeInfoProvider;
         rebuild();
     }
 
@@ -75,15 +119,21 @@ public class FlattenedTree<T> {
     }
 
     public List<TreeItem<T>> visibleItems() {
-        List<TreeItem<T>> items = new ArrayList<>(rows.size());
+        List<TreeItem<T>> items = new ArrayList<>(itemRowIndexByItem.size());
         for (FlattenedRow<T> row : rows) {
-            items.add(row.item());
+            if (row.isItemRow()) {
+                items.add(row.item());
+            }
         }
         return items;
     }
 
     public int size() {
         return rows.size();
+    }
+
+    public int itemRowCount() {
+        return itemRowIndexByItem.size();
     }
 
     public FlattenedRow<T> getRow(int index) {
@@ -94,8 +144,39 @@ public class FlattenedTree<T> {
         return rows.get(index).item();
     }
 
+    public boolean isItemRow(int rowIndex) {
+        if (rowIndex < 0 || rowIndex >= rows.size()) {
+            return false;
+        }
+        return rows.get(rowIndex).isItemRow();
+    }
+
+    public boolean isInfoRow(int rowIndex) {
+        if (rowIndex < 0 || rowIndex >= rows.size()) {
+            return false;
+        }
+        return rows.get(rowIndex).isInfoRow();
+    }
+
+    public TreeItem<T> getOwnerItem(int rowIndex) {
+        if (rowIndex < 0 || rowIndex >= rows.size()) {
+            return null;
+        }
+        return rows.get(rowIndex).item();
+    }
+
+    public int itemRowIndexOf(TreeItem<T> item) {
+        Integer index = itemRowIndexByItem.get(item);
+        return index == null ? -1 : index;
+    }
+
+    public int infoRowIndexOf(TreeItem<T> item) {
+        Integer index = infoRowIndexByItem.get(item);
+        return index == null ? -1 : index;
+    }
+
     public int depthOf(TreeItem<T> item) {
-        Integer index = indexByItem.get(item);
+        Integer index = itemRowIndexByItem.get(item);
         if (index == null) {
             return -1;
         }
@@ -103,7 +184,7 @@ public class FlattenedTree<T> {
     }
 
     public int indexOf(TreeItem<T> item) {
-        Integer index = indexByItem.get(item);
+        Integer index = itemRowIndexByItem.get(item);
         return index == null ? -1 : index;
     }
 
@@ -119,7 +200,8 @@ public class FlattenedTree<T> {
 
     public void rebuild() {
         rows.clear();
-        indexByItem.clear();
+        itemRowIndexByItem.clear();
+        infoRowIndexByItem.clear();
         if (root != null) {
             if (showRoot) {
                 flatten(root, 0);
@@ -133,9 +215,14 @@ public class FlattenedTree<T> {
     }
 
     private void flatten(TreeItem<T> item, int depth) {
-        int index = rows.size();
-        rows.add(new FlattenedRow<>(item, depth));
-        indexByItem.put(item, index);
+        int itemRowIndex = rows.size();
+        rows.add(new FlattenedRow<>(FlattenedRow.RowKind.ITEM, item, depth));
+        itemRowIndexByItem.put(item, itemRowIndex);
+        if (nodeInfoProvider != null && nodeInfoModel.isExpanded(item)) {
+            int infoRowIndex = rows.size();
+            rows.add(new FlattenedRow<>(FlattenedRow.RowKind.INFO, item, depth));
+            infoRowIndexByItem.put(item, infoRowIndex);
+        }
         if (item.isLeaf() || !expansionModel.isExpanded(item)) {
             return;
         }

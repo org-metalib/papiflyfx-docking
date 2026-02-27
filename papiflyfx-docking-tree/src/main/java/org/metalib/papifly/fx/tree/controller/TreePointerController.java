@@ -5,6 +5,7 @@ import javafx.scene.input.ScrollEvent;
 import org.metalib.papifly.fx.tree.api.TreeItem;
 import org.metalib.papifly.fx.tree.model.FlattenedTree;
 import org.metalib.papifly.fx.tree.model.TreeExpansionModel;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoModel;
 import org.metalib.papifly.fx.tree.model.TreeSelectionModel;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
 
@@ -22,6 +23,7 @@ public final class TreePointerController<T> {
     private final FlattenedTree<T> flattenedTree;
     private final TreeSelectionModel<T> selectionModel;
     private final TreeExpansionModel<T> expansionModel;
+    private final TreeNodeInfoModel<T> nodeInfoModel;
     private final TreeViewport<T> viewport;
     private final TreeEditController<T> editController;
 
@@ -32,12 +34,14 @@ public final class TreePointerController<T> {
         FlattenedTree<T> flattenedTree,
         TreeSelectionModel<T> selectionModel,
         TreeExpansionModel<T> expansionModel,
+        TreeNodeInfoModel<T> nodeInfoModel,
         TreeViewport<T> viewport,
         TreeEditController<T> editController
     ) {
         this.flattenedTree = Objects.requireNonNull(flattenedTree, "flattenedTree");
         this.selectionModel = Objects.requireNonNull(selectionModel, "selectionModel");
         this.expansionModel = Objects.requireNonNull(expansionModel, "expansionModel");
+        this.nodeInfoModel = Objects.requireNonNull(nodeInfoModel, "nodeInfoModel");
         this.viewport = Objects.requireNonNull(viewport, "viewport");
         this.editController = Objects.requireNonNull(editController, "editController");
     }
@@ -57,6 +61,22 @@ public final class TreePointerController<T> {
         }
 
         TreeItem<T> item = hitInfo.item();
+        if (hitInfo.isInfoRow()) {
+            selectionModel.selectOnly(item);
+            selectionModel.setFocusedItem(item);
+            selectionModel.setAnchorItem(item);
+            viewport.ensureItemVisible(item);
+            viewport.markDirty();
+            event.consume();
+            return true;
+        }
+        if (hitInfo.infoToggleHit()) {
+            nodeInfoModel.toggle(item);
+            viewport.ensureItemVisible(item);
+            viewport.markDirty();
+            event.consume();
+            return true;
+        }
         if (hitInfo.disclosureHit()) {
             expansionModel.toggle(item);
             viewport.markDirty();

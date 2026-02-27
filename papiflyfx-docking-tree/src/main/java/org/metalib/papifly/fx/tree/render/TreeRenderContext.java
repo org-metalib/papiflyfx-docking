@@ -37,11 +37,22 @@ public record TreeRenderContext<T>(
     Function<T, Image> iconResolver,
     TreeCellRenderer<T> cellRenderer
 ) {
+    private static final double INFO_TOGGLE_MARGIN = 4.0;
+    private static final double INFO_TOGGLE_SIZE = 12.0;
+
     public double textOriginX(TreeRenderRow<T> row) {
         return row.depth() * indentWidth + indentWidth + iconSize + 6.0 - horizontalScrollOffset;
     }
 
     public double disclosureOriginX(TreeRenderRow<T> row) {
         return row.depth() * indentWidth + (indentWidth * 0.5) - horizontalScrollOffset;
+    }
+
+    public double infoToggleX() {
+        return effectiveTextWidth - INFO_TOGGLE_MARGIN - INFO_TOGGLE_SIZE;
+    }
+
+    public double infoToggleSize() {
+        return INFO_TOGGLE_SIZE;
     }
 }

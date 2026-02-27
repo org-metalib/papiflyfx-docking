@@ -11,6 +11,7 @@ import org.metalib.papifly.fx.samples.docks.MinimizeSample;
 import org.metalib.papifly.fx.samples.docks.NestedSplitSample;
 import org.metalib.papifly.fx.samples.docks.PersistSample;
 import org.metalib.papifly.fx.samples.docks.TabGroupSample;
+import org.metalib.papifly.fx.samples.tree.TreeViewNodeInfoSample;
 import org.metalib.papifly.fx.samples.tree.TreeViewSample;
 
 import java.util.List;
@@ -40,7 +41,8 @@ public final class SampleCatalog {
             new JavaEditorSample(),
             new JavaScriptEditorSample(),
             new JsonEditorSample(),
-            new TreeViewSample()
+            new TreeViewSample(),
+            new TreeViewNodeInfoSample()
         );
     }
 }

@@ -25,9 +25,13 @@ final class TreeContentPass<T> implements TreeRenderPass<T> {
     }
 
     private void paintRow(TreeRenderContext<T> context, TreeRenderRow<T> row) {
+        if (!row.isItemRow()) {
+            return;
+        }
         GraphicsContext graphics = context.graphics();
         TreeItem<T> item = row.item();
         drawDisclosure(context, row);
+        drawInfoToggle(context, row);
 
         double iconX = row.depth() * context.indentWidth() + context.indentWidth() + 2.0 - context.horizontalScrollOffset();
         double iconY = row.y() + ((row.height() - context.iconSize()) * 0.5);
@@ -59,6 +63,26 @@ final class TreeContentPass<T> implements TreeRenderPass<T> {
             : context.theme().textColor();
         graphics.setFill(textPaint);
         graphics.fillText(String.valueOf(item.getValue()), textX, textY);
+    }
+
+    private void drawInfoToggle(TreeRenderContext<T> context, TreeRenderRow<T> row) {
+        if (!row.infoAvailable()) {
+            return;
+        }
+        GraphicsContext graphics = context.graphics();
+        double size = context.infoToggleSize();
+        double x = context.infoToggleX();
+        double y = row.y() + ((row.height() - size) * 0.5);
+        graphics.setStroke(context.theme().disclosureColor());
+        graphics.setLineWidth(1.25);
+        graphics.strokeRoundRect(x, y, size, size, 3.0, 3.0);
+        double cx = x + (size * 0.5);
+        double cy = y + (size * 0.5);
+        double arm = size * 0.3;
+        graphics.strokeLine(cx - arm, cy, cx + arm, cy);
+        if (!row.infoExpanded()) {
+            graphics.strokeLine(cx, cy - arm, cx, cy + arm);
+        }
     }
 
     private void drawIcon(TreeRenderContext<T> context, TreeItem<T> item, double x, double y) {

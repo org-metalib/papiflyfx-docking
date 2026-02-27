@@ -127,7 +127,7 @@ Expected behavior:
 Inline info needs additional hit metadata (e.g., info toggle zone) and controller updates:
 
 - `TreePointerController` (toggle info, avoid conflicts with selection),
-- `TreeInputController` (keyboard toggle shortcut, e.g., `ALT+ENTER`),
+- `TreeInputController` (platform keyboard toggle shortcut, e.g., `⌘I` on macOS and `ALT+ENTER` on Windows/Linux),
 - drag/drop should ignore or constrain drops on info rows,
 - inline edit should target item rows only.
 

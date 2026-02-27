@@ -1,10 +1,12 @@
 package org.metalib.papifly.fx.tree.model;
 
+import javafx.scene.layout.Pane;
 import org.junit.jupiter.api.Test;
 import org.metalib.papifly.fx.tree.api.TreeItem;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FlattenedTreeTest {
 
@@ -76,5 +78,31 @@ class FlattenedTreeTest {
         assertEquals(0, flattenedTree.depthOf(branch));
         assertEquals(1, flattenedTree.depthOf(leaf));
         assertEquals(-1, flattenedTree.indexOf(root));
+    }
+
+    @Test
+    void flattenedTreeIncludesInfoRowsWhenProviderAndInfoExpansionAreSet() {
+        TreeItem<String> root = new TreeItem<>("root");
+        TreeItem<String> branch = new TreeItem<>("branch");
+        root.addChild(branch);
+
+        TreeExpansionModel<String> expansionModel = new TreeExpansionModel<>();
+        TreeNodeInfoModel<String> nodeInfoModel = new TreeNodeInfoModel<>();
+        FlattenedTree<String> flattenedTree = new FlattenedTree<>(expansionModel, nodeInfoModel);
+        flattenedTree.setShowRoot(false);
+        flattenedTree.setNodeInfoProvider(item -> new Pane());
+        flattenedTree.setRoot(root);
+
+        expansionModel.setExpanded(root, true);
+        nodeInfoModel.setExpanded(branch, true);
+
+        assertEquals(2, flattenedTree.size());
+        assertTrue(flattenedTree.isItemRow(0));
+        assertTrue(flattenedTree.isInfoRow(1));
+        assertSame(branch, flattenedTree.getOwnerItem(1));
+        assertEquals(0, flattenedTree.itemRowIndexOf(branch));
+        assertEquals(1, flattenedTree.infoRowIndexOf(branch));
+        assertEquals(1, flattenedTree.visibleItems().size());
+        assertSame(branch, flattenedTree.visibleItems().getFirst());
     }
 }

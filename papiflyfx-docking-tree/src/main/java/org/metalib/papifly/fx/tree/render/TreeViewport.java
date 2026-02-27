@@ -24,6 +24,8 @@ public class TreeViewport<T> extends Region {
     public static final double SCROLLBAR_THUMB_PAD = 2.0;
     public static final double MIN_THUMB_SIZE = 24.0;
     public static final double SCROLLBAR_RADIUS = 8.0;
+    public static final double INFO_TOGGLE_MARGIN = 4.0;
+    public static final double INFO_TOGGLE_SIZE = 12.0;
 
     private final Canvas canvas = new Canvas();
     private final GlyphCache glyphCache = new GlyphCache();
@@ -48,8 +50,11 @@ public class TreeViewport<T> extends Region {
     private double effectiveTextWidth;
     private double effectiveTextHeight;
     private double contentWidth;
+    private double fullContentHeight;
     private TreeItem<T> hoveredItem;
     private List<TreeRenderRow<T>> visibleRows = List.of();
+    private double[] rowTops = new double[0];
+    private double[] rowHeights = new double[0];
 
     private boolean verticalScrollbarVisible;
     private boolean horizontalScrollbarVisible;
@@ -152,7 +157,7 @@ public class TreeViewport<T> extends Region {
     }
 
     public void setScrollOffset(double offset) {
-        double max = computeMaxScrollOffset(effectiveTextHeight, rowCount() * rowHeight());
+        double max = computeMaxScrollOffset(effectiveTextHeight, fullContentHeight);
         double clamped = clamp(offset, 0.0, max);
         if (Double.compare(scrollOffset, clamped) == 0) {
             return;
@@ -237,16 +242,35 @@ public class TreeViewport<T> extends Region {
         return contentWidth;
     }
 
+    public List<TreeRenderRow<T>> getVisibleRows() {
+        return List.copyOf(visibleRows);
+    }
+
     public double rowHeight() {
         return theme.rowHeight();
+    }
+
+    public double rowTop(int rowIndex) {
+        if (rowIndex < 0 || rowIndex >= rowTops.length) {
+            return -1.0;
+        }
+        return rowTops[rowIndex];
+    }
+
+    public double rowHeightAt(int rowIndex) {
+        if (rowIndex < 0 || rowIndex >= rowHeights.length) {
+            return -1.0;
+        }
+        return rowHeights[rowIndex];
     }
 
     public int rowIndexAtY(double localY) {
         if (rowCount() <= 0) {
             return -1;
         }
-        int row = (int) Math.floor((localY + scrollOffset) / rowHeight());
-        return clamp(row, 0, rowCount() - 1);
+        ensureMetricsForQueries();
+        double absoluteY = localY + scrollOffset;
+        return rowIndexAtAbsoluteY(absoluteY);
     }
 
     public HitInfo<T> hitTest(double localX, double localY) {
@@ -260,19 +284,26 @@ public class TreeViewport<T> extends Region {
         FlattenedRow<T> flattenedRow = flattenedTree.getRow(rowIndex);
         TreeItem<T> item = flattenedRow.item();
         int depth = flattenedRow.depth();
-        double y = rowIndex * rowHeight() - scrollOffset;
+        double y = rowTop(rowIndex) - scrollOffset;
+        double height = rowHeightAt(rowIndex);
         double disclosureStart = depth * theme.indentWidth() - horizontalScrollOffset;
         double disclosureEnd = disclosureStart + theme.indentWidth();
-        boolean disclosureHit = !item.isLeaf() && localX >= disclosureStart && localX <= disclosureEnd;
+        boolean disclosureHit = flattenedRow.isItemRow() && !item.isLeaf() && localX >= disclosureStart && localX <= disclosureEnd;
+        boolean infoToggleHit = flattenedRow.isItemRow()
+            && flattenedTree.getNodeInfoProvider() != null
+            && localX >= infoToggleX()
+            && localX <= infoToggleX() + INFO_TOGGLE_SIZE;
         return new HitInfo<>(
             item,
             rowIndex,
+            flattenedRow.rowKind(),
             depth,
             0.0,
             y,
             effectiveTextWidth,
-            rowHeight(),
-            disclosureHit
+            height,
+            disclosureHit,
+            infoToggleHit
         );
     }
 
@@ -280,17 +311,19 @@ public class TreeViewport<T> extends Region {
         if (rowIndex < 0 || rowIndex >= rowCount()) {
             return null;
         }
-        double y = rowIndex * rowHeight() - scrollOffset;
-        return new BoundingBox(0.0, y, effectiveTextWidth, rowHeight());
+        ensureMetricsForQueries();
+        double y = rowTop(rowIndex) - scrollOffset;
+        return new BoundingBox(0.0, y, effectiveTextWidth, rowHeightAt(rowIndex));
     }
 
     public void ensureItemVisible(TreeItem<T> item) {
-        int index = flattenedTree.indexOf(item);
+        ensureMetricsForQueries();
+        int index = flattenedTree.itemRowIndexOf(item);
         if (index < 0) {
             return;
         }
-        double rowTop = index * rowHeight();
-        double rowBottom = rowTop + rowHeight();
+        double rowTop = rowTop(index);
+        double rowBottom = rowTop + rowHeightAt(index);
         if (rowTop < scrollOffset) {
             setScrollOffset(rowTop);
         } else if (rowBottom > scrollOffset + effectiveTextHeight) {
@@ -302,10 +335,12 @@ public class TreeViewport<T> extends Region {
         if (!verticalScrollbarVisible || verticalScrollbarGeometry == null) {
             return scrollOffset;
         }
-        double maxScroll = computeMaxScrollOffset(effectiveTextHeight, rowCount() * rowHeight());
+        double maxScroll = computeMaxScrollOffset(effectiveTextHeight, fullContentHeight);
         double trackStart = verticalScrollbarGeometry.trackY() + SCROLLBAR_THUMB_PAD;
-        double travel = Math.max(0.0,
-            verticalScrollbarGeometry.trackHeight() - (2 * SCROLLBAR_THUMB_PAD) - verticalScrollbarGeometry.thumbHeight());
+        double travel = Math.max(
+            0.0,
+            verticalScrollbarGeometry.trackHeight() - (2 * SCROLLBAR_THUMB_PAD) - verticalScrollbarGeometry.thumbHeight()
+        );
         if (maxScroll <= 0 || travel <= 0) {
             return 0.0;
         }
@@ -320,8 +355,10 @@ public class TreeViewport<T> extends Region {
         }
         double maxScroll = computeMaxHorizontalScrollOffset(effectiveTextWidth, contentWidth);
         double trackStart = horizontalScrollbarGeometry.trackX() + SCROLLBAR_THUMB_PAD;
-        double travel = Math.max(0.0,
-            horizontalScrollbarGeometry.trackWidth() - (2 * SCROLLBAR_THUMB_PAD) - horizontalScrollbarGeometry.thumbWidth());
+        double travel = Math.max(
+            0.0,
+            horizontalScrollbarGeometry.trackWidth() - (2 * SCROLLBAR_THUMB_PAD) - horizontalScrollbarGeometry.thumbWidth()
+        );
         if (maxScroll <= 0 || travel <= 0) {
             return 0.0;
         }
@@ -413,18 +450,17 @@ public class TreeViewport<T> extends Region {
     private void resolveViewportMetrics(double viewportWidth, double viewportHeight) {
         boolean previousVerticalVisible = verticalScrollbarVisible;
         boolean previousHorizontalVisible = horizontalScrollbarVisible;
-        double rowHeight = rowHeight();
-        double fullContentHeight = rowCount() * rowHeight;
-        contentWidth = computeContentWidth();
-
         boolean nextVerticalVisible = previousVerticalVisible;
         boolean nextHorizontalVisible = previousHorizontalVisible;
+        double nextContentWidth = computeContentWidth();
 
         for (int i = 0; i < 4; i++) {
             double candidateWidth = Math.max(0.0, viewportWidth - (nextVerticalVisible ? SCROLLBAR_WIDTH : 0.0));
             double candidateHeight = Math.max(0.0, viewportHeight - (nextHorizontalVisible ? SCROLLBAR_WIDTH : 0.0));
+            rebuildRowMetrics(candidateWidth);
+            nextContentWidth = computeContentWidth();
             boolean computedVerticalVisible = fullContentHeight > candidateHeight;
-            boolean computedHorizontalVisible = contentWidth > candidateWidth;
+            boolean computedHorizontalVisible = nextContentWidth > candidateWidth;
             if (computedVerticalVisible == nextVerticalVisible && computedHorizontalVisible == nextHorizontalVisible) {
                 break;
             }
@@ -436,6 +472,8 @@ public class TreeViewport<T> extends Region {
         horizontalScrollbarVisible = nextHorizontalVisible;
         effectiveTextWidth = Math.max(0.0, viewportWidth - (verticalScrollbarVisible ? SCROLLBAR_WIDTH : 0.0));
         effectiveTextHeight = Math.max(0.0, viewportHeight - (horizontalScrollbarVisible ? SCROLLBAR_WIDTH : 0.0));
+        rebuildRowMetrics(effectiveTextWidth);
+        contentWidth = nextContentWidth;
 
         double maxVertical = computeMaxScrollOffset(effectiveTextHeight, fullContentHeight);
         double maxHorizontal = computeMaxHorizontalScrollOffset(effectiveTextWidth, contentWidth);
@@ -456,25 +494,50 @@ public class TreeViewport<T> extends Region {
         }
     }
 
+    private void rebuildRowMetrics(double availableWidth) {
+        int count = rowCount();
+        rowTops = new double[count];
+        rowHeights = new double[count];
+        double y = 0.0;
+        for (int i = 0; i < count; i++) {
+            FlattenedRow<T> row = flattenedTree.getRow(i);
+            rowTops[i] = y;
+            double height = row.isInfoRow()
+                ? infoRowHeight(row.item(), availableWidth)
+                : rowHeight();
+            if (!Double.isFinite(height) || height <= 0.0) {
+                height = rowHeight();
+            }
+            rowHeights[i] = Math.max(1.0, height);
+            y += rowHeights[i];
+        }
+        fullContentHeight = y;
+    }
+
     private void buildVisibleRows() {
         if (rowCount() <= 0) {
             visibleRows = List.of();
             return;
         }
-        int firstVisible = clamp((int) Math.floor(scrollOffset / rowHeight()), 0, rowCount() - 1);
-        int lastVisible = clamp((int) Math.ceil((scrollOffset + effectiveTextHeight) / rowHeight()), firstVisible, rowCount() - 1);
+        int firstVisible = clamp(rowIndexAtAbsoluteY(scrollOffset), 0, rowCount() - 1);
+        double viewportBottom = scrollOffset + Math.max(0.0, effectiveTextHeight - 1e-6);
+        int lastVisible = clamp(rowIndexAtAbsoluteY(viewportBottom), firstVisible, rowCount() - 1);
         List<TreeRenderRow<T>> rows = new ArrayList<>(Math.max(1, lastVisible - firstVisible + 1));
         for (int index = firstVisible; index <= lastVisible; index++) {
             FlattenedRow<T> flattenedRow = flattenedTree.getRow(index);
             TreeItem<T> item = flattenedRow.item();
+            boolean isItemRow = flattenedRow.isItemRow();
             rows.add(new TreeRenderRow<>(
+                flattenedRow.rowKind(),
                 item,
                 index,
                 flattenedRow.depth(),
-                index * rowHeight() - scrollOffset,
-                rowHeight(),
-                item.isLeaf(),
-                flattenedTree.getExpansionModel().isExpanded(item)
+                rowTop(index) - scrollOffset,
+                rowHeightAt(index),
+                isItemRow && item.isLeaf(),
+                isItemRow && flattenedTree.getExpansionModel().isExpanded(item),
+                isItemRow && flattenedTree.getNodeInfoProvider() != null,
+                isItemRow && flattenedTree.getNodeInfoModel().isExpanded(item)
             ));
         }
         visibleRows = rows;
@@ -486,6 +549,9 @@ public class TreeViewport<T> extends Region {
         }
         double max = 0.0;
         for (FlattenedRow<T> row : flattenedTree.rows()) {
+            if (!row.isItemRow()) {
+                continue;
+            }
             TreeItem<T> item = row.item();
             double textWidth = glyphCache.measureTextWidth(String.valueOf(item.getValue()));
             double width = (row.depth() * theme.indentWidth())
@@ -498,7 +564,18 @@ public class TreeViewport<T> extends Region {
         return max;
     }
 
-    private ScrollbarGeometry buildVerticalScrollbarGeometry(double fullContentHeight, double maxOffset) {
+    private double infoRowHeight(TreeItem<T> item, double availableWidth) {
+        if (flattenedTree.getNodeInfoProvider() == null || item == null) {
+            return rowHeight();
+        }
+        double preferred = flattenedTree.getNodeInfoProvider().preferredHeight(item, Math.max(0.0, availableWidth));
+        if (!Double.isFinite(preferred) || preferred <= 0.0) {
+            return rowHeight();
+        }
+        return preferred;
+    }
+
+    private ScrollbarGeometry buildVerticalScrollbarGeometry(double contentHeight, double maxOffset) {
         double trackX = effectiveTextWidth;
         double trackY = 0.0;
         double trackWidth = SCROLLBAR_WIDTH;
@@ -508,7 +585,7 @@ public class TreeViewport<T> extends Region {
         if (usableTrack <= 0.0) {
             return new ScrollbarGeometry(trackX, trackY, trackWidth, trackHeight, trackX, trackY, thumbWidth, 0.0);
         }
-        double ratio = effectiveTextHeight / Math.max(fullContentHeight, effectiveTextHeight);
+        double ratio = effectiveTextHeight / Math.max(contentHeight, effectiveTextHeight);
         double thumbHeight = Math.max(MIN_THUMB_SIZE, usableTrack * ratio);
         thumbHeight = Math.min(usableTrack, thumbHeight);
         double thumbTravel = Math.max(0.0, usableTrack - thumbHeight);
@@ -561,6 +638,39 @@ public class TreeViewport<T> extends Region {
         }
     }
 
+    private int rowIndexAtAbsoluteY(double absoluteY) {
+        if (rowCount() <= 0) {
+            return -1;
+        }
+        int low = 0;
+        int high = rowCount() - 1;
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            double top = rowTops[mid];
+            double bottom = top + rowHeights[mid];
+            if (absoluteY < top) {
+                high = mid - 1;
+            } else if (absoluteY >= bottom) {
+                low = mid + 1;
+            } else {
+                return mid;
+            }
+        }
+        return clamp(low, 0, rowCount() - 1);
+    }
+
+    private double infoToggleX() {
+        return effectiveTextWidth - INFO_TOGGLE_MARGIN - INFO_TOGGLE_SIZE;
+    }
+
+    private void ensureMetricsForQueries() {
+        int count = rowCount();
+        if (!dirty && rowTops.length == count && rowHeights.length == count) {
+            return;
+        }
+        rebuildRowMetrics(effectiveTextWidth);
+    }
+
     private static double computeMaxScrollOffset(double viewportHeight, double contentHeight) {
         return Math.max(0.0, contentHeight - viewportHeight);
     }
@@ -580,13 +690,22 @@ public class TreeViewport<T> extends Region {
     public record HitInfo<T>(
         TreeItem<T> item,
         int rowIndex,
+        FlattenedRow.RowKind rowKind,
         int depth,
         double x,
         double y,
         double width,
         double height,
-        boolean disclosureHit
+        boolean disclosureHit,
+        boolean infoToggleHit
     ) {
+        public boolean isItemRow() {
+            return rowKind == FlattenedRow.RowKind.ITEM;
+        }
+
+        public boolean isInfoRow() {
+            return rowKind == FlattenedRow.RowKind.INFO;
+        }
     }
 
     public record ScrollbarGeometry(

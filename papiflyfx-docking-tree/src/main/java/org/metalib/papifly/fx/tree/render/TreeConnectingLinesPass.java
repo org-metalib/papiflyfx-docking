@@ -9,7 +9,7 @@ final class TreeConnectingLinesPass<T> implements TreeRenderPass<T> {
         GraphicsContext graphics = context.graphics();
         graphics.setStroke(context.theme().connectingLineColor());
         for (TreeRenderRow<T> row : context.rows()) {
-            if (row.depth() <= 0) {
+            if (!row.isItemRow() || row.depth() <= 0) {
                 continue;
             }
             double centerY = row.y() + (row.height() * 0.5);

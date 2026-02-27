@@ -8,7 +8,7 @@ import java.util.Map;
 
 public class TreeViewStateAdapter implements ContentStateAdapter {
 
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
 
     @Override
     public String getTypeKey() {

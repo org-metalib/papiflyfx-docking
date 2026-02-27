@@ -4,6 +4,7 @@ import javafx.geometry.Bounds;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import org.metalib.papifly.fx.tree.api.TreeItem;
+import org.metalib.papifly.fx.tree.model.FlattenedRow;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
 
 import java.util.Objects;
@@ -56,7 +57,7 @@ public final class TreeEditController<T> {
     }
 
     public void startEdit(TreeViewport.HitInfo<T> hitInfo) {
-        if (hitInfo == null || hitInfo.item() == null) {
+        if (hitInfo == null || hitInfo.item() == null || hitInfo.rowKind() != FlattenedRow.RowKind.ITEM) {
             return;
         }
         editingItem = hitInfo.item();

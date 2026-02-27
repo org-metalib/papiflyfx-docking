@@ -1,15 +1,16 @@
 package org.metalib.papifly.fx.tree.api;
 
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
-import javafx.beans.binding.Bindings;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.StackPane;
+import javafx.scene.shape.Rectangle;
 import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.tree.controller.TreeDragDropController;
@@ -18,7 +19,10 @@ import org.metalib.papifly.fx.tree.controller.TreeInputController;
 import org.metalib.papifly.fx.tree.controller.TreePointerController;
 import org.metalib.papifly.fx.tree.model.FlattenedTree;
 import org.metalib.papifly.fx.tree.model.TreeExpansionModel;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoMode;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoModel;
 import org.metalib.papifly.fx.tree.model.TreeSelectionModel;
+import org.metalib.papifly.fx.tree.render.TreeInlineInfoHost;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
 import org.metalib.papifly.fx.tree.search.TreeSearchEngine;
 import org.metalib.papifly.fx.tree.search.TreeSearchOverlay;
@@ -33,7 +37,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -46,10 +49,14 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         "searchTextExtractor",
         value -> value == null ? "" : String.valueOf(value)
     );
+    private final ObjectProperty<TreeNodeInfoProvider<T>> nodeInfoProvider = new SimpleObjectProperty<>(this, "nodeInfoProvider");
     private final TreeSelectionModel<T> selectionModel = new TreeSelectionModel<>();
     private final TreeExpansionModel<T> expansionModel = new TreeExpansionModel<>();
-    private final FlattenedTree<T> flattenedTree = new FlattenedTree<>(expansionModel);
+    private final TreeNodeInfoModel<T> nodeInfoModel = new TreeNodeInfoModel<>();
+    private final FlattenedTree<T> flattenedTree = new FlattenedTree<>(expansionModel, nodeInfoModel);
     private final TreeViewport<T> viewport = new TreeViewport<>(flattenedTree, selectionModel);
+    private final TreeInlineInfoHost<T> inlineInfoHost = new TreeInlineInfoHost<>();
+    private final Rectangle inlineInfoClip = new Rectangle();
     private final TreeEditController<T> editController = new TreeEditController<>(viewport, viewport::markDirty);
     private final TreeSearchEngine<T> searchEngine = new TreeSearchEngine<>();
     private final TreeSearchSession<T> searchSession = new TreeSearchSession<>(
@@ -64,6 +71,7 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         flattenedTree,
         selectionModel,
         expansionModel,
+        nodeInfoModel,
         viewport,
         editController
     );
@@ -71,6 +79,7 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         flattenedTree,
         selectionModel,
         expansionModel,
+        nodeInfoModel,
         viewport,
         editController
     );
@@ -95,10 +104,11 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         setFocusTraversable(true);
 
         editController.setCommitHandler(this::onEditCommit);
+        inlineInfoHost.layer().setClip(inlineInfoClip);
         StackPane.setAlignment(searchOverlay, Pos.TOP_RIGHT);
         StackPane.setMargin(searchOverlay, new Insets(8.0));
         searchOverlay.maxWidthProperty().bind(Bindings.max(0.0, widthProperty().subtract(16.0)));
-        getChildren().addAll(viewport, dragDropController.overlayCanvas(), editController.editorNode(), searchOverlay);
+        getChildren().addAll(viewport, inlineInfoHost.layer(), dragDropController.overlayCanvas(), editController.editorNode(), searchOverlay);
 
         configureSearchOverlay();
         installHandlers();
@@ -106,6 +116,8 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         root.addListener((obs, oldRoot, newRoot) -> onRootChanged(newRoot));
         selectionModel.addListener(model -> viewport.markDirty());
         expansionModel.addListener((item, expanded) -> viewport.markDirty());
+        nodeInfoModel.addListener((item, expanded) -> viewport.markDirty());
+        nodeInfoProvider.addListener((obs, oldProvider, newProvider) -> onNodeInfoProviderChanged(oldProvider, newProvider));
         setTreeViewTheme(TreeViewTheme.dark());
     }
 
@@ -127,6 +139,42 @@ public class TreeView<T> extends StackPane implements DisposableContent {
 
     public TreeExpansionModel<T> getExpansionModel() {
         return expansionModel;
+    }
+
+    public TreeNodeInfoModel<T> getNodeInfoModel() {
+        return nodeInfoModel;
+    }
+
+    public TreeNodeInfoProvider<T> getNodeInfoProvider() {
+        return nodeInfoProvider.get();
+    }
+
+    public void setNodeInfoProvider(TreeNodeInfoProvider<T> nodeInfoProvider) {
+        this.nodeInfoProvider.set(nodeInfoProvider);
+    }
+
+    public ObjectProperty<TreeNodeInfoProvider<T>> nodeInfoProviderProperty() {
+        return nodeInfoProvider;
+    }
+
+    public void toggleNodeInfo(TreeItem<T> item) {
+        nodeInfoModel.toggle(item);
+    }
+
+    public void collapseNodeInfo(TreeItem<T> item) {
+        nodeInfoModel.setExpanded(item, false);
+    }
+
+    public void collapseAllNodeInfo() {
+        nodeInfoModel.clear();
+    }
+
+    public void setNodeInfoMode(TreeNodeInfoMode mode) {
+        nodeInfoModel.setMode(mode);
+    }
+
+    public TreeNodeInfoMode getNodeInfoMode() {
+        return nodeInfoModel.getMode();
     }
 
     public FlattenedTree<T> getFlattenedTree() {
@@ -231,12 +279,17 @@ public class TreeView<T> extends StackPane implements DisposableContent {
             .filter(path -> !path.isEmpty() || getRoot() != null)
             .sorted(Comparator.comparingInt(List::size))
             .toList();
+        List<List<Integer>> expandedInfoPaths = nodeInfoModel.getExpandedItems().stream()
+            .map(this::pathOf)
+            .filter(path -> !path.isEmpty() || getRoot() != null)
+            .toList();
         List<List<Integer>> selectedPaths = selectionModel.getSelectedItems().stream()
             .map(this::pathOf)
             .toList();
         List<Integer> focusedPath = pathOf(selectionModel.getFocusedItem());
         return new TreeViewStateData(
             expandedPaths,
+            expandedInfoPaths,
             selectedPaths,
             focusedPath,
             viewport.getScrollOffset(),
@@ -256,6 +309,7 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         }
         pendingState = null;
         expansionModel.clear();
+        nodeInfoModel.clear();
         for (List<Integer> path : safeState.expandedPaths()) {
             TreeItem<T> item = resolvePath(path);
             if (item != null) {
@@ -264,6 +318,12 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         }
         if (safeState.expandedPaths().isEmpty() && getRoot() != null) {
             expansionModel.setExpanded(getRoot(), true);
+        }
+        for (List<Integer> path : safeState.expandedInfoPaths()) {
+            TreeItem<T> item = resolvePath(path);
+            if (item != null) {
+                nodeInfoModel.setExpanded(item, true);
+            }
         }
 
         selectionModel.clearSelection();
@@ -290,7 +350,9 @@ public class TreeView<T> extends StackPane implements DisposableContent {
     @Override
     protected void layoutChildren() {
         super.layoutChildren();
+        viewport.layout();
         editController.relayout();
+        syncInlineInfoHost();
     }
 
     @Override
@@ -299,6 +361,7 @@ public class TreeView<T> extends StackPane implements DisposableContent {
             return;
         }
         disposed = true;
+        inlineInfoHost.clear(getNodeInfoProvider());
         unbindThemeProperty();
         closeSearch();
         editController.dispose();
@@ -385,6 +448,8 @@ public class TreeView<T> extends StackPane implements DisposableContent {
     }
 
     private void onRootChanged(TreeItem<T> newRoot) {
+        inlineInfoHost.clear(getNodeInfoProvider());
+        nodeInfoModel.clear();
         flattenedTree.setRoot(newRoot);
         if (newRoot != null && !expansionModel.isExpanded(newRoot)) {
             expansionModel.setExpanded(newRoot, true);
@@ -399,6 +464,15 @@ public class TreeView<T> extends StackPane implements DisposableContent {
             updateSearchOverlayCount();
             revealMatch(searchSession.getCurrentMatch());
         }
+    }
+
+    private void onNodeInfoProviderChanged(TreeNodeInfoProvider<T> oldProvider, TreeNodeInfoProvider<T> newProvider) {
+        inlineInfoHost.clear(oldProvider);
+        flattenedTree.setNodeInfoProvider(newProvider);
+        if (newProvider == null) {
+            nodeInfoModel.clear();
+        }
+        viewport.markDirty();
     }
 
     private void onEditCommit(TreeItem<T> item, String text) {
@@ -553,5 +627,14 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         selectionModel.setFocusedItem(match);
         viewport.ensureItemVisible(match);
         viewport.markDirty();
+    }
+
+    private void syncInlineInfoHost() {
+        inlineInfoHost.layer().resizeRelocate(0.0, 0.0, getWidth(), getHeight());
+        inlineInfoClip.setX(0.0);
+        inlineInfoClip.setY(0.0);
+        inlineInfoClip.setWidth(Math.max(0.0, viewport.getEffectiveTextWidth()));
+        inlineInfoClip.setHeight(Math.max(0.0, viewport.getEffectiveTextHeight()));
+        inlineInfoHost.sync(viewport.getVisibleRows(), getNodeInfoProvider(), viewport.getEffectiveTextWidth());
     }
 }

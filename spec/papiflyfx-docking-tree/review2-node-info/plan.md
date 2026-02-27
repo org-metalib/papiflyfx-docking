@@ -4,13 +4,13 @@
 
 - [x] Research completed in `spec/papiflyfx-docking-tree/review2-node-info/research.md`
 - [x] Detailed implementation plan prepared in this document
-- [ ] Phase 1 implemented: API + node-info state model
-- [ ] Phase 2 implemented: mixed flattened rows (item + info rows)
-- [ ] Phase 3 implemented: variable-height viewport metrics + hit-testing
-- [ ] Phase 4 implemented: inline JavaFX node host virtualization
-- [ ] Phase 5 implemented: input/edit/drag-drop integration
-- [ ] Phase 6 implemented: state persistence + adapter version bump
-- [ ] Phase 7 implemented: tests and regression validation
+- [x] Phase 1 implemented: API + node-info state model
+- [x] Phase 2 implemented: mixed flattened rows (item + info rows)
+- [x] Phase 3 implemented: variable-height viewport metrics + hit-testing
+- [x] Phase 4 implemented: inline JavaFX node host virtualization
+- [x] Phase 5 implemented: input/edit/drag-drop integration
+- [x] Phase 6 implemented: state persistence + adapter version bump
+- [x] Phase 7 implemented: tests and regression validation
 
 ## Objective
 
@@ -30,7 +30,7 @@ Implement full inline collapsible node-info sections directly inside the tree vi
 5. Keyboard/mouse behavior remains predictable:
    - item navigation remains item-focused,
    - info rows are non-selectable tree rows,
-   - dedicated toggle gesture exists (`Alt+Enter` + pointer toggle zone).
+   - dedicated toggle gesture exists (`⌘I` on macOS, `Alt+Enter` on Windows/Linux, plus pointer toggle zone).
 6. Save/restore includes expanded info state.
 
 ## Non-negotiable design constraints
@@ -56,10 +56,10 @@ Implement full inline collapsible node-info sections directly inside the tree vi
 
 ### Tasks
 
-- [ ] Add provider API for per-item info content and preferred height.
-- [ ] Add node-info expansion model with `SINGLE` and `MULTIPLE` modes.
-- [ ] Wire model/provider into `TreeView`.
-- [ ] Expose new public methods for toggling/collapsing info.
+- [x] Add provider API for per-item info content and preferred height.
+- [x] Add node-info expansion model with `SINGLE` and `MULTIPLE` modes.
+- [x] Wire model/provider into `TreeView`.
+- [x] Expose new public methods for toggling/collapsing info.
 
 ### Snippet: provider contract
 
@@ -141,10 +141,10 @@ public void setNodeInfoMode(TreeNodeInfoMode mode) { nodeInfoModel.setMode(mode)
 
 ### Tasks
 
-- [ ] Replace current item-only flattened row representation with row kinds.
-- [ ] Insert info rows directly after expanded item rows.
-- [ ] Keep helper APIs for item-only navigation and selection logic.
-- [ ] Maintain fast lookup maps for item row index and info row index.
+- [x] Replace current item-only flattened row representation with row kinds.
+- [x] Insert info rows directly after expanded item rows.
+- [x] Keep helper APIs for item-only navigation and selection logic.
+- [x] Maintain fast lookup maps for item row index and info row index.
 
 ### Snippet: row-kind aware flattened row
 
@@ -209,11 +209,11 @@ This keeps existing controller assumptions explicit and avoids accidental select
 
 ### Tasks
 
-- [ ] Introduce row metrics arrays (`rowTop[]`, `rowHeight[]`, `contentHeight`).
-- [ ] Replace all `index * rowHeight()` assumptions with metrics lookup.
-- [ ] Use binary search for `y -> rowIndex` conversion.
-- [ ] Build visible rows via offset window intersection.
-- [ ] Extend `HitInfo` with row kind and info-toggle hit metadata.
+- [x] Introduce row metrics arrays (`rowTop[]`, `rowHeight[]`, `contentHeight`).
+- [x] Replace all `index * rowHeight()` assumptions with metrics lookup.
+- [x] Use binary search for `y -> rowIndex` conversion.
+- [x] Build visible rows via offset window intersection.
+- [x] Extend `HitInfo` with row kind and info-toggle hit metadata.
 
 ### Snippet: row metrics core
 
@@ -299,10 +299,10 @@ public record HitInfo<T>(
 
 ### Tasks
 
-- [ ] Add dedicated overlay pane for inline info nodes.
-- [ ] Mount nodes only for visible info rows.
-- [ ] Keep provider-created nodes cached by owner item for reuse.
-- [ ] Dispose cached nodes on provider change, root replacement, and `TreeView.dispose()`.
+- [x] Add dedicated overlay pane for inline info nodes.
+- [x] Mount nodes only for visible info rows.
+- [x] Keep provider-created nodes cached by owner item for reuse.
+- [x] Dispose cached nodes on provider change, root replacement, and `TreeView.dispose()`.
 
 ### Snippet: host class shape
 
@@ -363,10 +363,10 @@ getChildren().addAll(
 
 ### Tasks
 
-- [ ] Add pointer toggle zone for info collapse/expand.
-- [ ] Add keyboard shortcut to toggle focused item info (`Alt+Enter`).
-- [ ] Keep navigation/select/edit on item rows only.
-- [ ] Ensure drag/drop targets resolve to nearest item row, never raw info row.
+- [x] Add pointer toggle zone for info collapse/expand.
+- [x] Add keyboard shortcut to toggle focused item info (`⌘I` on macOS, `Alt+Enter` on Windows/Linux).
+- [x] Keep navigation/select/edit on item rows only.
+- [x] Ensure drag/drop targets resolve to nearest item row, never raw info row.
 
 ### Snippet: pointer integration
 
@@ -391,11 +391,19 @@ if (hitInfo.rowKind() == FlattenedRow.RowKind.INFO) {
 ### Snippet: keyboard shortcut
 
 ```java
-case ENTER -> {
-    if (event.isAltDown()) {
-        yield consume(event, toggleFocusedInfo());
+if (isToggleFocusedInfoShortcut(event)) {
+    yield consume(event, toggleFocusedInfo());
+}
+yield consume(event, toggleFocusedExpansion());
+```
+
+```java
+private boolean isToggleFocusedInfoShortcut(KeyEvent event) {
+    boolean isMac = System.getProperty("os.name", "").toLowerCase().contains("mac");
+    if (isMac) {
+        return event.getCode() == KeyCode.I && event.isShortcutDown() && !event.isAltDown();
     }
-    yield consume(event, toggleFocusedExpansion());
+    return event.getCode() == KeyCode.ENTER && event.isAltDown();
 }
 ```
 
@@ -427,10 +435,10 @@ public void startEdit(TreeViewport.HitInfo<T> hitInfo) {
 
 ### Tasks
 
-- [ ] Persist `expandedInfoPaths` next to existing path/state fields.
-- [ ] Restore info expansion after root is available.
-- [ ] Bump `TreeViewStateAdapter.VERSION` to `2`.
-- [ ] Require `expandedInfoPaths` in v2 payloads (no backward decode requirement).
+- [x] Persist `expandedInfoPaths` next to existing path/state fields.
+- [x] Restore info expansion after root is available.
+- [x] Bump `TreeViewStateAdapter.VERSION` to `2`.
+- [x] Require `expandedInfoPaths` in v2 payloads (no backward decode requirement).
 
 ### Snippet: state data extension
 
@@ -495,9 +503,9 @@ for (List<Integer> path : safeState.expandedInfoPaths()) {
 
 ### Tasks
 
-- [ ] Keep default search behavior: search reveals/selects/focuses matching item and expands parent tree nodes.
-- [ ] Do not auto-expand node info by default during search reveal.
-- [ ] Ensure searching a node with already-expanded info keeps inline info stable.
+- [x] Keep default search behavior: search reveals/selects/focuses matching item and expands parent tree nodes.
+- [x] Do not auto-expand node info by default during search reveal.
+- [x] Ensure searching a node with already-expanded info keeps inline info stable.
 
 ### Snippet: explicit reveal policy
 
@@ -543,8 +551,10 @@ private void revealMatch(TreeItem<T> match) {
 
 - `api/TreeViewFxTest` (update):
   - pointer toggles info row open/close,
-  - `Alt+Enter` toggles focused item info,
+  - single vs multiple node-info mode toggle behavior,
+  - `⌘I` (macOS) / `Alt+Enter` (Windows/Linux) toggles focused item info,
   - item selection remains stable while interacting with info content,
+  - selected item highlight does not apply to inline info row content,
   - drag/drop ignores raw info row as structural target,
   - state save/restore keeps expanded info rows.
 
@@ -565,17 +575,15 @@ private void revealMatch(TreeItem<T> match) {
 
 ## Work breakdown checklist (execution order)
 
-1. [ ] Introduce node-info API/model in `TreeView` and supporting classes.
-2. [ ] Refactor flattened row model to row kinds and integrate info rows.
-3. [ ] Refactor viewport geometry to variable-height row metrics.
-4. [ ] Add `TreeInlineInfoHost` and connect host lifecycle to `TreeView`.
-5. [ ] Integrate pointer/keyboard/edit/drag-drop with row-kind-aware hit info.
-6. [ ] Extend persistence (`expandedInfoPaths`) and bump adapter version.
-7. [ ] Add/update unit + FX tests; fix regressions.
-8. [ ] Final pass: run module compile + tests and verify behavior manually in samples.
+1. [x] Introduce node-info API/model in `TreeView` and supporting classes.
+2. [x] Refactor flattened row model to row kinds and integrate info rows.
+3. [x] Refactor viewport geometry to variable-height row metrics.
+4. [x] Add `TreeInlineInfoHost` and connect host lifecycle to `TreeView`.
+5. [x] Integrate pointer/keyboard/edit/drag-drop with row-kind-aware hit info.
+6. [x] Extend persistence (`expandedInfoPaths`) and bump adapter version.
+7. [x] Add/update unit + FX tests; fix regressions.
+8. [x] Final pass: run module compile + tests and verify behavior manually in samples.
 
-## Immediate next steps
+## Completion
 
-1. Start Phase 1 by adding `TreeNodeInfoProvider`, `TreeNodeInfoMode`, and `TreeNodeInfoModel`.
-2. Wire `TreeView` to hold node-info model/provider and trigger viewport invalidation on info expansion changes.
-3. Proceed to Phase 2 row model refactor before touching viewport math.
+All phases in this plan have been implemented and validated with module compile and headless test execution.

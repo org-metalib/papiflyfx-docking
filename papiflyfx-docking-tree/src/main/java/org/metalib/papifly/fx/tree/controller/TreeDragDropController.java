@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.tree.controller;
 
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.geometry.Bounds;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.DataFormat;
 import javafx.scene.input.DragEvent;
@@ -101,11 +102,12 @@ public final class TreeDragDropController<T> {
         if (hitInfo == null || hitInfo.item() == null) {
             return;
         }
-        draggedItem = selectionModel.isSelected(hitInfo.item())
+        TreeItem<T> sourceItem = hitInfo.item();
+        draggedItem = selectionModel.isSelected(sourceItem)
             ? selectionModel.getFocusedItem()
-            : hitInfo.item();
+            : sourceItem;
         if (draggedItem == null) {
-            draggedItem = hitInfo.item();
+            draggedItem = sourceItem;
         }
         Dragboard dragboard = treeView.startDragAndDrop(TransferMode.MOVE);
         ClipboardContent content = new ClipboardContent();
@@ -151,7 +153,22 @@ public final class TreeDragDropController<T> {
         if (hitInfo == null || hitInfo.item() == null) {
             return null;
         }
-        double relative = (y - hitInfo.y()) / Math.max(1.0, hitInfo.height());
+        TreeItem<T> targetItem = hitInfo.item();
+        double rowY = hitInfo.y();
+        double rowHeight = hitInfo.height();
+        if (hitInfo.isInfoRow()) {
+            int itemRowIndex = flattenedTree.itemRowIndexOf(targetItem);
+            if (itemRowIndex < 0) {
+                return null;
+            }
+            Bounds itemRowBounds = viewport.rowBounds(itemRowIndex);
+            if (itemRowBounds == null) {
+                return null;
+            }
+            rowY = itemRowBounds.getMinY();
+            rowHeight = itemRowBounds.getHeight();
+        }
+        double relative = (y - rowY) / Math.max(1.0, rowHeight);
         DropPosition position;
         if (relative < 0.25) {
             position = DropPosition.BEFORE;
@@ -160,7 +177,7 @@ public final class TreeDragDropController<T> {
         } else {
             position = DropPosition.INSIDE;
         }
-        return new DropHint<>(hitInfo.item(), position, hitInfo.y(), hitInfo.height());
+        return new DropHint<>(targetItem, position, rowY, rowHeight);
     }
 
     private void paintDropHint(DropHint<T> dropHint) {
