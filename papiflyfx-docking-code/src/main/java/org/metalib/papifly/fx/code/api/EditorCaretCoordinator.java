@@ -54,7 +54,7 @@ final class EditorCaretCoordinator {
     }
 
     void moveCaretVertically(int targetLine, boolean extendSelection) {
-        int safeLine = clampLine(targetLine);
+        int safeLine = clampVisibleLine(targetLine);
         int preferredColumn = preferredVerticalColumn >= 0
             ? preferredVerticalColumn
             : selectionModel.getCaretColumn();
@@ -67,8 +67,11 @@ final class EditorCaretCoordinator {
         clearPreferredVerticalColumn();
         int safeOffset = Math.max(0, Math.min(offset, document.length()));
         int line = document.getLineForOffset(safeOffset);
-        int col = document.getColumnForOffset(safeOffset);
-        selectionModel.moveCaret(line, col);
+        int visibleLine = clampVisibleLine(line);
+        int col = visibleLine == line
+            ? document.getColumnForOffset(safeOffset)
+            : Math.min(document.getColumnForOffset(safeOffset), document.getLineText(visibleLine).length());
+        selectionModel.moveCaret(visibleLine, col);
         viewport.ensureCaretVisible();
         viewport.ensureCaretVisibleHorizontally();
         syncVerticalScrollOffsetFromViewport();
@@ -136,7 +139,7 @@ final class EditorCaretCoordinator {
     }
 
     private void moveCaretInternal(int line, int col, boolean extendSelection) {
-        int safeLine = clampLine(line);
+        int safeLine = clampVisibleLine(line);
         int safeColumn = clampColumn(safeLine, col);
         if (extendSelection) {
             selectionModel.moveCaretWithSelection(safeLine, safeColumn);
@@ -157,6 +160,14 @@ final class EditorCaretCoordinator {
     private int clampLine(int line) {
         int maxLine = Math.max(0, document.getLineCount() - 1);
         return Math.max(0, Math.min(line, maxLine));
+    }
+
+    private int clampVisibleLine(int line) {
+        int clamped = clampLine(line);
+        if (viewport.isLogicalLineHidden(clamped)) {
+            return viewport.nearestVisibleLogicalLine(clamped);
+        }
+        return clamped;
     }
 
     private int clampColumn(int line, int column) {

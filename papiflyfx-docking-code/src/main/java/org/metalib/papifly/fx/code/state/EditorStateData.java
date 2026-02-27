@@ -49,6 +49,7 @@ public record EditorStateData(
     boolean wordWrap,
     String languageId,
     List<Integer> foldedLines,
+    List<FoldRegionRef> foldedRegions,
     int anchorLine,
     int anchorColumn,
     List<CaretStateData> secondaryCarets
@@ -66,6 +67,7 @@ public record EditorStateData(
         horizontalScrollOffset = Math.max(0.0, horizontalScrollOffset);
         languageId = languageId == null || languageId.isBlank() ? "plain-text" : languageId;
         foldedLines = foldedLines == null ? List.of() : List.copyOf(foldedLines);
+        foldedRegions = foldedRegions == null ? List.of() : List.copyOf(foldedRegions);
         secondaryCarets = secondaryCarets == null ? List.of() : List.copyOf(secondaryCarets);
     }
 
@@ -96,6 +98,7 @@ public record EditorStateData(
             false,
             languageId,
             foldedLines,
+            List.of(),
             cursorLine,
             cursorColumn,
             List.of()
@@ -135,6 +138,36 @@ public record EditorStateData(
             false,
             languageId,
             foldedLines,
+            List.of(),
+            anchorLine,
+            anchorColumn,
+            secondaryCarets
+        );
+    }
+
+    public EditorStateData(
+        String filePath,
+        int cursorLine,
+        int cursorColumn,
+        double verticalScrollOffset,
+        double horizontalScrollOffset,
+        boolean wordWrap,
+        String languageId,
+        List<Integer> foldedLines,
+        int anchorLine,
+        int anchorColumn,
+        List<CaretStateData> secondaryCarets
+    ) {
+        this(
+            filePath,
+            cursorLine,
+            cursorColumn,
+            verticalScrollOffset,
+            horizontalScrollOffset,
+            wordWrap,
+            languageId,
+            foldedLines,
+            List.of(),
             anchorLine,
             anchorColumn,
             secondaryCarets
@@ -147,6 +180,6 @@ public record EditorStateData(
      * @return immutable default state with zeroed offsets and empty caret collections
      */
     public static EditorStateData empty() {
-        return new EditorStateData("", 0, 0, 0.0, 0.0, false, "plain-text", List.of(), 0, 0, List.of());
+        return new EditorStateData("", 0, 0, 0.0, 0.0, false, "plain-text", List.of(), List.of(), 0, 0, List.of());
     }
 }

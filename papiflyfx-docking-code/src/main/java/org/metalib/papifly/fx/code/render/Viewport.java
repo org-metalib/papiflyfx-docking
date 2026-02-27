@@ -15,6 +15,8 @@ import org.metalib.papifly.fx.code.command.MultiCaretModel;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeEvent;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
+import org.metalib.papifly.fx.code.folding.FoldMap;
+import org.metalib.papifly.fx.code.folding.VisibleLineMap;
 import org.metalib.papifly.fx.code.lexer.TokenMap;
 import org.metalib.papifly.fx.code.search.SearchMatch;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
@@ -79,6 +81,8 @@ public class Viewport extends Region {
     private final BitSet dirtyLines = new BitSet();
     private boolean disposed;
     private TokenMap tokenMap = TokenMap.empty();
+    private FoldMap foldMap = FoldMap.empty();
+    private final VisibleLineMap visibleLineMap = new VisibleLineMap();
     private List<SearchMatch> searchMatches = List.of();
     private Map<Integer, List<Integer>> searchMatchIndexesByLine = Map.of();
     private int currentSearchMatchIndex = -1;
@@ -160,6 +164,7 @@ public class Viewport extends Region {
         if (this.document != null) {
             this.document.addChangeListener(changeListener);
         }
+        visibleLineMap.rebuild(this.document == null ? 0 : this.document.getLineCount(), foldMap);
         recomputeLongestLineLength();
         wrapMapDirty = true;
         markDirty();
@@ -190,6 +195,50 @@ public class Viewport extends Region {
      */
     public WrapMap getWrapMap() {
         return wrapMap;
+    }
+
+    public void setFoldMap(FoldMap foldMap) {
+        this.foldMap = foldMap == null ? FoldMap.empty() : foldMap;
+        visibleLineMap.rebuild(document == null ? 0 : document.getLineCount(), this.foldMap);
+        wrapMapDirty = true;
+        recomputeLongestLineLength();
+        markDirty();
+    }
+
+    public FoldMap getFoldMap() {
+        return foldMap;
+    }
+
+    public VisibleLineMap getVisibleLineMap() {
+        return visibleLineMap;
+    }
+
+    public boolean isLogicalLineHidden(int line) {
+        return visibleLineMap.isHiddenLogicalLine(line);
+    }
+
+    public int nearestVisibleLogicalLine(int line) {
+        return visibleLineMap.nearestVisibleLogicalLine(line);
+    }
+
+    public int previousVisibleLogicalLine(int line) {
+        return visibleLineMap.previousVisibleLogicalLine(line);
+    }
+
+    public int nextVisibleLogicalLine(int line) {
+        return visibleLineMap.nextVisibleLogicalLine(line);
+    }
+
+    public int totalVisibleLogicalLines() {
+        return visibleLineMap.visibleCount();
+    }
+
+    public int logicalToVisibleLine(int line) {
+        return visibleLineMap.logicalToVisible(line);
+    }
+
+    public int visibleToLogicalLine(int line) {
+        return visibleLineMap.visibleToLogical(line);
     }
 
     /**
@@ -681,13 +730,18 @@ public class Viewport extends Region {
         double lineHeight = glyphCache.getLineHeight();
         int caretLine = selectionModel.getCaretLine();
         int caretColumn = selectionModel.getCaretColumn();
+        int resolvedCaretLine = isLogicalLineHidden(caretLine) ? nearestVisibleLogicalLine(caretLine) : caretLine;
         double caretY;
         if (wordWrap) {
             ensureWrapMap(currentEffectiveTextWidth(), glyphCache.getCharWidth());
-            int caretRow = wrapMap.lineColumnToVisualRow(caretLine, caretColumn);
+            int caretRow = wrapMap.lineColumnToVisualRow(resolvedCaretLine, caretColumn);
             caretY = caretRow * lineHeight;
         } else {
-            caretY = caretLine * lineHeight;
+            int visibleLine = logicalToVisibleLine(resolvedCaretLine);
+            if (visibleLine < 0) {
+                visibleLine = Math.max(0, visibleLineMap.nearestVisibleIndexForLogical(resolvedCaretLine));
+            }
+            caretY = visibleLine * lineHeight;
         }
         double viewportHeight = currentEffectiveTextHeight();
 
@@ -769,12 +823,17 @@ public class Viewport extends Region {
         if (line < 0) {
             return new HitPosition(-1, 0);
         }
-        int safeLine = clamp(line, 0, document.getLineCount() - 1);
+        if (visibleLineMap.visibleCount() <= 0) {
+            return new HitPosition(-1, 0);
+        }
+        int safeVisibleLine = clamp(line, 0, visibleLineMap.visibleCount() - 1);
+        int safeLine = visibleLineMap.visibleToLogical(safeVisibleLine);
         int column = (int) Math.round((localX + horizontalScrollOffset) / charWidth);
         return new HitPosition(safeLine, clampColumn(safeLine, Math.max(0, column)));
     }
 
     private void onDocumentChanged(DocumentChangeEvent event) {
+        visibleLineMap.rebuild(document == null ? 0 : document.getLineCount(), foldMap);
         recomputeLongestLineLength();
         wrapMapDirty = true;
         if (document == null) {
@@ -782,7 +841,7 @@ public class Viewport extends Region {
             return;
         }
         resetCaretBlink();
-        if (wordWrap) {
+        if (wordWrap || foldMap.hasCollapsedRegions()) {
             markDirty();
             return;
         }
@@ -889,13 +948,13 @@ public class Viewport extends Region {
         boolean hasMultiCarets = !activeCarets.isEmpty();
         boolean paintCaret = shouldPaintCaret();
 
-        int previousVisibleAnchor = wordWrap ? firstVisibleVisualRow : firstVisibleLine;
+        int previousVisibleAnchor = firstVisibleVisualRow;
 
         resolveViewportMetrics(w, h, lineHeight, charWidth);
         computeVisibleRange(lineHeight);
         buildRenderLines(lineHeight);
 
-        int currentVisibleAnchor = wordWrap ? firstVisibleVisualRow : firstVisibleLine;
+        int currentVisibleAnchor = firstVisibleVisualRow;
 
         boolean doFullRedraw = fullRedrawRequired || previousVisibleAnchor != currentVisibleAnchor;
         fullRedrawRequired = false;
@@ -1022,7 +1081,7 @@ public class Viewport extends Region {
     }
 
     private void computeVisibleRange(double lineHeight) {
-        if (document == null || document.getLineCount() <= 0) {
+        if (document == null || visibleLineMap.visibleCount() <= 0) {
             firstVisibleLine = 0;
             visibleLineCount = 0;
             firstVisibleVisualRow = 0;
@@ -1043,14 +1102,15 @@ public class Viewport extends Region {
             return;
         }
 
-        int totalLines = document.getLineCount();
-        firstVisibleLine = Math.max(0, (int) (scrollOffset / lineHeight) - PREFETCH_LINES);
-        int lastVisibleLine = Math.min(
-            totalLines - 1,
+        int totalVisibleLines = visibleLineMap.visibleCount();
+        int firstVisibleLogicalIndex = Math.max(0, (int) (scrollOffset / lineHeight) - PREFETCH_LINES);
+        int lastVisibleLogicalIndex = Math.min(
+            totalVisibleLines - 1,
             (int) ((scrollOffset + effectiveTextHeight) / lineHeight) + PREFETCH_LINES
         );
-        visibleLineCount = Math.max(0, lastVisibleLine - firstVisibleLine + 1);
-        firstVisibleVisualRow = firstVisibleLine;
+        visibleLineCount = Math.max(0, lastVisibleLogicalIndex - firstVisibleLogicalIndex + 1);
+        firstVisibleVisualRow = firstVisibleLogicalIndex;
+        firstVisibleLine = visibleLineMap.visibleToLogical(firstVisibleLogicalIndex);
         visibleVisualRowCount = visibleLineCount;
     }
 
@@ -1097,12 +1157,13 @@ public class Viewport extends Region {
         }
 
         for (int i = 0; i < visibleLineCount; i++) {
-            int lineIndex = firstVisibleLine + i;
-            if (lineIndex >= document.getLineCount()) {
+            int visibleIndex = firstVisibleVisualRow + i;
+            if (visibleIndex >= visibleLineMap.visibleCount()) {
                 break;
             }
+            int lineIndex = visibleLineMap.visibleToLogical(visibleIndex);
             String text = document.getLineText(lineIndex);
-            double y = lineIndex * lineHeight - scrollOffset;
+            double y = visibleIndex * lineHeight - scrollOffset;
             renderLines.add(new RenderLine(
                 lineIndex,
                 0,
@@ -1123,7 +1184,7 @@ public class Viewport extends Region {
         if (!wrapMapDirty && !viewportChanged && !charWidthChanged) {
             return;
         }
-        wrapMap.rebuild(document, viewportWidth, charWidth);
+        wrapMap.rebuild(document, viewportWidth, charWidth, line -> !foldMap.isHiddenLine(line));
         wrapMapDirty = false;
         lastWrapViewportWidth = viewportWidth;
         lastWrapCharWidth = charWidth;
@@ -1203,8 +1264,9 @@ public class Viewport extends Region {
             return;
         }
         int max = 0;
-        int lineCount = document.getLineCount();
-        for (int line = 0; line < lineCount; line++) {
+        int visibleCount = visibleLineMap.visibleCount();
+        for (int index = 0; index < visibleCount; index++) {
+            int line = visibleLineMap.visibleToLogical(index);
             max = Math.max(max, document.getLineText(line).length());
         }
         longestLineLength = max;
@@ -1218,7 +1280,7 @@ public class Viewport extends Region {
             int totalRows = Math.max(1, wrapMap.totalVisualRows());
             return totalRows * lineHeight;
         }
-        return document.getLineCount() * lineHeight;
+        return visibleLineMap.visibleCount() * lineHeight;
     }
 
     private double computeContentWidth(double charWidth) {

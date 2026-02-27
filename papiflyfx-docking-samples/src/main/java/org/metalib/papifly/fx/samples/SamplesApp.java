@@ -6,33 +6,68 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import org.metalib.papifly.fx.docks.DockManager;
+import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.samples.catalog.SampleCatalog;
+import org.metalib.papifly.fx.tree.api.CellState;
+import org.metalib.papifly.fx.tree.api.TreeItem;
+import org.metalib.papifly.fx.tree.api.TreeView;
+import org.metalib.papifly.fx.tree.render.TreeRenderContext;
+import org.metalib.papifly.fx.tree.theme.TreeViewTheme;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Main application shell for the PapiflyFX Docking Samples.
  *
- * <p>Layout: top bar (title + theme toggle) | left ListView (catalog) | center content area.</p>
+ * <p>Layout: top bar (title + theme toggle) | left navigation tree | center content area.</p>
  */
 public class SamplesApp extends Application {
 
     private final ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+    private static final TreeViewTheme NAVIGATION_THEME = new TreeViewTheme(
+        Color.web("#252526"),
+        Color.web("#252526"),
+        Color.web("#252526"),
+        Color.web("#094771"),
+        Color.web("#3a3d41"),
+        Color.web("#007acc"),
+        Color.web("#2a2d2e"),
+        Color.web("#cccccc"),
+        Color.web("#ffffff"),
+        Color.web("#6f6f6f"),
+        Color.web("#3f3f46"),
+        Color.rgb(255, 255, 255, 0.08),
+        Color.rgb(255, 255, 255, 0.32),
+        Color.rgb(255, 255, 255, 0.46),
+        Color.rgb(255, 255, 255, 0.58),
+        Font.font("System", 13),
+        24.0,
+        16.0,
+        0.0
+    );
     private Stage primaryStage;
     private final StackPane contentArea = new StackPane();
+    private TreeItem<NavigationEntry> selectedSampleItem;
+    private boolean syncingNavigationSelection;
 
     /**
      * Creates the samples application.
@@ -46,16 +81,17 @@ public class SamplesApp extends Application {
         this.primaryStage = stage;
 
         HBox topBar = buildTopBar();
-        ListView<Object> sampleList = buildSampleList();
+        TreeView<NavigationEntry> sampleTree = buildSampleTree();
         buildContentArea();
 
         BorderPane root = new BorderPane();
         root.setTop(topBar);
-        root.setLeft(sampleList);
+        root.setLeft(sampleTree);
         root.setCenter(contentArea);
 
         stage.setTitle("PapiflyFX Docking Samples");
         stage.setScene(new Scene(root, 1200, 800));
+        stage.setOnCloseRequest(event -> disposeContentArea());
         stage.show();
     }
 
@@ -81,58 +117,132 @@ public class SamplesApp extends Application {
         return topBar;
     }
 
-    private ListView<Object> buildSampleList() {
-        List<Object> items = new ArrayList<>();
+    private TreeView<NavigationEntry> buildSampleTree() {
+        TreeView<NavigationEntry> treeView = new TreeView<>();
+        treeView.setShowRoot(false);
+        treeView.setRoot(buildNavigationRoot());
+        treeView.setTreeViewTheme(NAVIGATION_THEME);
+        treeView.setCellRenderer(this::renderNavigationCell);
+        treeView.setNavigationSelectablePredicate(item -> item != null && item.getValue() != null && !item.getValue().isCategory());
+        treeView.setPrefWidth(190);
+        treeView.setMinWidth(140);
+        treeView.getSelectionModel().addListener(model -> onNavigationSelectionChanged(treeView));
+        return treeView;
+    }
+
+    private TreeItem<NavigationEntry> buildNavigationRoot() {
+        TreeItem<NavigationEntry> root = new TreeItem<>(new NavigationEntry("", null));
         String currentCategory = null;
         for (SampleScene sample : SampleCatalog.all()) {
             if (!sample.category().equals(currentCategory)) {
                 currentCategory = sample.category();
-                items.add(currentCategory);
+                root.addChild(new TreeItem<>(new NavigationEntry(currentCategory, null)));
             }
-            items.add(sample);
+            root.addChild(new TreeItem<>(new NavigationEntry(sample.title(), sample)));
         }
+        root.setExpanded(true);
+        return root;
+    }
 
-        ListView<Object> listView = new ListView<>();
-        listView.getItems().setAll(items);
-        listView.setPrefWidth(190);
-        listView.setMinWidth(140);
-        listView.setStyle("-fx-background-color: #252526;");
-
-        listView.setCellFactory(lv -> new ListCell<>() {
-            @Override
-            protected void updateItem(Object item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                    setDisable(false);
-                } else if (item instanceof String) {
-                    setText((String) item);
-                    setStyle("-fx-font-weight: bold; -fx-text-fill: #888888; -fx-background-color: #1e1e1e; -fx-padding: 6 8 6 8;");
-                    setDisable(true);
-                } else if (item instanceof SampleScene sample) {
-                    setText("  " + sample.title());
-                    setStyle("-fx-text-fill: #cccccc; -fx-background-color: #252526;");
-                    setDisable(false);
+    private void onNavigationSelectionChanged(TreeView<NavigationEntry> treeView) {
+        if (syncingNavigationSelection) {
+            return;
+        }
+        TreeItem<NavigationEntry> focusedItem = treeView.getSelectionModel().getFocusedItem();
+        if (focusedItem == null || focusedItem.getValue() == null) {
+            return;
+        }
+        NavigationEntry entry = focusedItem.getValue();
+        if (entry.isCategory()) {
+            syncingNavigationSelection = true;
+            try {
+                if (selectedSampleItem != null) {
+                    treeView.getSelectionModel().selectOnly(selectedSampleItem);
+                    treeView.getSelectionModel().setFocusedItem(selectedSampleItem);
+                } else {
+                    treeView.getSelectionModel().clearSelection();
+                    treeView.getSelectionModel().setFocusedItem(null);
                 }
+            } finally {
+                syncingNavigationSelection = false;
             }
-        });
+            return;
+        }
+        selectedSampleItem = focusedItem;
+        disposeContentArea();
+        Node content = entry.sample().build(primaryStage, themeProperty);
+        contentArea.getChildren().setAll(content);
+    }
 
-        listView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal instanceof SampleScene sample) {
-                Node content = sample.build(primaryStage, themeProperty);
-                contentArea.getChildren().setAll(content);
-            }
-        });
+    @Override
+    public void stop() {
+        disposeContentArea();
+    }
 
-        return listView;
+    private void renderNavigationCell(
+        GraphicsContext graphics,
+        NavigationEntry entry,
+        TreeRenderContext<NavigationEntry> context,
+        CellState state
+    ) {
+        if (entry == null) {
+            return;
+        }
+        double textY = state.y() + ((state.height() - context.glyphCache().getLineHeight()) * 0.5) + context.baseline();
+        double baseX = Math.max(0.0, state.x() - context.iconSize() - context.indentWidth());
+        if (entry.isCategory()) {
+            graphics.setFill(Color.web("#1e1e1e"));
+            graphics.fillRect(0.0, state.y(), context.effectiveTextWidth(), state.height());
+            graphics.setFont(Font.font(context.theme().font().getFamily(), FontWeight.BOLD, context.theme().font().getSize()));
+            graphics.setFill(Color.web("#888888"));
+            graphics.fillText(entry.label(), baseX + 2.0, textY);
+            graphics.setFont(context.theme().font());
+            return;
+        }
+        graphics.setFont(context.theme().font());
+        graphics.setFill(state.selected() ? context.theme().textColorSelected() : context.theme().textColor());
+        graphics.fillText(entry.label(), baseX + 14.0, textY);
     }
 
     private void buildContentArea() {
-        Label placeholder = new Label("Select a sample from the list");
+        Label placeholder = new Label("Select a sample from the navigation panel");
         placeholder.setStyle("-fx-text-fill: #888888; -fx-font-size: 14px;");
         contentArea.getChildren().add(placeholder);
         contentArea.setStyle("-fx-background-color: #1e1e1e;");
+    }
+
+    private void disposeContentArea() {
+        if (contentArea.getChildren().isEmpty()) {
+            return;
+        }
+        Set<DockManager> disposedManagers = new HashSet<>();
+        List<Node> children = new ArrayList<>(contentArea.getChildren());
+        for (Node child : children) {
+            disposeNodeTree(child, disposedManagers);
+        }
+        contentArea.getChildren().clear();
+    }
+
+    private void disposeNodeTree(Node node, Set<DockManager> disposedManagers) {
+        if (node == null) {
+            return;
+        }
+        Object managerValue = node.getProperties().get(DockManager.ROOT_PANE_MANAGER_PROPERTY);
+        if (managerValue instanceof DockManager dockManager) {
+            if (disposedManagers.add(dockManager)) {
+                dockManager.dispose();
+            }
+            return;
+        }
+        if (node instanceof DisposableContent disposable) {
+            disposable.dispose();
+        }
+        if (node instanceof Parent parent) {
+            List<Node> children = new ArrayList<>(parent.getChildrenUnmodifiable());
+            for (Node child : children) {
+                disposeNodeTree(child, disposedManagers);
+            }
+        }
     }
 
     /**
@@ -142,5 +252,11 @@ public class SamplesApp extends Application {
      */
     public static void main(String[] args) {
         launch(args);
+    }
+
+    private record NavigationEntry(String label, SampleScene sample) {
+        private boolean isCategory() {
+            return sample == null;
+        }
     }
 }

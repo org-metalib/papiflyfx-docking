@@ -81,6 +81,7 @@ class EditorStateCodecTest {
         assertEquals(false, result.wordWrap());
         assertEquals("plain-text", result.languageId());
         assertEquals(List.of(), result.foldedLines());
+        assertEquals(List.of(), result.foldedRegions());
         assertEquals(0, result.anchorLine());
         assertEquals(0, result.anchorColumn());
         assertEquals(List.of(), result.secondaryCarets());
@@ -111,6 +112,7 @@ class EditorStateCodecTest {
         assertEquals(false, result.wordWrap());
         assertEquals("plain-text", result.languageId());
         assertEquals(List.of(), result.foldedLines());
+        assertEquals(List.of(), result.foldedRegions());
         assertEquals(List.of(), result.secondaryCarets());
     }
 
@@ -255,13 +257,13 @@ class EditorStateCodecTest {
     }
 
     @Test
-    void toMapContainsExactV3KeySet() {
+    void toMapContainsExactV4KeySet() {
         EditorStateData state = new EditorStateData(
             "/file.txt", 1, 2, 3.0, "json", List.of(5), 1, 0, List.of()
         );
         Map<String, Object> map = EditorStateCodec.toMap(state);
 
-        assertEquals(11, map.size());
+        assertEquals(12, map.size());
         assertTrue(map.containsKey("filePath"));
         assertTrue(map.containsKey("cursorLine"));
         assertTrue(map.containsKey("cursorColumn"));
@@ -272,6 +274,7 @@ class EditorStateCodecTest {
         assertTrue(map.containsKey("wordWrap"));
         assertTrue(map.containsKey("languageId"));
         assertTrue(map.containsKey("foldedLines"));
+        assertTrue(map.containsKey("foldedRegions"));
         assertTrue(map.containsKey("secondaryCarets"));
     }
 }

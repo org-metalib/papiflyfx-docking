@@ -174,6 +174,15 @@ class KeymapTableTest {
     }
 
     @Test
+    void foldingBindings() {
+        assertEquals(Optional.of(EditorCommand.TOGGLE_FOLD), lookup(KeyCode.OPEN_BRACKET, false, true, true));
+        assertEquals(Optional.of(EditorCommand.FOLD_RECURSIVE), lookup(KeyCode.CLOSE_BRACKET, false, true, true));
+        assertEquals(Optional.of(EditorCommand.UNFOLD_RECURSIVE), lookup(KeyCode.BACK_SLASH, false, true, true));
+        assertEquals(Optional.of(EditorCommand.FOLD_ALL), lookup(KeyCode.MINUS, false, true, true));
+        assertEquals(Optional.of(EditorCommand.UNFOLD_ALL), lookup(KeyCode.EQUALS, false, true, true));
+    }
+
+    @Test
     void unmappedKeyReturnsEmpty() {
         assertTrue(lookup(KeyCode.Q, false, false, false).isEmpty());
         assertTrue(lookup(KeyCode.DIGIT0, false, false, false).isEmpty());

@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 /**
  * ContentStateAdapter implementation for code editor content state.
  *
- * <p>Persistence contract (v3):</p>
+ * <p>Persistence contract (v4):</p>
  * <ol>
  *   <li>Decode state from map via version-gated helpers.</li>
  *   <li>Rehydrate document text from {@code filePath} when readable.</li>
@@ -25,7 +25,8 @@ import java.util.logging.Logger;
  * </ol>
  *
  * <p>Version migration is structured additively: each version gets a dedicated
- * decode method ({@code decodeV3}, {@code migrateV2ToV3}, {@code migrateV1ToV3}, {@code migrateV0ToV3}) so future v4+
+ * decode method ({@code decodeV4}, {@code migrateV3ToV4}, {@code migrateV2ToV4}, {@code migrateV1ToV4}, {@code migrateV0ToV4})
+ * so future v5+
  * introduction does not require branching chaos.</p>
  */
 public class CodeEditorStateAdapter implements ContentStateAdapter {
@@ -35,7 +36,7 @@ public class CodeEditorStateAdapter implements ContentStateAdapter {
     /**
      * Current state schema version.
      */
-    public static final int VERSION = 3;
+    public static final int VERSION = 4;
 
     /**
      * Creates a content-state adapter for code editor instances.
@@ -103,47 +104,57 @@ public class CodeEditorStateAdapter implements ContentStateAdapter {
         }
         int version = content.version();
         if (version == VERSION) {
-            return decodeV3(content.state());
+            return decodeV4(content.state());
+        }
+        if (version == 3) {
+            return migrateV3ToV4(content.state());
         }
         if (version == 2) {
-            return migrateV2ToV3(content.state());
+            return migrateV2ToV4(content.state());
         }
         if (version == 1) {
-            return migrateV1ToV3(content.state());
+            return migrateV1ToV4(content.state());
         }
         if (version == 0) {
-            return migrateV0ToV3(content.state());
+            return migrateV0ToV4(content.state());
         }
         return fallbackEmptyState(version);
     }
 
     /**
-     * Decodes a v3 state map.
+     * Decodes a v4 state map.
      */
-    private EditorStateData decodeV3(Map<String, Object> state) {
+    private EditorStateData decodeV4(Map<String, Object> state) {
         return EditorStateCodec.fromMap(state);
     }
 
     /**
-     * Migrates a v2 state map to v3 format.
+     * Migrates a v3 state map to v4 format.
+     */
+    private EditorStateData migrateV3ToV4(Map<String, Object> state) {
+        return EditorStateCodec.fromMap(state);
+    }
+
+    /**
+     * Migrates a v2 state map to v4 format.
      * v2 did not include horizontal scroll and wrap; defaults are applied by codec.
      */
-    private EditorStateData migrateV2ToV3(Map<String, Object> state) {
+    private EditorStateData migrateV2ToV4(Map<String, Object> state) {
         return EditorStateCodec.fromMap(state);
     }
 
     /**
-     * Migrates a v1 state map to v3 format.
+     * Migrates a v1 state map to v4 format.
      * V1 was single-caret only; anchor and secondary-caret defaults are applied by codec.
      */
-    private EditorStateData migrateV1ToV3(Map<String, Object> state) {
+    private EditorStateData migrateV1ToV4(Map<String, Object> state) {
         return EditorStateCodec.fromMap(state);
     }
 
     /**
-     * Migrates a v0 state map to v3 format.
+     * Migrates a v0 state map to v4 format.
      */
-    private EditorStateData migrateV0ToV3(Map<String, Object> state) {
+    private EditorStateData migrateV0ToV4(Map<String, Object> state) {
         return EditorStateCodec.fromMap(state);
     }
 

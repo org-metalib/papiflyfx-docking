@@ -5,6 +5,8 @@ import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.document.DocumentChangeEvent;
 import org.metalib.papifly.fx.code.document.DocumentChangeListener;
 
+import org.metalib.papifly.fx.code.language.LanguageSupportRegistry;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CancellationException;
@@ -54,7 +56,7 @@ public class IncrementalLexerPipeline implements AutoCloseable {
             tokenMapConsumer,
             IncrementalLexerPipeline::dispatchOnFxThread,
             DEFAULT_DEBOUNCE_MILLIS,
-            LexerRegistry::resolve
+            languageId -> LanguageSupportRegistry.defaultRegistry().resolveLexer(languageId)
         );
     }
 
@@ -69,7 +71,7 @@ public class IncrementalLexerPipeline implements AutoCloseable {
             tokenMapConsumer,
             fxDispatcher,
             debounceMillis,
-            LexerRegistry::resolve
+            languageId -> LanguageSupportRegistry.defaultRegistry().resolveLexer(languageId)
         );
     }
 
@@ -110,7 +112,7 @@ public class IncrementalLexerPipeline implements AutoCloseable {
      * @param languageId requested language id
      */
     public void setLanguageId(String languageId) {
-        String normalizedLanguageId = LexerRegistry.normalizeLanguageId(languageId);
+        String normalizedLanguageId = LanguageSupportRegistry.defaultRegistry().normalizeLanguageId(languageId);
         this.languageId = normalizedLanguageId;
         long nextRevision = revision.incrementAndGet();
         enqueue(document.getText(), 0, nextRevision, normalizedLanguageId, true, debounceMillis);

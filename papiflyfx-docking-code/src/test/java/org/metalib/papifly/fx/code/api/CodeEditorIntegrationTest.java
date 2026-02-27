@@ -889,6 +889,7 @@ class CodeEditorIntegrationTest {
         assertNotNull(state.get("horizontalScrollOffset"));
         assertNotNull(state.get("wordWrap"));
         assertNotNull(state.get("foldedLines"));
+        assertNotNull(state.get("foldedRegions"));
         assertNotNull(state.get("secondaryCarets"));
     }
 

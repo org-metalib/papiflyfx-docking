@@ -32,6 +32,11 @@
             <artifactId>papiflyfx-docking-code</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.metalib.papifly.docking</groupId>
+            <artifactId>papiflyfx-docking-tree</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>

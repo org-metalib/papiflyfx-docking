@@ -14,12 +14,12 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.SVGPath;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
+import org.metalib.papifly.fx.searchui.SearchOverlayBase;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ import java.util.function.Supplier;
  * Uses compact, chip-style controls and icon-only navigation actions while
  * keeping search model behavior and keyboard flow stable.
  */
-public class SearchController extends VBox {
+public class SearchController extends SearchOverlayBase {
 
     private static final String STYLESHEET_NAME = "search-overlay.css";
     private static final PseudoClass NO_RESULTS_PSEUDO_CLASS = PseudoClass.getPseudoClass("no-results");
@@ -311,8 +311,7 @@ public class SearchController extends VBox {
      */
     public void open() {
         refreshSelectionScope();
-        setManaged(true);
-        setVisible(true);
+        showOverlay();
         searchField.requestFocus();
         searchField.selectAll();
     }
@@ -347,8 +346,7 @@ public class SearchController extends VBox {
      * Hides the search overlay and clears highlights.
      */
     public void close() {
-        setManaged(false);
-        setVisible(false);
+        hideOverlay();
         searchModel.clear();
         withProgrammaticUpdate(() -> {
             searchField.clear();

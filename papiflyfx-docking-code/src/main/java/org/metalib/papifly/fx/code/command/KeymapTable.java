@@ -164,6 +164,13 @@ public final class KeymapTable {
         // Undo last occurrence: Cmd+U / Ctrl+U
         put(map, KeyCode.U, false, true, false, EditorCommand.UNDO_LAST_OCCURRENCE);
 
+        // --- folding ---
+        put(map, KeyCode.OPEN_BRACKET, false, true, true, EditorCommand.TOGGLE_FOLD);
+        put(map, KeyCode.CLOSE_BRACKET, false, true, true, EditorCommand.FOLD_RECURSIVE);
+        put(map, KeyCode.BACK_SLASH, false, true, true, EditorCommand.UNFOLD_RECURSIVE);
+        put(map, KeyCode.MINUS, false, true, true, EditorCommand.FOLD_ALL);
+        put(map, KeyCode.EQUALS, false, true, true, EditorCommand.UNFOLD_ALL);
+
         return Map.copyOf(map);
     }
 

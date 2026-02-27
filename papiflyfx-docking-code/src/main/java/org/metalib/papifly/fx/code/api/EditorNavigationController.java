@@ -65,9 +65,12 @@ final class EditorNavigationController {
         int col = selectionModel.getCaretColumn();
         if (col > 0) {
             caretCoordinator.moveCaret(line, col - 1, shift);
-        } else if (line > 0) {
-            int prevLineLen = document.getLineText(line - 1).length();
-            caretCoordinator.moveCaret(line - 1, prevLineLen, shift);
+        } else {
+            int previousVisible = viewport.previousVisibleLogicalLine(line);
+            if (previousVisible != line) {
+                int prevLineLen = document.getLineText(previousVisible).length();
+                caretCoordinator.moveCaret(previousVisible, prevLineLen, shift);
+            }
         }
     }
 
@@ -77,22 +80,27 @@ final class EditorNavigationController {
         int lineLen = document.getLineText(line).length();
         if (col < lineLen) {
             caretCoordinator.moveCaret(line, col + 1, shift);
-        } else if (line < document.getLineCount() - 1) {
-            caretCoordinator.moveCaret(line + 1, 0, shift);
+        } else {
+            int nextVisible = viewport.nextVisibleLogicalLine(line);
+            if (nextVisible != line) {
+                caretCoordinator.moveCaret(nextVisible, 0, shift);
+            }
         }
     }
 
     void moveUp(boolean shift) {
         int line = selectionModel.getCaretLine();
-        if (line > 0) {
-            caretCoordinator.moveCaretVertically(line - 1, shift);
+        int targetLine = viewport.previousVisibleLogicalLine(line);
+        if (targetLine != line) {
+            caretCoordinator.moveCaretVertically(targetLine, shift);
         }
     }
 
     void moveDown(boolean shift) {
         int line = selectionModel.getCaretLine();
-        if (line < document.getLineCount() - 1) {
-            caretCoordinator.moveCaretVertically(line + 1, shift);
+        int targetLine = viewport.nextVisibleLogicalLine(line);
+        if (targetLine != line) {
+            caretCoordinator.moveCaretVertically(targetLine, shift);
         }
     }
 
@@ -171,11 +179,15 @@ final class EditorNavigationController {
     }
 
     void documentStart(boolean shift) {
-        caretCoordinator.moveCaret(0, 0, shift);
+        int line = viewport.totalVisibleLogicalLines() <= 0 ? 0 : viewport.visibleToLogicalLine(0);
+        caretCoordinator.moveCaret(line, 0, shift);
     }
 
     void documentEnd(boolean shift) {
-        int lastLine = document.getLineCount() - 1;
+        int lastVisible = Math.max(0, viewport.totalVisibleLogicalLines() - 1);
+        int lastLine = viewport.totalVisibleLogicalLines() <= 0
+            ? Math.max(0, document.getLineCount() - 1)
+            : viewport.visibleToLogicalLine(lastVisible);
         int lastCol = document.getLineText(lastLine).length();
         caretCoordinator.moveCaret(lastLine, lastCol, shift);
     }
@@ -234,10 +246,10 @@ final class EditorNavigationController {
     void addCursorUp() {
         int caretLine = selectionModel.getCaretLine();
         int caretCol = selectionModel.getCaretColumn();
-        if (caretLine <= 0) {
+        int newLine = viewport.previousVisibleLogicalLine(caretLine);
+        if (newLine == caretLine) {
             return;
         }
-        int newLine = caretLine - 1;
         int newCol = Math.min(caretCol, document.getLineText(newLine).length());
         multiCaretModel.addCaret(new CaretRange(newLine, newCol, newLine, newCol));
         markViewportDirty.run();
@@ -246,10 +258,10 @@ final class EditorNavigationController {
     void addCursorDown() {
         int caretLine = selectionModel.getCaretLine();
         int caretCol = selectionModel.getCaretColumn();
-        if (caretLine >= document.getLineCount() - 1) {
+        int newLine = viewport.nextVisibleLogicalLine(caretLine);
+        if (newLine == caretLine) {
             return;
         }
-        int newLine = caretLine + 1;
         int newCol = Math.min(caretCol, document.getLineText(newLine).length());
         multiCaretModel.addCaret(new CaretRange(newLine, newCol, newLine, newCol));
         markViewportDirty.run();
@@ -267,7 +279,13 @@ final class EditorNavigationController {
         }
         int lineDelta = caretCoordinator.computePageLineDelta();
         int caretLine = selectionModel.getCaretLine();
-        int targetLine = Math.max(0, Math.min(caretLine + (direction * lineDelta), document.getLineCount() - 1));
+        int currentVisible = viewport.logicalToVisibleLine(caretLine);
+        if (currentVisible < 0) {
+            currentVisible = 0;
+        }
+        int maxVisible = Math.max(0, viewport.totalVisibleLogicalLines() - 1);
+        int targetVisible = Math.max(0, Math.min(currentVisible + (direction * lineDelta), maxVisible));
+        int targetLine = viewport.visibleToLogicalLine(targetVisible);
         caretCoordinator.moveCaretVertically(targetLine, shift);
     }
 
