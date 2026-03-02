@@ -13,9 +13,9 @@ update research and plan adding demos to SamplesApp
 
 ## Implementation
 
-Implement everything specified by `spec/papiflyfx-docking-tree/plan.md`. when you’re done with a task or phase, mark it
-as completed in the `spec/papiflyfx-docking-tree/plan.md` document.
-Add new `spec/papiflyfx-docking-tree/progress.md` file to track your progress.
+Implement everything specified by `spec/papiflyfx-docking-media/plan.md`. when you’re done with a task or phase, mark it
+as completed in the `spec/papiflyfx-docking-media/plan.md` document.
+Add new `spec/papiflyfx-docking-media/progress.md` file to track your progress.
 Do not stop until all tasks and phases are completed. Do not add unnecessary comments or javadocs, do not use any or unknown types.
 Continuously run typecheck to make sure you’re not introducing new issues.
 

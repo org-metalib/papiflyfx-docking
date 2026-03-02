@@ -2265,14 +2265,14 @@ class MediaViewerFxTest {
 
 | Phase | Deliverable | Status |
 |-------|------------|--------|
-| 1 | Maven module scaffold, pom.xml, root module registration | pending |
-| 2 | `UrlKind`, `MediaState`, `MediaStateCodec` | pending |
-| 3 | `MediaPlayerService`, `ImageLoaderService` | pending |
-| 4 | `StreamUrlDetector`, `EmbedUrlResolver` | pending |
-| 5 | `MediaThemeMapper` | pending |
-| 6 | `TransportBar`, `ZoomControls` | pending |
-| 7 | `ErrorViewer`, `ImageViewer`, `VideoViewer`, `AudioViewer`, `EmbedViewer`, `SvgViewer`, `ViewerFactory` | pending |
-| 8 | `MediaViewer` (public StackPane + DisposableContent) | pending |
-| 9 | `MediaViewerFactory`, `MediaViewerStateAdapter` | pending |
-| 10 | 6 sample classes (`ImageViewerSample`, `VideoPlayerSample`, `SplitMediaSample`, `HlsStreamSample`, `YouTubeEmbedSample`, `MediaPersistSample`), bundled resources, `SampleCatalog` registration | pending |
-| 11 | Unit tests (`MediaStateCodecTest`, `StreamUrlDetectorTest`, `EmbedUrlResolverTest`), UI tests (`MediaViewerFxTest`) | pending |
+| 1 | Maven module scaffold, pom.xml, root module registration | completed |
+| 2 | `UrlKind`, `MediaState`, `MediaStateCodec` | completed |
+| 3 | `MediaPlayerService`, `ImageLoaderService` | completed |
+| 4 | `StreamUrlDetector`, `EmbedUrlResolver` | completed |
+| 5 | `MediaThemeMapper` | completed |
+| 6 | `TransportBar`, `ZoomControls` | completed |
+| 7 | `ErrorViewer`, `ImageViewer`, `VideoViewer`, `AudioViewer`, `EmbedViewer`, `SvgViewer`, `ViewerFactory` | completed |
+| 8 | `MediaViewer` (public StackPane + DisposableContent) | completed |
+| 9 | `MediaViewerFactory`, `MediaViewerStateAdapter` | completed |
+| 10 | 6 sample classes (`ImageViewerSample`, `VideoPlayerSample`, `SplitMediaSample`, `HlsStreamSample`, `YouTubeEmbedSample`, `MediaPersistSample`), bundled resources, `SampleCatalog` registration | completed |
+| 11 | Unit tests (`MediaStateCodecTest`, `StreamUrlDetectorTest`, `EmbedUrlResolverTest`), UI tests (`MediaViewerFxTest`) | completed |

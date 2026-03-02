@@ -11,6 +11,12 @@ import org.metalib.papifly.fx.samples.docks.MinimizeSample;
 import org.metalib.papifly.fx.samples.docks.NestedSplitSample;
 import org.metalib.papifly.fx.samples.docks.PersistSample;
 import org.metalib.papifly.fx.samples.docks.TabGroupSample;
+import org.metalib.papifly.fx.samples.media.HlsStreamSample;
+import org.metalib.papifly.fx.samples.media.ImageViewerSample;
+import org.metalib.papifly.fx.samples.media.MediaPersistSample;
+import org.metalib.papifly.fx.samples.media.SplitMediaSample;
+import org.metalib.papifly.fx.samples.media.VideoPlayerSample;
+import org.metalib.papifly.fx.samples.media.YouTubeEmbedSample;
 import org.metalib.papifly.fx.samples.tree.TreeViewNodeInfoSample;
 import org.metalib.papifly.fx.samples.tree.TreeViewSample;
 
@@ -42,7 +48,13 @@ public final class SampleCatalog {
             new JavaScriptEditorSample(),
             new JsonEditorSample(),
             new TreeViewSample(),
-            new TreeViewNodeInfoSample()
+            new TreeViewNodeInfoSample(),
+            new ImageViewerSample(),
+            new VideoPlayerSample(),
+            new SplitMediaSample(),
+            new HlsStreamSample(),
+            new YouTubeEmbedSample(),
+            new MediaPersistSample()
         );
     }
 }
