@@ -19,8 +19,10 @@ import org.metalib.papifly.fx.tree.controller.TreeInputController;
 import org.metalib.papifly.fx.tree.controller.TreePointerController;
 import org.metalib.papifly.fx.tree.model.FlattenedTree;
 import org.metalib.papifly.fx.tree.model.TreeExpansionModel;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoFocusPolicy;
 import org.metalib.papifly.fx.tree.model.TreeNodeInfoMode;
 import org.metalib.papifly.fx.tree.model.TreeNodeInfoModel;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoToggleMode;
 import org.metalib.papifly.fx.tree.model.TreeSelectionModel;
 import org.metalib.papifly.fx.tree.render.TreeInlineInfoHost;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
@@ -50,6 +52,16 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         value -> value == null ? "" : String.valueOf(value)
     );
     private final ObjectProperty<TreeNodeInfoProvider<T>> nodeInfoProvider = new SimpleObjectProperty<>(this, "nodeInfoProvider");
+    private final ObjectProperty<TreeNodeInfoToggleMode> nodeInfoToggleMode = new SimpleObjectProperty<>(
+        this,
+        "nodeInfoToggleMode",
+        TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE
+    );
+    private final ObjectProperty<TreeNodeInfoFocusPolicy> nodeInfoFocusPolicy = new SimpleObjectProperty<>(
+        this,
+        "nodeInfoFocusPolicy",
+        TreeNodeInfoFocusPolicy.FOCUS_TOGGLED_ITEM
+    );
     private final TreeSelectionModel<T> selectionModel = new TreeSelectionModel<>();
     private final TreeExpansionModel<T> expansionModel = new TreeExpansionModel<>();
     private final TreeNodeInfoModel<T> nodeInfoModel = new TreeNodeInfoModel<>();
@@ -113,11 +125,19 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         configureSearchOverlay();
         installHandlers();
         inputController.setNavigationSelectablePredicate(navigationSelectablePredicate);
+        inputController.setNodeInfoToggleModeSupplier(this::getNodeInfoToggleMode);
+        pointerController.setNodeInfoToggleModeSupplier(this::getNodeInfoToggleMode);
+        pointerController.setNodeInfoFocusPolicySupplier(this::getNodeInfoFocusPolicy);
+        applyNodeInfoToggleModeToViewport(getNodeInfoToggleMode());
         root.addListener((obs, oldRoot, newRoot) -> onRootChanged(newRoot));
         selectionModel.addListener(model -> viewport.markDirty());
         expansionModel.addListener((item, expanded) -> viewport.markDirty());
         nodeInfoModel.addListener((item, expanded) -> viewport.markDirty());
         nodeInfoProvider.addListener((obs, oldProvider, newProvider) -> onNodeInfoProviderChanged(oldProvider, newProvider));
+        nodeInfoToggleMode.addListener((obs, oldMode, newMode) -> {
+            applyNodeInfoToggleModeToViewport(newMode);
+            viewport.markDirty();
+        });
         setTreeViewTheme(TreeViewTheme.dark());
     }
 
@@ -155,6 +175,32 @@ public class TreeView<T> extends StackPane implements DisposableContent {
 
     public ObjectProperty<TreeNodeInfoProvider<T>> nodeInfoProviderProperty() {
         return nodeInfoProvider;
+    }
+
+    public TreeNodeInfoToggleMode getNodeInfoToggleMode() {
+        TreeNodeInfoToggleMode mode = nodeInfoToggleMode.get();
+        return mode == null ? TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE : mode;
+    }
+
+    public void setNodeInfoToggleMode(TreeNodeInfoToggleMode mode) {
+        nodeInfoToggleMode.set(mode == null ? TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE : mode);
+    }
+
+    public ObjectProperty<TreeNodeInfoToggleMode> nodeInfoToggleModeProperty() {
+        return nodeInfoToggleMode;
+    }
+
+    public TreeNodeInfoFocusPolicy getNodeInfoFocusPolicy() {
+        TreeNodeInfoFocusPolicy policy = nodeInfoFocusPolicy.get();
+        return policy == null ? TreeNodeInfoFocusPolicy.FOCUS_TOGGLED_ITEM : policy;
+    }
+
+    public void setNodeInfoFocusPolicy(TreeNodeInfoFocusPolicy policy) {
+        nodeInfoFocusPolicy.set(policy == null ? TreeNodeInfoFocusPolicy.FOCUS_TOGGLED_ITEM : policy);
+    }
+
+    public ObjectProperty<TreeNodeInfoFocusPolicy> nodeInfoFocusPolicyProperty() {
+        return nodeInfoFocusPolicy;
     }
 
     public void toggleNodeInfo(TreeItem<T> item) {
@@ -635,6 +681,18 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         inlineInfoClip.setY(0.0);
         inlineInfoClip.setWidth(Math.max(0.0, viewport.getEffectiveTextWidth()));
         inlineInfoClip.setHeight(Math.max(0.0, viewport.getEffectiveTextHeight()));
-        inlineInfoHost.sync(viewport.getVisibleRows(), getNodeInfoProvider(), viewport.getEffectiveTextWidth());
+        inlineInfoHost.sync(
+            viewport.getVisibleRows(),
+            getNodeInfoProvider(),
+            viewport.getEffectiveTextWidth(),
+            viewport.getTheme().indentWidth(),
+            viewport.getTheme().iconSize(),
+            viewport.getHorizontalScrollOffset()
+        );
+    }
+
+    private void applyNodeInfoToggleModeToViewport(TreeNodeInfoToggleMode mode) {
+        TreeNodeInfoToggleMode safeMode = mode == null ? TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE : mode;
+        viewport.setNodeInfoMouseToggleEnabled(safeMode.allowsMouse());
     }
 }

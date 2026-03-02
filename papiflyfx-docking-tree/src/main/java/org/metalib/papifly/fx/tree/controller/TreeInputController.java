@@ -7,6 +7,7 @@ import org.metalib.papifly.fx.tree.api.TreeItem;
 import org.metalib.papifly.fx.tree.model.FlattenedTree;
 import org.metalib.papifly.fx.tree.model.TreeExpansionModel;
 import org.metalib.papifly.fx.tree.model.TreeNodeInfoModel;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoToggleMode;
 import org.metalib.papifly.fx.tree.model.TreeSelectionModel;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
 
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public final class TreeInputController<T> {
 
@@ -26,6 +28,7 @@ public final class TreeInputController<T> {
     private final TreeViewport<T> viewport;
     private final TreeEditController<T> editController;
     private Predicate<TreeItem<T>> navigationSelectable = item -> true;
+    private Supplier<TreeNodeInfoToggleMode> nodeInfoToggleModeSupplier = () -> TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE;
 
     public TreeInputController(
         FlattenedTree<T> flattenedTree,
@@ -47,7 +50,7 @@ public final class TreeInputController<T> {
         if (event == null || event.isConsumed() || visibleItems().isEmpty()) {
             return false;
         }
-        if (isToggleFocusedInfoShortcut(event)) {
+        if (isToggleFocusedInfoShortcut(event) && resolveNodeInfoToggleMode().allowsKeyboard()) {
             return consume(event, toggleFocusedInfo());
         }
         KeyCode code = event.getCode();
@@ -70,6 +73,10 @@ public final class TreeInputController<T> {
 
     public void setNavigationSelectablePredicate(Predicate<TreeItem<T>> navigationSelectable) {
         this.navigationSelectable = navigationSelectable == null ? item -> true : navigationSelectable;
+    }
+
+    public void setNodeInfoToggleModeSupplier(Supplier<TreeNodeInfoToggleMode> supplier) {
+        this.nodeInfoToggleModeSupplier = supplier == null ? () -> TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE : supplier;
     }
 
     private boolean moveFocusBy(int delta, boolean extendSelection) {
@@ -280,6 +287,11 @@ public final class TreeInputController<T> {
                 && !event.isControlDown();
         }
         return event.getCode() == KeyCode.ENTER && event.isAltDown();
+    }
+
+    private TreeNodeInfoToggleMode resolveNodeInfoToggleMode() {
+        TreeNodeInfoToggleMode mode = nodeInfoToggleModeSupplier.get();
+        return mode == null ? TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE : mode;
     }
 
     private int findSelectableIndex(List<TreeItem<T>> visibleItems, int startIndex, int direction) {

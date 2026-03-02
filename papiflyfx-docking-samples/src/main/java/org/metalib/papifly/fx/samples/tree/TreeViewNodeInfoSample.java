@@ -31,7 +31,9 @@ import org.metalib.papifly.fx.samples.SampleScene;
 import org.metalib.papifly.fx.tree.api.TreeItem;
 import org.metalib.papifly.fx.tree.api.TreeNodeInfoProvider;
 import org.metalib.papifly.fx.tree.api.TreeView;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoFocusPolicy;
 import org.metalib.papifly.fx.tree.model.TreeNodeInfoMode;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoToggleMode;
 
 import java.util.function.Consumer;
 
@@ -46,7 +48,7 @@ public class TreeViewNodeInfoSample implements SampleScene {
 
     @Override
     public String title() {
-        return "Tree View (Inline Node Info + Policies)";
+        return "Tree View (Inline Node Info + Navigation Policies)";
     }
 
     @Override
@@ -60,6 +62,8 @@ public class TreeViewNodeInfoSample implements SampleScene {
         treeView.setShowRoot(false);
         treeView.bindThemeProperty(themeProperty);
         treeView.setSearchTextExtractor(this::searchText);
+        treeView.setNodeInfoToggleMode(TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE);
+        treeView.setNodeInfoFocusPolicy(TreeNodeInfoFocusPolicy.FOCUS_TOGGLED_ITEM);
         treeView.setNodeInfoProvider(new TreeNodeInfoProvider<>() {
             @Override
             public Node createContent(TreeItem<NodeInfoEntry> item) {
@@ -89,19 +93,51 @@ public class TreeViewNodeInfoSample implements SampleScene {
     }
 
     private Node withInfoModeBar(TreeView<NodeInfoEntry> treeView) {
-        ComboBox<TreeNodeInfoMode> modePicker = new ComboBox<>();
-        modePicker.getItems().addAll(TreeNodeInfoMode.SINGLE, TreeNodeInfoMode.MULTIPLE);
-        modePicker.setFocusTraversable(false);
-        modePicker.setValue(treeView.getNodeInfoMode());
-        modePicker.valueProperty().addListener((obs, oldMode, newMode) -> treeView.setNodeInfoMode(newMode));
+        ComboBox<TreeNodeInfoMode> infoModePicker = new ComboBox<>();
+        infoModePicker.getItems().addAll(TreeNodeInfoMode.SINGLE, TreeNodeInfoMode.MULTIPLE);
+        infoModePicker.setFocusTraversable(false);
+        infoModePicker.setValue(treeView.getNodeInfoMode());
 
-        Label modeLabel = new Label("Info policy:");
-        Label modeHint = new Label("SINGLE: one info open, MULTIPLE: keep others open.");
-        HBox toolbar = new HBox(8.0, modeLabel, modePicker, modeHint);
+        ComboBox<TreeNodeInfoToggleMode> toggleModePicker = new ComboBox<>();
+        toggleModePicker.getItems().addAll(
+            TreeNodeInfoToggleMode.DISABLED,
+            TreeNodeInfoToggleMode.KEYBOARD_ONLY,
+            TreeNodeInfoToggleMode.MOUSE_ONLY,
+            TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE
+        );
+        toggleModePicker.setFocusTraversable(false);
+        toggleModePicker.setValue(treeView.getNodeInfoToggleMode());
+
+        ComboBox<TreeNodeInfoFocusPolicy> focusPolicyPicker = new ComboBox<>();
+        focusPolicyPicker.getItems().addAll(
+            TreeNodeInfoFocusPolicy.KEEP_CURRENT_FOCUS,
+            TreeNodeInfoFocusPolicy.FOCUS_TOGGLED_ITEM
+        );
+        focusPolicyPicker.setFocusTraversable(false);
+        focusPolicyPicker.setValue(treeView.getNodeInfoFocusPolicy());
+        focusPolicyPicker.setDisable(!treeView.getNodeInfoToggleMode().allowsMouse());
+
+        infoModePicker.valueProperty().addListener((obs, oldMode, newMode) -> treeView.setNodeInfoMode(newMode));
+        toggleModePicker.valueProperty().addListener((obs, oldMode, newMode) -> {
+            treeView.setNodeInfoToggleMode(newMode);
+            focusPolicyPicker.setDisable(!treeView.getNodeInfoToggleMode().allowsMouse());
+        });
+        focusPolicyPicker.valueProperty().addListener((obs, oldPolicy, newPolicy) -> treeView.setNodeInfoFocusPolicy(newPolicy));
+
+        Label infoModeLabel = new Label("Info mode:");
+        Label toggleModeLabel = new Label("Toggle mode:");
+        Label focusPolicyLabel = new Label("Mouse focus:");
+        HBox controls = new HBox(8.0, infoModeLabel, infoModePicker, toggleModeLabel, toggleModePicker, focusPolicyLabel, focusPolicyPicker);
+        controls.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        Label hint = new Label("SINGLE keeps one info row open. Toggle shortcut is Meta+I on macOS, Alt+Enter on Windows/Linux.");
+        hint.setWrapText(true);
+        Label hint2 = new Label("Mouse toggle uses the inline +/- icon. Mouse focus policy is applied only when mouse toggles are enabled.");
+        hint2.setWrapText(true);
+
+        VBox toolbar = new VBox(4.0, controls, hint, hint2);
         toolbar.setPadding(new Insets(6.0, 10.0, 6.0, 10.0));
-        HBox.setHgrow(modeHint, Priority.ALWAYS);
-        modeHint.setWrapText(true);
-
+        HBox.setHgrow(toggleModePicker, Priority.NEVER);
         BorderPane wrapper = new BorderPane(treeView);
         wrapper.setTop(toolbar);
         return wrapper;

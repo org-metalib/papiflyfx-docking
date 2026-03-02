@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.tree.api;
 
 import javafx.application.Platform;
 import javafx.geometry.Bounds;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -16,7 +17,9 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoFocusPolicy;
 import org.metalib.papifly.fx.tree.model.TreeNodeInfoMode;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoToggleMode;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
 import org.metalib.papifly.fx.tree.search.TreeSearchOverlay;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -344,6 +347,192 @@ class TreeViewFxTest {
     }
 
     @Test
+    void disabledModePreventsKeyboardAndMouseToggle() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            TreeItem<String> first = new TreeItem<>("first");
+            root.addChild(first);
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.setNodeInfoProvider(item -> new VBox(new Label("info")));
+            treeView.setNodeInfoToggleMode(TreeNodeInfoToggleMode.DISABLED);
+            treeView.requestFocus();
+            treeView.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.HOME, false, false, false, false));
+            treeView.fireEvent(toggleInfoShortcutEvent());
+        });
+        flushLayout();
+
+        clickInfoToggleAtRow(0);
+        flushLayout();
+
+        assertFalse(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+    }
+
+    @Test
+    void keyboardOnlyModeAllowsKeyboardButBlocksMouseToggle() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            TreeItem<String> first = new TreeItem<>("first");
+            root.addChild(first);
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.setNodeInfoProvider(item -> new VBox(new Label("info")));
+            treeView.setNodeInfoToggleMode(TreeNodeInfoToggleMode.KEYBOARD_ONLY);
+            treeView.requestFocus();
+            treeView.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.HOME, false, false, false, false));
+            treeView.fireEvent(toggleInfoShortcutEvent());
+        });
+        flushLayout();
+        assertTrue(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+
+        clickInfoToggleAtRow(0);
+        flushLayout();
+        assertTrue(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+
+        runOnFx(() -> treeView.fireEvent(toggleInfoShortcutEvent()));
+        flushLayout();
+        assertFalse(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+    }
+
+    @Test
+    void mouseOnlyModeAllowsMouseButBlocksKeyboardToggle() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            TreeItem<String> first = new TreeItem<>("first");
+            root.addChild(first);
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.setNodeInfoProvider(item -> new VBox(new Label("info")));
+            treeView.setNodeInfoToggleMode(TreeNodeInfoToggleMode.MOUSE_ONLY);
+            treeView.requestFocus();
+            treeView.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.HOME, false, false, false, false));
+            treeView.fireEvent(toggleInfoShortcutEvent());
+        });
+        flushLayout();
+        assertFalse(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+
+        clickInfoToggleAtRow(0);
+        flushLayout();
+        assertTrue(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+
+        runOnFx(() -> treeView.fireEvent(toggleInfoShortcutEvent()));
+        flushLayout();
+        assertTrue(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+
+        clickInfoToggleAtRow(0);
+        flushLayout();
+        assertFalse(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+    }
+
+    @Test
+    void bothModeAllowsKeyboardAndMouseToggle() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            TreeItem<String> first = new TreeItem<>("first");
+            root.addChild(first);
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.setNodeInfoProvider(item -> new VBox(new Label("info")));
+            treeView.setNodeInfoToggleMode(TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE);
+            treeView.requestFocus();
+            treeView.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.HOME, false, false, false, false));
+            treeView.fireEvent(toggleInfoShortcutEvent());
+        });
+        flushLayout();
+        assertTrue(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+
+        clickInfoToggleAtRow(0);
+        flushLayout();
+        assertFalse(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+    }
+
+    @Test
+    void mouseToggleFocusPolicyKeepsCurrentFocus() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            TreeItem<String> first = new TreeItem<>("first");
+            TreeItem<String> second = new TreeItem<>("second");
+            root.addChild(first);
+            root.addChild(second);
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.setNodeInfoProvider(item -> new VBox(new Label("info-" + item.getValue())));
+            treeView.setNodeInfoToggleMode(TreeNodeInfoToggleMode.MOUSE_ONLY);
+            treeView.setNodeInfoFocusPolicy(TreeNodeInfoFocusPolicy.KEEP_CURRENT_FOCUS);
+            treeView.getSelectionModel().selectOnly(first);
+            treeView.getSelectionModel().setFocusedItem(first);
+            treeView.getSelectionModel().setAnchorItem(first);
+        });
+        flushLayout();
+
+        clickInfoToggleAtRow(1);
+        flushLayout();
+
+        TreeItem<String> first = callOnFx(() -> treeView.getRoot().getChildren().getFirst());
+        TreeItem<String> second = callOnFx(() -> treeView.getRoot().getChildren().get(1));
+        assertTrue(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(second)));
+        assertSame(first, callOnFx(() -> treeView.getSelectionModel().getFocusedItem()));
+        assertTrue(callOnFx(() -> treeView.getSelectionModel().isSelected(first)));
+        assertFalse(callOnFx(() -> treeView.getSelectionModel().isSelected(second)));
+    }
+
+    @Test
+    void mouseToggleFocusPolicyFocusesToggledItem() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            TreeItem<String> first = new TreeItem<>("first");
+            TreeItem<String> second = new TreeItem<>("second");
+            root.addChild(first);
+            root.addChild(second);
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.setNodeInfoProvider(item -> new VBox(new Label("info-" + item.getValue())));
+            treeView.setNodeInfoToggleMode(TreeNodeInfoToggleMode.MOUSE_ONLY);
+            treeView.setNodeInfoFocusPolicy(TreeNodeInfoFocusPolicy.FOCUS_TOGGLED_ITEM);
+            treeView.getSelectionModel().selectOnly(first);
+            treeView.getSelectionModel().setFocusedItem(first);
+            treeView.getSelectionModel().setAnchorItem(first);
+        });
+        flushLayout();
+
+        clickInfoToggleAtRow(1);
+        flushLayout();
+
+        TreeItem<String> first = callOnFx(() -> treeView.getRoot().getChildren().getFirst());
+        TreeItem<String> second = callOnFx(() -> treeView.getRoot().getChildren().get(1));
+        assertTrue(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(second)));
+        assertSame(second, callOnFx(() -> treeView.getSelectionModel().getFocusedItem()));
+        assertSame(second, callOnFx(() -> treeView.getSelectionModel().getAnchorItem()));
+        assertTrue(callOnFx(() -> treeView.getSelectionModel().isSelected(second)));
+        assertFalse(callOnFx(() -> treeView.getSelectionModel().isSelected(first)));
+    }
+
+    @Test
+    void mouseDisabledHidesInfoToggleAffordanceAndHitZone() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            TreeItem<String> first = new TreeItem<>("first");
+            root.addChild(first);
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.setNodeInfoProvider(item -> new VBox(new Label("info")));
+            treeView.setNodeInfoToggleMode(TreeNodeInfoToggleMode.KEYBOARD_ONLY);
+        });
+        flushLayout();
+
+        double toggleX = infoToggleCenterX();
+        double toggleY = rowCenterY(0);
+        TreeViewport.HitInfo<String> hitInfo = callOnFx(() -> treeView.getViewport().hitTest(toggleX, toggleY));
+        assertNotNull(hitInfo);
+        assertFalse(hitInfo.infoToggleHit());
+        assertFalse(callOnFx(() -> treeView.getViewport().getVisibleRows().getFirst().infoAvailable()));
+
+        runOnFx(() -> treeView.getViewport().fireEvent(mousePressed(toggleX, toggleY)));
+        flushLayout();
+        assertFalse(callOnFx(() -> treeView.getNodeInfoModel().isExpanded(treeView.getRoot().getChildren().getFirst())));
+    }
+
+    @Test
     void singleInfoModeKeepsOnlyLastToggledInlineInfoExpanded() {
         runOnFx(() -> {
             TreeItem<String> root = new TreeItem<>("root");
@@ -422,7 +611,79 @@ class TreeViewFxTest {
     }
 
     @Test
-    void selectedItemDoesNotHighlightInlineInfoRow() {
+    void inlineInfoContentUsesTreeIndentation() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            TreeItem<String> first = new TreeItem<>("first");
+            root.addChild(first);
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.setNodeInfoProvider(item -> new VBox(new Label("info-" + item.getValue())));
+            treeView.toggleNodeInfo(first);
+        });
+        flushLayout();
+
+        assertTrue(callOnFx(() -> {
+            if (treeView.getChildren().size() < 2 || !(treeView.getChildren().get(1) instanceof Pane inlineLayer)) {
+                return false;
+            }
+            if (inlineLayer.getChildren().isEmpty()) {
+                return false;
+            }
+            Node infoNode = inlineLayer.getChildren().getFirst();
+            double nodeX = infoNode.getLayoutX();
+            double nodeWidth = infoNode.getBoundsInParent().getWidth();
+            double viewportWidth = treeView.getViewport().getEffectiveTextWidth();
+            return nodeX > 0.0 && nodeWidth > 0.0 && nodeWidth < viewportWidth;
+        }));
+    }
+
+    @Test
+    void lastChildConnectorStopsAtBranchCenter() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            TreeItem<String> branch = new TreeItem<>("branch");
+            TreeItem<String> first = new TreeItem<>("first");
+            TreeItem<String> last = new TreeItem<>("last");
+            branch.addChild(first);
+            branch.addChild(last);
+            root.addChild(branch);
+            treeView.setShowRoot(true);
+            treeView.setRoot(root);
+            treeView.getExpansionModel().setExpanded(root, true);
+            treeView.getExpansionModel().setExpanded(branch, true);
+        });
+        flushLayout();
+
+        WritableImage snapshot = callOnFx(() -> treeView.getViewport().snapshot(null, null));
+        Bounds firstRowBounds = callOnFx(() -> treeView.getViewport().rowBounds(2));
+        Bounds lastRowBounds = callOnFx(() -> treeView.getViewport().rowBounds(3));
+        double viewportWidth = callOnFx(() -> treeView.getViewport().getWidth());
+        double viewportHeight = callOnFx(() -> treeView.getViewport().getHeight());
+        double xScale = snapshot.getWidth() / Math.max(1.0, viewportWidth);
+        double yScale = snapshot.getHeight() / Math.max(1.0, viewportHeight);
+        double indentWidth = callOnFx(() -> treeView.getViewport().getTheme().indentWidth());
+        double connectorX = ((2.0 * indentWidth) - (indentWidth * 0.5)) * xScale;
+
+        Color nonLastBottomColor = colorAt(
+            snapshot,
+            connectorX,
+            (firstRowBounds.getMinY() + firstRowBounds.getHeight() - 2.0) * yScale
+        );
+        Color lastBottomColor = colorAt(
+            snapshot,
+            connectorX,
+            (lastRowBounds.getMinY() + lastRowBounds.getHeight() - 2.0) * yScale
+        );
+        Color connectingLineColor = callOnFx(() -> (Color) treeView.getTreeViewTheme().connectingLineColor());
+        Color lastRowBackground = callOnFx(() -> (Color) treeView.getTreeViewTheme().rowBackgroundAlternate());
+
+        assertTrue(isColorClose(nonLastBottomColor, connectingLineColor, 0.08));
+        assertTrue(isColorClose(lastBottomColor, lastRowBackground, 0.08));
+    }
+
+    @Test
+    void selectedItemUsesBorderHighlightForInlineInfoRow() {
         runOnFx(() -> {
             TreeItem<String> root = new TreeItem<>("root");
             TreeItem<String> first = new TreeItem<>("first");
@@ -446,11 +707,13 @@ class TreeViewFxTest {
         double yScale = snapshot.getHeight() / Math.max(1.0, viewportHeight);
         Color itemRowColor = colorAt(snapshot, 2.0 * xScale, (itemRowBounds.getMinY() + (itemRowBounds.getHeight() * 0.5)) * yScale);
         Color infoRowColor = colorAt(snapshot, 2.0 * xScale, (infoRowBounds.getMinY() + (infoRowBounds.getHeight() * 0.5)) * yScale);
+        Color infoRowEdgeColor = colorAt(snapshot, 0.0, (infoRowBounds.getMinY() + (infoRowBounds.getHeight() * 0.5)) * yScale);
         Color selectedBackground = callOnFx(() -> (Color) treeView.getTreeViewTheme().selectedBackground());
         Color alternateBackground = callOnFx(() -> (Color) treeView.getTreeViewTheme().rowBackgroundAlternate());
 
         assertTrue(isColorClose(itemRowColor, selectedBackground, 0.04));
         assertTrue(isColorClose(infoRowColor, alternateBackground, 0.04));
+        assertFalse(isColorClose(infoRowEdgeColor, alternateBackground, 0.02));
     }
 
     @Test
@@ -605,6 +868,23 @@ class TreeViewFxTest {
             && Math.abs(actual.getGreen() - expected.getGreen()) <= tolerance
             && Math.abs(actual.getBlue() - expected.getBlue()) <= tolerance
             && Math.abs(actual.getOpacity() - expected.getOpacity()) <= tolerance;
+    }
+
+    private void clickInfoToggleAtRow(int rowIndex) {
+        double toggleX = infoToggleCenterX();
+        double toggleY = rowCenterY(rowIndex);
+        runOnFx(() -> treeView.getViewport().fireEvent(mousePressed(toggleX, toggleY)));
+    }
+
+    private double infoToggleCenterX() {
+        return callOnFx(() ->
+            treeView.getViewport().getEffectiveTextWidth() - TreeViewport.INFO_TOGGLE_MARGIN - (TreeViewport.INFO_TOGGLE_SIZE * 0.5)
+        );
+    }
+
+    private double rowCenterY(int rowIndex) {
+        Bounds rowBounds = callOnFx(() -> treeView.getViewport().rowBounds(rowIndex));
+        return rowBounds.getMinY() + (rowBounds.getHeight() * 0.5);
     }
 
     private MouseEvent mousePressed(double x, double y) {

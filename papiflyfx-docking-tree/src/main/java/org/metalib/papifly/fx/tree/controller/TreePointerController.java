@@ -5,12 +5,15 @@ import javafx.scene.input.ScrollEvent;
 import org.metalib.papifly.fx.tree.api.TreeItem;
 import org.metalib.papifly.fx.tree.model.FlattenedTree;
 import org.metalib.papifly.fx.tree.model.TreeExpansionModel;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoFocusPolicy;
 import org.metalib.papifly.fx.tree.model.TreeNodeInfoModel;
+import org.metalib.papifly.fx.tree.model.TreeNodeInfoToggleMode;
 import org.metalib.papifly.fx.tree.model.TreeSelectionModel;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public final class TreePointerController<T> {
 
@@ -26,6 +29,8 @@ public final class TreePointerController<T> {
     private final TreeNodeInfoModel<T> nodeInfoModel;
     private final TreeViewport<T> viewport;
     private final TreeEditController<T> editController;
+    private Supplier<TreeNodeInfoToggleMode> nodeInfoToggleModeSupplier = () -> TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE;
+    private Supplier<TreeNodeInfoFocusPolicy> nodeInfoFocusPolicySupplier = () -> TreeNodeInfoFocusPolicy.FOCUS_TOGGLED_ITEM;
 
     private ScrollbarDragTarget scrollbarDragTarget = ScrollbarDragTarget.NONE;
     private double scrollbarDragPointerOffset;
@@ -70,7 +75,12 @@ public final class TreePointerController<T> {
             event.consume();
             return true;
         }
-        if (hitInfo.infoToggleHit()) {
+        if (hitInfo.infoToggleHit() && resolveNodeInfoToggleMode().allowsMouse()) {
+            if (resolveNodeInfoFocusPolicy() == TreeNodeInfoFocusPolicy.FOCUS_TOGGLED_ITEM) {
+                selectionModel.selectOnly(item);
+                selectionModel.setFocusedItem(item);
+                selectionModel.setAnchorItem(item);
+            }
             nodeInfoModel.toggle(item);
             viewport.ensureItemVisible(item);
             viewport.markDirty();
@@ -113,6 +123,14 @@ public final class TreePointerController<T> {
         viewport.markDirty();
         event.consume();
         return true;
+    }
+
+    public void setNodeInfoToggleModeSupplier(Supplier<TreeNodeInfoToggleMode> supplier) {
+        this.nodeInfoToggleModeSupplier = supplier == null ? () -> TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE : supplier;
+    }
+
+    public void setNodeInfoFocusPolicySupplier(Supplier<TreeNodeInfoFocusPolicy> supplier) {
+        this.nodeInfoFocusPolicySupplier = supplier == null ? () -> TreeNodeInfoFocusPolicy.FOCUS_TOGGLED_ITEM : supplier;
     }
 
     public boolean handleMouseDragged(MouseEvent event) {
@@ -246,5 +264,15 @@ public final class TreePointerController<T> {
         viewport.setScrollbarHoverPart(TreeViewport.ScrollbarPart.NONE);
         TreeViewport.HitInfo<T> hitInfo = viewport.hitTest(x, y);
         viewport.setHoveredItem(hitInfo == null ? null : hitInfo.item());
+    }
+
+    private TreeNodeInfoToggleMode resolveNodeInfoToggleMode() {
+        TreeNodeInfoToggleMode mode = nodeInfoToggleModeSupplier.get();
+        return mode == null ? TreeNodeInfoToggleMode.KEYBOARD_AND_MOUSE : mode;
+    }
+
+    private TreeNodeInfoFocusPolicy resolveNodeInfoFocusPolicy() {
+        TreeNodeInfoFocusPolicy policy = nodeInfoFocusPolicySupplier.get();
+        return policy == null ? TreeNodeInfoFocusPolicy.FOCUS_TOGGLED_ITEM : policy;
     }
 }

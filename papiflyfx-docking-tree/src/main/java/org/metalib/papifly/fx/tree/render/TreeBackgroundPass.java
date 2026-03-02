@@ -42,6 +42,15 @@ final class TreeBackgroundPass<T> implements TreeRenderPass<T> {
         if (row.isItemRow() && context.selectionModel().getFocusedItem() == item) {
             graphics.setStroke(context.theme().focusedBorder());
             graphics.strokeRect(0.5, row.y() + 0.5, Math.max(0, context.effectiveTextWidth() - 1), Math.max(0, row.height() - 1));
+            return;
+        }
+
+        if (row.isInfoRow() && context.selectionModel().isSelected(item)) {
+            Paint borderPaint = context.selectionModel().getFocusedItem() == item
+                ? context.theme().focusedBorder()
+                : context.theme().selectedBackgroundUnfocused();
+            graphics.setStroke(borderPaint);
+            graphics.strokeRect(0.5, row.y() + 0.5, Math.max(0, context.effectiveTextWidth() - 1), Math.max(0, row.height() - 1));
         }
     }
 }

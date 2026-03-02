@@ -63,6 +63,7 @@ public class TreeViewport<T> extends Region {
     private ScrollbarPart scrollbarHoverPart = ScrollbarPart.NONE;
     private ScrollbarPart scrollbarActivePart = ScrollbarPart.NONE;
     private Runnable scrollbarVisibilityListener;
+    private boolean nodeInfoMouseToggleEnabled = true;
 
     public TreeViewport(FlattenedTree<T> flattenedTree, TreeSelectionModel<T> selectionModel) {
         this.flattenedTree = flattenedTree == null ? new FlattenedTree<>() : flattenedTree;
@@ -226,6 +227,18 @@ public class TreeViewport<T> extends Region {
         this.scrollbarVisibilityListener = listener;
     }
 
+    public boolean isNodeInfoMouseToggleEnabled() {
+        return nodeInfoMouseToggleEnabled;
+    }
+
+    public void setNodeInfoMouseToggleEnabled(boolean enabled) {
+        if (nodeInfoMouseToggleEnabled == enabled) {
+            return;
+        }
+        nodeInfoMouseToggleEnabled = enabled;
+        markDirty();
+    }
+
     public int rowCount() {
         return flattenedTree == null ? 0 : flattenedTree.size();
     }
@@ -290,6 +303,7 @@ public class TreeViewport<T> extends Region {
         double disclosureEnd = disclosureStart + theme.indentWidth();
         boolean disclosureHit = flattenedRow.isItemRow() && !item.isLeaf() && localX >= disclosureStart && localX <= disclosureEnd;
         boolean infoToggleHit = flattenedRow.isItemRow()
+            && nodeInfoMouseToggleEnabled
             && flattenedTree.getNodeInfoProvider() != null
             && localX >= infoToggleX()
             && localX <= infoToggleX() + INFO_TOGGLE_SIZE;
@@ -536,7 +550,7 @@ public class TreeViewport<T> extends Region {
                 rowHeightAt(index),
                 isItemRow && item.isLeaf(),
                 isItemRow && flattenedTree.getExpansionModel().isExpanded(item),
-                isItemRow && flattenedTree.getNodeInfoProvider() != null,
+                isItemRow && nodeInfoMouseToggleEnabled && flattenedTree.getNodeInfoProvider() != null,
                 isItemRow && flattenedTree.getNodeInfoModel().isExpanded(item)
             ));
         }

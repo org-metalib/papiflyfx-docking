@@ -30,13 +30,13 @@ Out of scope:
 
 ## Progress Snapshot
 
-- [ ] Phase 1: Add feature-flag models
-- [ ] Phase 2: Expose mode/policy on `TreeView`
-- [ ] Phase 3: Gate keyboard behavior
-- [ ] Phase 4: Gate mouse behavior + focus policy
-- [ ] Phase 5: Align render and hit-test with mode
-- [ ] Phase 6: Add tests for mode matrix and focus policy
-- [ ] Phase 7: Validate and polish
+- [x] Phase 1: Add feature-flag models
+- [x] Phase 2: Expose mode/policy on `TreeView`
+- [x] Phase 3: Gate keyboard behavior
+- [x] Phase 4: Gate mouse behavior + focus policy
+- [x] Phase 5: Align render and hit-test with mode
+- [x] Phase 6: Add tests for mode matrix and focus policy
+- [x] Phase 7: Validate and polish
 
 ## Target Behavior
 
@@ -67,10 +67,10 @@ Files to add:
 
 Tasks:
 
-- [ ] Add toggle mode enum with helper methods:
+- [x] Add toggle mode enum with helper methods:
   - `allowsKeyboard()`
   - `allowsMouse()`
-- [ ] Add focus policy enum:
+- [x] Add focus policy enum:
   - `KEEP_CURRENT_FOCUS`
   - `FOCUS_TOGGLED_ITEM`
 
@@ -112,15 +112,15 @@ Files to update:
 
 Tasks:
 
-- [ ] Add properties:
+- [x] Add properties:
   - `ObjectProperty<TreeNodeInfoToggleMode> nodeInfoToggleMode`
   - `ObjectProperty<TreeNodeInfoFocusPolicy> nodeInfoFocusPolicy`
-- [ ] Add getters/setters/property accessors
-- [ ] Set defaults in constructor:
+- [x] Add getters/setters/property accessors
+- [x] Set defaults in constructor:
   - `KEYBOARD_AND_MOUSE`
   - `FOCUS_TOGGLED_ITEM`
-- [ ] Wire these values into input/pointer controllers during construction
-- [ ] Add listeners that trigger `viewport.markDirty()` when mode changes
+- [x] Wire these values into input/pointer controllers during construction
+- [x] Add listeners that trigger `viewport.markDirty()` when mode changes
 
 Snippet:
 
@@ -161,9 +161,9 @@ Files to update:
 
 Tasks:
 
-- [ ] Inject toggle mode supplier (or property reference) into controller
-- [ ] Guard `isToggleFocusedInfoShortcut` path by `mode.allowsKeyboard()`
-- [ ] Keep existing key mapping and existing non-toggle key handling unchanged
+- [x] Inject toggle mode supplier (or property reference) into controller
+- [x] Guard `isToggleFocusedInfoShortcut` path by `mode.allowsKeyboard()`
+- [x] Keep existing key mapping and existing non-toggle key handling unchanged
 
 Proposed constructor extension:
 
@@ -193,10 +193,10 @@ Files to update:
 
 Tasks:
 
-- [ ] Inject toggle mode supplier
-- [ ] Inject focus policy supplier
-- [ ] Gate `hitInfo.infoToggleHit()` branch by `mode.allowsMouse()`
-- [ ] Apply focus policy when mouse toggle executes
+- [x] Inject toggle mode supplier
+- [x] Inject focus policy supplier
+- [x] Gate `hitInfo.infoToggleHit()` branch by `mode.allowsMouse()`
+- [x] Apply focus policy when mouse toggle executes
 
 Focus behavior:
 
@@ -231,9 +231,9 @@ Files to update:
 
 Tasks:
 
-- [ ] Propagate toggle-mode visibility into render rows
-- [ ] Only draw info-toggle icon when mouse toggles are enabled
-- [ ] Only return `infoToggleHit=true` in `hitTest` when mouse toggles are enabled
+- [x] Propagate toggle-mode visibility into render rows
+- [x] Only draw info-toggle icon when mouse toggles are enabled
+- [x] Only return `infoToggleHit=true` in `hitTest` when mouse toggles are enabled
 
 Recommended wiring:
 
@@ -287,13 +287,13 @@ Files to update:
 
 FX scenarios to add:
 
-- [ ] `disabledModePreventsKeyboardAndMouseToggle`
-- [ ] `keyboardOnlyModeAllowsKeyboardButBlocksMouseToggle`
-- [ ] `mouseOnlyModeAllowsMouseButBlocksKeyboardToggle`
-- [ ] `bothModeAllowsKeyboardAndMouseToggle`
-- [ ] `mouseToggleFocusPolicyKeepsCurrentFocus`
-- [ ] `mouseToggleFocusPolicyFocusesToggledItem`
-- [ ] `mouseDisabledHidesInfoToggleAffordanceAndHitZone`
+- [x] `disabledModePreventsKeyboardAndMouseToggle`
+- [x] `keyboardOnlyModeAllowsKeyboardButBlocksMouseToggle`
+- [x] `mouseOnlyModeAllowsMouseButBlocksKeyboardToggle`
+- [x] `bothModeAllowsKeyboardAndMouseToggle`
+- [x] `mouseToggleFocusPolicyKeepsCurrentFocus`
+- [x] `mouseToggleFocusPolicyFocusesToggledItem`
+- [x] `mouseDisabledHidesInfoToggleAffordanceAndHitZone`
 
 Snippet (pattern):
 
@@ -326,12 +326,12 @@ Files to update:
 
 Tasks:
 
-- [ ] Run module tests:
+- [x] Run module tests:
   - `./mvnw -pl papiflyfx-docking-tree test -Dtestfx.headless=true`
-- [ ] Run compile pass:
+- [x] Run compile pass:
   - `./mvnw -pl papiflyfx-docking-tree -am -DskipTests compile`
-- [ ] Confirm no regressions in existing node-info tests
-- [ ] Update progress artifacts during implementation
+- [x] Confirm no regressions in existing node-info tests
+- [x] Update progress artifacts during implementation
 
 ## File-Level Change Map
 
@@ -391,13 +391,13 @@ Rationale for sequence:
 
 ### `TreeView`
 
-- [ ] Add two properties and accessors:
+- [x] Add two properties and accessors:
   - `nodeInfoToggleMode`
   - `nodeInfoFocusPolicy`
-- [ ] Initialize defaults in constructor.
-- [ ] Wire suppliers into `inputController` and `pointerController`.
-- [ ] Apply viewport mouse-toggle visibility on startup and mode changes.
-- [ ] Keep all existing search/edit wiring unchanged.
+- [x] Initialize defaults in constructor.
+- [x] Wire suppliers into `inputController` and `pointerController`.
+- [x] Apply viewport mouse-toggle visibility on startup and mode changes.
+- [x] Keep all existing search/edit wiring unchanged.
 
 Snippet:
 
@@ -419,33 +419,33 @@ nodeInfoToggleMode.addListener((obs, oldMode, newMode) -> {
 
 ### `TreeInputController`
 
-- [ ] Add supplier field with safe default.
-- [ ] Add setter for supplier.
-- [ ] Guard shortcut handling with `allowsKeyboard()`.
-- [ ] Do not modify non-info key branches.
+- [x] Add supplier field with safe default.
+- [x] Add setter for supplier.
+- [x] Guard shortcut handling with `allowsKeyboard()`.
+- [x] Do not modify non-info key branches.
 
 ### `TreePointerController`
 
-- [ ] Add mode supplier and focus-policy supplier with safe defaults.
-- [ ] Guard `infoToggleHit` branch with `allowsMouse()`.
-- [ ] Apply focus policy branch before toggling.
-- [ ] Keep existing selection, disclosure, edit, and scroll behavior unchanged.
+- [x] Add mode supplier and focus-policy supplier with safe defaults.
+- [x] Guard `infoToggleHit` branch with `allowsMouse()`.
+- [x] Apply focus policy branch before toggling.
+- [x] Keep existing selection, disclosure, edit, and scroll behavior unchanged.
 
 ### `TreeViewport`
 
-- [ ] Add `nodeInfoMouseToggleEnabled` field and setter.
-- [ ] Use it in `hitTest` for `infoToggleHit`.
-- [ ] Use it in `buildVisibleRows` for `infoAvailable`.
+- [x] Add `nodeInfoMouseToggleEnabled` field and setter.
+- [x] Use it in `hitTest` for `infoToggleHit`.
+- [x] Use it in `buildVisibleRows` for `infoAvailable`.
 
 ### `TreeRenderRow`
 
-- [ ] No structural change required if `infoAvailable` is already passed from viewport.
-- [ ] Confirm call sites compile and carry gated value.
+- [x] No structural change required if `infoAvailable` is already passed from viewport.
+- [x] Confirm call sites compile and carry gated value.
 
 ### `TreeContentPass`
 
-- [ ] No code path change required if `infoAvailable` is already false when mouse disabled.
-- [ ] Keep draw logic unchanged except honoring `row.infoAvailable()`.
+- [x] No code path change required if `infoAvailable` is already false when mouse disabled.
+- [x] Keep draw logic unchanged except honoring `row.infoAvailable()`.
 
 ## Test Specification (Detailed)
 
@@ -556,3 +556,40 @@ Focused test run during development:
 - Viewport draw/hit-test affordance is mode-aware.
 - Mode matrix and focus policy tests pass.
 - Existing tree node-info and search tests still pass.
+
+## Post-Implementation Follow-Ups
+
+### F1: SamplesApp integration
+
+- [x] Add node-info navigation controls to `TreeViewNodeInfoSample`.
+- [x] Wire controls to:
+  - `setNodeInfoMode(...)`
+  - `setNodeInfoToggleMode(...)`
+  - `setNodeInfoFocusPolicy(...)`
+- [x] Add inline hint text for keyboard and mouse behavior.
+
+### F2: Inline node-info highlight parity
+
+- [x] Apply border-only highlight for selected info rows (no selected fill).
+- [x] Keep item-row selected fill behavior unchanged.
+- [x] Keep focused border on item rows and add selected border for info rows.
+- [x] Update FX test expectation to verify border-only highlight.
+
+### F3: Follow-up verification
+
+- [x] `./mvnw -pl papiflyfx-docking-tree -am -DskipTests compile`
+- [x] `./mvnw -pl papiflyfx-docking-tree -am -Dtest=TreeViewFxTest -Dsurefire.failIfNoSpecifiedTests=false test -Dtestfx.headless=true`
+- [x] `./mvnw -pl papiflyfx-docking-samples -am -DskipTests compile`
+- [x] `./mvnw -pl papiflyfx-docking-samples -am -Dtest=SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false test -Dtestfx.headless=true`
+
+### F4: Inline node-info indentation
+
+- [x] Indent inline info content based on tree depth.
+- [x] Keep indentation stable with horizontal scrolling.
+- [x] Add FX test to verify info content is offset from left edge.
+
+### F5: Last-child connector shape
+
+- [x] Stop last child vertical connector at branch center.
+- [x] Keep non-last child connector behavior unchanged.
+- [x] Add FX regression test to verify non-continuation rendering for last child.

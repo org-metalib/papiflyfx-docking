@@ -28,7 +28,14 @@ public final class TreeInlineInfoHost<T> {
         return layer;
     }
 
-    public void sync(List<TreeRenderRow<T>> visibleRows, TreeNodeInfoProvider<T> provider, double width) {
+    public void sync(
+        List<TreeRenderRow<T>> visibleRows,
+        TreeNodeInfoProvider<T> provider,
+        double width,
+        double indentWidth,
+        double iconSize,
+        double horizontalScrollOffset
+    ) {
         if (provider == null) {
             layer.getChildren().clear();
             mountedItems.clear();
@@ -48,7 +55,9 @@ public final class TreeInlineInfoHost<T> {
                 layer.getChildren().add(node);
             }
             node.setManaged(false);
-            node.resizeRelocate(0.0, row.y(), Math.max(0.0, width), Math.max(0.0, row.height()));
+            double x = Math.max(0.0, (row.depth() * indentWidth) + indentWidth + iconSize + 6.0 - horizontalScrollOffset);
+            double nodeWidth = Math.max(0.0, width - x);
+            node.resizeRelocate(x, row.y(), nodeWidth, Math.max(0.0, row.height()));
             if (node instanceof Parent parent) {
                 parent.layout();
             }
