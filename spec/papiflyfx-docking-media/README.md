@@ -7,7 +7,12 @@ Write a detailed report of your learnings, findings and ideas in spec/papiflyfx-
 Write a very detailed `spec/papiflyfx-docking-media/plan.md` document outlining how to implement this. Include code snippets.
 Do not include compatibility requirement.
 
+incomporate ideas from spec/papiflyfx-docking-media/docking-media-streaming-services.md
+
+update research and plan adding demos to SamplesApp
+
 ## Implementation
+
 Implement everything specified by `spec/papiflyfx-docking-tree/plan.md`. when you’re done with a task or phase, mark it
 as completed in the `spec/papiflyfx-docking-tree/plan.md` document.
 Add new `spec/papiflyfx-docking-tree/progress.md` file to track your progress.
