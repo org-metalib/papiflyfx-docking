@@ -18,9 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ImageViewerPanZoomFxTest {
 
     private ImageViewer viewer;
+    private Stage stage;
 
     @Start
     void start(Stage stage) {
+        this.stage = stage;
         viewer = new ImageViewer();
         viewer.themeProperty().set(Theme.dark());
         String url = getClass().getResource("/sample-media/sample.png").toExternalForm();
@@ -68,6 +70,27 @@ class ImageViewerPanZoomFxTest {
             assertEquals(0.0, viewer.maxPanYForTesting(), 0.1);
             assertEquals(0.0, viewer.getPanX(), 0.1);
             assertEquals(0.0, viewer.getPanY(), 0.1);
+        });
+    }
+
+    @Test
+    void keepsImageClippedToViewportOnResize(FxRobot robot) throws Exception {
+        waitForImage(robot);
+
+        robot.interact(() -> {
+            assertTrue(viewer.hasViewportClipForTesting());
+            assertEquals(viewer.getWidth(), viewer.viewportClipWidthForTesting(), 0.1);
+            assertEquals(viewer.getHeight(), viewer.viewportClipHeightForTesting(), 0.1);
+        });
+
+        robot.interact(() -> {
+            stage.setWidth(820.0);
+            stage.setHeight(520.0);
+        });
+
+        robot.interact(() -> {
+            assertEquals(viewer.getWidth(), viewer.viewportClipWidthForTesting(), 0.1);
+            assertEquals(viewer.getHeight(), viewer.viewportClipHeightForTesting(), 0.1);
         });
     }
 

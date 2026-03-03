@@ -1,6 +1,8 @@
 package org.metalib.papifly.fx.media.api;
 
 import javafx.scene.Scene;
+import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.Region;
 import javafx.scene.media.MediaView;
@@ -86,12 +88,8 @@ class MediaViewerFxTest {
         AtomicReference<Double> initialFitWidth = new AtomicReference<>();
         robot.interact(() -> {
             ImageViewer imageViewer = (ImageViewer) viewer.getChildren().get(0);
-            ImageView imageView = imageViewer.getChildren()
-                .stream()
-                .filter(ImageView.class::isInstance)
-                .map(ImageView.class::cast)
-                .findFirst()
-                .orElseThrow();
+            ImageView imageView = findDescendant(imageViewer, ImageView.class);
+            assertNotNull(imageView);
             assertEquals(imageViewer.getWidth(), imageView.getFitWidth(), 1.0);
             assertEquals(imageViewer.getHeight(), imageView.getFitHeight(), 1.0);
             initialFitWidth.set(imageView.getFitWidth());
@@ -106,12 +104,8 @@ class MediaViewerFxTest {
 
         robot.interact(() -> {
             ImageViewer imageViewer = (ImageViewer) viewer.getChildren().get(0);
-            ImageView imageView = imageViewer.getChildren()
-                .stream()
-                .filter(ImageView.class::isInstance)
-                .map(ImageView.class::cast)
-                .findFirst()
-                .orElseThrow();
+            ImageView imageView = findDescendant(imageViewer, ImageView.class);
+            assertNotNull(imageView);
             assertNotEquals(initialFitWidth.get(), imageView.getFitWidth(), 1.0);
             assertEquals(imageViewer.getWidth(), imageView.getFitWidth(), 1.0);
             assertEquals(imageViewer.getHeight(), imageView.getFitHeight(), 1.0);
@@ -127,12 +121,8 @@ class MediaViewerFxTest {
         AtomicReference<Double> initialFitWidth = new AtomicReference<>();
         robot.interact(() -> {
             VideoViewer videoViewer = (VideoViewer) viewer.getChildren().get(0);
-            MediaView mediaView = videoViewer.getChildren()
-                .stream()
-                .filter(MediaView.class::isInstance)
-                .map(MediaView.class::cast)
-                .findFirst()
-                .orElseThrow();
+            MediaView mediaView = findDescendant(videoViewer, MediaView.class);
+            assertNotNull(mediaView);
             assertEquals(videoViewer.getWidth(), mediaView.getFitWidth(), 1.0);
             assertEquals(videoViewer.getHeight(), mediaView.getFitHeight(), 1.0);
             initialFitWidth.set(mediaView.getFitWidth());
@@ -147,12 +137,8 @@ class MediaViewerFxTest {
 
         robot.interact(() -> {
             VideoViewer videoViewer = (VideoViewer) viewer.getChildren().get(0);
-            MediaView mediaView = videoViewer.getChildren()
-                .stream()
-                .filter(MediaView.class::isInstance)
-                .map(MediaView.class::cast)
-                .findFirst()
-                .orElseThrow();
+            MediaView mediaView = findDescendant(videoViewer, MediaView.class);
+            assertNotNull(mediaView);
             assertNotEquals(initialFitWidth.get(), mediaView.getFitWidth(), 1.0);
             assertEquals(videoViewer.getWidth(), mediaView.getFitWidth(), 1.0);
             assertEquals(videoViewer.getHeight(), mediaView.getFitHeight(), 1.0);
@@ -182,15 +168,22 @@ class MediaViewerFxTest {
 
             robot.interact(() -> {
                 EmbedViewer embedViewer = (EmbedViewer) viewer.getChildren().get(0);
-                WebView webView = embedViewer.getChildren()
-                    .stream()
-                    .filter(WebView.class::isInstance)
-                    .map(WebView.class::cast)
-                    .findFirst()
-                    .orElseThrow();
+                WebView webView = findDescendant(embedViewer, WebView.class);
+                assertNotNull(webView);
                 assertEquals(embedViewer.getWidth(), webView.getWidth(), 1.0);
                 assertEquals(embedViewer.getHeight(), webView.getHeight(), 1.0);
             });
         }
+    }
+
+    private static <T> T findDescendant(Node root, Class<T> type) {
+        if (type.isInstance(root)) return type.cast(root);
+        if (root instanceof Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                T found = findDescendant(child, type);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 }

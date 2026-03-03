@@ -9,15 +9,14 @@ import javafx.scene.control.ProgressIndicator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.StackPane;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Scale;
 import javafx.scene.transform.Translate;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.media.controls.ZoomControls;
 import org.metalib.papifly.fx.media.player.ImageLoaderService;
-import org.metalib.papifly.fx.media.theme.MediaThemeMapper;
 
 public class ImageViewer extends StackPane {
 
@@ -25,8 +24,10 @@ public class ImageViewer extends StackPane {
     private static final double MAX_ZOOM = 16.0;
 
     private final ImageLoaderService loaderService = new ImageLoaderService();
+    private final StackPane imageViewport = new StackPane();
     private final ImageView imageView = new ImageView();
     private final ProgressIndicator progress = new ProgressIndicator();
+    private final Rectangle viewportClip = new Rectangle();
     private final Scale scaleXform = new Scale(1, 1, 0, 0);
     private final Translate panXform = new Translate(0, 0);
 
@@ -40,14 +41,21 @@ public class ImageViewer extends StackPane {
         setMinSize(0, 0);
         setAlignment(Pos.CENTER);
 
+        imageViewport.setMinSize(0, 0);
+        imageViewport.setAlignment(Pos.CENTER);
+        imageViewport.setClip(viewportClip);
+        viewportClip.widthProperty().bind(imageViewport.widthProperty());
+        viewportClip.heightProperty().bind(imageViewport.heightProperty());
+
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
         imageView.getTransforms().addAll(scaleXform, panXform);
+        imageViewport.getChildren().add(imageView);
 
         zoomControls = new ZoomControls(this::adjustZoom, this::resetZoom);
         StackPane.setAlignment(zoomControls, Pos.TOP_RIGHT);
 
-        getChildren().addAll(imageView, progress, zoomControls);
+        getChildren().addAll(imageViewport, progress, zoomControls);
 
         wireLoader();
         wireZoom();
@@ -213,6 +221,18 @@ public class ImageViewer extends StackPane {
 
     boolean hasImageForTesting() {
         return imageView.getImage() != null;
+    }
+
+    boolean hasViewportClipForTesting() {
+        return imageViewport.getClip() == viewportClip;
+    }
+
+    double viewportClipWidthForTesting() {
+        return viewportClip.getWidth();
+    }
+
+    double viewportClipHeightForTesting() {
+        return viewportClip.getHeight();
     }
 
     private static double clamp(double v, double lo, double hi) {

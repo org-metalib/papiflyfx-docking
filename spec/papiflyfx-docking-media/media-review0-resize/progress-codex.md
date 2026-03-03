@@ -102,3 +102,36 @@ Verification rerun:
 ```
 
 Result: all tests passed (`39` tests total in media module, `0` failures, `0` errors).
+
+## Follow-up (Zoom-out drag overlap outside viewport)
+
+Reported issue: after zooming out and dragging, image pixels could render over neighboring controls outside the media view bounds.
+
+Root cause:
+
+- `ImageViewer` applied transforms directly to `ImageView`, but the rendered output was not clipped to viewport bounds. In JavaFX this allows transformed content to paint outside parent bounds.
+
+Fix:
+
+- Added a dedicated clipped viewport layer in `ImageViewer`:
+  - introduced `imageViewport` (`StackPane`) containing the `ImageView`;
+  - introduced `viewportClip` (`Rectangle`) bound to `imageViewport` width/height;
+  - applied `imageViewport.setClip(viewportClip)`.
+- Kept existing pan-clamp behavior, so panning remains bounded and now cannot visually bleed into surrounding UI areas.
+
+Additional test coverage:
+
+- Added `ImageViewerPanZoomFxTest.keepsImageClippedToViewportOnResize` to assert:
+  - viewport clip is active;
+  - clip dimensions track viewer size before and after resize.
+- Updated `MediaViewerFxTest` node lookup to use descendant search (instead of direct-child assumptions), so layout wrappers like `imageViewport` do not break resize assertions.
+
+Verification rerun:
+
+```bash
+./mvnw -pl papiflyfx-docking-media -DskipTests test-compile
+./mvnw -pl papiflyfx-docking-media -Dtest=ImageViewerPanZoomFxTest,MediaViewerFxTest test
+./mvnw -pl papiflyfx-docking-media -Dtestfx.headless=true test
+```
+
+Result: all tests passed (`40` tests total in media module, `0` failures, `0` errors).
