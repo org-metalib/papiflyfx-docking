@@ -36,13 +36,12 @@ public class ImageViewer extends StackPane {
     private final ZoomControls zoomControls;
 
     public ImageViewer() {
+        setMinSize(0, 0);
         setAlignment(Pos.CENTER);
 
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
         imageView.getTransforms().addAll(scaleXform, panXform);
-        imageView.fitWidthProperty().bind(widthProperty());
-        imageView.fitHeightProperty().bind(heightProperty());
 
         zoomControls = new ZoomControls(this::adjustZoom, this::resetZoom);
         StackPane.setAlignment(zoomControls, Pos.TOP_RIGHT);
@@ -53,6 +52,13 @@ public class ImageViewer extends StackPane {
         wireZoom();
         wirePan();
         wireTheme();
+    }
+
+    @Override
+    protected void layoutChildren() {
+        imageView.setFitWidth(getWidth());
+        imageView.setFitHeight(getHeight());
+        super.layoutChildren();
     }
 
     public void load(String url) { loaderService.load(url); }

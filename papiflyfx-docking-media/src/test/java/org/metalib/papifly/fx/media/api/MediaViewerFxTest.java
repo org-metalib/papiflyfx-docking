@@ -1,12 +1,21 @@
 package org.metalib.papifly.fx.media.api;
 
 import javafx.scene.Scene;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.Region;
+import javafx.scene.media.MediaView;
+import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.metalib.papifly.fx.media.viewer.EmbedViewer;
+import org.metalib.papifly.fx.media.viewer.ImageViewer;
+import org.metalib.papifly.fx.media.viewer.VideoViewer;
 import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,9 +23,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class MediaViewerFxTest {
 
     private MediaViewer viewer;
+    private Stage stage;
 
     @Start
     void start(Stage stage) {
+        this.stage = stage;
         viewer = new MediaViewer();
         stage.setScene(new Scene(viewer, 400, 300));
         stage.show();
@@ -37,5 +48,149 @@ class MediaViewerFxTest {
     void disposeDoesNotThrow(FxRobot robot) {
         robot.interact(() -> viewer.loadMedia("file:///sample.png"));
         assertDoesNotThrow(() -> robot.interact(() -> viewer.dispose()));
+    }
+
+    @Test
+    void innerViewerFillsContainerAfterResize(FxRobot robot) {
+        String url = getClass().getResource("/sample-media/sample.png").toExternalForm();
+        robot.interact(() -> viewer.loadMedia(url));
+        robot.interact(() -> {});  // allow layout pass
+
+        robot.interact(() -> {
+            assertFalse(viewer.getChildren().isEmpty());
+            Region inner = (Region) viewer.getChildren().get(0);
+            assertEquals(viewer.getWidth(), inner.getWidth(), 1.0);
+            assertEquals(viewer.getHeight(), inner.getHeight(), 1.0);
+        });
+
+        robot.interact(() -> {
+            stage.setWidth(600);
+            stage.setHeight(450);
+        });
+        robot.interact(() -> {});  // allow layout pass
+        robot.interact(() -> {});  // allow deferred child layout
+
+        robot.interact(() -> {
+            Region inner = (Region) viewer.getChildren().get(0);
+            assertEquals(viewer.getWidth(), inner.getWidth(), 1.0);
+            assertEquals(viewer.getHeight(), inner.getHeight(), 1.0);
+        });
+    }
+
+    @Test
+    void imageNodeFitSizeTracksResize(FxRobot robot) {
+        String url = getClass().getResource("/sample-media/sample.png").toExternalForm();
+        robot.interact(() -> viewer.loadMedia(url));
+        robot.interact(() -> {});
+
+        AtomicReference<Double> initialFitWidth = new AtomicReference<>();
+        robot.interact(() -> {
+            ImageViewer imageViewer = (ImageViewer) viewer.getChildren().get(0);
+            ImageView imageView = imageViewer.getChildren()
+                .stream()
+                .filter(ImageView.class::isInstance)
+                .map(ImageView.class::cast)
+                .findFirst()
+                .orElseThrow();
+            assertEquals(imageViewer.getWidth(), imageView.getFitWidth(), 1.0);
+            assertEquals(imageViewer.getHeight(), imageView.getFitHeight(), 1.0);
+            initialFitWidth.set(imageView.getFitWidth());
+        });
+
+        robot.interact(() -> {
+            stage.setWidth(720);
+            stage.setHeight(520);
+        });
+        robot.interact(() -> {});
+        robot.interact(() -> {});
+
+        robot.interact(() -> {
+            ImageViewer imageViewer = (ImageViewer) viewer.getChildren().get(0);
+            ImageView imageView = imageViewer.getChildren()
+                .stream()
+                .filter(ImageView.class::isInstance)
+                .map(ImageView.class::cast)
+                .findFirst()
+                .orElseThrow();
+            assertNotEquals(initialFitWidth.get(), imageView.getFitWidth(), 1.0);
+            assertEquals(imageViewer.getWidth(), imageView.getFitWidth(), 1.0);
+            assertEquals(imageViewer.getHeight(), imageView.getFitHeight(), 1.0);
+        });
+    }
+
+    @Test
+    void videoNodeFitSizeTracksResize(FxRobot robot) {
+        String url = getClass().getResource("/sample-media/sample.mp4").toExternalForm();
+        robot.interact(() -> viewer.loadMedia(url));
+        robot.interact(() -> {});
+
+        AtomicReference<Double> initialFitWidth = new AtomicReference<>();
+        robot.interact(() -> {
+            VideoViewer videoViewer = (VideoViewer) viewer.getChildren().get(0);
+            MediaView mediaView = videoViewer.getChildren()
+                .stream()
+                .filter(MediaView.class::isInstance)
+                .map(MediaView.class::cast)
+                .findFirst()
+                .orElseThrow();
+            assertEquals(videoViewer.getWidth(), mediaView.getFitWidth(), 1.0);
+            assertEquals(videoViewer.getHeight(), mediaView.getFitHeight(), 1.0);
+            initialFitWidth.set(mediaView.getFitWidth());
+        });
+
+        robot.interact(() -> {
+            stage.setWidth(760);
+            stage.setHeight(560);
+        });
+        robot.interact(() -> {});
+        robot.interact(() -> {});
+
+        robot.interact(() -> {
+            VideoViewer videoViewer = (VideoViewer) viewer.getChildren().get(0);
+            MediaView mediaView = videoViewer.getChildren()
+                .stream()
+                .filter(MediaView.class::isInstance)
+                .map(MediaView.class::cast)
+                .findFirst()
+                .orElseThrow();
+            assertNotEquals(initialFitWidth.get(), mediaView.getFitWidth(), 1.0);
+            assertEquals(videoViewer.getWidth(), mediaView.getFitWidth(), 1.0);
+            assertEquals(videoViewer.getHeight(), mediaView.getFitHeight(), 1.0);
+        });
+    }
+
+    @Test
+    void embedNodeTracksRepeatedResize(FxRobot robot) {
+        robot.interact(() -> viewer.loadMedia("https://www.youtube.com/watch?v=dQw4w9WgXcQ"));
+        robot.interact(() -> {});
+
+        int[][] sizes = {
+            {900, 560},
+            {460, 300},
+            {820, 500},
+            {380, 240},
+            {740, 480}
+        };
+
+        for (int[] size : sizes) {
+            robot.interact(() -> {
+                stage.setWidth(size[0]);
+                stage.setHeight(size[1]);
+            });
+            robot.interact(() -> {});
+            robot.interact(() -> {});
+
+            robot.interact(() -> {
+                EmbedViewer embedViewer = (EmbedViewer) viewer.getChildren().get(0);
+                WebView webView = embedViewer.getChildren()
+                    .stream()
+                    .filter(WebView.class::isInstance)
+                    .map(WebView.class::cast)
+                    .findFirst()
+                    .orElseThrow();
+                assertEquals(embedViewer.getWidth(), webView.getWidth(), 1.0);
+                assertEquals(embedViewer.getHeight(), webView.getHeight(), 1.0);
+            });
+        }
     }
 }

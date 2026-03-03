@@ -20,12 +20,11 @@ public class VideoViewer extends StackPane {
     private final ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>();
 
     public VideoViewer() {
+        setMinSize(0, 0);
         setAlignment(Pos.BOTTOM_CENTER);
 
         mediaView.setPreserveRatio(true);
         mediaView.setSmooth(true);
-        mediaView.fitWidthProperty().bind(widthProperty());
-        mediaView.fitHeightProperty().bind(heightProperty());
 
         StackPane.setAlignment(transportBar, Pos.BOTTOM_CENTER);
         StackPane.setMargin(transportBar, new Insets(0, 8, 8, 8));
@@ -71,6 +70,13 @@ public class VideoViewer extends StackPane {
 
     public void dispose() {
         playerService.dispose();
+    }
+
+    @Override
+    protected void layoutChildren() {
+        mediaView.setFitWidth(getWidth());
+        mediaView.setFitHeight(getHeight());
+        super.layoutChildren();
     }
 
     private void wireSceneReparent() {

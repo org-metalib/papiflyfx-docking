@@ -35,14 +35,25 @@ public class EmbedViewer extends StackPane {
     private String youtubeWrapperUrl;
 
     public EmbedViewer(String url) {
+        setMinSize(0, 0);
         webView.setContextMenuEnabled(false);
+        webView.setMinSize(0, 0);
+        webView.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         webView.getEngine().setUserAgent(MODERN_USER_AGENT);
-        webView.prefWidthProperty().bind(widthProperty());
-        webView.prefHeightProperty().bind(heightProperty());
         wireExternalNavigation();
         getChildren().add(webView);
         wireTheme();
         load(url);
+    }
+
+    @Override
+    protected void layoutChildren() {
+        super.layoutChildren();
+        double x = snappedLeftInset();
+        double y = snappedTopInset();
+        double w = Math.max(0, getWidth() - x - snappedRightInset());
+        double h = Math.max(0, getHeight() - y - snappedBottomInset());
+        webView.resizeRelocate(x, y, w, h);
     }
 
     public void load(String url) {
@@ -121,11 +132,28 @@ public class EmbedViewer extends StackPane {
               <meta name="referrer" content="strict-origin-when-cross-origin">
               <style>
                 html, body { margin: 0; width: 100%%; height: 100%%; overflow: hidden; background: #000; }
-                iframe { border: 0; width: 100%%; height: 100%%; display: block; }
+                body { position: fixed; inset: 0; }
+                #player { border: 0; width: 100vw; height: 100vh; display: block; }
               </style>
+              <script>
+                (() => {
+                  const syncSize = () => {
+                    const player = document.getElementById('player');
+                    if (!player) return;
+                    player.style.width = window.innerWidth + 'px';
+                    player.style.height = window.innerHeight + 'px';
+                  };
+                  window.addEventListener('resize', syncSize, { passive: true });
+                  if (typeof ResizeObserver !== 'undefined') {
+                    new ResizeObserver(syncSize).observe(document.documentElement);
+                  }
+                  requestAnimationFrame(syncSize);
+                })();
+              </script>
             </head>
             <body>
               <iframe
+                id="player"
                 src="%s"
                 title="YouTube video player"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
