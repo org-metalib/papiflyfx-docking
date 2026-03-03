@@ -69,3 +69,36 @@ Verification rerun:
 ```
 
 Result: all tests passed (`33` tests total in media module, `0` failures, `0` errors).
+
+## Follow-up (Image drag/zoom viewport restriction)
+
+Reported issue: image panning could move content outside the visible viewport during aggressive dragging and zoom changes.
+
+Additional hardening in `ImageViewer`:
+
+- Added viewport-aware pan clamping based on current zoom and fitted image size:
+  - `clampPanToViewport()`
+  - `setPanClamped(...)`
+  - `maxPanX()/maxPanY()`
+  - fitted size helpers for preserve-ratio image fit (`fittedImageWidth()/fittedImageHeight()`).
+- Applied clamping on all relevant paths:
+  - after `layoutChildren()` (resize/layout changes),
+  - when image load completes,
+  - on every zoom change,
+  - during drag updates.
+- Added package-private test hooks to support deterministic FX assertions of clamp boundaries.
+
+Added FX coverage:
+
+- `ImageViewerPanZoomFxTest.clampsPanWithinViewportBoundsAtHighZoom`
+- `ImageViewerPanZoomFxTest.resetsPanToViewportWhenZoomReturnsToOne`
+
+Verification rerun:
+
+```bash
+./mvnw -pl papiflyfx-docking-media -DskipTests test-compile
+./mvnw -pl papiflyfx-docking-media -Dtest=ImageViewerPanZoomFxTest test
+./mvnw -pl papiflyfx-docking-media -Dtestfx.headless=true test
+```
+
+Result: all tests passed (`39` tests total in media module, `0` failures, `0` errors).

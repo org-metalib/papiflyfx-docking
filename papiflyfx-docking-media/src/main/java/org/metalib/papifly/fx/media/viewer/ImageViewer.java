@@ -6,6 +6,7 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Pos;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -59,6 +60,7 @@ public class ImageViewer extends StackPane {
         imageView.setFitWidth(getWidth());
         imageView.setFitHeight(getHeight());
         super.layoutChildren();
+        clampPanToViewport();
     }
 
     public void load(String url) { loaderService.load(url); }
@@ -77,6 +79,7 @@ public class ImageViewer extends StackPane {
         loaderService.imageProperty().addListener((obs, o, img) -> {
             imageView.setImage(img);
             progress.setVisible(false);
+            clampPanToViewport();
         });
         loaderService.progressProperty().addListener((obs, o, n) -> {
             progress.setVisible(n.doubleValue() < 1.0);
@@ -93,6 +96,7 @@ public class ImageViewer extends StackPane {
             scaleXform.setX(z);
             scaleXform.setY(z);
             zoomControls.setZoomLevel(z);
+            clampPanToViewport();
         });
 
         setOnScroll((ScrollEvent e) -> {
@@ -117,8 +121,7 @@ public class ImageViewer extends StackPane {
         });
         setOnMouseDragged(e -> {
             if (e.getButton() == MouseButton.PRIMARY) {
-                panXform.setX(e.getSceneX() - dragStartX);
-                panXform.setY(e.getSceneY() - dragStartY);
+                setPanClamped(e.getSceneX() - dragStartX, e.getSceneY() - dragStartY);
             }
         });
     }
@@ -143,6 +146,73 @@ public class ImageViewer extends StackPane {
         zoomLevel.set(1.0);
         panXform.setX(0);
         panXform.setY(0);
+    }
+
+    private void clampPanToViewport() {
+        setPanClamped(panXform.getX(), panXform.getY());
+    }
+
+    private void setPanClamped(double panX, double panY) {
+        double maxPanX = maxPanX();
+        double maxPanY = maxPanY();
+        panXform.setX(clamp(panX, -maxPanX, maxPanX));
+        panXform.setY(clamp(panY, -maxPanY, maxPanY));
+    }
+
+    private double maxPanX() {
+        double contentWidth = fittedImageWidth() * zoomLevel.get();
+        return Math.max(0.0, (contentWidth - getWidth()) / 2.0);
+    }
+
+    private double maxPanY() {
+        double contentHeight = fittedImageHeight() * zoomLevel.get();
+        return Math.max(0.0, (contentHeight - getHeight()) / 2.0);
+    }
+
+    private double fittedImageWidth() {
+        Image image = imageView.getImage();
+        if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) {
+            return getWidth();
+        }
+        double viewportWidth = getWidth();
+        double viewportHeight = getHeight();
+        if (viewportWidth <= 0 || viewportHeight <= 0) {
+            return 0.0;
+        }
+        double scale = Math.min(viewportWidth / image.getWidth(), viewportHeight / image.getHeight());
+        if (!Double.isFinite(scale) || scale <= 0) return 0.0;
+        return image.getWidth() * scale;
+    }
+
+    private double fittedImageHeight() {
+        Image image = imageView.getImage();
+        if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) {
+            return getHeight();
+        }
+        double viewportWidth = getWidth();
+        double viewportHeight = getHeight();
+        if (viewportWidth <= 0 || viewportHeight <= 0) {
+            return 0.0;
+        }
+        double scale = Math.min(viewportWidth / image.getWidth(), viewportHeight / image.getHeight());
+        if (!Double.isFinite(scale) || scale <= 0) return 0.0;
+        return image.getHeight() * scale;
+    }
+
+    void setPanForTesting(double panX, double panY) {
+        setPanClamped(panX, panY);
+    }
+
+    double maxPanXForTesting() {
+        return maxPanX();
+    }
+
+    double maxPanYForTesting() {
+        return maxPanY();
+    }
+
+    boolean hasImageForTesting() {
+        return imageView.getImage() != null;
     }
 
     private static double clamp(double v, double lo, double hi) {

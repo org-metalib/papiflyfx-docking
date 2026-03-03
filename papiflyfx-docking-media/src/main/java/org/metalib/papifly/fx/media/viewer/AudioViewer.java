@@ -2,12 +2,15 @@ package org.metalib.papifly.fx.media.viewer;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.StackPane;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
+import javafx.util.Duration;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.media.controls.TransportBar;
 import org.metalib.papifly.fx.media.player.MediaPlayerService;
@@ -19,6 +22,12 @@ public class AudioViewer extends StackPane {
     private final TransportBar transportBar = new TransportBar(playerService);
     private final Canvas waveformPlaceholder = new Canvas(200, 80);
     private final ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>();
+    private long pendingTimeMs = 0L;
+    private double pendingVolume = 1.0;
+    private boolean pendingMuted = false;
+    private boolean playbackStatePending;
+    private MediaPlayer restorePlayer;
+    private ChangeListener<MediaPlayer.Status> restoreStatusListener;
 
     public AudioViewer() {
         setAlignment(Pos.BOTTOM_CENTER);
@@ -30,6 +39,7 @@ public class AudioViewer extends StackPane {
         transportBar.showFor(this);
 
         waveformPlaceholder.widthProperty().bind(widthProperty().multiply(0.8));
+        wirePlayerStateRestore();
         wireTheme();
     }
 
@@ -38,23 +48,25 @@ public class AudioViewer extends StackPane {
     public ObjectProperty<Theme> themeProperty() { return themeProperty; }
 
     public long getCurrentTimeMs() {
-        var p = playerService.playerProperty().get();
-        return p != null ? (long) p.getCurrentTime().toMillis() : 0L;
+        MediaPlayer player = playerService.playerProperty().get();
+        return player != null ? (long) player.getCurrentTime().toMillis() : 0L;
     }
 
     public void applyPlaybackState(long timeMs, double volume, boolean muted) {
-        playerService.playerProperty().addListener((obs, o, player) -> {
-            if (player != null) {
-                player.setOnReady(() -> {
-                    player.seek(javafx.util.Duration.millis(timeMs));
-                    player.volumeProperty().set(volume);
-                    player.setMute(muted);
-                });
-            }
-        });
+        pendingTimeMs = Math.max(0L, timeMs);
+        pendingVolume = volume;
+        pendingMuted = muted;
+        playbackStatePending = true;
+        MediaPlayer player = playerService.playerProperty().get();
+        if (player != null) {
+            applyPendingPlaybackState(player);
+        }
     }
 
-    public void dispose() { playerService.dispose(); }
+    public void dispose() {
+        detachRestoreListener();
+        playerService.dispose();
+    }
 
     private void wireTheme() {
         themeProperty.addListener((obs, o, t) -> {
@@ -64,6 +76,44 @@ public class AudioViewer extends StackPane {
                     javafx.scene.layout.CornerRadii.EMPTY, Insets.EMPTY)));
             paintWaveformPlaceholder(MediaThemeMapper.toColor(MediaThemeMapper.accent(t)));
         });
+    }
+
+    private void wirePlayerStateRestore() {
+        playerService.playerProperty().addListener((obs, oldPlayer, newPlayer) -> {
+            detachRestoreListener();
+            if (newPlayer == null) return;
+            restorePlayer = newPlayer;
+            restoreStatusListener = (statusObs, oldStatus, newStatus) -> {
+                if (newStatus == MediaPlayer.Status.READY) {
+                    applyPendingPlaybackState(newPlayer);
+                }
+            };
+            newPlayer.statusProperty().addListener(restoreStatusListener);
+            applyPendingPlaybackState(newPlayer);
+        });
+    }
+
+    private void applyPendingPlaybackState(MediaPlayer player) {
+        if (!playbackStatePending) return;
+        MediaPlayer.Status status = player.getStatus();
+        if (status != MediaPlayer.Status.READY
+            && status != MediaPlayer.Status.PAUSED
+            && status != MediaPlayer.Status.PLAYING
+            && status != MediaPlayer.Status.STOPPED) {
+            return;
+        }
+        player.seek(Duration.millis(pendingTimeMs));
+        player.volumeProperty().set(pendingVolume);
+        player.setMute(pendingMuted);
+        playbackStatePending = false;
+    }
+
+    private void detachRestoreListener() {
+        if (restorePlayer != null && restoreStatusListener != null) {
+            restorePlayer.statusProperty().removeListener(restoreStatusListener);
+        }
+        restorePlayer = null;
+        restoreStatusListener = null;
     }
 
     private void paintWaveformPlaceholder(Color c) {
@@ -79,5 +129,13 @@ public class AudioViewer extends StackPane {
             double amp = mid * (0.2 + 0.8 * Math.abs(Math.sin(i * 0.42)));
             gc.strokeLine(i * step, mid - amp, i * step, mid + amp);
         }
+    }
+
+    TransportBar transportBarForTesting() {
+        return transportBar;
+    }
+
+    MediaPlayer playerForTesting() {
+        return playerService.playerProperty().get();
     }
 }

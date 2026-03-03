@@ -103,6 +103,8 @@ Adopt explicit event handlers in addition to status listeners:
 
 ## Phase 1 — Correct the oversized background bug (minimal safe fix)
 
+Status: completed
+
 1. **`TransportBar.java`**
    - Add strict height constraints to prevent StackPane-driven stretch.
    - Ensure bar background applies only to bar bounds, not parent-sized area.
@@ -116,6 +118,8 @@ Deliverable: control background no longer appears to fill the full video surface
 
 ## Phase 2 — Add YouTube-like overlay visuals
 
+Status: completed
+
 1. **`VideoViewer.java` (preferred location)**
    - Introduce a dedicated bottom gradient scrim `Region/Pane` under transport row.
    - Constrain scrim height (e.g., dynamic or fixed range) so only lower zone is shaded.
@@ -127,6 +131,8 @@ Deliverable: control background no longer appears to fill the full video surface
 Deliverable: controls visually match modern bottom-overlay style without excessive obstruction.
 
 ## Phase 3 — Interaction and playback-state UX
+
+Status: completed
 
 1. **`TransportBar.java`**
    - Upgrade idle/show/hide behavior (fade in/out and post-fade hidden state).
@@ -142,6 +148,8 @@ Deliverable: controls visually match modern bottom-overlay style without excessi
 Deliverable: polished interaction parity with expected video-player behavior.
 
 ## Phase 4 — Test coverage and validation
+
+Status: completed
 
 1. Extend FX tests (likely in `MediaViewerFxTest` or new focused test class) to cover:
    - transport overlay height bounded (not full-height);
