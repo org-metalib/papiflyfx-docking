@@ -46,18 +46,21 @@ public class MediaPlayerService {
     public void pause() { withPlayer(MediaPlayer::pause); }
     public void stop()  { withPlayer(p -> { p.stop(); p.seek(Duration.ZERO); }); }
 
-    public void seek(Duration d) { withPlayer(p -> p.seek(d)); }
+    public void seek(Duration d) {
+        Duration target = d == null ? Duration.ZERO : Duration.millis(Math.max(0.0, d.toMillis()));
+        withPlayer(p -> p.seek(target));
+    }
 
     public void stepForward() {
-        withPlayer(p -> p.seek(p.getCurrentTime().add(Duration.seconds(1.0 / 30.0))));
+        withPlayer(p -> p.seek(p.getCurrentTime().add(Duration.millis(1000.0 / 30.0))));
     }
 
     public void stepBackward() {
-        withPlayer(p -> p.seek(p.getCurrentTime().subtract(Duration.seconds(1.0 / 30.0))));
+        withPlayer(p -> p.seek(p.getCurrentTime().subtract(Duration.millis(1000.0 / 30.0))));
     }
 
     public void seekRelative(double seconds) {
-        withPlayer(p -> p.seek(p.getCurrentTime().add(Duration.seconds(seconds))));
+        withPlayer(p -> p.seek(p.getCurrentTime().add(Duration.millis(seconds * 1000.0))));
     }
 
     public DoubleProperty volumeProperty() { return volume; }

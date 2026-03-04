@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.media.controls;
 
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
@@ -50,6 +51,8 @@ public class TransportBar extends HBox {
 
     private static final double ICON_SIZE = 16.0;
     private static final double AUTO_HIDE_SECS = 3.0;
+    private static final long LIVE_SCRUB_INTERVAL_NANOS = 40_000_000L;
+    private static final double LIVE_SCRUB_DELTA_SECONDS = 0.04;
 
     private final ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>();
     private final MediaPlayerService service;
@@ -65,6 +68,8 @@ public class TransportBar extends HBox {
     private boolean seeking;
     private boolean muted;
     private MediaPlayer currentPlayer;
+    private double lastScrubSeekSeconds = Double.NaN;
+    private long lastScrubSeekNanos;
 
     private final ReadOnlyObjectWrapper<PlaybackState> playbackState =
         new ReadOnlyObjectWrapper<>(PlaybackState.START);
@@ -149,7 +154,12 @@ public class TransportBar extends HBox {
 
     public void triggerIdleTimeout() {
         if (playbackState.get() != PlaybackState.PLAYING) return;
-        hideNow();
+        hideImmediately();
+        Platform.runLater(() -> {
+            if (playbackState.get() == PlaybackState.PLAYING) {
+                hideImmediately();
+            }
+        });
     }
 
     public void applyTheme(Theme theme) {
@@ -212,14 +222,40 @@ public class TransportBar extends HBox {
     }
 
     private void wireSeekBar() {
+        seekBar.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
+            if (Boolean.TRUE.equals(isChanging)) {
+                seeking = true;
+                resetScrubTracking();
+                double targetSeconds = clampSeekValue(seekBar.getValue());
+                updateScrubPreview(targetSeconds);
+                maybeSeekDuringScrub(targetSeconds);
+                onUserInteraction();
+                return;
+            }
+            if (Boolean.TRUE.equals(wasChanging) && seeking) {
+                commitSeekFromSlider();
+            }
+        });
+        seekBar.valueProperty().addListener((obs, oldValue, newValue) -> {
+            if (seeking && newValue != null) {
+                double targetSeconds = clampSeekValue(newValue.doubleValue());
+                updateScrubPreview(targetSeconds);
+                if (seekBar.isValueChanging()) {
+                    maybeSeekDuringScrub(targetSeconds);
+                }
+            }
+        });
         seekBar.setOnMousePressed(e -> {
             seeking = true;
+            resetScrubTracking();
+            double targetSeconds = clampSeekValue(seekBar.getValue());
+            updateScrubPreview(targetSeconds);
             onUserInteraction();
         });
         seekBar.setOnMouseReleased(e -> {
-            seeking = false;
-            service.seek(Duration.seconds(seekBar.getValue()));
-            onUserInteraction();
+            if (seeking) {
+                commitSeekFromSlider();
+            }
         });
     }
 
@@ -318,9 +354,13 @@ public class TransportBar extends HBox {
     private void onTimeChanged(javafx.beans.value.ObservableValue<? extends Duration> obs,
                                Duration oldTime,
                                Duration nowTime) {
-        if (seeking || nowTime == null) return;
-        seekBar.setValue(nowTime.toSeconds());
+        if (nowTime == null) return;
         MediaPlayer player = service.playerProperty().get();
+        if (player != null) {
+            syncSeekRange(player, nowTime);
+        }
+        if (seeking) return;
+        seekBar.setValue(Math.min(seekBar.getMax(), Math.max(0.0, nowTime.toSeconds())));
         if (player == null) return;
         timeLabel.setText(fmt(nowTime) + " / " + fmt(player.getTotalDuration()));
     }
@@ -418,6 +458,16 @@ public class TransportBar extends HBox {
         fadeOut.playFromStart();
     }
 
+    private void hideImmediately() {
+        idleTimer.stop();
+        fadeIn.stop();
+        fadeOut.stop();
+        setOpacity(0.0);
+        setVisible(false);
+        setManaged(false);
+        controlsVisible.set(false);
+    }
+
     private void restartIdleTimer() {
         idleTimer.stop();
         idleTimer.playFromStart();
@@ -441,6 +491,60 @@ public class TransportBar extends HBox {
         seekBar.setDisable(!enabled);
         muteBtn.setDisable(!enabled);
         volSlider.setDisable(!enabled);
+    }
+
+    private void commitSeekFromSlider() {
+        double targetSeconds = clampSeekValue(seekBar.getValue());
+        seeking = false;
+        service.seek(Duration.millis(targetSeconds * 1000.0));
+        lastScrubSeekSeconds = targetSeconds;
+        lastScrubSeekNanos = System.nanoTime();
+        updateScrubPreview(targetSeconds);
+        onUserInteraction();
+    }
+
+    private void maybeSeekDuringScrub(double targetSeconds) {
+        long now = System.nanoTime();
+        boolean enoughTime = now - lastScrubSeekNanos >= LIVE_SCRUB_INTERVAL_NANOS;
+        boolean enoughDelta = Double.isNaN(lastScrubSeekSeconds)
+            || Math.abs(targetSeconds - lastScrubSeekSeconds) >= LIVE_SCRUB_DELTA_SECONDS;
+        if (!enoughTime && !enoughDelta) return;
+        lastScrubSeekSeconds = targetSeconds;
+        lastScrubSeekNanos = now;
+        service.seek(Duration.millis(targetSeconds * 1000.0));
+    }
+
+    private void resetScrubTracking() {
+        lastScrubSeekSeconds = Double.NaN;
+        lastScrubSeekNanos = 0L;
+    }
+
+    private double clampSeekValue(double seconds) {
+        return Math.min(seekBar.getMax(), Math.max(0.0, seconds));
+    }
+
+    private void updateScrubPreview(double targetSeconds) {
+        MediaPlayer player = service.playerProperty().get();
+        Duration total = player == null ? Duration.UNKNOWN : player.getTotalDuration();
+        timeLabel.setText(fmt(Duration.seconds(targetSeconds)) + " / " + fmt(total));
+    }
+
+    private void syncSeekRange(MediaPlayer player, Duration nowTime) {
+        double totalSeconds = durationToSeconds(player.getTotalDuration());
+        double nowSeconds = durationToSeconds(nowTime);
+        double targetMax = Double.isNaN(totalSeconds) || totalSeconds < 1.0
+            ? Math.max(seekBar.getMax(), Math.max(1.0, nowSeconds))
+            : Math.max(1.0, totalSeconds);
+        if (Math.abs(seekBar.getMax() - targetMax) > 0.01) {
+            seekBar.setMax(targetMax);
+        }
+    }
+
+    private static double durationToSeconds(Duration duration) {
+        if (duration == null || duration.isUnknown() || duration.isIndefinite()) {
+            return Double.NaN;
+        }
+        return Math.max(0.0, duration.toSeconds());
     }
 
     private static String fmt(Duration duration) {

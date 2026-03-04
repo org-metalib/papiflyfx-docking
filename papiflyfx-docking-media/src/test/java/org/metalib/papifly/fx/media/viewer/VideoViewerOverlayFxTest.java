@@ -1,10 +1,17 @@
 package org.metalib.papifly.fx.media.viewer;
 
 import javafx.scene.Scene;
+import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.control.Label;
+import javafx.geometry.BoundingBox;
+import javafx.geometry.Bounds;
 import javafx.scene.layout.Region;
 import javafx.scene.media.MediaPlayer;
+import javafx.scene.media.MediaView;
 import javafx.scene.layout.StackPane;
+import javafx.geometry.Pos;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,9 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class VideoViewerOverlayFxTest {
 
     private VideoViewer viewer;
+    private Stage stage;
 
     @Start
     void start(Stage stage) {
+        this.stage = stage;
         viewer = new VideoViewer();
         viewer.themeProperty().set(Theme.dark());
         String url = getClass().getResource("/sample-media/sample.mp4").toExternalForm();
@@ -41,16 +50,20 @@ class VideoViewerOverlayFxTest {
         robot.interact(() -> {});
         robot.interact(() -> {
             Region scrim = viewer.bottomScrimForTesting();
-            double ratio = scrim.getHeight() / viewer.getHeight();
+            MediaView mediaView = findDescendant(viewer, MediaView.class);
+            assertNotNull(mediaView);
+            Bounds mediaBounds = effectiveMediaBounds(mediaView);
+            double ratio = scrim.getHeight() / mediaBounds.getHeight();
             assertTrue(ratio >= 0.14);
             assertTrue(ratio <= 0.31);
-            assertEquals(viewer.getWidth(), scrim.getWidth(), 1.0);
-            assertEquals(viewer.getHeight(), scrim.getLayoutY() + scrim.getHeight(), 1.0);
+            assertEquals(mediaBounds.getWidth(), scrim.getWidth(), 1.0);
+            assertEquals(mediaBounds.getMinX(), scrim.getLayoutX(), 1.0);
+            assertEquals(mediaBounds.getMaxY(), scrim.getLayoutY() + scrim.getHeight(), 1.0);
         });
     }
 
     @Test
-    void controlsAutoHideOnlyWhenPlaying(FxRobot robot) throws Exception {
+    void controlsAutoHideOnlyWhenPlaying(FxRobot robot) {
         AtomicReference<MediaPlayer> playerRef = new AtomicReference<>();
         AtomicReference<TransportBar> barRef = new AtomicReference<>();
         robot.interact(() -> {
@@ -69,7 +82,6 @@ class VideoViewerOverlayFxTest {
             if (onPaused != null) onPaused.run();
             bar.triggerIdleTimeout();
         });
-        Thread.sleep(450L);
         robot.interact(() -> {
             assertEquals(TransportBar.PlaybackState.PAUSED, bar.getPlaybackState());
             assertTrue(bar.isControlsVisible());
@@ -80,7 +92,7 @@ class VideoViewerOverlayFxTest {
             if (onPlaying != null) onPlaying.run();
             bar.triggerIdleTimeout();
         });
-        Thread.sleep(500L);
+        robot.interact(() -> {});
         robot.interact(() -> {
             assertEquals(TransportBar.PlaybackState.PLAYING, bar.getPlaybackState());
             assertFalse(bar.isControlsVisible());
@@ -129,5 +141,70 @@ class VideoViewerOverlayFxTest {
             Label glyph = (Label) center.getChildren().get(0);
             assertEquals("\u21BA", glyph.getText());
         });
+    }
+
+    @Test
+    void mediaStaysCenteredAfterViewportResize(FxRobot robot) {
+        robot.interact(() -> {
+            stage.setWidth(360);
+            stage.setHeight(720);
+        });
+        robot.interact(() -> {});
+        robot.interact(() -> {});
+
+        robot.interact(() -> {
+            MediaView mediaView = findDescendant(viewer, MediaView.class);
+            assertNotNull(mediaView);
+            assertEquals(Pos.CENTER, StackPane.getAlignment(mediaView));
+            double renderedWidth = mediaView.getBoundsInParent().getWidth();
+            double renderedHeight = mediaView.getBoundsInParent().getHeight();
+            double expectedX = (viewer.getWidth() - renderedWidth) / 2.0;
+            double expectedY = (viewer.getHeight() - renderedHeight) / 2.0;
+            assertEquals(expectedX, mediaView.getBoundsInParent().getMinX(), 1.5);
+            assertEquals(expectedY, mediaView.getBoundsInParent().getMinY(), 1.5);
+        });
+    }
+
+    @Test
+    void viewerClipTracksViewportResize(FxRobot robot) {
+        robot.interact(() -> {
+            assertTrue(viewer.getClip() instanceof Rectangle);
+            Rectangle clip = (Rectangle) viewer.getClip();
+            assertEquals(viewer.getWidth(), clip.getWidth(), 1.0);
+            assertEquals(viewer.getHeight(), clip.getHeight(), 1.0);
+        });
+
+        robot.interact(() -> {
+            stage.setWidth(380);
+            stage.setHeight(760);
+        });
+        robot.interact(() -> {});
+        robot.interact(() -> {});
+
+        robot.interact(() -> {
+            assertTrue(viewer.getClip() instanceof Rectangle);
+            Rectangle clip = (Rectangle) viewer.getClip();
+            assertEquals(viewer.getWidth(), clip.getWidth(), 1.0);
+            assertEquals(viewer.getHeight(), clip.getHeight(), 1.0);
+        });
+    }
+
+    private Bounds effectiveMediaBounds(MediaView mediaView) {
+        Bounds bounds = mediaView.getBoundsInParent();
+        if (bounds.getWidth() <= 0.0 || bounds.getHeight() <= 0.0) {
+            return new BoundingBox(0.0, 0.0, viewer.getWidth(), viewer.getHeight());
+        }
+        return bounds;
+    }
+
+    private static <T> T findDescendant(Node root, Class<T> type) {
+        if (type.isInstance(root)) return type.cast(root);
+        if (root instanceof Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                T found = findDescendant(child, type);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 }

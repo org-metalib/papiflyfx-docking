@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.media.viewer;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
@@ -16,6 +17,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
@@ -33,6 +35,7 @@ public class VideoViewer extends StackPane {
     private final StackPane controlsOverlay = new StackPane();
     private final StackPane centerAffordance = new StackPane();
     private final Label centerGlyph = new Label("\u25B6");
+    private final Rectangle viewportClip = new Rectangle();
     private final ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>();
     private long pendingTimeMs = 0L;
     private double pendingVolume = 1.0;
@@ -44,15 +47,20 @@ public class VideoViewer extends StackPane {
     public VideoViewer() {
         setMinSize(0, 0);
         setAlignment(Pos.BOTTOM_CENTER);
+        viewportClip.widthProperty().bind(widthProperty());
+        viewportClip.heightProperty().bind(heightProperty());
+        setClip(viewportClip);
 
         mediaView.setPreserveRatio(true);
         mediaView.setSmooth(true);
+        StackPane.setAlignment(mediaView, Pos.CENTER);
 
         bottomScrim.setManaged(false);
         bottomScrim.setMouseTransparent(true);
         bottomScrim.setPickOnBounds(false);
 
         controlsOverlay.setPickOnBounds(false);
+        controlsOverlay.setAlignment(Pos.BOTTOM_CENTER);
         controlsOverlay.setMinHeight(Region.USE_PREF_SIZE);
         controlsOverlay.setMaxHeight(Region.USE_PREF_SIZE);
         controlsOverlay.getChildren().add(transportBar);
@@ -114,8 +122,10 @@ public class VideoViewer extends StackPane {
         mediaView.setFitWidth(getWidth());
         mediaView.setFitHeight(getHeight());
         super.layoutChildren();
-        layoutBottomScrim();
-        layoutCenterAffordance();
+        Bounds mediaBounds = mediaBoundsInViewer();
+        layoutBottomScrim(mediaBounds);
+        layoutControlsOverlay(mediaBounds);
+        layoutCenterAffordance(mediaBounds);
     }
 
     private void wireSceneReparent() {
@@ -193,26 +203,48 @@ public class VideoViewer extends StackPane {
         });
     }
 
-    private void layoutBottomScrim() {
-        double width = getWidth();
-        double height = getHeight();
+    private void layoutBottomScrim(Bounds mediaBounds) {
+        double width = mediaBounds.getWidth();
+        double height = mediaBounds.getHeight();
         double controlFootprint = transportBar.prefHeight(-1) + 30.0;
         double targetHeight = Math.max(height * 0.22, controlFootprint);
-        double minHeight = Math.min(90.0, height);
+        double minHeight = Math.min(68.0, height * 0.30);
         double maxHeight = Math.max(minHeight, height * 0.30);
         double scrimHeight = clamp(targetHeight, minHeight, maxHeight);
-        bottomScrim.resizeRelocate(0.0, height - scrimHeight, width, scrimHeight);
+        bottomScrim.resizeRelocate(
+            mediaBounds.getMinX(),
+            mediaBounds.getMaxY() - scrimHeight,
+            width,
+            scrimHeight
+        );
     }
 
-    private void layoutCenterAffordance() {
+    private void layoutControlsOverlay(Bounds mediaBounds) {
+        double leftInset = Math.max(8.0, mediaBounds.getMinX() + 8.0);
+        double rightInset = Math.max(8.0, (getWidth() - mediaBounds.getMaxX()) + 8.0);
+        double bottomInset = Math.max(8.0, (getHeight() - mediaBounds.getMaxY()) + 8.0);
+        StackPane.setMargin(controlsOverlay, new Insets(0.0, rightInset, bottomInset, leftInset));
+    }
+
+    private void layoutCenterAffordance(Bounds mediaBounds) {
         if (!centerAffordance.isVisible()) return;
-        double size = clamp(Math.min(getWidth(), getHeight()) * 0.18, 64.0, 94.0);
+        double size = clamp(Math.min(mediaBounds.getWidth(), mediaBounds.getHeight()) * 0.18, 64.0, 94.0);
+        double centerX = mediaBounds.getMinX() + (mediaBounds.getWidth() / 2.0);
+        double centerY = mediaBounds.getMinY() + (mediaBounds.getHeight() / 2.0);
         centerAffordance.resizeRelocate(
-            (getWidth() - size) / 2.0,
-            (getHeight() - size) / 2.0,
+            centerX - (size / 2.0),
+            centerY - (size / 2.0),
             size,
             size
         );
+    }
+
+    private Bounds mediaBoundsInViewer() {
+        Bounds bounds = mediaView.getBoundsInParent();
+        if (bounds.getWidth() <= 0.0 || bounds.getHeight() <= 0.0) {
+            return new javafx.geometry.BoundingBox(0.0, 0.0, getWidth(), getHeight());
+        }
+        return bounds;
     }
 
     private void applyScrimTheme(Theme theme) {
