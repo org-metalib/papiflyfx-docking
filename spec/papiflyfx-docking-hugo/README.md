@@ -64,3 +64,13 @@ Continuously run typecheck to make sure you’re not introducing new issues.
 ## readme
 
 add hugo module readme
+
+## Color scheme observation
+
+Hugo preview toolbar is not visually appealing. Docking theme should not apply to the hugo dock content.
+
+## Hugo server start/stop buttons accessibility
+
+› when hugo server is started start button should be grayed out. In reverse the stop button should be grayed out when the server stopped
+
+› check accessibility policy for the next/prev, reload and "open in browser"  buttons

@@ -59,7 +59,6 @@ public class HugoPreviewSample implements SampleScene {
             true,
             false
         ));
-        previewPane.bindThemeProperty(dockManager.themeProperty());
 
         DockLeaf leaf = dockManager.createLeaf("Hugo Preview", previewPane);
         leaf.setContentFactoryId(HugoPreviewFactory.FACTORY_ID);

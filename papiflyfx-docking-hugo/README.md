@@ -1,7 +1,7 @@
 # papiflyfx-docking-hugo
 
 A dockable Hugo preview content type for PapiflyFX docking.
-It starts `hugo server`, renders pages inside JavaFX `WebView`, supports session persistence, and follows docking theme updates.
+It starts `hugo server`, renders pages inside JavaFX `WebView`, and supports session persistence.
 
 ## Features
 
@@ -11,7 +11,7 @@ It starts `hugo server`, renders pages inside JavaFX `WebView`, supports session
 - Toolbar actions: start, stop, back, forward, reload, open in browser
 - External navigation guard (keeps embedded view on local Hugo origin)
 - Docking persistence via `ContentStateAdapter` + `LeafContentData`
-- Theme binding with live updates (`Theme.dark()` / `Theme.light()`)
+- Dedicated Hugo chrome styling that keeps page content independent from docking theme colors
 
 ## Requirements
 
@@ -64,11 +64,13 @@ leaf.setContentData(LeafContentData.of(
 ));
 ```
 
-### 3. Bind docking theme
+### 3. Optional: track host theme state
 
 ```java
 preview.bindThemeProperty(dockManager.themeProperty());
 ```
+
+Binding is optional and does not recolor Hugo page content.
 
 ## Persisted State
 

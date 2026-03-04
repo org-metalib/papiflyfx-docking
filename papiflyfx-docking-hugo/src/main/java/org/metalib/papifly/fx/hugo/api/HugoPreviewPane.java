@@ -5,13 +5,10 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.concurrent.Worker;
-import javafx.geometry.Insets;
 import javafx.scene.control.Label;
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
@@ -20,17 +17,14 @@ import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.hugo.process.HugoCliProbe;
 import org.metalib.papifly.fx.hugo.process.HugoServerOptions;
 import org.metalib.papifly.fx.hugo.process.HugoServerProcessManager;
-import org.metalib.papifly.fx.hugo.theme.HugoThemeMapper;
 import org.metalib.papifly.fx.hugo.web.UrlPolicy;
 import org.metalib.papifly.fx.hugo.web.WebViewNavigator;
 
 import java.awt.Desktop;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -109,7 +103,7 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
         bindEngineSignals();
         processManager.setLogListener(line -> runOnFx(() -> statusBar.setMessage(line)));
 
-        applyDockingTheme(themeProperty.get());
+        applyPreviewChrome();
 
         shutdownHook = new Thread(() -> {
             try {
@@ -124,7 +118,7 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
 
         cliAvailable = cliProbe.isAvailable(Duration.ofSeconds(3));
         if (!cliAvailable) {
-            statusBar.setServerState(HugoServerProcessManager.State.ERROR, -1);
+            setServerState(HugoServerProcessManager.State.ERROR, -1);
             statusBar.setMessage("Hugo CLI is not available in PATH");
             showPlaceholder("Hugo CLI is not available in PATH");
             return;
@@ -133,7 +127,7 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
         if (config.autoStart()) {
             startServerAndLoad(config.basePath());
         } else {
-            statusBar.setServerState(HugoServerProcessManager.State.STOPPED, -1);
+            setServerState(HugoServerProcessManager.State.STOPPED, -1);
             showPlaceholder("Preview stopped");
         }
     }
@@ -146,20 +140,20 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
         lastRelativePath = normalizedPath;
 
         if (!cliAvailable) {
-            statusBar.setServerState(HugoServerProcessManager.State.ERROR, -1);
+            setServerState(HugoServerProcessManager.State.ERROR, -1);
             statusBar.setMessage("Hugo CLI is not available in PATH");
             showPlaceholder("Hugo CLI is not available in PATH");
             return;
         }
 
         if (currentSiteRoot == null || !Files.isDirectory(currentSiteRoot)) {
-            statusBar.setServerState(HugoServerProcessManager.State.ERROR, -1);
+            setServerState(HugoServerProcessManager.State.ERROR, -1);
             statusBar.setMessage("Invalid Hugo site root");
             showPlaceholder("Invalid Hugo site root");
             return;
         }
 
-        statusBar.setServerState(HugoServerProcessManager.State.STARTING, -1);
+        setServerState(HugoServerProcessManager.State.STARTING, -1);
         statusBar.setMessage("Starting Hugo server");
         hidePlaceholder();
 
@@ -179,7 +173,7 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
                     if (disposed) {
                         return;
                     }
-                    statusBar.setServerState(HugoServerProcessManager.State.RUNNING, processManager.getBoundPort());
+                    setServerState(HugoServerProcessManager.State.RUNNING, processManager.getBoundPort());
                     statusBar.setMessage("Running: " + endpoint);
                     hidePlaceholder();
                     navigator.navigate(target.toString());
@@ -189,7 +183,7 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
                     if (disposed) {
                         return;
                     }
-                    statusBar.setServerState(HugoServerProcessManager.State.ERROR, -1);
+                    setServerState(HugoServerProcessManager.State.ERROR, -1);
                     statusBar.setMessage("Failed to start Hugo server: " + ex.getMessage());
                     showPlaceholder("Failed to start Hugo server");
                 });
@@ -204,7 +198,7 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
                 if (disposed) {
                     return;
                 }
-                statusBar.setServerState(HugoServerProcessManager.State.STOPPED, -1);
+                setServerState(HugoServerProcessManager.State.STOPPED, -1);
                 statusBar.setMessage("Stopped");
                 navigator.navigate("about:blank");
                 showPlaceholder("Preview stopped");
@@ -270,9 +264,9 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
             return;
         }
         boundThemeProperty = externalTheme;
-        themeChangeListener = (obs, oldTheme, newTheme) -> applyDockingTheme(newTheme);
+        themeChangeListener = (obs, oldTheme, newTheme) -> syncThemeBinding(newTheme);
         boundThemeProperty.addListener(themeChangeListener);
-        applyDockingTheme(boundThemeProperty.get());
+        syncThemeBinding(boundThemeProperty.get());
     }
 
     public void unbindThemeProperty() {
@@ -379,42 +373,23 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
         }
     }
 
-    private void applyDockingTheme(Theme theme) {
-        Theme resolved = theme == null ? Theme.dark() : theme;
-        themeProperty.set(resolved);
-
-        setBackground(new Background(new BackgroundFill(
-            resolved.background(),
-            CornerRadii.EMPTY,
-            Insets.EMPTY
-        )));
-        toolbar.applyTheme(resolved);
-        statusBar.applyTheme(resolved);
-
-        placeholderLabel.setFont(Font.font(resolved.contentFont().getFamily(), resolved.contentFont().getSize()));
-        placeholderLabel.setTextFill(HugoThemeMapper.toColor(resolved.textColor()));
-
-        injectPageTheme(resolved);
+    private void applyPreviewChrome() {
+        setStyle("-fx-background-color: #0b1324;");
+        contentStack.setStyle("-fx-background-color: #0b1324;");
+        toolbar.applyVisualStyle();
+        statusBar.applyVisualStyle();
+        placeholderLabel.setFont(Font.font("System", 13));
+        placeholderLabel.setTextFill(Color.web("#94a7c5"));
+        webEngine.setUserStyleSheetLocation(null);
     }
 
-    private void injectPageTheme(Theme theme) {
-        String background = HugoThemeMapper.toHex(theme.background());
-        String accent = HugoThemeMapper.toHex(theme.accentColor());
-        String css = """
-            html { background-color: %s !important; color-scheme: %s; }
-            body { background-color: %s !important; }
-            ::-webkit-scrollbar { width: 10px; height: 10px; }
-            ::-webkit-scrollbar-track { background: %s; }
-            ::-webkit-scrollbar-thumb { background: %s; border-radius: 5px; }
-            """.formatted(
-            background,
-            HugoThemeMapper.isDark(theme) ? "dark" : "light",
-            background,
-            background,
-            accent
-        );
-        String encoded = Base64.getEncoder().encodeToString(css.getBytes(StandardCharsets.UTF_8));
-        webEngine.setUserStyleSheetLocation("data:text/css;base64," + encoded);
+    private void setServerState(HugoServerProcessManager.State state, int port) {
+        statusBar.setServerState(state, port);
+        toolbar.setServerState(state);
+    }
+
+    private void syncThemeBinding(Theme theme) {
+        themeProperty.set(theme == null ? Theme.dark() : theme);
     }
 
     private void hidePlaceholder() {

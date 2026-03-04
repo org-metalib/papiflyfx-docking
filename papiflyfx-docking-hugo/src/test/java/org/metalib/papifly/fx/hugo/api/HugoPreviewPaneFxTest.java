@@ -3,12 +3,11 @@ package org.metalib.papifly.fx.hugo.api;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
@@ -29,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -61,12 +61,21 @@ class HugoPreviewPaneFxTest {
         HugoPreviewPane pane = createPane(tempDir, 20120, false);
         FxTestUtil.runFx(() -> root.getChildren().setAll(pane));
 
+        Button startButton = FxTestUtil.callFx(() -> (Button) pane.lookup("#hugo-preview-start"));
+        Button stopButton = FxTestUtil.callFx(() -> (Button) pane.lookup("#hugo-preview-stop"));
+        assertNotNull(startButton);
+        assertNotNull(stopButton);
+        assertFalse(FxTestUtil.callFx(startButton::isDisabled));
+        assertTrue(FxTestUtil.callFx(stopButton::isDisabled));
+
         FxTestUtil.runFx(() -> pane.startServerAndLoad("/docs/"));
         WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS,
             () -> FxTestUtil.callFx(() -> {
                 Label state = (Label) pane.lookup("#hugo-preview-status-state");
                 return state != null && state.getText().startsWith("Running");
             }));
+        assertTrue(FxTestUtil.callFx(startButton::isDisabled));
+        assertFalse(FxTestUtil.callFx(stopButton::isDisabled));
 
         Hyperlink address = FxTestUtil.callFx(() -> (Hyperlink) pane.lookup("#hugo-preview-address"));
         assertNotNull(address);
@@ -78,6 +87,8 @@ class HugoPreviewPaneFxTest {
                 Label state = (Label) pane.lookup("#hugo-preview-status-state");
                 return state != null && "Stopped".equals(state.getText());
             }));
+        assertFalse(FxTestUtil.callFx(startButton::isDisabled));
+        assertTrue(FxTestUtil.callFx(stopButton::isDisabled));
 
         WebView webView = FxTestUtil.callFx(() -> (WebView) pane.lookup("#hugo-preview-webview"));
         WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS,
@@ -87,26 +98,64 @@ class HugoPreviewPaneFxTest {
     }
 
     @Test
-    void themeSwitchUpdatesToolbarBackground(@TempDir Path tempDir) throws Exception {
+    void themeBindingDoesNotApplyDockingStylesToHugoContent(@TempDir Path tempDir) throws Exception {
         HugoPreviewPane pane = createPane(tempDir, 20130, false);
         FxTestUtil.runFx(() -> root.getChildren().setAll(pane));
 
         ObjectProperty<Theme> theme = new SimpleObjectProperty<>(Theme.dark());
         FxTestUtil.runFx(() -> pane.bindThemeProperty(theme));
 
-        Paint darkPaint = FxTestUtil.callFx(() -> ((Region) pane.lookup("#hugo-preview-toolbar"))
-            .getBackground().getFills().getFirst().getFill());
+        String initialToolbarStyle = FxTestUtil.callFx(() -> ((Region) pane.lookup("#hugo-preview-toolbar")).getStyle());
+        String initialUserStyleSheet = FxTestUtil.callFx(() -> ((WebView) pane.lookup("#hugo-preview-webview"))
+            .getEngine().getUserStyleSheetLocation());
         FxTestUtil.runFx(() -> theme.set(Theme.light()));
         FxTestUtil.waitForFx();
-        Paint lightPaint = FxTestUtil.callFx(() -> ((Region) pane.lookup("#hugo-preview-toolbar"))
-            .getBackground().getFills().getFirst().getFill());
 
-        assertTrue(!asColor(darkPaint).equals(asColor(lightPaint)));
+        String updatedToolbarStyle = FxTestUtil.callFx(() -> ((Region) pane.lookup("#hugo-preview-toolbar")).getStyle());
+        String updatedUserStyleSheet = FxTestUtil.callFx(() -> ((WebView) pane.lookup("#hugo-preview-webview"))
+            .getEngine().getUserStyleSheetLocation());
+
+        assertEquals(initialToolbarStyle, updatedToolbarStyle);
+        assertEquals(initialUserStyleSheet, updatedUserStyleSheet);
+        assertEquals(null, updatedUserStyleSheet);
 
         FxTestUtil.runFx(() -> {
             pane.unbindThemeProperty();
             pane.dispose();
         });
+    }
+
+    @Test
+    void toolbarNavigationButtonsProvideAccessibleMetadata(@TempDir Path tempDir) throws Exception {
+        HugoPreviewPane pane = createPane(tempDir, 20140, false);
+        FxTestUtil.runFx(() -> root.getChildren().setAll(pane));
+
+        Button backButton = FxTestUtil.callFx(() -> (Button) pane.lookup("#hugo-preview-back"));
+        Button forwardButton = FxTestUtil.callFx(() -> (Button) pane.lookup("#hugo-preview-forward"));
+        Button reloadButton = FxTestUtil.callFx(() -> (Button) pane.lookup("#hugo-preview-reload"));
+        Button openInBrowserButton = FxTestUtil.callFx(() -> (Button) pane.lookup("#hugo-preview-open-browser"));
+
+        assertNotNull(backButton);
+        assertNotNull(forwardButton);
+        assertNotNull(reloadButton);
+        assertNotNull(openInBrowserButton);
+
+        assertEquals("Previous page", FxTestUtil.callFx(backButton::getAccessibleText));
+        assertEquals("Next page", FxTestUtil.callFx(forwardButton::getAccessibleText));
+        assertEquals("Reload page", FxTestUtil.callFx(reloadButton::getAccessibleText));
+        assertEquals("Open in browser", FxTestUtil.callFx(openInBrowserButton::getAccessibleText));
+
+        assertTrue(FxTestUtil.callFx(backButton::isFocusTraversable));
+        assertTrue(FxTestUtil.callFx(forwardButton::isFocusTraversable));
+        assertTrue(FxTestUtil.callFx(reloadButton::isFocusTraversable));
+        assertTrue(FxTestUtil.callFx(openInBrowserButton::isFocusTraversable));
+
+        assertEquals("Go to previous page", FxTestUtil.callFx(() -> backButton.getTooltip().getText()));
+        assertEquals("Go to next page", FxTestUtil.callFx(() -> forwardButton.getTooltip().getText()));
+        assertEquals("Reload current page", FxTestUtil.callFx(() -> reloadButton.getTooltip().getText()));
+        assertEquals("Open current page in system browser", FxTestUtil.callFx(() -> openInBrowserButton.getTooltip().getText()));
+
+        FxTestUtil.runFx(pane::dispose);
     }
 
     private HugoPreviewPane createPane(Path siteRoot, int preferredPort, boolean autoStart) throws Exception {
@@ -137,7 +186,4 @@ class HugoPreviewPaneFxTest {
         return path;
     }
 
-    private Color asColor(Paint paint) {
-        return paint instanceof Color color ? color : Color.TRANSPARENT;
-    }
 }
