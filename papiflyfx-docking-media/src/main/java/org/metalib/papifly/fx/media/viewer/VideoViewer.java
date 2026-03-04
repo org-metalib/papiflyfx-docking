@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.media.viewer;
 
+import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -43,6 +44,7 @@ public class VideoViewer extends StackPane {
     private boolean playbackStatePending;
     private MediaPlayer restorePlayer;
     private ChangeListener<MediaPlayer.Status> restoreStatusListener;
+    private boolean errorState = false;
 
     public VideoViewer() {
         setMinSize(0, 0);
@@ -83,6 +85,7 @@ public class VideoViewer extends StackPane {
         wireKeyboard();
         wireTheme();
         wireVisibility();
+        wireError();
     }
 
     public void load(String url) {
@@ -91,6 +94,8 @@ public class VideoViewer extends StackPane {
     }
 
     public ObjectProperty<Theme> themeProperty() { return themeProperty; }
+
+    public boolean isErrorState() { return errorState; }
 
     public long getCurrentTimeMs() {
         MediaPlayer player = playerService.playerProperty().get();
@@ -201,6 +206,22 @@ public class VideoViewer extends StackPane {
             MediaPlayer player = playerService.playerProperty().get();
             if (player != null) player.setMute(!visible);
         });
+    }
+
+    private void wireError() {
+        playerService.setOnError(() -> {
+            if (!Platform.isFxApplicationThread()) {
+                Platform.runLater(this::handleError);
+            } else {
+                handleError();
+            }
+        });
+    }
+
+    private void handleError() {
+        errorState = true;
+        controlsOverlay.setVisible(false);
+        centerAffordance.setVisible(false);
     }
 
     private void layoutBottomScrim(Bounds mediaBounds) {

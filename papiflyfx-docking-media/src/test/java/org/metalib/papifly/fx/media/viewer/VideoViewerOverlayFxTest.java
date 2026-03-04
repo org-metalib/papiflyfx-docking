@@ -221,7 +221,7 @@ class VideoViewerOverlayFxTest {
 
     private void assumeMediaBackendAvailable() {
         RuntimeException failure = mediaLoadFailure;
-        Assumptions.assumeTrue(failure == null, () ->
+        Assumptions.assumeTrue(failure == null && !viewer.isErrorState(), () ->
             "JavaFX media backend unavailable in this environment: " + failure);
     }
 }
