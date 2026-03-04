@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.metalib.papifly.docking</groupId>
         <artifactId>papiflyfx-docking</artifactId>
-        <version>0.0.12-SNAPSHOT</version>
+        <version>0.0.13-SNAPSHOT</version>
     </parent>
 
     <name>papiflyfx-docking-samples</name>
@@ -83,7 +83,7 @@
                 <configuration>
                     <useModulePath>false</useModulePath>
                     <argLine>
-                        --enable-native-access=javafx.graphics
+                        --enable-native-access=javafx.graphics,javafx.media,javafx.web
                         --add-exports=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
                         --add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
                         --add-exports=javafx.graphics/com.sun.glass.ui=ALL-UNNAMED
@@ -109,7 +109,9 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>org.metalib.papifly.fx.samples.SamplesApp</mainClass>
-                    <jvmArgs>--enable-native-access=javafx.graphics</jvmArgs>
+                    <options>
+                        <option>--enable-native-access=javafx.graphics,javafx.media,javafx.web</option>
+                    </options>
                 </configuration>
             </plugin>
         </plugins>

@@ -10,7 +10,8 @@ import org.metalib.papifly.fx.samples.SampleScene;
 public class YouTubeEmbedSample implements SampleScene {
 
     private static final String YOUTUBE_WATCH =
-        "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+        "https://youtu.be/1jrHOfCofoI?si=0jC8iFMwkx7GJugl";
+    //"https://www.youtube.com/embed/1jrHOfCofoI?si=Wpgy3uLNSOWkZKgP";
 
     @Override
     public String category() { return "Media"; }
@@ -22,7 +23,7 @@ public class YouTubeEmbedSample implements SampleScene {
     public Node build(Stage stage, ObjectProperty<Theme> themeProperty) {
         MediaViewer viewer = new MediaViewer();
         viewer.bindThemeProperty(themeProperty);
-        viewer.loadMedia(YOUTUBE_WATCH);   // auto-converted to embed URL internally
+        viewer.loadMedia(YOUTUBE_WATCH);   // converted to embed URL internally
         return viewer;
     }
 }
