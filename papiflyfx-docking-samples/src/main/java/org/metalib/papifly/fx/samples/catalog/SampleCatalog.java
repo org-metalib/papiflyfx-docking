@@ -17,6 +17,7 @@ import org.metalib.papifly.fx.samples.media.MediaPersistSample;
 import org.metalib.papifly.fx.samples.media.SplitMediaSample;
 import org.metalib.papifly.fx.samples.media.VideoPlayerSample;
 import org.metalib.papifly.fx.samples.media.YouTubeEmbedSample;
+import org.metalib.papifly.fx.samples.hugo.HugoPreviewSample;
 import org.metalib.papifly.fx.samples.tree.TreeViewNodeInfoSample;
 import org.metalib.papifly.fx.samples.tree.TreeViewSample;
 
@@ -54,7 +55,8 @@ public final class SampleCatalog {
             new SplitMediaSample(),
             new HlsStreamSample(),
             new YouTubeEmbedSample(),
-            new MediaPersistSample()
+            new MediaPersistSample(),
+            new HugoPreviewSample()
         );
     }
 }

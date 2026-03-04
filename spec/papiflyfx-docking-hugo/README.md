@@ -60,3 +60,7 @@ as completed in the `spec/papiflyfx-docking-hugo/plan-codex1.md` document.
 Add new `spec/papiflyfx-docking-hugo/progress.md` file to track your progress.
 Do not stop until all tasks and phases are completed. Do not add unnecessary comments or javadocs, do not use any or unknown types.
 Continuously run typecheck to make sure you’re not introducing new issues.
+
+## readme
+
+add hugo module readme

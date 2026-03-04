@@ -16,6 +16,7 @@
         <module>papiflyfx-docking-code</module>
         <module>papiflyfx-docking-tree</module>
         <module>papiflyfx-docking-media</module>
+        <module>papiflyfx-docking-hugo</module>
         <module>papiflyfx-docking-samples</module>
     </modules>
 
@@ -57,6 +58,12 @@
             <dependency>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-controls</artifactId>
+                <version>${javafx.version}</version>
+                <classifier>${javafx.platform}</classifier>
+            </dependency>
+            <dependency>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-web</artifactId>
                 <version>${javafx.version}</version>
                 <classifier>${javafx.platform}</classifier>
             </dependency>
