@@ -6,6 +6,7 @@ import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.media.Media;
+import javafx.scene.media.MediaException;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaView;
 import javafx.util.Duration;
@@ -16,14 +17,27 @@ public class MediaPlayerService {
     private final DoubleProperty volume = new SimpleDoubleProperty(1.0);
     private MediaView boundView;
 
+    private Runnable onError;
+
+    public void setOnError(Runnable callback) {
+        this.onError = callback;
+    }
+
     public void load(String url) {
         disposePlayer();
-        Media media = new Media(url);
-        MediaPlayer player = new MediaPlayer(media);
-        player.volumeProperty().bindBidirectional(volume);
-        playerProperty.set(player);
-        if (boundView != null) {
-            boundView.setMediaPlayer(player);
+        try {
+            Media media = new Media(url);
+            MediaPlayer player = new MediaPlayer(media);
+            player.volumeProperty().bindBidirectional(volume);
+            player.setOnError(() -> {
+                if (onError != null) onError.run();
+            });
+            playerProperty.set(player);
+            if (boundView != null) {
+                boundView.setMediaPlayer(player);
+            }
+        } catch (MediaException e) {
+            if (onError != null) onError.run();
         }
     }
 
@@ -46,18 +60,21 @@ public class MediaPlayerService {
     public void pause() { withPlayer(MediaPlayer::pause); }
     public void stop()  { withPlayer(p -> { p.stop(); p.seek(Duration.ZERO); }); }
 
-    public void seek(Duration d) { withPlayer(p -> p.seek(d)); }
+    public void seek(Duration d) {
+        Duration target = d == null ? Duration.ZERO : Duration.millis(Math.max(0.0, d.toMillis()));
+        withPlayer(p -> p.seek(target));
+    }
 
     public void stepForward() {
-        withPlayer(p -> p.seek(p.getCurrentTime().add(Duration.seconds(1.0 / 30.0))));
+        withPlayer(p -> p.seek(p.getCurrentTime().add(Duration.millis(1000.0 / 30.0))));
     }
 
     public void stepBackward() {
-        withPlayer(p -> p.seek(p.getCurrentTime().subtract(Duration.seconds(1.0 / 30.0))));
+        withPlayer(p -> p.seek(p.getCurrentTime().subtract(Duration.millis(1000.0 / 30.0))));
     }
 
     public void seekRelative(double seconds) {
-        withPlayer(p -> p.seek(p.getCurrentTime().add(Duration.seconds(seconds))));
+        withPlayer(p -> p.seek(p.getCurrentTime().add(Duration.millis(seconds * 1000.0))));
     }
 
     public DoubleProperty volumeProperty() { return volume; }

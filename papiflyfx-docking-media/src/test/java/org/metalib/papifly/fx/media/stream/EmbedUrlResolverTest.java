@@ -7,12 +7,22 @@ class EmbedUrlResolverTest {
 
     @Test void resolvesYouTubeWatchUrl() {
         String result = EmbedUrlResolver.resolve("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-        assertEquals("https://www.youtube.com/embed/dQw4w9WgXcQ", result);
+        assertEquals("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", result);
     }
 
     @Test void resolvesYouTubeShortUrl() {
         String result = EmbedUrlResolver.resolve("https://youtu.be/dQw4w9WgXcQ");
-        assertEquals("https://www.youtube.com/embed/dQw4w9WgXcQ", result);
+        assertEquals("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", result);
+    }
+
+    @Test void resolvesYouTubeEmbedUrl() {
+        String result = EmbedUrlResolver.resolve("https://www.youtube.com/embed/dQw4w9WgXcQ");
+        assertEquals("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", result);
+    }
+
+    @Test void resolvesYouTubeNoCookieEmbedUrl() {
+        String result = EmbedUrlResolver.resolve("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+        assertEquals("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", result);
     }
 
     @Test void resolvesVimeoUrl() {
@@ -27,8 +37,8 @@ class EmbedUrlResolverTest {
         assertTrue(result.contains("parent=localhost"));
     }
 
-    @Test void alreadyEmbedUrlPassedThrough() {
-        String embed = "https://www.youtube.com/embed/abc";
+    @Test void alreadyNonYouTubeEmbedUrlPassedThrough() {
+        String embed = "https://player.vimeo.com/video/abc";
         assertEquals(embed, EmbedUrlResolver.resolve(embed));
     }
 }
