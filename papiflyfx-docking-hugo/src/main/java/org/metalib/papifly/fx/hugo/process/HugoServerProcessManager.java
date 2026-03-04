@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,6 +40,7 @@ public class HugoServerProcessManager implements AutoCloseable {
     private static final Pattern READINESS_PATTERN =
         Pattern.compile("Web Server is available at (http://[^\\s]+)");
     private static final int PORT_PROBE_ATTEMPTS = 30;
+    private static final System.Logger LOG = System.getLogger(HugoServerProcessManager.class.getName());
 
     private final CommandFactory commandFactory;
     private final Duration readinessTimeout;
@@ -50,6 +52,7 @@ public class HugoServerProcessManager implements AutoCloseable {
     private volatile State state = State.STOPPED;
     private volatile Consumer<String> logListener;
     private volatile CompletableFuture<Void> readinessByLog = new CompletableFuture<>();
+    private volatile boolean portProbeUnavailable;
 
     public HugoServerProcessManager() {
         this(HugoServerProcessManager::defaultCommand, DEFAULT_READINESS_TIMEOUT);
@@ -213,9 +216,15 @@ public class HugoServerProcessManager implements AutoCloseable {
     }
 
     private int selectPort(int preferredPort, String bindAddress) throws Exception {
+        if (portProbeUnavailable) {
+            return preferredPort;
+        }
         for (int i = 0; i < PORT_PROBE_ATTEMPTS; i++) {
             int candidate = preferredPort + i;
             if (isPortFree(bindAddress, candidate)) {
+                return candidate;
+            }
+            if (portProbeUnavailable) {
                 return candidate;
             }
         }
@@ -227,6 +236,17 @@ public class HugoServerProcessManager implements AutoCloseable {
             socket.bind(new InetSocketAddress(bindAddress, port));
             return true;
         } catch (IOException ex) {
+            if (isPermissionDenied(ex)) {
+                if (!portProbeUnavailable) {
+                    portProbeUnavailable = true;
+                    LOG.log(
+                        System.Logger.Level.WARNING,
+                        "Port probing unavailable in this environment; using preferred Hugo port without pre-check",
+                        ex
+                    );
+                }
+                return true;
+            }
             return false;
         }
     }
@@ -260,5 +280,15 @@ public class HugoServerProcessManager implements AutoCloseable {
             command.add("--buildDrafts");
         }
         return command;
+    }
+
+    private static boolean isPermissionDenied(IOException exception) {
+        String message = exception.getMessage();
+        if (message == null) {
+            return false;
+        }
+        String lowerMessage = message.toLowerCase(Locale.ROOT);
+        return lowerMessage.contains("operation not permitted")
+            || lowerMessage.contains("permission denied");
     }
 }

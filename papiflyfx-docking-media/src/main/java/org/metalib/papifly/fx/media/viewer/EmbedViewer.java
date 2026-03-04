@@ -60,7 +60,11 @@ public class EmbedViewer extends StackPane {
         String embedUrl = EmbedUrlResolver.resolve(url);
         if (isYouTubeEmbed(embedUrl)) {
             youtubeWrapperUrl = LocalYouTubeWrapperServer.wrapperUrlFor(embedUrl);
-            webView.getEngine().load(youtubeWrapperUrl);
+            if (youtubeWrapperUrl != null) {
+                webView.getEngine().load(youtubeWrapperUrl);
+            } else {
+                webView.getEngine().load(embedUrl);
+            }
         } else {
             youtubeWrapperUrl = null;
             webView.getEngine().load(embedUrl);
@@ -103,12 +107,42 @@ public class EmbedViewer extends StackPane {
         if (newLocation == null || newLocation.isBlank()) return false;
         String lower = newLocation.toLowerCase(Locale.ROOT);
         if (lower.startsWith("about:") || lower.startsWith("data:") || lower.startsWith("javascript:")) return false;
-        String localOrigin = LocalYouTubeWrapperServer.origin();
-        return !newLocation.startsWith(localOrigin + "/");
+        String wrapperOrigin = originOf(youtubeWrapperUrl);
+        if (wrapperOrigin == null) return false;
+        String locationOrigin = originOf(newLocation);
+        if (locationOrigin == null) return true;
+        return !wrapperOrigin.equals(locationOrigin);
     }
 
     static String wrapperUrlForTesting(String embedUrl) {
-        return LocalYouTubeWrapperServer.wrapperUrlFor(embedUrl);
+        return LocalYouTubeWrapperServer.wrapperUrlForTesting(embedUrl);
+    }
+
+    private static String originOf(String rawUrl) {
+        try {
+            URI uri = URI.create(rawUrl);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (scheme == null || host == null) {
+                return null;
+            }
+            int port = uri.getPort();
+            int defaultPort = defaultPort(scheme);
+            if (port == -1 || port == defaultPort) {
+                return scheme.toLowerCase(Locale.ROOT) + "://" + host.toLowerCase(Locale.ROOT);
+            }
+            return scheme.toLowerCase(Locale.ROOT) + "://" + host.toLowerCase(Locale.ROOT) + ":" + port;
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static int defaultPort(String scheme) {
+        return switch (scheme.toLowerCase(Locale.ROOT)) {
+            case "http" -> 80;
+            case "https" -> 443;
+            default -> -1;
+        };
     }
 
     private static void openInSystemBrowser(String url) {
@@ -178,30 +212,50 @@ public class EmbedViewer extends StackPane {
 
         private final HttpServer server;
         private final String origin;
+        private final boolean available;
 
         private LocalYouTubeWrapperServer() {
+            HttpServer createdServer = null;
+            String createdOrigin = null;
+            boolean createdAvailable = false;
             try {
-                server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+                createdServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+                createdServer.createContext("/youtube", this::handleYouTube);
+                createdServer.setExecutor(Executors.newSingleThreadExecutor(r -> {
+                    Thread t = new Thread(r, "papiflyfx-youtube-wrapper");
+                    t.setDaemon(true);
+                    return t;
+                }));
+                createdServer.start();
+                createdOrigin = "http://127.0.0.1:" + createdServer.getAddress().getPort();
+                HttpServer serverToStop = createdServer;
+                Runtime.getRuntime().addShutdownHook(new Thread(
+                    () -> serverToStop.stop(0),
+                    "papiflyfx-youtube-wrapper-stop"
+                ));
+                createdAvailable = true;
             } catch (IOException e) {
-                throw new IllegalStateException("Failed to start local YouTube wrapper server", e);
+                LOG.log(
+                    System.Logger.Level.WARNING,
+                    "Local YouTube wrapper server unavailable; falling back to direct embed URLs",
+                    e
+                );
             }
-            server.createContext("/youtube", this::handleYouTube);
-            server.setExecutor(Executors.newSingleThreadExecutor(r -> {
-                Thread t = new Thread(r, "papiflyfx-youtube-wrapper");
-                t.setDaemon(true);
-                return t;
-            }));
-            server.start();
-            origin = "http://127.0.0.1:" + server.getAddress().getPort();
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> server.stop(0), "papiflyfx-youtube-wrapper-stop"));
+            this.server = createdServer;
+            this.origin = createdOrigin;
+            this.available = createdAvailable;
         }
 
         private static String wrapperUrlFor(String embedUrl) {
+            if (!INSTANCE.available) {
+                return null;
+            }
             return INSTANCE.origin + "/youtube?src=" + urlEncode(embedUrl);
         }
 
-        private static String origin() {
-            return INSTANCE.origin;
+        private static String wrapperUrlForTesting(String embedUrl) {
+            String baseOrigin = INSTANCE.available ? INSTANCE.origin : "http://127.0.0.1";
+            return baseOrigin + "/youtube?src=" + urlEncode(embedUrl);
         }
 
         private void handleYouTube(HttpExchange exchange) throws IOException {
