@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.media.viewer;
 
+import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
@@ -28,6 +29,7 @@ public class AudioViewer extends StackPane {
     private boolean playbackStatePending;
     private MediaPlayer restorePlayer;
     private ChangeListener<MediaPlayer.Status> restoreStatusListener;
+    private boolean errorState = false;
 
     public AudioViewer() {
         setAlignment(Pos.BOTTOM_CENTER);
@@ -41,11 +43,14 @@ public class AudioViewer extends StackPane {
         waveformPlaceholder.widthProperty().bind(widthProperty().multiply(0.8));
         wirePlayerStateRestore();
         wireTheme();
+        wireError();
     }
 
     public void load(String url) { playerService.load(url); }
 
     public ObjectProperty<Theme> themeProperty() { return themeProperty; }
+
+    public boolean isErrorState() { return errorState; }
 
     public long getCurrentTimeMs() {
         MediaPlayer player = playerService.playerProperty().get();
@@ -75,6 +80,16 @@ public class AudioViewer extends StackPane {
                 new javafx.scene.layout.BackgroundFill(t.background(),
                     javafx.scene.layout.CornerRadii.EMPTY, Insets.EMPTY)));
             paintWaveformPlaceholder(MediaThemeMapper.toColor(MediaThemeMapper.accent(t)));
+        });
+    }
+
+    private void wireError() {
+        playerService.setOnError(() -> {
+            if (!Platform.isFxApplicationThread()) {
+                Platform.runLater(() -> errorState = true);
+            } else {
+                errorState = true;
+            }
         });
     }
 

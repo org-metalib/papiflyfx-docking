@@ -6,6 +6,7 @@ import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.media.Media;
+import javafx.scene.media.MediaException;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaView;
 import javafx.util.Duration;
@@ -16,14 +17,27 @@ public class MediaPlayerService {
     private final DoubleProperty volume = new SimpleDoubleProperty(1.0);
     private MediaView boundView;
 
+    private Runnable onError;
+
+    public void setOnError(Runnable callback) {
+        this.onError = callback;
+    }
+
     public void load(String url) {
         disposePlayer();
-        Media media = new Media(url);
-        MediaPlayer player = new MediaPlayer(media);
-        player.volumeProperty().bindBidirectional(volume);
-        playerProperty.set(player);
-        if (boundView != null) {
-            boundView.setMediaPlayer(player);
+        try {
+            Media media = new Media(url);
+            MediaPlayer player = new MediaPlayer(media);
+            player.volumeProperty().bindBidirectional(volume);
+            player.setOnError(() -> {
+                if (onError != null) onError.run();
+            });
+            playerProperty.set(player);
+            if (boundView != null) {
+                boundView.setMediaPlayer(player);
+            }
+        } catch (MediaException e) {
+            if (onError != null) onError.run();
         }
     }
 
