@@ -17,14 +17,25 @@ import java.nio.file.Path;
 public class SvgViewer extends StackPane {
 
     private final ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>();
+    private WebView webView;
 
     public SvgViewer(String url) {
+        setMinSize(0, 0);
         setAlignment(Pos.CENTER);
         load(url);
         wireTheme();
     }
 
     public ObjectProperty<Theme> themeProperty() { return themeProperty; }
+
+    @Override
+    protected void layoutChildren() {
+        if (webView != null) {
+            webView.setPrefWidth(getWidth());
+            webView.setPrefHeight(getHeight());
+        }
+        super.layoutChildren();
+    }
 
     private void load(String url) {
         String content = readContent(url);
@@ -43,11 +54,9 @@ public class SvgViewer extends StackPane {
                 if (t != null) svgPath.setFill(MediaThemeMapper.controlForeground(t));
             });
         } else {
-            WebView webView = new WebView();
+            webView = new WebView();
             webView.setContextMenuEnabled(false);
             webView.getEngine().load(url);
-            webView.prefWidthProperty().bind(widthProperty());
-            webView.prefHeightProperty().bind(heightProperty());
             getChildren().add(webView);
         }
     }
