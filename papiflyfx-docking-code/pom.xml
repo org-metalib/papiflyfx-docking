@@ -12,7 +12,7 @@
     <artifactId>papiflyfx-docking-code</artifactId>
 
     <properties>
-        <testfx.headless>false</testfx.headless>
+        <testfx.headless>true</testfx.headless>
         <testfx.robot>glass</testfx.robot>
         <testfx.platform>Desktop</testfx.platform>
         <monocle.platform>Headless</monocle.platform>

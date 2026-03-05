@@ -1302,50 +1302,50 @@ Assumptions.assumeTrue(new HugoCliProbe().isAvailable(Duration.ofSeconds(2)));
 
 ## 18. Implementation Phases
 
-### Phase 1: Module Bootstrap
+### Phase 1: Module Bootstrap (Completed)
 
-1. Create `papiflyfx-docking-hugo` module.
-2. Add dependencies (JavaFX controls/web + docking api + tests).
-3. Add service registration skeleton.
+1. [x] Create `papiflyfx-docking-hugo` module.
+2. [x] Add dependencies (JavaFX controls/web + docking api + tests).
+3. [x] Add service registration skeleton.
 
-### Phase 2: Process Layer
+### Phase 2: Process Layer (Completed)
 
-1. Implement `HugoCliProbe`.
-2. Implement `HugoServerProcessManager`.
-3. Add process unit tests.
+1. [x] Implement `HugoCliProbe`.
+2. [x] Implement `HugoServerProcessManager`.
+3. [x] Add process unit tests.
 
-### Phase 3: UI Layer
+### Phase 3: UI Layer (Completed)
 
-1. Implement `HugoPreviewPane`.
-2. Add toolbar actions and status reporting.
-3. Add docking theme binding and reactive style updates.
-4. Add external browser link behavior.
+1. [x] Implement `HugoPreviewPane`.
+2. [x] Add toolbar actions and status reporting.
+3. [x] Add docking theme binding and reactive style updates.
+4. [x] Add external browser link behavior.
 
-### Phase 4: Docking Persistence
+### Phase 4: Docking Persistence (Completed)
 
-1. Implement `HugoPreviewFactory`.
-2. Implement `HugoPreviewStateAdapter`.
-3. Register adapter and validate `DockManager` save/restore path.
+1. [x] Implement `HugoPreviewFactory`.
+2. [x] Implement `HugoPreviewStateAdapter`.
+3. [x] Register adapter and validate `DockManager` save/restore path.
 
-### Phase 5: Samples and Validation
+### Phase 5: Samples and Validation (Completed)
 
-1. Add sample under `papiflyfx-docking-samples`.
-2. Validate start/stop behavior while docking, floating, minimizing, and closing.
-3. Run tests:
+1. [x] Add sample under `papiflyfx-docking-samples`.
+2. [x] Validate start/stop behavior while docking, floating, minimizing, and closing.
+3. [x] Run tests:
    - `mvn test -pl papiflyfx-docking-hugo`
    - `mvn test -pl papiflyfx-docking-samples -Dtestfx.headless=true`
 
 ## 19. Acceptance Criteria
 
-1. New dock content renders Hugo site in internal WebView.
-2. Missing Hugo binary is detected and shown clearly.
-3. Component can start and stop Hugo server repeatedly without orphan process.
-4. Component reacts to `DockManager` theme changes via bound `Theme` property.
-5. Current URL/path can be opened in default system browser from clickable control.
-6. Session save/restore recreates component and restores preview path.
-7. Embedded WebView keeps navigation sandboxed to local Hugo origin.
-8. No JavaScript-to-Java bridge is exposed in v1 (`JSObject.setMember` absent).
-9. No new runtime dependencies beyond existing JavaFX/JDK and project modules.
+1. [x] New dock content renders Hugo site in internal WebView.
+2. [x] Missing Hugo binary is detected and shown clearly.
+3. [x] Component can start and stop Hugo server repeatedly without orphan process.
+4. [x] Component reacts to `DockManager` theme changes via bound `Theme` property.
+5. [x] Current URL/path can be opened in default system browser from clickable control.
+6. [x] Session save/restore recreates component and restores preview path.
+7. [x] Embedded WebView keeps navigation sandboxed to local Hugo origin.
+8. [x] No JavaScript-to-Java bridge is exposed in v1 (`JSObject.setMember` absent).
+9. [x] No new runtime dependencies beyond existing JavaFX/JDK and project modules.
 
 ## 20. Source-Idea Traceability
 

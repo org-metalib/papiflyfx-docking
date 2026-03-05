@@ -12,8 +12,8 @@
     <artifactId>papiflyfx-docking-docks</artifactId>
 
     <properties>
-        <!-- Headless settings are opt-in: enable via -Dtestfx.headless=true (and CI can add other properties). -->
-        <testfx.headless>false</testfx.headless>
+        <!-- Default to headless for reliable CI/sandbox runs; override with -Dtestfx.headless=false. -->
+        <testfx.headless>true</testfx.headless>
         <testfx.robot>glass</testfx.robot>
         <testfx.platform>Desktop</testfx.platform>
         <monocle.platform>Headless</monocle.platform>

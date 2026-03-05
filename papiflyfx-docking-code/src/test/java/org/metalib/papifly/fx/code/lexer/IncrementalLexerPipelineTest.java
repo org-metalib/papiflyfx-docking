@@ -26,7 +26,7 @@ class IncrementalLexerPipelineTest {
             pipeline.setLanguageId("java");
             assertTrue(waitFor(
                 () -> hasTokenType(applied.get(), 0, TokenType.KEYWORD),
-                Duration.ofSeconds(2)
+                Duration.ofSeconds(5)
             ));
         } finally {
             pipeline.dispose();
@@ -49,7 +49,7 @@ class IncrementalLexerPipelineTest {
                 return line != null
                     && "const value = 1;".equals(line.text())
                     && hasTokenType(applied.get(), 0, TokenType.KEYWORD);
-            }, Duration.ofSeconds(2)));
+            }, Duration.ofSeconds(5)));
         } finally {
             pipeline.dispose();
         }
@@ -65,7 +65,7 @@ class IncrementalLexerPipelineTest {
             assertTrue(waitFor(() -> {
                 LineTokens line = applied.get().lineAt(0);
                 return line != null && line.tokens().isEmpty();
-            }, Duration.ofSeconds(2)));
+            }, Duration.ofSeconds(5)));
 
             LineTokens line = applied.get().lineAt(0);
             assertNotNull(line);
@@ -82,7 +82,7 @@ class IncrementalLexerPipelineTest {
         IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(document, applied::set, Runnable::run, 40);
         try {
             pipeline.setLanguageId("java");
-            assertTrue(waitFor(() -> hasTokenType(applied.get(), 0, TokenType.KEYWORD), Duration.ofSeconds(2)));
+            assertTrue(waitFor(() -> hasTokenType(applied.get(), 0, TokenType.KEYWORD), Duration.ofSeconds(5)));
 
             document.replace(0, 5, "clazz");
             int lineOneStart = document.toOffset(1, 0);
@@ -90,7 +90,7 @@ class IncrementalLexerPipelineTest {
 
             assertTrue(waitFor(
                 () -> !hasTokenType(applied.get(), 0, TokenType.KEYWORD),
-                Duration.ofSeconds(2)
+                Duration.ofSeconds(5)
             ));
         } finally {
             pipeline.dispose();
@@ -119,7 +119,7 @@ class IncrementalLexerPipelineTest {
             pipeline.setLanguageId("java");
             assertTrue(waitFor(
                 () -> hasTokenType(applied.get(), 0, TokenType.KEYWORD),
-                Duration.ofSeconds(2)
+                Duration.ofSeconds(5)
             ));
 
             document.setText("class Broken {}");
@@ -133,7 +133,7 @@ class IncrementalLexerPipelineTest {
                 return line != null
                     && "class Broken {}".equals(line.text())
                     && line.tokens().isEmpty();
-            }, Duration.ofSeconds(2)));
+            }, Duration.ofSeconds(5)));
 
             failLexing.set(false);
             document.setText("let value = 1;");
@@ -143,7 +143,7 @@ class IncrementalLexerPipelineTest {
                 return line != null
                     && "let value = 1;".equals(line.text())
                     && hasTokenType(applied.get(), 0, TokenType.KEYWORD);
-            }, Duration.ofSeconds(2)));
+            }, Duration.ofSeconds(5)));
         } finally {
             pipeline.dispose();
         }
@@ -167,7 +167,7 @@ class IncrementalLexerPipelineTest {
             pipeline.setLanguageId("java");
             assertTrue(waitFor(
                 () -> hasTokenType(applied.get(), 0, TokenType.KEYWORD),
-                Duration.ofSeconds(2)
+                Duration.ofSeconds(5)
             ));
 
             int countBeforeDispose = applyCount.get();

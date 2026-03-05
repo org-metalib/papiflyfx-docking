@@ -11,7 +11,7 @@
     <name>papiflyfx-docking-media</name>
     <description>JavaFX media viewer component for PapiflyFX docking.</description>
     <properties>
-        <testfx.headless>false</testfx.headless>
+        <testfx.headless>true</testfx.headless>
         <testfx.robot>glass</testfx.robot>
         <testfx.platform>Desktop</testfx.platform>
         <monocle.platform>Headless</monocle.platform>
