@@ -68,3 +68,14 @@ Please confirm two points before implementation:
 
 1. Keep java.net.http as the canonical GitHub integration (not org.kohsuke:github-api)?
 2. Keep ContentStateAdapter persistence as Phase 6 optional (not required in v1)?
+
+## Implementation
+
+- Implement everything specified by `spec/papiflyfx-docking-github/plan.md`. when you’re done with a task or phase, mark it
+as completed in the `spec/papiflyfx-docking-github/plan.md` document.
+- Add new `spec/papiflyfx-docking-github/progress.md` file to track your progress.
+- Do not stop until all tasks and phases are completed. Do not add unnecessary comments or javadocs, do not use any or unknown types.
+- Continuously run typecheck to make sure you’re not introducing new issues.
+- add github module readme
+
+## 

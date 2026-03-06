@@ -17,6 +17,7 @@
         <module>papiflyfx-docking-tree</module>
         <module>papiflyfx-docking-media</module>
         <module>papiflyfx-docking-hugo</module>
+        <module>papiflyfx-docking-github</module>
         <module>papiflyfx-docking-samples</module>
     </modules>
 
@@ -32,6 +33,7 @@
         <junit.jupiter.version>5.10.2</junit.jupiter.version>
         <testfx.version>4.0.18</testfx.version>
         <monocle.version>21.0.2</monocle.version>
+        <jgit.version>7.2.0.202503040940-r</jgit.version>
         <maven.surefire.plugin.version>3.2.5</maven.surefire.plugin.version>
         <javafx.maven.plugin.version>0.0.8</javafx.maven.plugin.version>
         <os.maven.plugin.version>1.7.1</os.maven.plugin.version>
@@ -90,6 +92,11 @@
                 <groupId>org.testfx</groupId>
                 <artifactId>openjfx-monocle</artifactId>
                 <version>${monocle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jgit</groupId>
+                <artifactId>org.eclipse.jgit</artifactId>
+                <version>${jgit.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

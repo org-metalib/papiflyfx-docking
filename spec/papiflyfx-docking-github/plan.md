@@ -383,3 +383,60 @@ The merged plan can proceed as written, but these two decisions should be confir
 
 1. Confirm `java.net.http` as the canonical GitHub integration (instead of `org.kohsuke:github-api`).
 2. Confirm whether toolbar state persistence via `ContentStateAdapter` is required in v1 or should remain Phase 6 optional.
+
+## 18. Implementation Status
+
+### Clarifications
+
+- [x] `java.net.http` kept as canonical GitHub integration.
+- [x] `ContentStateAdapter` support implemented in the module.
+
+### Phase 1: Scaffold + read-only status
+
+- [x] Module + pom wiring.
+- [x] Context/model/parser.
+- [x] `JGitRepository` read-only status/branches/head.
+- [x] Toolbar shell + theme binding + base tests.
+
+### Phase 2: Branch operations
+
+- [x] Checkout/create branch.
+- [x] New-branch + dirty-checkout dialogs.
+- [x] ViewModel wiring + branch tests.
+
+### Phase 3: Commit + rollback
+
+- [x] Commit flow + default-branch guard.
+- [x] Rollback dialog + safety policy.
+- [x] Unit tests for rollback modes.
+
+### Phase 4: Push + auth
+
+- [x] Credential store implementations.
+- [x] Token dialog + push flow.
+- [x] Push rejection handling + tests.
+
+### Phase 5: Pull requests
+
+- [x] GitHub API service.
+- [x] PR dialog + open-in-browser option.
+- [x] API and ViewModel tests.
+
+### Phase 6: Hardening + optional persistence
+
+- [x] Retry/backoff for transient API errors.
+- [x] Optional `ContentStateAdapter` for toolbar context restore.
+- [x] Optional keychain-backed credentials (`KeychainTokenStore`).
+
+### Acceptance Criteria
+
+- [x] Toolbar mounts at top or bottom via host wrapper.
+- [x] Repo link opens browser.
+- [x] Branch + dirty status updates correctly.
+- [x] Branch checkout and new branch creation work for local clone.
+- [x] Commit is blocked on default branch.
+- [x] Rollback enforces safe behavior for pushed commits.
+- [x] Push works with PAT and reports common rejection reasons.
+- [x] PR creation succeeds and returns/open URL.
+- [x] No long-running operation blocks FX thread.
+- [x] Unit + TestFX suites pass in headless mode.
