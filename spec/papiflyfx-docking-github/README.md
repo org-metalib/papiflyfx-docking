@@ -77,5 +77,3 @@ as completed in the `spec/papiflyfx-docking-github/plan.md` document.
 - Do not stop until all tasks and phases are completed. Do not add unnecessary comments or javadocs, do not use any or unknown types.
 - Continuously run typecheck to make sure you’re not introducing new issues.
 - add github module readme
-
-## 
