@@ -69,6 +69,53 @@ Assumption: the review note's `huge` reference means `HugoPreviewToolbar`.
    - shaped controls with intent
    - See `HugoPreviewToolbar.java:20-330`.
 
+### 3.4 Detailed theme coverage audit
+
+Current `GitHubToolbar.applyTheme(...)` coverage is narrower than it first appears.
+
+| Element | Current theme coverage | Gap |
+|---|---|---|
+| Toolbar root container | background, border | no group-level or control-level styling |
+| `statusLabel` | text fill | no font, no semantic status treatment |
+| `dirtyDot` | accent text fill | relies on color only |
+| `errorLabel` | hardcoded error red | not theme-derived, no font |
+| Buttons | none | background, text, hover, pressed, focus, disabled |
+| `branchCombo` | none | field surface, arrow button, text, disabled, focus |
+| `repoLink` | none | link color, hover, visited, contained surface |
+| `busyIndicator` | none | accent / track styling remains platform default |
+| Separator labels | opacity only | should use semantic divider treatment |
+| Dialogs | none | background, border, inputs, buttons, warning text |
+
+Additional explicit gap list from the current implementation:
+
+- There are seven stock `Button` controls with no toolbar-specific theme treatment.
+- The separator labels use a fixed opacity instead of `Theme.dividerColor()`.
+- Fonts from `Theme.headerFont()` and `Theme.contentFont()` are not propagated into toolbar controls.
+
+### 3.5 Utility and constructor gaps
+
+Two low-level issues from the current code deserve explicit tracking because they are easy to miss during a visual pass.
+
+1. `toHex(Paint)` strips alpha.
+   - Any translucent paint becomes opaque.
+   - This is already solved better in `SearchController.paintToCss(...)`, which emits `rgba(r,g,b,a)`.
+2. `GitHubToolbar` applies `Theme.dark()` in the constructor before external theme binding.
+   - In a light-themed host, that can cause an initial dark flash before `bindThemeProperty(...)` runs.
+   - This matters most for convenience constructors and `fromState(...)`, where the caller cannot currently seed an initial theme.
+
+### 3.6 Additional reference pattern: `DockTabGroup`
+
+The toolbar should also align with the more programmatic JavaFX styling approach already used in docking chrome.
+
+| Visual trait | `DockTabGroup` pattern | Current `GitHubToolbar` state |
+|---|---|---|
+| Container background | strongly-typed JavaFX `Background` API | root inline style string |
+| Hover / pressed states | explicit themed behavior | not implemented |
+| Font usage | `theme.headerFont()` / `theme.contentFont()` | not applied |
+| Corner radius | derived from `theme.cornerRadius()` | not applied consistently |
+| Divider color | semantic divider paint | literal `"|"` label with opacity |
+| Accent / focus treatment | theme accent used structurally | accent only reaches dirty dot |
+
 ## 4. Design Direction
 
 The GitHub toolbar should feel like application chrome, not a default form row.
@@ -190,6 +237,33 @@ Recommended root style variables:
 - `-pf-github-badge-border`
 - `-pf-github-error-bg`
 - `-pf-github-shadow`
+
+### 5.3 Supplemental engineering notes from the current code audit
+
+These are low-level implementation details worth keeping even if the final design stays CSS-first.
+
+1. Replace `toHex(Paint)` with an alpha-safe helper similar to `SearchController.paintToCss(...)`.
+   - Keep an opaque-hex helper only if a specific JavaFX API call actually requires it.
+2. If any controls remain programmatically themed, promote constructor-local nodes to fields first.
+   - At minimum: all action buttons, `repoLink`, and any separator nodes that still exist.
+3. If any grouped surfaces are implemented programmatically, prefer JavaFX `Background` / `Border` APIs for containers over long style strings.
+4. If any button hover / pressed behavior is implemented programmatically, avoid repeated string replacement and listener accumulation across theme updates.
+   - Preferred fallback pattern: keep normal / hover / pressed styles in a small record stored on the control.
+5. `ProgressIndicator` accent styling is likely a best-effort path even in a CSS-first design.
+   - If JavaFX skin limitations prevent full color control, accept a partial result rather than over-engineering it.
+
+### 5.4 Initial theme seeding and no-flash behavior
+
+The final implementation should explicitly address first-render theme correctness.
+
+Recommended options:
+
+1. Allow constructors, factories, and `fromState(...)` paths to accept an initial theme.
+2. Or ensure the toolbar is not rendered before theme binding in sample / host integration code.
+
+Minimum requirement:
+
+- The toolbar should not briefly render in dark mode inside a light-themed application.
 
 ## 6. Toolbar UX Redesign
 
@@ -321,6 +395,19 @@ Recommended approach:
 - Style `DialogPane`, buttons, labels, text fields, combo boxes, and warning text
 - Keep dialog layout simple, but use the same surface, border, and focus treatment as the toolbar
 
+Minimum dialog theming scope from the audit:
+
+- `DialogPane` background and border
+- header / title area background
+- body labels and helper text
+- `TextArea`, `TextField`, `PasswordField`, and combo boxes
+- action buttons, including destructive emphasis where applicable
+
+Implementation timing note:
+
+- If dialog button styling depends on `lookupButton(...)`, apply it in `setOnShowing(...)` or another post-scene hook.
+- The constructor alone may be too early for reliable button node access.
+
 Recommended priority:
 
 - Phase 1 must include toolbar restyling
@@ -343,6 +430,7 @@ Recommended priority:
 - [ ] Replace the existing `applyTheme(...)` node-by-node styling with CSS variable assignment on the toolbar root.
 - [ ] Add stable style classes and ids for groups, badges, action types, and status area.
 - [ ] Add simple SVG icon support if needed, without new runtime dependencies.
+- [ ] Use alpha-safe `rgba(...)` variable output for theme values instead of opaque hex-only conversion.
 
 ## Phase C - Toolbar layout refactor
 
@@ -366,6 +454,8 @@ Recommended priority:
 - [ ] Theme the GitHub dialogs with the same derived palette.
 - [ ] Style destructive and primary dialog actions consistently with the toolbar.
 - [ ] Ensure focus rings and disabled states still read clearly in both dark and light themes.
+- [ ] Pass the active theme from `GitHubToolbar` into dialog construction or apply it at dialog-show time.
+- [ ] Style dialog buttons only after button nodes are available.
 
 ## Phase F - Tests and validation
 
@@ -387,6 +477,33 @@ Recommended priority:
   - Hugo toolbar grouping and action weight
 - [ ] Capture screenshots for the review folder if the team wants a visual record.
 
+### 9.1 Supplemental file impact checklist
+
+Likely files touched by the preferred plan:
+
+| File | Expected change |
+|---|---|
+| `GitHubToolbar.java` | layout regrouping, stylesheet loading, theme-variable application, initial-theme handling |
+| `GitHubToolbarViewModel.java` | richer read-only state for badges and status |
+| `CommitDialog.java` | themed dialog treatment |
+| `NewBranchDialog.java` | themed dialog treatment |
+| `TokenDialog.java` | themed dialog treatment |
+| `RollbackDialog.java` | themed dialog treatment |
+| `PullRequestDialog.java` | themed dialog treatment |
+| `GitHubToolbarFxTest.java` | structural and theme-aware assertions |
+| `GitHubToolbarSample.java` | improved themed sample coverage |
+| `github-toolbar.css` | toolbar classes and CSS variables |
+| `github-dialog.css` | dialog classes and CSS variables |
+| `GitHubToolbarTheme.java` | GitHub-specific derived theme contract |
+| `GitHubToolbarThemeMapper.java` | mapping from docking `Theme` to GitHub UI palette |
+
+Files that should stay unchanged unless later work proves otherwise:
+
+- `Theme.java`
+- Maven POMs
+- external dependencies
+- `CodeEditorTheme` and `CodeEditorThemeMapper`
+
 ## 10. Acceptance Criteria
 
 The review should be considered complete only when all of the following are true:
@@ -400,6 +517,18 @@ The review should be considered complete only when all of the following are true
 7. GitHub dialogs no longer feel visually disconnected from the toolbar.
 8. Tests protect theme mapping and theme switching behavior.
 
+### 10.1 Detailed visual consistency targets
+
+In addition to the acceptance list above, the Claude review surfaced a few more concrete visual checks worth preserving:
+
+1. The toolbar background should read as the same family as docking chrome, not as an unrelated form surface.
+2. The accent color should be used consistently across repo link treatment, focus states, badges, and busy affordances.
+3. Divider treatment should be semantic and theme-driven, not opacity-based decoration.
+4. Toolbar typography should match docking content and chrome typography intentionally.
+5. Hover and pressed states should clearly derive from `Theme.buttonHoverBackground()` and `Theme.buttonPressedBackground()`.
+6. Light theme should not leak dark-only assumptions, and dark theme should not leak white dialog panes.
+7. Remote-only mode should look purpose-built, not merely disabled.
+
 ## 11. Risks And How To Contain Them
 
 1. JavaFX `ComboBox` skin styling can be brittle across platforms.
@@ -412,6 +541,13 @@ The review should be considered complete only when all of the following are true
 4. It is easy to over-design a toolbar and reduce clarity.
    - Keep labels explicit.
    - Use icons only as support, not as the sole meaning carrier.
+5. JavaFX user-agent styling can still interfere with some programmatic or inline overrides.
+   - Prefer CSS variables + explicit style classes for controls.
+   - Use strongly-typed `Background` / `Border` APIs for container surfaces where that is more reliable.
+6. Dialog button nodes may not exist at constructor time.
+   - Apply any `lookupButton(...)` styling in `setOnShowing(...)`, `onShown`, or equivalent late hook.
+7. Reapplying theme logic can accidentally accumulate hover / pressed listeners in any programmatic fallback path.
+   - Centralize control styling and avoid re-registering listeners on every theme change.
 
 ## 12. Recommended Implementation Order
 
@@ -434,3 +570,20 @@ The right fix is:
 - expose richer repo state visually
 - align the dialogs with the same palette
 - add theme-focused tests so the polish does not regress
+
+## 14. Additional Notes From Claude Review
+
+The Claude review also described a lower-change fallback path that keeps styling mostly programmatic and avoids new CSS files.
+
+That is not the preferred direction in this document, but the alternative is worth recording:
+
+- extend the current `applyTheme(...)` directly to all controls
+- theme dialogs by styling `DialogPane` and looked-up buttons programmatically
+- keep `Theme.java` unchanged
+- require no new files in that fallback path
+- avoid Maven or dependency changes
+
+Decision:
+
+- Keep the Codex plan's CSS-variable + local theme-mapper direction as the primary implementation path.
+- Retain the Claude review's low-level audit notes as engineering guidance and fallback options if CSS adoption hits a JavaFX limitation.
