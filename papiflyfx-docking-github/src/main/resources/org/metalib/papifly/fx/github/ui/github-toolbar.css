@@ -1,0 +1,186 @@
+.pf-github-toolbar {
+    -fx-background-color: -pf-github-toolbar-bg;
+    -fx-border-color: -pf-github-toolbar-border;
+    -fx-border-width: 0 0 1 0;
+    -fx-alignment: center-left;
+}
+
+.pf-github-toolbar .label {
+    -fx-text-fill: -pf-github-text;
+}
+
+.pf-github-group {
+    -fx-alignment: center-left;
+    -fx-spacing: 6;
+    -fx-padding: 5 8 5 8;
+    -fx-background-color: -pf-github-group-bg;
+    -fx-border-color: -pf-github-group-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.pf-github-status-group {
+    -fx-background-color: -pf-github-status-bg;
+}
+
+.pf-github-link-surface {
+    -fx-alignment: center-left;
+    -fx-padding: 2 8 2 8;
+    -fx-background-color: -pf-github-control-bg;
+    -fx-border-color: -pf-github-control-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.pf-github-repo-link {
+    -fx-text-fill: -pf-github-link;
+    -fx-underline: false;
+    -fx-border-color: transparent;
+    -fx-padding: 4 2 4 2;
+}
+
+.pf-github-repo-link:hover {
+    -fx-text-fill: -pf-github-accent;
+}
+
+.pf-github-badge {
+    -fx-font-size: 11px;
+    -fx-padding: 2 8 2 8;
+    -fx-background-color: -pf-github-badge-bg;
+    -fx-border-color: -pf-github-badge-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 100;
+    -fx-background-radius: 100;
+    -fx-text-fill: -pf-github-text;
+}
+
+.pf-github-badge-accent {
+    -fx-background-color: rgba(0, 122, 204, 0.14);
+    -fx-border-color: -pf-github-accent;
+}
+
+.pf-github-badge-success {
+    -fx-background-color: rgba(71, 164, 115, 0.14);
+    -fx-border-color: -pf-github-success;
+}
+
+.pf-github-badge-warning {
+    -fx-background-color: rgba(198, 154, 49, 0.14);
+    -fx-border-color: -pf-github-warning;
+}
+
+.pf-github-badge-danger {
+    -fx-background-color: rgba(209, 105, 105, 0.16);
+    -fx-border-color: -pf-github-danger;
+}
+
+.pf-github-badge-muted {
+    -fx-text-fill: -pf-github-muted-text;
+}
+
+.pf-github-button {
+    -fx-background-color: -pf-github-control-bg;
+    -fx-text-fill: -pf-github-text;
+    -fx-border-color: -pf-github-control-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-padding: 0 10 0 10;
+}
+
+.pf-github-button:hover {
+    -fx-background-color: -pf-github-control-hover-bg;
+}
+
+.pf-github-button:armed {
+    -fx-background-color: -pf-github-control-pressed-bg;
+}
+
+.pf-github-button:focused {
+    -fx-border-color: -pf-github-focus-border;
+}
+
+.pf-github-button:disabled {
+    -fx-text-fill: -pf-github-disabled-text;
+    -fx-opacity: 1.0;
+}
+
+.pf-github-button-primary {
+    -fx-background-color: -pf-github-accent;
+    -fx-border-color: -pf-github-accent;
+    -fx-text-fill: white;
+}
+
+.pf-github-button-primary:hover {
+    -fx-background-color: -pf-github-control-hover-bg;
+    -fx-text-fill: -pf-github-text;
+}
+
+.pf-github-button-outline-accent {
+    -fx-background-color: transparent;
+    -fx-border-color: -pf-github-accent;
+}
+
+.pf-github-button-outline-accent:hover {
+    -fx-background-color: rgba(0, 122, 204, 0.10);
+}
+
+.pf-github-button-outline-danger {
+    -fx-background-color: transparent;
+    -fx-border-color: -pf-github-danger;
+}
+
+.pf-github-button-outline-danger:hover {
+    -fx-background-color: rgba(209, 105, 105, 0.12);
+}
+
+.pf-github-combo {
+    -fx-background-color: -pf-github-control-bg;
+    -fx-text-fill: -pf-github-text;
+}
+
+.pf-github-combo > .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.pf-github-combo,
+.pf-github-combo > .list-cell {
+    -fx-background-color: -pf-github-control-bg;
+    -fx-border-color: -pf-github-control-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-text-fill: -pf-github-text;
+}
+
+.pf-github-combo:focused {
+    -fx-border-color: -pf-github-focus-border;
+}
+
+.pf-github-combo:disabled {
+    -fx-opacity: 1.0;
+}
+
+.pf-github-combo:disabled > .list-cell {
+    -fx-text-fill: -pf-github-disabled-text;
+}
+
+.pf-github-busy-indicator {
+    -fx-progress-color: -pf-github-busy-indicator;
+}
+
+.pf-github-status-label {
+    -fx-text-fill: -pf-github-muted-text;
+}
+
+.pf-github-error-label {
+    -fx-padding: 2 8 2 8;
+    -fx-background-color: -pf-github-error-bg;
+    -fx-border-color: -pf-github-danger;
+    -fx-border-width: 1;
+    -fx-border-radius: 100;
+    -fx-background-radius: 100;
+    -fx-text-fill: -pf-github-text;
+}

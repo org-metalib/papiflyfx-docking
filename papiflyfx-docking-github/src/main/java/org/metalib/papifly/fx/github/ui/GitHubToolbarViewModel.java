@@ -2,13 +2,16 @@ package org.metalib.papifly.fx.github.ui;
 
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.ReadOnlyIntegerProperty;
 import javafx.beans.property.ReadOnlyListProperty;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -27,8 +30,10 @@ import org.metalib.papifly.fx.github.model.PullRequestResult;
 import org.metalib.papifly.fx.github.model.RepoStatus;
 import org.metalib.papifly.fx.github.model.RollbackMode;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
@@ -48,6 +53,12 @@ public class GitHubToolbarViewModel implements AutoCloseable {
     private final StringProperty errorText;
     private final BooleanProperty authenticated;
     private final BooleanProperty localAvailable;
+    private final BooleanProperty remoteOnly;
+    private final BooleanProperty detachedHead;
+    private final BooleanProperty defaultBranchActive;
+    private final IntegerProperty aheadCount;
+    private final IntegerProperty behindCount;
+    private final IntegerProperty dirtyCount;
     private final ObjectProperty<CommitInfo> headCommit;
     private final ListProperty<BranchRef> branches;
 
@@ -68,6 +79,8 @@ public class GitHubToolbarViewModel implements AutoCloseable {
         this.gitHubApiService = Objects.requireNonNull(gitHubApiService, "gitHubApiService");
         this.commandRunner = Objects.requireNonNull(commandRunner, "commandRunner");
 
+        boolean hasLocalRepository = context.hasLocalClone() && gitRepository != null;
+
         this.currentBranch = new SimpleStringProperty("");
         this.defaultBranch = new SimpleStringProperty("main");
         this.dirty = new SimpleBooleanProperty(false);
@@ -75,7 +88,13 @@ public class GitHubToolbarViewModel implements AutoCloseable {
         this.statusText = new SimpleStringProperty("Idle");
         this.errorText = new SimpleStringProperty("");
         this.authenticated = new SimpleBooleanProperty(credentialStore.isAuthenticated());
-        this.localAvailable = new SimpleBooleanProperty(context.hasLocalClone() && gitRepository != null);
+        this.localAvailable = new SimpleBooleanProperty(hasLocalRepository);
+        this.remoteOnly = new SimpleBooleanProperty(!hasLocalRepository);
+        this.detachedHead = new SimpleBooleanProperty(false);
+        this.defaultBranchActive = new SimpleBooleanProperty(false);
+        this.aheadCount = new SimpleIntegerProperty(0);
+        this.behindCount = new SimpleIntegerProperty(0);
+        this.dirtyCount = new SimpleIntegerProperty(0);
         this.headCommit = new SimpleObjectProperty<>();
         this.branches = new SimpleListProperty<>(FXCollections.observableArrayList());
 
@@ -128,16 +147,29 @@ public class GitHubToolbarViewModel implements AutoCloseable {
         }, result -> {
             defaultBranch.set(result.defaultBranch());
             if (result.repoStatus() != null) {
-                currentBranch.set(result.repoStatus().currentBranch());
-                dirty.set(result.repoStatus().dirty());
+                RepoStatus repoStatus = result.repoStatus();
+                currentBranch.set(repoStatus.currentBranch());
+                dirty.set(repoStatus.dirty());
+                detachedHead.set(repoStatus.detachedHead());
+                aheadCount.set(Math.max(0, repoStatus.aheadCount()));
+                behindCount.set(Math.max(0, repoStatus.behindCount()));
+                dirtyCount.set(countDirtyEntries(repoStatus));
+                defaultBranchActive.set(repoStatus.currentBranch().equals(result.defaultBranch()));
             } else {
                 currentBranch.set("");
                 dirty.set(false);
+                detachedHead.set(false);
+                aheadCount.set(0);
+                behindCount.set(0);
+                dirtyCount.set(0);
+                defaultBranchActive.set(false);
             }
             branches.setAll(result.branches());
             headCommit.set(result.headCommit());
             authenticated.set(credentialStore.isAuthenticated());
-            localAvailable.set(context.hasLocalClone() && gitRepository != null);
+            boolean hasLocalRepository = context.hasLocalClone() && gitRepository != null;
+            localAvailable.set(hasLocalRepository);
+            remoteOnly.set(!hasLocalRepository);
             if (result.apiError().isBlank()) {
                 errorText.set("");
             } else {
@@ -304,6 +336,17 @@ public class GitHubToolbarViewModel implements AutoCloseable {
         return message == null || message.isBlank() ? "Operation failed" : message;
     }
 
+    private static int countDirtyEntries(RepoStatus repoStatus) {
+        Set<String> dirtyEntries = new LinkedHashSet<>();
+        dirtyEntries.addAll(repoStatus.added());
+        dirtyEntries.addAll(repoStatus.changed());
+        dirtyEntries.addAll(repoStatus.removed());
+        dirtyEntries.addAll(repoStatus.missing());
+        dirtyEntries.addAll(repoStatus.modified());
+        dirtyEntries.addAll(repoStatus.untracked());
+        return dirtyEntries.size();
+    }
+
     public GitHubRepoContext context() {
         return context;
     }
@@ -338,6 +381,30 @@ public class GitHubToolbarViewModel implements AutoCloseable {
 
     public ReadOnlyBooleanProperty localAvailableProperty() {
         return localAvailable;
+    }
+
+    public ReadOnlyBooleanProperty remoteOnlyProperty() {
+        return remoteOnly;
+    }
+
+    public ReadOnlyBooleanProperty detachedHeadProperty() {
+        return detachedHead;
+    }
+
+    public ReadOnlyBooleanProperty defaultBranchActiveProperty() {
+        return defaultBranchActive;
+    }
+
+    public ReadOnlyIntegerProperty aheadCountProperty() {
+        return aheadCount;
+    }
+
+    public ReadOnlyIntegerProperty behindCountProperty() {
+        return behindCount;
+    }
+
+    public ReadOnlyIntegerProperty dirtyCountProperty() {
+        return dirtyCount;
     }
 
     public ReadOnlyObjectProperty<CommitInfo> headCommitProperty() {

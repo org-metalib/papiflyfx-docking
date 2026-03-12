@@ -7,11 +7,16 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.VBox;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.github.model.RollbackMode;
 
 public class RollbackDialog extends Dialog<RollbackMode> {
 
     public RollbackDialog(boolean headPushed) {
+        this(headPushed, null);
+    }
+
+    public RollbackDialog(boolean headPushed, Theme theme) {
         setTitle("Rollback Last Commit");
 
         ButtonType applyType = new ButtonType("Apply", ButtonBar.ButtonData.OK_DONE);
@@ -39,6 +44,8 @@ public class RollbackDialog extends Dialog<RollbackMode> {
         VBox content = new VBox(8, revert, soft, hard);
         content.setPadding(new Insets(12));
         getDialogPane().setContent(content);
+
+        GitHubDialogStyler.apply(this, theme);
 
         setResultConverter(buttonType -> {
             if (buttonType != applyType || toggleGroup.getSelectedToggle() == null) {

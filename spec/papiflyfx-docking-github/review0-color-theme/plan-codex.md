@@ -417,65 +417,74 @@ Recommended priority:
 
 ## Phase A - Theme foundation
 
-- [ ] Add `GitHubToolbarTheme` record.
-- [ ] Add `GitHubToolbarThemeMapper`.
-- [ ] Add light/dark detection logic based on background brightness.
-- [ ] Add mapper unit tests similar to `CodeEditorThemeMapperTest`.
-- [ ] Keep `Theme` unchanged for this pass.
+- [x] Add `GitHubToolbarTheme` record.
+- [x] Add `GitHubToolbarThemeMapper`.
+- [x] Add light/dark detection logic based on background brightness.
+- [x] Add mapper unit tests similar to `CodeEditorThemeMapperTest`.
+- [x] Keep `Theme` unchanged for this pass.
 
 ## Phase B - CSS infrastructure
 
-- [ ] Add `github-toolbar.css`.
-- [ ] Load the stylesheet from `GitHubToolbar`.
-- [ ] Replace the existing `applyTheme(...)` node-by-node styling with CSS variable assignment on the toolbar root.
-- [ ] Add stable style classes and ids for groups, badges, action types, and status area.
-- [ ] Add simple SVG icon support if needed, without new runtime dependencies.
-- [ ] Use alpha-safe `rgba(...)` variable output for theme values instead of opaque hex-only conversion.
+- [x] Add `github-toolbar.css`.
+- [x] Load the stylesheet from `GitHubToolbar`.
+- [x] Replace the existing `applyTheme(...)` node-by-node styling with CSS variable assignment on the toolbar root.
+- [x] Add stable style classes and ids for groups, badges, action types, and status area.
+- [x] Add simple SVG icon support if needed, without new runtime dependencies.
+- [x] Use alpha-safe `rgba(...)` variable output for theme values instead of opaque hex-only conversion.
 
 ## Phase C - Toolbar layout refactor
 
-- [ ] Replace literal separators with grouped containers.
-- [ ] Split the toolbar into repository, branch, changes, remote, and status groups.
-- [ ] Convert the repo link into a contained surface.
-- [ ] Introduce badges / chips for dirty, remote-only, default-branch, ahead, and behind states.
-- [ ] Refine button hierarchy and spacing using theme-derived radii and heights.
-- [ ] Make remote-only mode collapse local groups instead of just disabling them.
+- [x] Replace literal separators with grouped containers.
+- [x] Split the toolbar into repository, branch, changes, remote, and status groups.
+- [x] Convert the repo link into a contained surface.
+- [x] Introduce badges / chips for dirty, remote-only, default-branch, ahead, and behind states.
+- [x] Refine button hierarchy and spacing using theme-derived radii and heights.
+- [x] Make remote-only mode collapse local groups instead of just disabling them.
 
 ## Phase D - View model enrichment
 
-- [ ] Preserve current behavior but expose richer read-only properties for UI state.
-- [ ] Surface ahead / behind / detached / default-branch state.
-- [ ] Compute a compact dirty count.
-- [ ] Keep command enablement logic unchanged unless required by the visual redesign.
+- [x] Preserve current behavior but expose richer read-only properties for UI state.
+- [x] Surface ahead / behind / detached / default-branch state.
+- [x] Compute a compact dirty count.
+- [x] Keep command enablement logic unchanged unless required by the visual redesign.
 
 ## Phase E - Dialog alignment
 
-- [ ] Add `github-dialog.css` or a shared GitHub UI stylesheet.
-- [ ] Theme the GitHub dialogs with the same derived palette.
-- [ ] Style destructive and primary dialog actions consistently with the toolbar.
-- [ ] Ensure focus rings and disabled states still read clearly in both dark and light themes.
-- [ ] Pass the active theme from `GitHubToolbar` into dialog construction or apply it at dialog-show time.
-- [ ] Style dialog buttons only after button nodes are available.
+- [x] Add `github-dialog.css` or a shared GitHub UI stylesheet.
+- [x] Theme the GitHub dialogs with the same derived palette.
+- [x] Style destructive and primary dialog actions consistently with the toolbar.
+- [x] Ensure focus rings and disabled states still read clearly in both dark and light themes.
+- [x] Pass the active theme from `GitHubToolbar` into dialog construction or apply it at dialog-show time.
+- [x] Style dialog buttons only after button nodes are available.
 
 ## Phase F - Tests and validation
 
-- [ ] Add `GitHubToolbarThemeMapperTest`.
-- [ ] Add `GitHubToolbarThemeIntegrationTest` modeled after `CodeEditorThemeIntegrationTest`.
-- [ ] Verify dark theme variables are applied after binding.
-- [ ] Verify switching to `Theme.light()` changes the toolbar root style string.
-- [ ] Verify remote-only mode collapses the local groups if that recommendation is accepted.
-- [ ] Verify badges appear for dirty / ahead / behind / error states.
-- [ ] Verify dialogs receive the same theme treatment.
-- [ ] Update `GitHubToolbarFxTest` to assert style classes or high-level structure, not exact pixel colors.
+- [x] Add `GitHubToolbarThemeMapperTest`.
+- [x] Add `GitHubToolbarThemeIntegrationTest` modeled after `CodeEditorThemeIntegrationTest`.
+- [x] Verify dark theme variables are applied after binding.
+- [x] Verify switching to `Theme.light()` changes the toolbar root style string.
+- [x] Verify remote-only mode collapses the local groups if that recommendation is accepted.
+- [x] Verify badges appear for dirty / ahead / behind / error states.
+- [x] Verify dialogs receive the same theme treatment.
+- [x] Update `GitHubToolbarFxTest` to assert style classes or high-level structure, not exact pixel colors.
 
 ## Phase G - Sample and manual review
 
-- [ ] Update `GitHubToolbarSample` to showcase both remote-only and local-clone states if practical.
-- [ ] Manually compare the toolbar against:
+- [x] Update `GitHubToolbarSample` to showcase both remote-only and local-clone states if practical.
+- [x] Manually compare the toolbar against:
   - code search overlay in dark and light themes
   - go-to-line overlay in dark and light themes
   - Hugo toolbar grouping and action weight
-- [ ] Capture screenshots for the review folder if the team wants a visual record.
+- [x] Capture screenshots for the review folder if the team wants a visual record.
+
+Completed review notes:
+
+- Manual comparison was checked against `SearchController`, `GoToLineController`, and `HugoPreviewToolbar`; the GitHub toolbar now matches those references on grouped surfaces, action hierarchy, and theme-driven hover/focus treatment.
+- Review screenshots were exported to:
+  - `spec/papiflyfx-docking-github/review0-color-theme/github-toolbar-local-dark.png`
+  - `spec/papiflyfx-docking-github/review0-color-theme/github-toolbar-local-light.png`
+  - `spec/papiflyfx-docking-github/review0-color-theme/github-toolbar-remote-dark.png`
+  - `spec/papiflyfx-docking-github/review0-color-theme/github-toolbar-remote-light.png`
 
 ### 9.1 Supplemental file impact checklist
 

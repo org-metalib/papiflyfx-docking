@@ -9,11 +9,16 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.github.model.PullRequestDraft;
 
 public class PullRequestDialog extends Dialog<PullRequestDraft> {
 
     public PullRequestDialog(String currentBranch, String defaultBranch) {
+        this(currentBranch, defaultBranch, null);
+    }
+
+    public PullRequestDialog(String currentBranch, String defaultBranch, Theme theme) {
         setTitle("Create Pull Request");
 
         ButtonType createType = new ButtonType("Create PR", ButtonBar.ButtonData.OK_DONE);
@@ -38,6 +43,7 @@ public class PullRequestDialog extends Dialog<PullRequestDraft> {
         grid.add(openBrowser, 1, 4);
 
         getDialogPane().setContent(grid);
+        GitHubDialogStyler.apply(this, theme);
 
         setResultConverter(buttonType -> {
             if (buttonType != createType) {

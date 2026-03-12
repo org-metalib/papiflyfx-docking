@@ -1,0 +1,80 @@
+package org.metalib.papifly.fx.github.ui.theme;
+
+import javafx.geometry.Insets;
+import javafx.scene.paint.Color;
+import org.junit.jupiter.api.Test;
+import org.metalib.papifly.fx.docking.api.Theme;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class GitHubToolbarThemeMapperTest {
+
+    @Test
+    void mapNullUsesDarkThemeFallback() {
+        GitHubToolbarTheme result = GitHubToolbarThemeMapper.map(null);
+        assertNotNull(result);
+        assertEquals(Theme.dark().headerBackground(), result.toolbarBackground());
+        assertEquals(Theme.dark().accentColor(), result.accent());
+    }
+
+    @Test
+    void mapDarkThemePropagatesAccentAndMetrics() {
+        GitHubToolbarTheme result = GitHubToolbarThemeMapper.map(Theme.dark());
+        assertEquals(Theme.dark().accentColor(), result.accent());
+        assertEquals(Theme.dark().accentColor(), result.focusBorder());
+        assertEquals(Theme.dark().accentColor(), result.busyIndicator());
+        assertTrue(result.cornerRadius() >= 8.0);
+        assertTrue(result.buttonHeight() >= 28.0);
+    }
+
+    @Test
+    void mapLightThemeProducesDarkPrimaryText() {
+        GitHubToolbarTheme result = GitHubToolbarThemeMapper.map(Theme.light());
+        assertNotNull(result);
+        Color text = (Color) result.textPrimary();
+        assertTrue(text.getBrightness() < 0.5);
+        assertFalse(GitHubToolbarThemeMapper.isDark(Theme.light().background()));
+    }
+
+    @Test
+    void customAccentPropagatesToBusyAndFocus() {
+        Theme custom = new Theme(
+            Color.rgb(30, 30, 30),
+            Color.rgb(45, 45, 45),
+            Color.rgb(60, 60, 60),
+            Color.RED,
+            Color.rgb(200, 200, 200),
+            Color.WHITE,
+            Color.rgb(60, 60, 60),
+            Color.rgb(80, 80, 80),
+            Color.rgb(0, 122, 204, 0.3),
+            javafx.scene.text.Font.font(12),
+            javafx.scene.text.Font.font(12),
+            4.0,
+            1.0,
+            28.0,
+            24.0,
+            Insets.EMPTY,
+            Color.rgb(70, 70, 70),
+            Color.rgb(90, 90, 90),
+            Color.rgb(40, 40, 40),
+            8.0,
+            24.0
+        );
+        GitHubToolbarTheme result = GitHubToolbarThemeMapper.map(custom);
+        assertEquals(Color.RED, result.accent());
+        assertEquals(Color.RED, result.focusBorder());
+        assertEquals(Color.RED, result.busyIndicator());
+    }
+
+    @Test
+    void isDarkDetectsDarkColors() {
+        assertTrue(GitHubToolbarThemeMapper.isDark(Color.BLACK));
+        assertTrue(GitHubToolbarThemeMapper.isDark(Color.web("#1e1e1e")));
+        assertFalse(GitHubToolbarThemeMapper.isDark(Color.WHITE));
+        assertFalse(GitHubToolbarThemeMapper.isDark(Color.web("#f0f0f0")));
+    }
+}

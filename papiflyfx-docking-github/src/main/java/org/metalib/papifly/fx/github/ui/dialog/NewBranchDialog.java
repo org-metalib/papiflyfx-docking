@@ -9,6 +9,7 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.github.model.BranchRef;
 
 import java.util.LinkedHashSet;
@@ -18,6 +19,10 @@ import java.util.Optional;
 public class NewBranchDialog extends Dialog<NewBranchDialog.Result> {
 
     public NewBranchDialog(List<BranchRef> branches, String selectedStartPoint) {
+        this(branches, selectedStartPoint, null);
+    }
+
+    public NewBranchDialog(List<BranchRef> branches, String selectedStartPoint, Theme theme) {
         setTitle("Create Branch");
 
         ButtonType createType = new ButtonType("Create", ButtonBar.ButtonData.OK_DONE);
@@ -46,6 +51,8 @@ public class NewBranchDialog extends Dialog<NewBranchDialog.Result> {
         grid.addRow(1, new Label("Start Point"), startPoint);
 
         getDialogPane().setContent(grid);
+        GitHubDialogStyler.apply(this, theme);
+
         setResultConverter(buttonType -> {
             if (buttonType != createType) {
                 return null;

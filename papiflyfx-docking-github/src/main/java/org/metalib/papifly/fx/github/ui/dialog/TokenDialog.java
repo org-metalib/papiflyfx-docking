@@ -7,10 +7,15 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.layout.VBox;
+import org.metalib.papifly.fx.docking.api.Theme;
 
 public class TokenDialog extends Dialog<String> {
 
     public TokenDialog() {
+        this(null);
+    }
+
+    public TokenDialog(Theme theme) {
         setTitle("GitHub Token");
 
         ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
@@ -23,6 +28,8 @@ public class TokenDialog extends Dialog<String> {
         VBox content = new VBox(8, new Label("Personal access token"), tokenField);
         content.setPadding(new Insets(12));
         getDialogPane().setContent(content);
+
+        GitHubDialogStyler.apply(this, theme);
 
         setResultConverter(buttonType -> {
             if (buttonType == saveType) {

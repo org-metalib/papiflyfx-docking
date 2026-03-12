@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,25 +28,25 @@ class GitHubToolbarViewModelTest {
     void remoteOnlyModeDisablesLocalActions() {
         PatCredentialStore store = new PatCredentialStore();
         GitHubRepoContext context = GitHubRepoContext.remoteOnly(URI.create("https://github.com/org/repo"));
-        FakeGitHubApiService api = new FakeGitHubApiService();
 
         try (GitHubToolbarViewModel viewModel = new GitHubToolbarViewModel(
             context,
             store,
             null,
-            api,
+            new FakeGitHubApiService(),
             new CommandRunner(true)
         )) {
             viewModel.refresh();
 
             assertFalse(viewModel.localAvailableProperty().get());
+            assertTrue(viewModel.remoteOnlyProperty().get());
             assertTrue(viewModel.commitDisabledProperty().get());
             assertTrue(viewModel.pushDisabledProperty().get());
         }
     }
 
     @Test
-    void commitDisabledOnDefaultBranch() {
+    void refreshPublishesRepoStateFlagsAndCounts() {
         PatCredentialStore store = new PatCredentialStore();
         store.setToken("token");
         GitHubRepoContext context = GitHubRepoContext.of(
@@ -55,13 +56,13 @@ class GitHubToolbarViewModelTest {
 
         FakeGitRepository repository = new FakeGitRepository();
         repository.status = new RepoStatus(
+            "feature/x",
             "main",
-            "main",
-            false,
-            0,
-            0,
-            Set.of("A"),
-            Set.of(),
+            true,
+            3,
+            1,
+            Set.of("A.java"),
+            Set.of("B.java"),
             Set.of(),
             Set.of(),
             Set.of(),
@@ -76,15 +77,23 @@ class GitHubToolbarViewModelTest {
             new CommandRunner(true)
         )) {
             viewModel.refresh();
-            assertTrue(viewModel.commitDisabledProperty().get());
+
+            assertTrue(viewModel.localAvailableProperty().get());
+            assertFalse(viewModel.remoteOnlyProperty().get());
+            assertTrue(viewModel.dirtyProperty().get());
+            assertEquals(2, viewModel.dirtyCountProperty().get());
+            assertEquals(3, viewModel.aheadCountProperty().get());
+            assertEquals(1, viewModel.behindCountProperty().get());
+            assertTrue(viewModel.detachedHeadProperty().get());
+            assertFalse(viewModel.defaultBranchActiveProperty().get());
 
             repository.status = new RepoStatus(
-                "feature/x",
+                "main",
                 "main",
                 false,
                 0,
                 0,
-                Set.of("A"),
+                Set.of(),
                 Set.of(),
                 Set.of(),
                 Set.of(),
@@ -93,7 +102,9 @@ class GitHubToolbarViewModelTest {
             );
             viewModel.refresh();
 
-            assertFalse(viewModel.commitDisabledProperty().get());
+            assertTrue(viewModel.defaultBranchActiveProperty().get());
+            assertEquals(0, viewModel.dirtyCountProperty().get());
+            assertFalse(viewModel.detachedHeadProperty().get());
         }
     }
 
