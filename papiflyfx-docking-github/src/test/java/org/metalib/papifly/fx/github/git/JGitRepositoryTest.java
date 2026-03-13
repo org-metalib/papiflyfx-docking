@@ -1,13 +1,17 @@
 package org.metalib.papifly.fx.github.git;
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.Repository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.metalib.papifly.fx.github.model.BranchRef;
 import org.metalib.papifly.fx.github.model.CommitInfo;
+import org.metalib.papifly.fx.github.model.CurrentRefState;
+import org.metalib.papifly.fx.github.model.GitRefKind;
 import org.metalib.papifly.fx.github.model.RepoStatus;
 import org.metalib.papifly.fx.github.model.RollbackMode;
+import org.metalib.papifly.fx.github.model.TagRef;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -157,6 +161,82 @@ class JGitRepositoryTest {
 
             assertNotNull(defaultBranch);
             assertFalse(defaultBranch.isBlank());
+        }
+    }
+
+    @Test
+    void listsTagsAndResolvesDetachedTag(@TempDir Path tempDir) throws Exception {
+        Path repoDir = tempDir.resolve("repo");
+        initRepository(repoDir);
+
+        try (Git git = Git.open(repoDir.toFile())) {
+            git.tag().setName("v1.0.0").call();
+            git.checkout().setName("v1.0.0").call();
+        }
+
+        try (JGitRepository repository = new JGitRepository(repoDir, () -> null)) {
+            List<TagRef> tags = repository.listTags();
+            CurrentRefState currentRef = repository.loadCurrentRef();
+
+            assertTrue(tags.stream().anyMatch(tag -> tag.name().equals("v1.0.0") && tag.current()));
+            assertEquals(GitRefKind.TAG, currentRef.kind());
+            assertEquals("v1.0.0", currentRef.displayName());
+            assertTrue(currentRef.detached());
+        }
+    }
+
+    @Test
+    void resolvesDetachedCommitWhenHeadIsNotOnTag(@TempDir Path tempDir) throws Exception {
+        Path repoDir = tempDir.resolve("repo");
+        initRepository(repoDir);
+        String firstCommit;
+
+        try (Git git = Git.open(repoDir.toFile())) {
+            firstCommit = git.getRepository().resolve(Constants.HEAD).getName();
+            writeFile(repoDir.resolve("commit.txt"), "two");
+            git.add().addFilepattern(".").call();
+            git.commit().setMessage("second").call();
+            git.checkout().setName(firstCommit).call();
+        }
+
+        try (JGitRepository repository = new JGitRepository(repoDir, () -> null)) {
+            CurrentRefState currentRef = repository.loadCurrentRef();
+
+            assertEquals(GitRefKind.DETACHED_COMMIT, currentRef.kind());
+            assertEquals(firstCommit.substring(0, 7), currentRef.displayName());
+            assertTrue(currentRef.detached());
+        }
+    }
+
+    @Test
+    void updateFetchesRemoteChangesWithoutMerging(@TempDir Path tempDir) throws Exception {
+        Path remoteDir = tempDir.resolve("remote.git");
+        Path seedDir = tempDir.resolve("seed");
+        Path localDir = tempDir.resolve("local");
+
+        initBareRepository(remoteDir);
+        initRepository(seedDir);
+        try (Git seed = Git.open(seedDir.toFile())) {
+            String current = seed.getRepository().getBranch();
+            seed.remoteAdd().setName("origin").setUri(new org.eclipse.jgit.transport.URIish(remoteDir.toUri().toString())).call();
+            seed.push().setRemote("origin").add("refs/heads/" + current + ":refs/heads/" + current).call();
+        }
+
+        cloneRepository(remoteDir, localDir);
+
+        try (Git seed = Git.open(seedDir.toFile())) {
+            writeFile(seedDir.resolve("update.txt"), "remote");
+            seed.add().addFilepattern(".").call();
+            seed.commit().setMessage("remote update").call();
+            seed.push().setRemote("origin").call();
+        }
+
+        try (JGitRepository repository = new JGitRepository(localDir, () -> null)) {
+            repository.update();
+            RepoStatus status = repository.loadStatus();
+
+            assertEquals(1, status.behindCount());
+            assertEquals(0, status.aheadCount());
         }
     }
 

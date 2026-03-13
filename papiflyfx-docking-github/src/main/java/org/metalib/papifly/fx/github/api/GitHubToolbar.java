@@ -1,29 +1,35 @@
 package org.metalib.papifly.fx.github.api;
 
+import javafx.animation.PauseTransition;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.value.ChangeListener;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import javafx.collections.ListChangeListener;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
-import javafx.scene.control.OverrunStyle;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.util.Duration;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.github.auth.CredentialStore;
 import org.metalib.papifly.fx.github.auth.PatCredentialStore;
 import org.metalib.papifly.fx.github.git.GitRepository;
 import org.metalib.papifly.fx.github.git.JGitRepository;
 import org.metalib.papifly.fx.github.github.GitHubApiService;
-import org.metalib.papifly.fx.github.model.BranchRef;
+import org.metalib.papifly.fx.github.model.CurrentRefState;
+import org.metalib.papifly.fx.github.model.GitRefKind;
 import org.metalib.papifly.fx.github.model.PullRequestResult;
+import org.metalib.papifly.fx.github.model.RefPopupEntry;
+import org.metalib.papifly.fx.github.model.SecondaryChip;
+import org.metalib.papifly.fx.github.model.StatusMessage;
 import org.metalib.papifly.fx.github.ui.CommandRunner;
 import org.metalib.papifly.fx.github.ui.GitHubToolbarViewModel;
 import org.metalib.papifly.fx.github.ui.dialog.CommitDialog;
@@ -32,15 +38,17 @@ import org.metalib.papifly.fx.github.ui.dialog.NewBranchDialog;
 import org.metalib.papifly.fx.github.ui.dialog.PullRequestDialog;
 import org.metalib.papifly.fx.github.ui.dialog.RollbackDialog;
 import org.metalib.papifly.fx.github.ui.dialog.TokenDialog;
+import org.metalib.papifly.fx.github.ui.popup.GitRefPopup;
+import org.metalib.papifly.fx.github.ui.popup.GitRefPopupController;
 import org.metalib.papifly.fx.github.ui.theme.GitHubThemeSupport;
 import org.metalib.papifly.fx.github.ui.theme.GitHubToolbarTheme;
 import org.metalib.papifly.fx.github.ui.theme.GitHubToolbarThemeMapper;
+import org.metalib.papifly.fx.github.ui.toolbar.RefPill;
 
 import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -50,42 +58,33 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
 
     public static final String FACTORY_ID = "github-toolbar";
 
-    private static final List<String> BADGE_VARIANTS = List.of(
-        "pf-github-badge-accent",
-        "pf-github-badge-success",
-        "pf-github-badge-warning",
-        "pf-github-badge-danger",
-        "pf-github-badge-muted"
+    private static final List<String> CHIP_VARIANTS = List.of(
+        "pf-github-chip-accent",
+        "pf-github-chip-success",
+        "pf-github-chip-warning",
+        "pf-github-chip-danger",
+        "pf-github-chip-muted"
     );
 
     private final GitHubToolbarViewModel viewModel;
 
-    private final Hyperlink repoLink;
-    private final HBox repoLinkSurface;
-    private final ComboBox<String> branchCombo;
-    private final Button checkoutButton;
-    private final Button newBranchButton;
+    private final Label brandBadge;
+    private final Button repoPill;
+    private final RefPill refPill;
+    private final HBox chipStrip;
+    private final HBox actionBar;
+    private final Button updateButton;
     private final Button commitButton;
-    private final Button rollbackButton;
     private final Button pushButton;
     private final Button prButton;
-    private final Button tokenButton;
-    private final Label currentBranchBadge;
-    private final Label dirtyBadge;
-    private final Label modeBadge;
-    private final Label defaultBranchBadge;
-    private final Label detachedBadge;
-    private final Label aheadBadge;
-    private final Label behindBadge;
-    private final Label authBadge;
+    private final MenuButton overflowButton;
+    private final HBox statusSlot;
+    private final ProgressIndicator busyIndicator;
     private final Label statusLabel;
     private final Label errorLabel;
-    private final ProgressIndicator busyIndicator;
-    private final HBox repoGroup;
-    private final HBox branchGroup;
-    private final HBox changesGroup;
-    private final HBox remoteGroup;
-    private final HBox statusGroup;
+    private final GitRefPopup refPopup;
+    private final GitRefPopupController refPopupController;
+    private final PauseTransition successClearPause;
 
     private ObjectProperty<Theme> themeProperty;
     private ChangeListener<Theme> themeListener;
@@ -116,61 +115,52 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         setId("github-toolbar");
         setAlignment(Pos.CENTER_LEFT);
 
-        repoLink = new Hyperlink(viewModel.context().owner() + "/" + viewModel.context().repo());
-        repoLink.setId("github-repo-link");
-        repoLink.getStyleClass().add("pf-github-repo-link");
-        repoLink.setTextOverrun(OverrunStyle.LEADING_ELLIPSIS);
-        repoLink.setMaxWidth(260);
-        repoLink.setOnAction(event -> openBrowser(viewModel.context().remoteUrl()));
+        brandBadge = new Label("GitHub");
+        brandBadge.setId("github-brand-badge");
+        brandBadge.getStyleClass().add("pf-github-brand-badge");
 
-        repoLinkSurface = new HBox(repoLink);
-        repoLinkSurface.setAlignment(Pos.CENTER_LEFT);
-        repoLinkSurface.setId("github-repo-link-surface");
-        repoLinkSurface.getStyleClass().add("pf-github-link-surface");
+        repoPill = new Button(viewModel.context().owner() + "/" + viewModel.context().repo());
+        repoPill.setId("github-repo-pill");
+        repoPill.getStyleClass().add("pf-github-repo-pill");
+        repoPill.setMnemonicParsing(false);
+        repoPill.setOnAction(event -> openBrowser(viewModel.context().remoteUrl()));
 
-        branchCombo = new ComboBox<>(FXCollections.observableArrayList());
-        branchCombo.setId("github-branch-combo");
-        branchCombo.getStyleClass().add("pf-github-combo");
-        branchCombo.setPrefWidth(190);
-        branchCombo.setVisibleRowCount(12);
+        refPill = new RefPill();
 
-        checkoutButton = createButton("Checkout", "github-checkout-button");
-        checkoutButton.setOnAction(event -> onCheckout());
+        chipStrip = new HBox();
+        chipStrip.setId("github-chip-strip");
+        chipStrip.getStyleClass().add("pf-github-chip-strip");
+        chipStrip.setAlignment(Pos.CENTER_LEFT);
+        bindManagedToVisible(chipStrip);
 
-        newBranchButton = createButton("New Branch", "github-new-branch-button");
-        newBranchButton.setOnAction(event -> onCreateBranch());
+        updateButton = createActionButton("Update", "github-update-button");
+        updateButton.setOnAction(event -> viewModel.updateRepository());
 
-        commitButton = createButton("Commit", "github-commit-button");
+        commitButton = createActionButton("Commit", "github-commit-button");
         commitButton.setOnAction(event -> onCommit());
 
-        rollbackButton = createButton("Rollback", "github-rollback-button", "pf-github-button-outline-danger");
-        rollbackButton.setOnAction(event -> onRollback());
-
-        pushButton = createButton("Push", "github-push-button", "pf-github-button-primary");
+        pushButton = createActionButton("Push", "github-push-button");
         pushButton.setOnAction(event -> viewModel.push());
 
-        prButton = createButton("Create PR", "github-pr-button", "pf-github-button-outline-accent");
+        prButton = createActionButton("PR", "github-pr-button");
         prButton.setOnAction(event -> onCreatePullRequest());
 
-        tokenButton = createButton("Token", "github-token-button");
-        tokenButton.setOnAction(event -> onToken());
+        overflowButton = new MenuButton("...");
+        overflowButton.setId("github-overflow-button");
+        overflowButton.getStyleClass().addAll("pf-github-action-button", "pf-github-overflow-button");
+        overflowButton.setMnemonicParsing(false);
+        overflowButton.setOnShowing(event -> refreshOverflowMenu());
 
-        currentBranchBadge = createBadge("github-current-branch-badge");
-        dirtyBadge = createBadge("github-dirty-badge");
-        modeBadge = createBadge("github-mode-badge");
-        defaultBranchBadge = createBadge("github-default-branch-badge");
-        detachedBadge = createBadge("github-detached-badge");
-        aheadBadge = createBadge("github-ahead-badge");
-        behindBadge = createBadge("github-behind-badge");
-        authBadge = createBadge("github-auth-badge");
+        actionBar = new HBox(updateButton, commitButton, pushButton, prButton, overflowButton);
+        actionBar.setId("github-action-bar");
+        actionBar.getStyleClass().add("pf-github-action-bar");
+        actionBar.setAlignment(Pos.CENTER_LEFT);
 
         busyIndicator = new ProgressIndicator();
         busyIndicator.setId("github-busy-indicator");
         busyIndicator.getStyleClass().add("pf-github-busy-indicator");
         busyIndicator.setPrefSize(16, 16);
         busyIndicator.setMaxSize(16, 16);
-        busyIndicator.visibleProperty().bind(viewModel.busyProperty());
-        busyIndicator.managedProperty().bind(busyIndicator.visibleProperty());
 
         statusLabel = new Label();
         statusLabel.setId("github-status-text");
@@ -181,72 +171,51 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         errorLabel.setId("github-error-text");
         errorLabel.getStyleClass().add("pf-github-error-label");
         errorLabel.textProperty().bind(viewModel.errorTextProperty());
-        errorLabel.visibleProperty().bind(viewModel.errorTextProperty().isNotEmpty());
-        errorLabel.managedProperty().bind(errorLabel.visibleProperty());
 
-        repoGroup = createGroup("github-repo-group");
-        repoGroup.getChildren().addAll(
-            repoLinkSurface,
-            currentBranchBadge,
-            dirtyBadge,
-            modeBadge,
-            defaultBranchBadge,
-            detachedBadge
-        );
-
-        branchGroup = createGroup("github-branch-group");
-        branchGroup.getChildren().addAll(branchCombo, checkoutButton, newBranchButton);
-
-        changesGroup = createGroup("github-changes-group");
-        changesGroup.getChildren().addAll(commitButton, rollbackButton);
-
-        remoteGroup = createGroup("github-remote-group");
-        remoteGroup.getChildren().addAll(pushButton, prButton, tokenButton);
-
-        statusGroup = createGroup("github-status-group", "pf-github-status-group");
-        statusGroup.getChildren().addAll(busyIndicator, aheadBadge, behindBadge, authBadge, statusLabel, errorLabel);
+        statusSlot = new HBox(busyIndicator, statusLabel, errorLabel);
+        statusSlot.setId("github-status-slot");
+        statusSlot.getStyleClass().add("pf-github-status-slot");
+        statusSlot.setAlignment(Pos.CENTER_LEFT);
+        bindManagedToVisible(statusSlot);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        getChildren().setAll(repoGroup, branchGroup, changesGroup, remoteGroup, spacer, statusGroup);
+        getChildren().setAll(brandBadge, repoPill, refPill, chipStrip, spacer, actionBar, statusSlot);
 
-        bindManagedToVisible(branchGroup);
-        bindManagedToVisible(changesGroup);
-        bindManagedToVisible(pushButton);
+        refPopup = new GitRefPopup();
+        refPopupController = new GitRefPopupController(viewModel, refPopup, this::onPopupAction, this::onPopupRefActivated);
 
-        branchGroup.visibleProperty().bind(viewModel.localAvailableProperty());
-        changesGroup.visibleProperty().bind(viewModel.localAvailableProperty());
-        pushButton.visibleProperty().bind(viewModel.localAvailableProperty());
+        successClearPause = new PauseTransition(Duration.seconds(2));
+        successClearPause.setOnFinished(event -> viewModel.clearStatusMessage());
 
+        updateButton.disableProperty().bind(viewModel.updateDisabledProperty());
         commitButton.disableProperty().bind(viewModel.commitDisabledProperty());
         pushButton.disableProperty().bind(viewModel.pushDisabledProperty());
         prButton.disableProperty().bind(viewModel.pullRequestDisabledProperty());
-        checkoutButton.disableProperty().bind(viewModel.busyProperty().or(viewModel.localAvailableProperty().not()));
-        newBranchButton.disableProperty().bind(viewModel.busyProperty().or(viewModel.localAvailableProperty().not()));
-        rollbackButton.disableProperty().bind(viewModel.busyProperty().or(viewModel.localAvailableProperty().not()));
-        branchCombo.disableProperty().bind(viewModel.busyProperty().or(viewModel.localAvailableProperty().not()));
-        tokenButton.disableProperty().bind(viewModel.busyProperty());
+        overflowButton.disableProperty().bind(viewModel.busyProperty());
 
-        viewModel.branchesProperty().addListener((obs, oldList, newList) -> syncBranches(newList));
-        viewModel.currentBranchProperty().addListener((obs, oldValue, newValue) -> {
-            if (newValue != null && !newValue.isBlank()) {
-                branchCombo.setValue(newValue);
-            }
-            refreshBadges();
-        });
-        viewModel.localAvailableProperty().addListener((obs, oldValue, newValue) -> refreshBadges());
-        viewModel.dirtyProperty().addListener((obs, oldValue, newValue) -> refreshBadges());
-        viewModel.dirtyCountProperty().addListener((obs, oldValue, newValue) -> refreshBadges());
-        viewModel.defaultBranchActiveProperty().addListener((obs, oldValue, newValue) -> refreshBadges());
-        viewModel.detachedHeadProperty().addListener((obs, oldValue, newValue) -> refreshBadges());
-        viewModel.aheadCountProperty().addListener((obs, oldValue, newValue) -> refreshBadges());
-        viewModel.behindCountProperty().addListener((obs, oldValue, newValue) -> refreshBadges());
-        viewModel.authenticatedProperty().addListener((obs, oldValue, newValue) -> refreshBadges());
+        bindManagedToVisible(updateButton);
+        bindManagedToVisible(commitButton);
+        bindManagedToVisible(pushButton);
+        updateButton.visibleProperty().bind(viewModel.remoteOnlyProperty().not());
+        commitButton.visibleProperty().bind(viewModel.remoteOnlyProperty().not());
+        pushButton.visibleProperty().bind(viewModel.remoteOnlyProperty().not());
 
-        syncBranches(viewModel.branchesProperty());
+        refPill.setOnAction(event -> refPopupController.toggle(refPill));
+        refPill.addEventFilter(KeyEvent.KEY_PRESSED, this::handleRefPillKeyPressed);
+
+        viewModel.currentRefStateProperty().addListener((obs, oldValue, newValue) -> refreshRefPill());
+        viewModel.secondaryChipsProperty().addListener((ListChangeListener<SecondaryChip>) change -> refreshChips());
+        viewModel.statusMessageProperty().addListener((obs, oldValue, newValue) -> refreshStatusSlot());
+        viewModel.localAvailableProperty().addListener((obs, oldValue, newValue) -> refreshOverflowMenu());
+        viewModel.authenticatedProperty().addListener((obs, oldValue, newValue) -> refreshOverflowMenu());
+
         applyTheme(initialTheme == null ? Theme.dark() : initialTheme);
-        refreshBadges();
+        refreshRefPill();
+        refreshChips();
+        refreshStatusSlot();
+        refreshOverflowMenu();
         viewModel.refresh();
     }
 
@@ -285,34 +254,10 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
 
     @Override
     public void close() {
+        successClearPause.stop();
+        refPopupController.hide();
         unbindThemeProperty();
         viewModel.close();
-    }
-
-    private void onCheckout() {
-        String selected = branchCombo.getValue();
-        if (selected == null || selected.isBlank()) {
-            return;
-        }
-        boolean force = false;
-        String currentBranch = viewModel.currentBranchProperty().get();
-        if (viewModel.dirtyProperty().get() && !selected.equals(currentBranch)) {
-            force = DirtyCheckoutAlert.confirm(selected, activeTheme());
-            if (!force) {
-                return;
-            }
-        }
-        viewModel.switchBranch(selected, force);
-    }
-
-    private void onCreateBranch() {
-        NewBranchDialog dialog = new NewBranchDialog(
-            viewModel.branchesProperty(),
-            viewModel.currentBranchProperty().get(),
-            activeTheme()
-        );
-        dialog.initOwner(getScene() == null ? null : getScene().getWindow());
-        dialog.showAndWait().ifPresent(result -> viewModel.createBranch(result.name(), result.startPoint()));
     }
 
     private void onCommit() {
@@ -325,6 +270,16 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         RollbackDialog dialog = new RollbackDialog(viewModel.isHeadPushed(), activeTheme());
         dialog.initOwner(getScene() == null ? null : getScene().getWindow());
         dialog.showAndWait().ifPresent(viewModel::rollback);
+    }
+
+    private void onCreateBranch() {
+        NewBranchDialog dialog = new NewBranchDialog(
+            viewModel.branchesProperty(),
+            viewModel.currentBranchProperty().get(),
+            activeTheme()
+        );
+        dialog.initOwner(getScene() == null ? null : getScene().getWindow());
+        dialog.showAndWait().ifPresent(result -> viewModel.createBranch(result.name(), result.startPoint()));
     }
 
     private void onCreatePullRequest() {
@@ -350,67 +305,106 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         dialog.showAndWait().ifPresent(viewModel::saveToken);
     }
 
-    private void syncBranches(List<BranchRef> refs) {
-        LinkedHashSet<String> names = new LinkedHashSet<>();
-        for (BranchRef ref : refs) {
-            if (ref.local()) {
-                names.add(ref.name());
+    private void onPopupAction(RefPopupEntry.Action action) {
+        switch (action.command()) {
+            case UPDATE -> viewModel.updateRepository();
+            case COMMIT -> onCommit();
+            case PUSH -> viewModel.push();
+            case NEW_BRANCH -> onCreateBranch();
+            case ROLLBACK -> onRollback();
+            case TOKEN -> onToken();
+            case CHECKOUT, CHECKOUT_AND_TRACK -> {
+                if (action.targetRefKind() != null && !action.targetRefName().isBlank()) {
+                    requestRefCheckout(action.targetRefName(), action.targetRefKind());
+                }
             }
-        }
-        if (names.isEmpty()) {
-            for (BranchRef ref : refs) {
-                names.add(ref.name());
+            case CHECKOUT_REVISION, OPEN_COMMIT, COMPARE_WITH_WORKING_TREE, SHOW_DIFF_WITH_WORKING_TREE, RENAME, DELETE_LOCAL_BRANCH -> {
             }
-        }
-        ObservableList<String> items = branchCombo.getItems();
-        items.setAll(names);
-        String current = viewModel.currentBranchProperty().get();
-        if (current != null && !current.isBlank()) {
-            branchCombo.setValue(current);
         }
     }
 
-    private void refreshBadges() {
-        boolean localAvailable = viewModel.localAvailableProperty().get();
-        String currentBranch = viewModel.currentBranchProperty().get();
-        boolean hasBranch = currentBranch != null && !currentBranch.isBlank();
-        boolean dirty = viewModel.dirtyProperty().get();
-        int dirtyCount = viewModel.dirtyCountProperty().get();
-        int aheadCount = viewModel.aheadCountProperty().get();
-        int behindCount = viewModel.behindCountProperty().get();
-        boolean authenticated = viewModel.authenticatedProperty().get();
+    private void onPopupRefActivated(RefPopupEntry.Ref ref) {
+        requestRefCheckout(ref.fullRefName(), ref.refKind());
+    }
 
-        currentBranchBadge.setText(currentBranch == null ? "" : currentBranch);
-        currentBranchBadge.setVisible(localAvailable && hasBranch);
-        setBadgeVariant(currentBranchBadge, "pf-github-badge-accent");
+    private void requestRefCheckout(String targetRefName, GitRefKind kind) {
+        CurrentRefState currentRef = viewModel.currentRefStateProperty().get();
+        if (currentRef != null && Objects.equals(currentRef.fullName(), targetRefName)) {
+            return;
+        }
+        boolean force = false;
+        if (viewModel.dirtyProperty().get()) {
+            force = DirtyCheckoutAlert.confirm(displayRefName(targetRefName), activeTheme());
+            if (!force) {
+                return;
+            }
+        }
+        viewModel.switchRef(targetRefName, kind, force);
+    }
 
-        dirtyBadge.setText(dirtyCount > 0 ? "Dirty " + dirtyCount : "Dirty");
-        dirtyBadge.setVisible(localAvailable && dirty);
-        setBadgeVariant(dirtyBadge, "pf-github-badge-warning");
+    private void refreshRefPill() {
+        CurrentRefState refState = viewModel.currentRefStateProperty().get();
+        if (refState != null) {
+            refPill.update(refState);
+        }
+    }
 
-        modeBadge.setText(localAvailable ? "Local clone" : "Remote only");
-        modeBadge.setVisible(true);
-        setBadgeVariant(modeBadge, localAvailable ? "pf-github-badge-success" : "pf-github-badge-muted");
+    private void refreshChips() {
+        chipStrip.getChildren().clear();
+        for (SecondaryChip chip : viewModel.secondaryChipsProperty()) {
+            chipStrip.getChildren().add(createChip(chip));
+        }
+        chipStrip.setVisible(!chipStrip.getChildren().isEmpty());
+    }
 
-        defaultBranchBadge.setText("Default");
-        defaultBranchBadge.setVisible(localAvailable && viewModel.defaultBranchActiveProperty().get());
-        setBadgeVariant(defaultBranchBadge, "pf-github-badge-warning");
+    private void refreshOverflowMenu() {
+        MenuItem rollbackItem = new MenuItem("Rollback");
+        rollbackItem.setOnAction(event -> onRollback());
+        rollbackItem.setDisable(viewModel.busyProperty().get() || !viewModel.localAvailableProperty().get());
 
-        detachedBadge.setText("Detached");
-        detachedBadge.setVisible(localAvailable && viewModel.detachedHeadProperty().get());
-        setBadgeVariant(detachedBadge, "pf-github-badge-danger");
+        MenuItem tokenItem = new MenuItem(viewModel.authenticatedProperty().get() ? "Update Token" : "Set Token");
+        tokenItem.setOnAction(event -> onToken());
+        tokenItem.setDisable(viewModel.busyProperty().get());
 
-        aheadBadge.setText("Ahead " + aheadCount);
-        aheadBadge.setVisible(localAvailable && aheadCount > 0);
-        setBadgeVariant(aheadBadge, "pf-github-badge-accent");
+        overflowButton.getItems().setAll(viewModel.localAvailableProperty().get()
+            ? List.of(rollbackItem, tokenItem)
+            : List.of(tokenItem));
+    }
 
-        behindBadge.setText("Behind " + behindCount);
-        behindBadge.setVisible(localAvailable && behindCount > 0);
-        setBadgeVariant(behindBadge, "pf-github-badge-warning");
+    private void refreshStatusSlot() {
+        StatusMessage message = viewModel.statusMessageProperty().get();
+        StatusMessage.Kind kind = message == null ? StatusMessage.Kind.IDLE : message.kind();
 
-        authBadge.setText(authenticated ? "Token" : "No token");
-        authBadge.setVisible(true);
-        setBadgeVariant(authBadge, authenticated ? "pf-github-badge-success" : "pf-github-badge-muted");
+        busyIndicator.setVisible(kind == StatusMessage.Kind.BUSY);
+        busyIndicator.setManaged(kind == StatusMessage.Kind.BUSY);
+
+        boolean showStatusText = kind == StatusMessage.Kind.BUSY || kind == StatusMessage.Kind.SUCCESS;
+        statusLabel.setVisible(showStatusText && !viewModel.statusTextProperty().get().isBlank());
+        statusLabel.setManaged(statusLabel.isVisible());
+
+        boolean showError = kind == StatusMessage.Kind.ERROR && !viewModel.errorTextProperty().get().isBlank();
+        errorLabel.setVisible(showError);
+        errorLabel.setManaged(showError);
+
+        statusSlot.setVisible(kind != StatusMessage.Kind.IDLE && (busyIndicator.isVisible() || statusLabel.isVisible() || errorLabel.isVisible()));
+
+        if (kind == StatusMessage.Kind.SUCCESS) {
+            successClearPause.playFromStart();
+        } else {
+            successClearPause.stop();
+        }
+    }
+
+    private void handleRefPillKeyPressed(KeyEvent event) {
+        if (event.getCode() == KeyCode.DOWN && event.isAltDown()) {
+            refPopupController.show(refPill);
+            event.consume();
+            return;
+        }
+        if (event.getCode() == KeyCode.ESCAPE && refPopupController.isShowing()) {
+            refPopupController.hide();
+            event.consume();
+        }
     }
 
     private void openBrowser(URI uri) {
@@ -429,47 +423,24 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         currentBaseTheme = theme == null ? Theme.dark() : theme;
         currentTheme = GitHubToolbarThemeMapper.map(currentBaseTheme);
 
-        setStyle(buildRootStyle(currentBaseTheme, currentTheme));
+        String rootStyle = buildRootStyle(currentBaseTheme, currentTheme);
+        setStyle(rootStyle);
+        refPopup.setStyle(rootStyle);
         setSpacing(currentTheme.groupGap());
         setPadding(currentTheme.contentPadding());
         setMinHeight(currentTheme.toolbarHeight());
         setPrefHeight(currentTheme.toolbarHeight());
 
-        double groupSpacing = currentTheme.groupGap();
-        for (HBox group : List.of(repoGroup, branchGroup, changesGroup, remoteGroup, statusGroup)) {
-            group.setSpacing(groupSpacing);
-        }
-
         double buttonHeight = currentTheme.buttonHeight();
-        for (Button button : List.of(checkoutButton, newBranchButton, commitButton, rollbackButton, pushButton, prButton, tokenButton)) {
-            button.setMinHeight(buttonHeight);
-            button.setPrefHeight(buttonHeight);
-            button.setMaxHeight(buttonHeight);
+        for (Node node : List.of(repoPill, refPill, updateButton, commitButton, pushButton, prButton, overflowButton)) {
+            if (node instanceof javafx.scene.control.Control control) {
+                control.setMinHeight(buttonHeight);
+                control.setPrefHeight(buttonHeight);
+                control.setMaxHeight(buttonHeight);
+            }
         }
-        branchCombo.setMinHeight(buttonHeight);
-        branchCombo.setPrefHeight(buttonHeight);
-        branchCombo.setMaxHeight(buttonHeight);
 
-        for (Labeled labeled : List.of(
-            repoLink,
-            currentBranchBadge,
-            dirtyBadge,
-            modeBadge,
-            defaultBranchBadge,
-            detachedBadge,
-            aheadBadge,
-            behindBadge,
-            authBadge,
-            statusLabel,
-            errorLabel,
-            checkoutButton,
-            newBranchButton,
-            commitButton,
-            rollbackButton,
-            pushButton,
-            prButton,
-            tokenButton
-        )) {
+        for (Labeled labeled : List.of(brandBadge, repoPill, updateButton, commitButton, pushButton, prButton, overflowButton, statusLabel, errorLabel)) {
             labeled.setFont(currentBaseTheme.contentFont());
         }
     }
@@ -478,41 +449,45 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         return currentBaseTheme == null ? Theme.dark() : currentBaseTheme;
     }
 
-    private static HBox createGroup(String id, String... extraClasses) {
-        HBox group = new HBox();
-        group.setId(id);
-        group.setAlignment(Pos.CENTER_LEFT);
-        group.getStyleClass().add("pf-github-group");
-        group.getStyleClass().addAll(extraClasses);
-        return group;
-    }
-
-    private static Button createButton(String text, String id, String... extraClasses) {
+    private static Button createActionButton(String text, String id) {
         Button button = new Button(text);
         button.setId(id);
-        button.getStyleClass().add("pf-github-button");
-        button.getStyleClass().addAll(extraClasses);
+        button.getStyleClass().add("pf-github-action-button");
+        button.setMnemonicParsing(false);
         return button;
     }
 
-    private static Label createBadge(String id) {
-        Label badge = new Label();
-        badge.setId(id);
-        badge.getStyleClass().add("pf-github-badge");
-        bindManagedToVisible(badge);
-        badge.setVisible(false);
-        return badge;
+    private static Label createChip(SecondaryChip chip) {
+        Label label = new Label(chip.text());
+        label.getStyleClass().add("pf-github-chip");
+        label.getStyleClass().removeAll(CHIP_VARIANTS);
+        switch (chip.variant()) {
+            case ACCENT -> label.getStyleClass().add("pf-github-chip-accent");
+            case SUCCESS -> label.getStyleClass().add("pf-github-chip-success");
+            case WARNING -> label.getStyleClass().add("pf-github-chip-warning");
+            case DANGER -> label.getStyleClass().add("pf-github-chip-danger");
+            case MUTED -> label.getStyleClass().add("pf-github-chip-muted");
+        }
+        return label;
     }
 
     private static void bindManagedToVisible(Node node) {
         node.managedProperty().bind(node.visibleProperty());
     }
 
-    private static void setBadgeVariant(Label badge, String variant) {
-        badge.getStyleClass().removeAll(BADGE_VARIANTS);
-        if (variant != null && !variant.isBlank()) {
-            badge.getStyleClass().add(variant);
+    private static String displayRefName(String refName) {
+        if (refName.startsWith("refs/heads/")) {
+            return refName.substring("refs/heads/".length());
         }
+        if (refName.startsWith("refs/remotes/")) {
+            String value = refName.substring("refs/remotes/".length());
+            int slashIndex = value.indexOf('/');
+            return slashIndex >= 0 ? value.substring(slashIndex + 1) : value;
+        }
+        if (refName.startsWith("refs/tags/")) {
+            return refName.substring("refs/tags/".length());
+        }
+        return refName;
     }
 
     private static String buildRootStyle(Theme baseTheme, GitHubToolbarTheme toolbarTheme) {

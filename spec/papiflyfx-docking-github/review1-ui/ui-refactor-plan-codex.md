@@ -1,5 +1,7 @@
 # GitHub Toolbar UI Refactor Plan (Codex)
 
+Implementation status: completed on 2026-03-13.
+
 ## 1. Goal
 
 Implement the toolbar redesign described in `ui-refactor.md` inside the existing `papiflyfx-docking-github` module without rewriting the whole feature from scratch.
@@ -366,13 +368,13 @@ Submenu boundary for this review:
 
 ## 7. Phased Implementation Plan
 
-### Phase 1. Data and command groundwork
+### Phase 1. Data and command groundwork [completed]
 
-1. Add the richer ref-state model and popup DTOs.
-2. Add recent-ref persistence abstraction.
-3. Extend `GitRepository` / `JGitRepository` with the data needed for tags, current ref type, tracking labels, and safe update.
-4. Refactor `GitHubToolbarViewModel.refresh()` to build a coherent toolbar snapshot.
-5. Add tests for:
+1. [x] Add the richer ref-state model and popup DTOs.
+2. [x] Add recent-ref persistence abstraction.
+3. [x] Extend `GitRepository` / `JGitRepository` with the data needed for tags, current ref type, tracking labels, and safe update.
+4. [x] Refactor `GitHubToolbarViewModel.refresh()` to build a coherent toolbar snapshot.
+5. [x] Add tests for:
    - tag listing
    - detached tag vs detached commit resolution
    - recent-ref ordering
@@ -382,51 +384,52 @@ Goal of this phase:
 
 - the old toolbar can still exist temporarily, but the new data model is ready.
 
-### Phase 2. Toolbar layout refactor
+### Phase 2. Toolbar layout refactor [completed]
 
-1. Replace repo hyperlink surface with a full clickable repository pill.
-2. Replace combo box + checkout button with a ref pill stub.
-3. Introduce a compact chip strip for optional state only.
-4. Introduce new action bar layout and overflow button.
-5. Introduce status slot component and structured status binding.
+1. [x] Replace repo hyperlink surface with a full clickable repository pill.
+2. [x] Replace combo box + checkout button with a ref pill stub.
+3. [x] Introduce a compact chip strip for optional state only.
+4. [x] Introduce new action bar layout and overflow button.
+5. [x] Introduce status slot component and structured status binding.
 
 Goal of this phase:
 
 - the toolbar reads like the new design even before the full popup is complete.
 
-### Phase 3. Ref popup implementation
+### Phase 3. Ref popup implementation [completed]
 
-1. Add `PopupControl` anchored below the ref pill.
-2. Add search field with immediate focus on popup open.
-3. Add section rendering for `Recent`, `Local`, `Remote`, and `Tags`.
-4. Add mouse and keyboard behavior:
+1. [x] Add `PopupControl` anchored below the ref pill.
+2. [x] Add search field with immediate focus on popup open.
+3. [x] Add section rendering for `Recent`, `Local`, `Remote`, and `Tags`.
+4. [x] Add mouse and keyboard behavior:
    - click ref pill
    - `Enter`
    - `Space`
    - `Alt+Down`
    - `Esc` to close
-5. Add row-key navigation inside the popup:
+5. [x] Add row-key navigation inside the popup:
    - `Up`
    - `Down`
    - `Enter`
    - `Right` opens a submenu when the selected row has one
-6. Printable-key input should move focus to the search field if focus is elsewhere inside the popup.
-7. Add side-submenu support for rows that need more than one action.
-8. Wire branch and tag selection through the existing dirty-checkout safeguards.
-9. Record successful selections into `RecentRefStore`.
+6. [x] Printable-key input should move focus to the search field if focus is elsewhere inside the popup.
+7. [x] Add side-submenu support for rows that need more than one action.
+8. [x] Wire branch and tag selection through the existing dirty-checkout safeguards.
+9. [x] Record successful selections into `RecentRefStore`.
 
 Goal of this phase:
 
 - switching refs feels like the primary interaction surface, not a form field.
 
-### Phase 4. Action migration and cleanup
+### Phase 4. Action migration and cleanup [completed]
 
-1. Add visible `Update` action.
-2. Keep `Commit`, `Push`, and `PR` in the main action bar.
-3. Move lower-frequency actions such as `Rollback` and `Token` into `...`.
-4. Move `New Branch...` into the popup top action block.
-5. If time allows, add `Checkout Tag or Revision...` as a lightweight dialog launched from the popup.
-6. Remove obsolete controls and logic:
+1. [x] Add visible `Update` action.
+2. [x] Keep `Commit`, `Push`, and `PR` in the main action bar.
+3. [x] Move lower-frequency actions such as `Rollback` and `Token` into `...`.
+4. [x] Move `New Branch...` into the popup top action block.
+5. [x] If time allows, add `Checkout Tag or Revision...` as a lightweight dialog launched from the popup.
+   Implemented as a disabled popup stub for follow-up backend/dialog work.
+6. [x] Remove obsolete controls and logic:
    - branch combo box
    - checkout button
    - always-on auth badge
@@ -442,10 +445,10 @@ Action visibility rule:
   Recommended hidden actions: `Update`, `Commit`, and `Push`.
   `PR` and overflow remain available.
 
-### Phase 5. Testing, snapshots, and docs
+### Phase 5. Testing, snapshots, and docs [completed]
 
-1. Rewrite FX tests around the new contract instead of preserving assertions for the old grouped layout.
-2. Add popup behavior tests:
+1. [x] Rewrite FX tests around the new contract instead of preserving assertions for the old grouped layout.
+2. [x] Add popup behavior tests:
    - open / close
    - keyboard open
    - arrow-key navigation
@@ -455,15 +458,16 @@ Action visibility rule:
    - default branch chip
    - detached tag rendering
    - submenu rows when supported
-3. Keep view-model tests for command enablement and status transitions.
-4. Add focused tests for the ref pill:
+3. [x] Keep view-model tests for command enablement and status transitions.
+4. [x] Add focused tests for the ref pill:
    - status-dot state
    - ref-type icon selection
    - keyboard activation
-5. Keep theme-integration coverage for the new pill/popup classes.
+5. [x] Keep theme-integration coverage for the new pill/popup classes.
    Also update theme-mapper coverage if dedicated dot/pill/popup tokens are added.
-6. Export new review snapshots to `spec/papiflyfx-docking-github/review1-ui/`.
-7. Update module README only if the visible action set or behavior contract changes materially.
+6. [x] Export new review snapshots to `spec/papiflyfx-docking-github/review1-ui/`.
+7. [x] Update module README only if the visible action set or behavior contract changes materially.
+   No README change was required for this implementation pass.
 
 ## 8. Recommended File Touch List
 
@@ -496,6 +500,8 @@ Action visibility rule:
 
 ### 9.1 Automated
 
+Status: completed on 2026-03-13.
+
 Run:
 
 ```bash
@@ -519,6 +525,8 @@ Add or update tests for these scenarios:
 
 ### 9.2 Visual review
 
+Status: completed on 2026-03-13.
+
 Export snapshots for:
 
 1. local clean dark
@@ -534,6 +542,8 @@ Store them under:
 - `spec/papiflyfx-docking-github/review1-ui/`
 
 ### 9.3 Manual interaction review
+
+Status: completed on 2026-03-13.
 
 Verify:
 
@@ -552,6 +562,8 @@ Verify:
 4. New popup and pill CSS should stay on top of the existing `GitHubThemeSupport.themeVariables()` contract so dark/light support does not regress.
 
 ## 11. Exit Criteria
+
+Status: all exit criteria satisfied on 2026-03-13.
 
 This refactor is complete when all of the following are true:
 

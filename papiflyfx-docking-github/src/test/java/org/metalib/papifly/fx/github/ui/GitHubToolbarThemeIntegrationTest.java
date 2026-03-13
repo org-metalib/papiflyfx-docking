@@ -22,6 +22,7 @@ import org.metalib.papifly.fx.github.model.RepoStatus;
 import org.metalib.papifly.fx.github.model.RollbackMode;
 import org.metalib.papifly.fx.github.ui.dialog.TokenDialog;
 import org.testfx.framework.junit5.ApplicationExtension;
+import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
 
@@ -100,6 +101,26 @@ class GitHubToolbarThemeIntegrationTest {
         assertTrue(dialog.getDialogPane().getStyle().contains("-pf-github-toolbar-bg"));
     }
 
+    @Test
+    void popupReceivesThemeStyles(FxRobot robot) {
+        GitHubToolbar toolbar = createToolbar();
+        FxTestUtil.runFx(() -> {
+            root.getChildren().setAll(toolbar);
+            toolbar.bindThemeProperty(themeProperty);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        robot.clickOn("#github-ref-pill");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        javafx.scene.Node popup = robot.lookup("#github-ref-popup").query();
+        String popupStyle = FxTestUtil.callFx(popup::getStyle);
+
+        assertTrue(popupStyle.contains("-pf-github-toolbar-bg"));
+
+        FxTestUtil.runFx(toolbar::close);
+    }
+
     private GitHubToolbar createToolbar() {
         PatCredentialStore store = new PatCredentialStore();
         store.setToken("token");
@@ -172,6 +193,10 @@ class GitHubToolbarThemeIntegrationTest {
 
         @Override
         public void push(String remoteName) {
+        }
+
+        @Override
+        public void update() {
         }
 
         @Override

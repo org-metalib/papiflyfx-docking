@@ -1,5 +1,5 @@
 .pf-github-toolbar {
-    -fx-background-color: -pf-github-toolbar-bg;
+    -fx-background-color: linear-gradient(to bottom, -pf-github-toolbar-bg, derive(-pf-github-toolbar-bg, -4%));
     -fx-border-color: -pf-github-toolbar-border;
     -fx-border-width: 0 0 1 0;
     -fx-alignment: center-left;
@@ -9,162 +9,188 @@
     -fx-text-fill: -pf-github-text;
 }
 
-.pf-github-group {
-    -fx-alignment: center-left;
-    -fx-spacing: 6;
-    -fx-padding: 5 8 5 8;
+.pf-github-brand-badge {
+    -fx-padding: 4 10 4 10;
+    -fx-background-color: rgba(0, 122, 204, 0.12);
+    -fx-border-color: rgba(0, 122, 204, 0.40);
+    -fx-border-width: 1;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-text-fill: -pf-github-link;
+    -fx-font-weight: bold;
+}
+
+.pf-github-repo-pill,
+.pf-github-ref-pill {
+    -fx-padding: 0 14 0 14;
     -fx-background-color: -pf-github-group-bg;
     -fx-border-color: -pf-github-group-border;
     -fx-border-width: 1;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-}
-
-.pf-github-status-group {
-    -fx-background-color: -pf-github-status-bg;
-}
-
-.pf-github-link-surface {
-    -fx-alignment: center-left;
-    -fx-padding: 2 8 2 8;
-    -fx-background-color: -pf-github-control-bg;
-    -fx-border-color: -pf-github-control-border;
-    -fx-border-width: 1;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-}
-
-.pf-github-repo-link {
-    -fx-text-fill: -pf-github-link;
-    -fx-underline: false;
-    -fx-border-color: transparent;
-    -fx-padding: 4 2 4 2;
-}
-
-.pf-github-repo-link:hover {
-    -fx-text-fill: -pf-github-accent;
-}
-
-.pf-github-badge {
-    -fx-font-size: 11px;
-    -fx-padding: 2 8 2 8;
-    -fx-background-color: -pf-github-badge-bg;
-    -fx-border-color: -pf-github-badge-border;
-    -fx-border-width: 1;
-    -fx-border-radius: 100;
-    -fx-background-radius: 100;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
     -fx-text-fill: -pf-github-text;
 }
 
-.pf-github-badge-accent {
+.pf-github-repo-pill:hover,
+.pf-github-ref-pill:hover {
+    -fx-background-color: -pf-github-control-hover-bg;
+}
+
+.pf-github-repo-pill:armed,
+.pf-github-ref-pill:armed {
+    -fx-background-color: -pf-github-control-pressed-bg;
+}
+
+.pf-github-repo-pill:focused,
+.pf-github-ref-pill:focused,
+.pf-github-action-button:focused,
+.pf-github-overflow-button:focused,
+.pf-github-ref-popup-search:focused,
+.pf-github-ref-popup-list:focused,
+.pf-github-ref-submenu-list:focused {
+    -fx-border-color: -pf-github-focus-border;
+}
+
+.pf-github-ref-pill-content {
+    -fx-alignment: center-left;
+    -fx-spacing: 8;
+}
+
+.pf-github-ref-dot {
+    -fx-fill: -pf-github-muted-text;
+}
+
+.pf-github-ref-dot-clean {
+    -fx-fill: -pf-github-success;
+}
+
+.pf-github-ref-dot-dirty {
+    -fx-fill: -pf-github-danger;
+}
+
+.pf-github-ref-dot-neutral {
+    -fx-fill: -pf-github-muted-text;
+}
+
+.pf-github-ref-kind,
+.pf-github-ref-popup-kind {
+    -fx-min-width: 18;
+    -fx-alignment: center;
+    -fx-padding: 1 4 1 4;
+    -fx-background-color: -pf-github-control-bg;
+    -fx-background-radius: 999;
+    -fx-text-fill: -pf-github-text;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.pf-github-ref-kind-local,
+.pf-github-ref-popup-kind-local {
+    -fx-background-color: rgba(0, 122, 204, 0.16);
+}
+
+.pf-github-ref-kind-remote,
+.pf-github-ref-popup-kind-remote {
+    -fx-background-color: rgba(120, 120, 120, 0.16);
+}
+
+.pf-github-ref-kind-tag,
+.pf-github-ref-popup-kind-tag {
+    -fx-background-color: rgba(198, 154, 49, 0.16);
+}
+
+.pf-github-ref-kind-detached,
+.pf-github-ref-popup-kind-detached {
+    -fx-background-color: rgba(209, 105, 105, 0.18);
+}
+
+.pf-github-ref-popup-kind-action {
+    -fx-background-color: rgba(0, 122, 204, 0.10);
+}
+
+.pf-github-ref-text {
+    -fx-text-fill: -pf-github-text;
+}
+
+.pf-github-ref-chevron {
+    -fx-text-fill: -pf-github-muted-text;
+}
+
+.pf-github-chip-strip {
+    -fx-spacing: 6;
+}
+
+.pf-github-chip {
+    -fx-padding: 3 10 3 10;
+    -fx-background-color: -pf-github-control-bg;
+    -fx-border-color: -pf-github-control-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-font-size: 11px;
+}
+
+.pf-github-chip-accent {
     -fx-background-color: rgba(0, 122, 204, 0.14);
     -fx-border-color: -pf-github-accent;
 }
 
-.pf-github-badge-success {
+.pf-github-chip-success {
     -fx-background-color: rgba(71, 164, 115, 0.14);
     -fx-border-color: -pf-github-success;
 }
 
-.pf-github-badge-warning {
+.pf-github-chip-warning {
     -fx-background-color: rgba(198, 154, 49, 0.14);
     -fx-border-color: -pf-github-warning;
 }
 
-.pf-github-badge-danger {
-    -fx-background-color: rgba(209, 105, 105, 0.16);
+.pf-github-chip-danger {
+    -fx-background-color: rgba(209, 105, 105, 0.18);
     -fx-border-color: -pf-github-danger;
 }
 
-.pf-github-badge-muted {
+.pf-github-chip-muted {
     -fx-text-fill: -pf-github-muted-text;
 }
 
-.pf-github-button {
-    -fx-background-color: -pf-github-control-bg;
-    -fx-text-fill: -pf-github-text;
-    -fx-border-color: -pf-github-control-border;
-    -fx-border-width: 1;
-    -fx-border-radius: 5;
-    -fx-background-radius: 5;
-    -fx-padding: 0 10 0 10;
+.pf-github-action-bar {
+    -fx-spacing: 8;
+    -fx-alignment: center-left;
 }
 
-.pf-github-button:hover {
+.pf-github-action-button,
+.pf-github-overflow-button {
+    -fx-padding: 0 12 0 12;
+    -fx-background-color: -pf-github-control-bg;
+    -fx-border-color: -pf-github-control-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: -pf-github-text;
+}
+
+.pf-github-action-button:hover,
+.pf-github-overflow-button:hover {
     -fx-background-color: -pf-github-control-hover-bg;
 }
 
-.pf-github-button:armed {
+.pf-github-action-button:armed,
+.pf-github-overflow-button:showing,
+.pf-github-overflow-button:armed {
     -fx-background-color: -pf-github-control-pressed-bg;
 }
 
-.pf-github-button:focused {
-    -fx-border-color: -pf-github-focus-border;
-}
-
-.pf-github-button:disabled {
+.pf-github-action-button:disabled,
+.pf-github-overflow-button:disabled {
     -fx-text-fill: -pf-github-disabled-text;
     -fx-opacity: 1.0;
 }
 
-.pf-github-button-primary {
-    -fx-background-color: -pf-github-accent;
-    -fx-border-color: -pf-github-accent;
-    -fx-text-fill: white;
-}
-
-.pf-github-button-primary:hover {
-    -fx-background-color: -pf-github-control-hover-bg;
-    -fx-text-fill: -pf-github-text;
-}
-
-.pf-github-button-outline-accent {
-    -fx-background-color: transparent;
-    -fx-border-color: -pf-github-accent;
-}
-
-.pf-github-button-outline-accent:hover {
-    -fx-background-color: rgba(0, 122, 204, 0.10);
-}
-
-.pf-github-button-outline-danger {
-    -fx-background-color: transparent;
-    -fx-border-color: -pf-github-danger;
-}
-
-.pf-github-button-outline-danger:hover {
-    -fx-background-color: rgba(209, 105, 105, 0.12);
-}
-
-.pf-github-combo {
-    -fx-background-color: -pf-github-control-bg;
-    -fx-text-fill: -pf-github-text;
-}
-
-.pf-github-combo > .arrow-button {
-    -fx-background-color: transparent;
-}
-
-.pf-github-combo,
-.pf-github-combo > .list-cell {
-    -fx-background-color: -pf-github-control-bg;
-    -fx-border-color: -pf-github-control-border;
-    -fx-border-width: 1;
-    -fx-border-radius: 5;
-    -fx-background-radius: 5;
-    -fx-text-fill: -pf-github-text;
-}
-
-.pf-github-combo:focused {
-    -fx-border-color: -pf-github-focus-border;
-}
-
-.pf-github-combo:disabled {
-    -fx-opacity: 1.0;
-}
-
-.pf-github-combo:disabled > .list-cell {
-    -fx-text-fill: -pf-github-disabled-text;
+.pf-github-status-slot {
+    -fx-spacing: 8;
+    -fx-alignment: center-left;
+    -fx-padding: 0 0 0 6;
 }
 
 .pf-github-busy-indicator {
@@ -176,11 +202,108 @@
 }
 
 .pf-github-error-label {
-    -fx-padding: 2 8 2 8;
+    -fx-padding: 3 10 3 10;
     -fx-background-color: -pf-github-error-bg;
     -fx-border-color: -pf-github-danger;
     -fx-border-width: 1;
-    -fx-border-radius: 100;
-    -fx-background-radius: 100;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
     -fx-text-fill: -pf-github-text;
+}
+
+.pf-github-ref-popup,
+.pf-github-ref-submenu-list {
+    -fx-background-color: -pf-github-group-bg;
+    -fx-border-color: -pf-github-group-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 14;
+    -fx-background-radius: 14;
+    -fx-padding: 10;
+    -fx-spacing: 8;
+    -fx-effect: dropshadow(three-pass-box, -pf-github-shadow, 18, 0.18, 0, 8);
+}
+
+.pf-github-ref-popup-search {
+    -fx-background-color: -pf-github-control-bg;
+    -fx-border-color: -pf-github-control-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-text-fill: -pf-github-text;
+    -fx-prompt-text-fill: -pf-github-muted-text;
+}
+
+.pf-github-ref-popup-list,
+.pf-github-ref-submenu-list {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.pf-github-ref-popup-list .scroll-bar,
+.pf-github-ref-submenu-list .scroll-bar {
+    -fx-opacity: 0.85;
+}
+
+.pf-github-ref-popup-list .list-cell,
+.pf-github-ref-submenu-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.pf-github-ref-popup-list .list-cell:selected,
+.pf-github-ref-submenu-list .list-cell:selected {
+    -fx-background-color: rgba(0, 122, 204, 0.12);
+    -fx-background-radius: 10;
+}
+
+.pf-github-ref-popup-list .list-cell:hover,
+.pf-github-ref-submenu-list .list-cell:hover {
+    -fx-background-color: rgba(0, 122, 204, 0.08);
+    -fx-background-radius: 10;
+}
+
+.pf-github-ref-popup-header-cell {
+    -fx-padding: 12 0 4 0;
+}
+
+.pf-github-ref-popup-header {
+    -fx-text-fill: -pf-github-muted-text;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.pf-github-ref-popup-entry {
+    -fx-spacing: 10;
+    -fx-alignment: center-left;
+    -fx-padding: 8 10 8 10;
+}
+
+.pf-github-ref-popup-entry-disabled {
+    -fx-opacity: 0.62;
+}
+
+.pf-github-ref-popup-primary {
+    -fx-text-fill: -pf-github-text;
+}
+
+.pf-github-ref-popup-secondary {
+    -fx-text-fill: -pf-github-muted-text;
+    -fx-font-size: 11px;
+}
+
+.pf-github-ref-popup-current {
+    -fx-pref-width: 8;
+    -fx-pref-height: 8;
+    -fx-min-width: 8;
+    -fx-min-height: 8;
+    -fx-max-width: 8;
+    -fx-max-height: 8;
+    -fx-background-color: -pf-github-accent;
+    -fx-background-radius: 999;
+}
+
+.pf-github-ref-popup-chevron {
+    -fx-text-fill: -pf-github-muted-text;
 }

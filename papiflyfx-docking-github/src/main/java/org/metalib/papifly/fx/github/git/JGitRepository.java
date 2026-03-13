@@ -22,10 +22,14 @@ import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
+import org.eclipse.jgit.transport.TagOpt;
 import org.metalib.papifly.fx.github.model.BranchRef;
 import org.metalib.papifly.fx.github.model.CommitInfo;
+import org.metalib.papifly.fx.github.model.CurrentRefState;
+import org.metalib.papifly.fx.github.model.GitRefKind;
 import org.metalib.papifly.fx.github.model.RepoStatus;
 import org.metalib.papifly.fx.github.model.RollbackMode;
+import org.metalib.papifly.fx.github.model.TagRef;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -112,11 +116,13 @@ public class JGitRepository implements GitRepository {
                 if (fullName == null || fullName.endsWith("/HEAD")) {
                     continue;
                 }
-                String shortName = shortenBranchName(fullName);
                 boolean local = fullName.startsWith(Constants.R_HEADS);
                 boolean remote = fullName.startsWith(Constants.R_REMOTES);
-                boolean currentBranch = local && Objects.equals(shortName, current);
-                result.add(new BranchRef(shortName, fullName, local, remote, currentBranch));
+                String remoteName = remote ? remoteName(fullName) : "";
+                String branchName = local ? Repository.shortenRefName(fullName) : remoteBranchName(fullName);
+                boolean currentBranch = local && Objects.equals(branchName, current);
+                String trackingTarget = local ? trackingLabel(branchName) : "";
+                result.add(new BranchRef(branchName, fullName, local, remote, currentBranch, remoteName, trackingTarget));
             }
             result.sort(BranchRef::compareTo);
             return List.copyOf(result);
@@ -126,19 +132,99 @@ public class JGitRepository implements GitRepository {
     }
 
     @Override
+    public List<TagRef> listTags() {
+        try {
+            ObjectId headId = repository.resolve(Constants.HEAD);
+            List<TagRef> result = new ArrayList<>();
+            for (Ref ref : git.tagList().call()) {
+                String fullName = ref.getName();
+                if (fullName == null) {
+                    continue;
+                }
+                String shortName = Repository.shortenRefName(fullName);
+                boolean current = headId != null && headId.equals(resolveObjectId(ref));
+                result.add(new TagRef(shortName, fullName, current));
+            }
+            result.sort(TagRef::compareTo);
+            return List.copyOf(result);
+        } catch (GitAPIException ex) {
+            throw new GitOperationException("Failed to list tags", ex);
+        } catch (IOException ex) {
+            throw new GitOperationException("Failed to resolve current tag", ex);
+        }
+    }
+
+    @Override
+    public CurrentRefState loadCurrentRef() {
+        try {
+            String defaultBranch = detectDefaultBranch();
+            if (!isDetachedHead()) {
+                String branchName = currentBranchName();
+                return new CurrentRefState(
+                    branchName,
+                    Constants.R_HEADS + branchName,
+                    GitRefKind.LOCAL_BRANCH,
+                    trackingLabel(branchName),
+                    CurrentRefState.StatusDotState.CLEAN,
+                    branchName.equals(defaultBranch),
+                    false,
+                    false
+                );
+            }
+            ObjectId headId = repository.resolve(Constants.HEAD);
+            TagRef tag = resolveCurrentTag(headId);
+            if (tag != null) {
+                return new CurrentRefState(
+                    tag.name(),
+                    tag.fullName(),
+                    GitRefKind.TAG,
+                    "",
+                    CurrentRefState.StatusDotState.CLEAN,
+                    false,
+                    true,
+                    false
+                );
+            }
+            String shortHash = currentBranchName();
+            return new CurrentRefState(
+                shortHash,
+                headId == null ? shortHash : headId.getName(),
+                GitRefKind.DETACHED_COMMIT,
+                "",
+                CurrentRefState.StatusDotState.CLEAN,
+                false,
+                true,
+                false
+            );
+        } catch (GitAPIException | IOException ex) {
+            throw new GitOperationException("Failed to resolve current ref", ex);
+        }
+    }
+
+    @Override
     public void checkout(String branchName, boolean force) {
         validateBranchName(branchName, "branchName");
         try {
-            git.checkout().setName(branchName).call();
+            git.checkout().setName(shortenLocalBranchName(branchName)).call();
         } catch (CheckoutConflictException conflictException) {
             if (!force) {
                 throw new GitOperationException("Checkout blocked by local changes", conflictException);
             }
-            forceCheckout(branchName);
+            forceCheckout(shortenLocalBranchName(branchName));
         } catch (RefNotFoundException notFoundException) {
             checkoutRemoteBranch(branchName, force);
         } catch (GitAPIException ex) {
             throw new GitOperationException("Failed to checkout branch " + branchName, ex);
+        }
+    }
+
+    @Override
+    public void checkoutRef(String refName, GitRefKind kind, boolean force) {
+        validateBranchName(refName, "refName");
+        switch (kind) {
+            case LOCAL_BRANCH -> checkout(refName, force);
+            case REMOTE_BRANCH -> checkoutRemoteBranch(refName, force);
+            case TAG, DETACHED_COMMIT -> checkoutDetachedRef(refName, force);
         }
     }
 
@@ -224,6 +310,21 @@ public class JGitRepository implements GitRepository {
     }
 
     @Override
+    public void update() {
+        try {
+            git.fetch()
+                .setRemote("origin")
+                .setRemoveDeletedRefs(true)
+                .setTagOpt(TagOpt.FETCH_TAGS)
+                .setCredentialsProvider(credentialsProviderSupplier.get())
+                .call();
+        } catch (GitAPIException ex) {
+            String message = ex.getMessage() == null ? "Update failed" : ex.getMessage();
+            throw new GitOperationException("Update failed: " + message, ex);
+        }
+    }
+
+    @Override
     public boolean isHeadPushed() {
         try {
             if (isDetachedHead()) {
@@ -285,18 +386,35 @@ public class JGitRepository implements GitRepository {
 
     private void checkoutRemoteBranch(String branchName, boolean force) {
         try {
-            String remoteStartPoint = "origin/" + branchName;
+            String remoteStartPoint = shortRemoteRef(branchName);
+            String localBranchName = localBranchName(branchName);
             if (force) {
                 git.reset().setMode(ResetCommand.ResetType.HARD).call();
             }
             git.checkout()
                 .setCreateBranch(true)
-                .setName(branchName)
+                .setName(localBranchName)
                 .setStartPoint(remoteStartPoint)
                 .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK)
                 .call();
         } catch (GitAPIException ex) {
             throw new GitOperationException("Failed to checkout branch " + branchName, ex);
+        }
+    }
+
+    private void checkoutDetachedRef(String refName, boolean force) {
+        try {
+            if (force) {
+                git.reset().setMode(ResetCommand.ResetType.HARD).call();
+            }
+            git.checkout().setName(refName).call();
+        } catch (CheckoutConflictException conflictException) {
+            if (!force) {
+                throw new GitOperationException("Checkout blocked by local changes", conflictException);
+            }
+            forceCheckout(refName);
+        } catch (GitAPIException ex) {
+            throw new GitOperationException("Failed to checkout ref " + refName, ex);
         }
     }
 
@@ -363,6 +481,32 @@ public class JGitRepository implements GitRepository {
         return Repository.shortenRefName(fullBranch);
     }
 
+    private String trackingLabel(String branchName) throws IOException {
+        BranchTrackingStatus trackingStatus = BranchTrackingStatus.of(repository, branchName);
+        if (trackingStatus == null || trackingStatus.getRemoteTrackingBranch() == null) {
+            return "";
+        }
+        return Repository.shortenRefName(trackingStatus.getRemoteTrackingBranch());
+    }
+
+    private TagRef resolveCurrentTag(ObjectId headId) throws GitAPIException, IOException {
+        if (headId == null) {
+            return null;
+        }
+        for (TagRef tag : listTags()) {
+            Ref ref = repository.findRef(tag.fullName());
+            if (ref != null && headId.equals(resolveObjectId(ref))) {
+                return tag;
+            }
+        }
+        return null;
+    }
+
+    private ObjectId resolveObjectId(Ref ref) throws IOException {
+        Ref peeled = repository.getRefDatabase().peel(ref);
+        return peeled.getPeeledObjectId() != null ? peeled.getPeeledObjectId() : peeled.getObjectId();
+    }
+
     private boolean isDetachedHead() throws IOException {
         String fullBranch = repository.getFullBranch();
         return fullBranch == null || !fullBranch.startsWith(Constants.R_HEADS);
@@ -383,15 +527,52 @@ public class JGitRepository implements GitRepository {
         }
     }
 
-    private static String shortenBranchName(String fullName) {
-        if (fullName.startsWith(Constants.R_HEADS)) {
-            return fullName.substring(Constants.R_HEADS.length());
+    private static String shortRemoteRef(String branchName) {
+        if (branchName.startsWith(Constants.R_REMOTES)) {
+            return Repository.shortenRefName(branchName);
         }
-        if (fullName.startsWith(Constants.R_REMOTES + "origin/")) {
-            return fullName.substring((Constants.R_REMOTES + "origin/").length());
+        if (branchName.contains("/")) {
+            return branchName;
         }
-        if (fullName.startsWith(Constants.R_REMOTES)) {
-            return fullName.substring(Constants.R_REMOTES.length());
+        return "origin/" + branchName;
+    }
+
+    private static String localBranchName(String branchName) {
+        String remoteRef = shortRemoteRef(branchName);
+        int slashIndex = remoteRef.indexOf('/');
+        if (slashIndex < 0 || slashIndex == remoteRef.length() - 1) {
+            return remoteRef;
+        }
+        return remoteRef.substring(slashIndex + 1);
+    }
+
+    private static String shortenLocalBranchName(String branchName) {
+        if (branchName.startsWith(Constants.R_HEADS)) {
+            return branchName.substring(Constants.R_HEADS.length());
+        }
+        return branchName;
+    }
+
+    private static String remoteName(String fullName) {
+        if (!fullName.startsWith(Constants.R_REMOTES)) {
+            return "";
+        }
+        String shortened = fullName.substring(Constants.R_REMOTES.length());
+        int slashIndex = shortened.indexOf('/');
+        if (slashIndex < 0) {
+            return shortened;
+        }
+        return shortened.substring(0, slashIndex);
+    }
+
+    private static String remoteBranchName(String fullName) {
+        String remoteName = remoteName(fullName);
+        if (remoteName.isBlank()) {
+            return Repository.shortenRefName(fullName);
+        }
+        String prefix = Constants.R_REMOTES + remoteName + "/";
+        if (fullName.startsWith(prefix)) {
+            return fullName.substring(prefix.length());
         }
         return Repository.shortenRefName(fullName);
     }

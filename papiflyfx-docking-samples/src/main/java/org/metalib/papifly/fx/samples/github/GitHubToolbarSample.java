@@ -208,6 +208,10 @@ public class GitHubToolbarSample implements SampleScene {
         }
 
         @Override
+        public void update() {
+        }
+
+        @Override
         public boolean isHeadPushed() {
             return false;
         }

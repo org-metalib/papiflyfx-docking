@@ -31,3 +31,11 @@ spec/papiflyfx-docking-github/review1-ui/ui-refactor-plan-codex.md
 Check spec/papiflyfx-docking-github/review1-ui/ui-refactor-plan-claude-opus.md and add what's been missed to
 spec/papiflyfx-docking-github/review1-ui/ui-refactor-plan-codex.md
 
+## Implementation
+
+- Implement everything specified by `spec/papiflyfx-docking-github/review1-ui/ui-refactor-plan-codex.md`. when you’re done with a task or phase, mark it
+  as completed in the `spec/papiflyfx-docking-github/review1-ui/ui-refactor-plan-codex.md` document.
+- Add new `spec/papiflyfx-docking-github/review1-ui/ui-refactor-progress.md` file to track your progress.
+- Do not stop until all tasks and phases are completed. Do not add unnecessary comments or javadocs, do not use any or unknown types.
+- Continuously run typecheck to make sure you’re not introducing new issues.
+

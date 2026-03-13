@@ -7,12 +7,26 @@ public record BranchRef(
     String fullName,
     boolean local,
     boolean remote,
-    boolean current
+    boolean current,
+    String remoteName,
+    String trackingTarget
 ) implements Comparable<BranchRef> {
 
     public BranchRef {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(fullName, "fullName");
+        remoteName = remoteName == null ? "" : remoteName;
+        trackingTarget = trackingTarget == null ? "" : trackingTarget;
+    }
+
+    public BranchRef(
+        String name,
+        String fullName,
+        boolean local,
+        boolean remote,
+        boolean current
+    ) {
+        this(name, fullName, local, remote, current, deriveRemoteName(fullName), "");
     }
 
     @Override
@@ -26,5 +40,18 @@ public record BranchRef(
             return currentOrder;
         }
         return name.compareToIgnoreCase(other.name);
+    }
+
+    private static String deriveRemoteName(String fullName) {
+        String prefix = "refs/remotes/";
+        if (!fullName.startsWith(prefix)) {
+            return "";
+        }
+        String value = fullName.substring(prefix.length());
+        int slashIndex = value.indexOf('/');
+        if (slashIndex < 0) {
+            return value;
+        }
+        return value.substring(0, slashIndex);
     }
 }
