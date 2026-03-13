@@ -39,3 +39,13 @@ spec/papiflyfx-docking-github/review1-ui/ui-refactor-plan-codex.md
 - Do not stop until all tasks and phases are completed. Do not add unnecessary comments or javadocs, do not use any or unknown types.
 - Continuously run typecheck to make sure you’re not introducing new issues.
 
+## Revisions
+
+### SamplesApp is failing
+
+> SamplesApp is failing
+
+### Color schema is not set for all elements
+
+> lower-frequency actions color schema does not follow the current theme
+

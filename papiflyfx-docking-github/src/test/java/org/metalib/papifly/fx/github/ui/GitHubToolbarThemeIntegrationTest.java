@@ -2,8 +2,13 @@ package org.metalib.papifly.fx.github.ui;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.Node;
+import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +25,7 @@ import org.metalib.papifly.fx.github.model.PullRequestDraft;
 import org.metalib.papifly.fx.github.model.PullRequestResult;
 import org.metalib.papifly.fx.github.model.RepoStatus;
 import org.metalib.papifly.fx.github.model.RollbackMode;
+import org.metalib.papifly.fx.github.ui.theme.GitHubToolbarThemeMapper;
 import org.metalib.papifly.fx.github.ui.dialog.TokenDialog;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.api.FxRobot;
@@ -32,7 +38,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
@@ -121,6 +129,34 @@ class GitHubToolbarThemeIntegrationTest {
         FxTestUtil.runFx(toolbar::close);
     }
 
+    @Test
+    void overflowMenuFollowsCurrentTheme(FxRobot robot) {
+        GitHubToolbar toolbar = createToolbar();
+        FxTestUtil.runFx(() -> {
+            root.getChildren().setAll(toolbar);
+            toolbar.bindThemeProperty(themeProperty);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        robot.clickOn("#github-overflow-button");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        Parent overflowRoot = overflowMenuRoot(robot);
+        String darkStyle = FxTestUtil.callFx(overflowRoot::getStyle);
+        assertTrue(darkStyle.contains("-pf-github-toolbar-bg"));
+        assertMenuColors(overflowRoot, Theme.dark());
+
+        FxTestUtil.runFx(() -> themeProperty.set(Theme.light()));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        String lightStyle = FxTestUtil.callFx(overflowRoot::getStyle);
+        assertNotEquals(darkStyle, lightStyle);
+        assertTrue(lightStyle.contains("-pf-github-toolbar-bg"));
+        assertMenuColors(overflowRoot, Theme.light());
+
+        FxTestUtil.runFx(toolbar::close);
+    }
+
     private GitHubToolbar createToolbar() {
         PatCredentialStore store = new PatCredentialStore();
         store.setToken("token");
@@ -129,6 +165,32 @@ class GitHubToolbarThemeIntegrationTest {
         GitHubApiService apiService = new FakeGitHubApiService();
         GitHubToolbarViewModel viewModel = new GitHubToolbarViewModel(context, store, repository, apiService, new CommandRunner(true));
         return FxTestUtil.callFx(() -> new GitHubToolbar(viewModel, Theme.dark()));
+    }
+
+    private static void assertMenuColors(Parent overflowRoot, Theme theme) {
+        Color expectedText = requireColor(GitHubToolbarThemeMapper.map(theme).textPrimary());
+        Label itemLabel = FxTestUtil.callFx(() -> (Label) overflowRoot.lookup(".menu-item .label"));
+        assertNotNull(itemLabel);
+        Color actualText = FxTestUtil.callFx(() -> requireColor(itemLabel.getTextFill()));
+
+        assertColorEquals(expectedText, actualText);
+    }
+
+    private static Parent overflowMenuRoot(FxRobot robot) {
+        Node item = robot.lookup(".menu-item").query();
+        return FxTestUtil.callFx(() -> item.getScene().getRoot());
+    }
+
+    private static Color requireColor(Paint paint) {
+        assertTrue(paint instanceof Color);
+        return (Color) paint;
+    }
+
+    private static void assertColorEquals(Color expected, Color actual) {
+        assertEquals(expected.getRed(), actual.getRed(), 0.01);
+        assertEquals(expected.getGreen(), actual.getGreen(), 0.01);
+        assertEquals(expected.getBlue(), actual.getBlue(), 0.01);
+        assertEquals(expected.getOpacity(), actual.getOpacity(), 0.01);
     }
 
     private static final class FakeGitHubApiService extends GitHubApiService {
