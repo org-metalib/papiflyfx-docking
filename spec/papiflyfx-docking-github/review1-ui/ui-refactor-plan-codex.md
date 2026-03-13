@@ -1,6 +1,6 @@
 # GitHub Toolbar UI Refactor Plan (Codex)
 
-Implementation status: completed on 2026-03-13.
+Implementation status: completed on 2026-03-13, with lower-frequency action consolidation completed on 2026-03-13.
 
 ## 1. Goal
 
@@ -11,7 +11,7 @@ Primary outcomes:
 1. Repository and current ref become the primary identity area.
 2. The branch combo box is replaced by a dedicated ref pill and anchored popup.
 3. Permanent badge noise is reduced to contextual chips only.
-4. The action strip is simplified to `Update`, `Commit`, `Push`, `PR`, and overflow actions.
+4. All repository and branch commands are consolidated into lower-frequency actions (`...`) instead of staying visible on the toolbar or inside the ref popup.
 5. Status becomes transient and no longer competes with repository identity.
 
 ## 2. Reviewed Artifacts
@@ -63,7 +63,6 @@ Primary outcomes:
 2. Ref pill replacing the combo box and checkout button.
 3. Anchored popup switcher with:
    - search field
-   - action block
    - `Recent`, `Local`, `Remote`, and `Tags` sections
 4. Contextual secondary chips:
    - `Default`
@@ -72,12 +71,14 @@ Primary outcomes:
    - `Ahead N`
    - `Behind N`
    - `No token`
-5. Simplified action area:
+5. Single lower-frequency actions trigger (`...`) containing repository and branch commands such as:
    - `Update`
    - `Commit`
    - `Push`
-   - `PR`
-   - `...`
+   - `Pull Request`
+   - `New Branch`
+   - `Rollback`
+   - `Token`
 6. Far-right transient status slot with spinner, short success text, and inline error pill.
 7. Model and repository changes needed to support ref type, tags, tracking labels, recent refs, and popup state.
 8. Updated automated tests and visual snapshots.
@@ -344,11 +345,10 @@ Theme-token note:
 
 ### 6.10 Define popup row behavior and submenu boundaries
 
-The popup should support three row categories:
+The popup should support two row categories:
 
-1. Command rows such as `Update project...` and `Commit...`
-2. Direct ref rows such as a local branch checkout target
-3. Rows with trailing chevrons that open a side submenu
+1. Direct ref rows such as a local branch checkout target
+2. Rows with trailing chevrons that open a side submenu
 
 Recommended behavior:
 
@@ -357,14 +357,14 @@ Recommended behavior:
    - perform the simplest supported checkout flow, or
    - open a submenu if tracking decisions are required
 3. Clicking a tag checks out detached HEAD at that tag in the first implementation.
-4. The top search field filters command rows and ref rows together.
+4. The top search field filters ref rows only.
 5. Remote branch rows should be grouped by remote name.
 6. Grouped remote rows may be collapsible if that keeps large repositories usable.
 
 Submenu boundary for this review:
 
 - It is acceptable to implement only the submenu shell and supported actions first, while leaving rename/delete/diff actions disabled or deferred until backend support exists.
-- Disabled stubs are also acceptable for future command rows such as `Checkout Tag or Revision...` if backend support is not ready yet.
+- Disabled stubs are also acceptable for lower-frequency actions such as `Checkout Tag or Revision...` if backend support is not ready yet.
 
 ## 7. Phased Implementation Plan
 
@@ -423,13 +423,11 @@ Goal of this phase:
 
 ### Phase 4. Action migration and cleanup [completed]
 
-1. [x] Add visible `Update` action.
-2. [x] Keep `Commit`, `Push`, and `PR` in the main action bar.
-3. [x] Move lower-frequency actions such as `Rollback` and `Token` into `...`.
-4. [x] Move `New Branch...` into the popup top action block.
-5. [x] If time allows, add `Checkout Tag or Revision...` as a lightweight dialog launched from the popup.
-   Implemented as a disabled popup stub for follow-up backend/dialog work.
-6. [x] Remove obsolete controls and logic:
+1. [x] Move `Update`, `Commit`, `Push`, and `Pull Request` into lower-frequency actions (`...`).
+2. [x] Keep `Rollback` and `Token` in lower-frequency actions (`...`).
+3. [x] Move `New Branch...` and `Checkout Tag or Revision...` out of the ref popup and into lower-frequency actions (`...`).
+4. [x] Keep the ref popup strictly about ref switching and ref-specific submenus.
+5. [x] Remove obsolete controls and logic:
    - branch combo box
    - checkout button
    - always-on auth badge
@@ -442,8 +440,8 @@ Goal of this phase:
 Action visibility rule:
 
 - In remote-only mode, local-only actions should disappear rather than sit disabled.
-  Recommended hidden actions: `Update`, `Commit`, and `Push`.
-  `PR` and overflow remain available.
+  Recommended hidden actions: `Update`, `Commit`, `Push`, `New Branch`, `Checkout Tag or Revision`, and `Rollback`.
+  `Pull Request` and token actions remain available in lower-frequency actions.
 
 ### Phase 5. Testing, snapshots, and docs [completed]
 
@@ -467,7 +465,7 @@ Action visibility rule:
    Also update theme-mapper coverage if dedicated dot/pill/popup tokens are added.
 6. [x] Export new review snapshots to `spec/papiflyfx-docking-github/review1-ui/`.
 7. [x] Update module README only if the visible action set or behavior contract changes materially.
-   No README change was required for this implementation pass.
+   No README change was required for this implementation pass because the module README does not describe the toolbar action surface.
 
 ## 8. Recommended File Touch List
 

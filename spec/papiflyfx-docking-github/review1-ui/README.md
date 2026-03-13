@@ -49,3 +49,23 @@ spec/papiflyfx-docking-github/review1-ui/ui-refactor-plan-codex.md
 
 > lower-frequency actions color schema does not follow the current theme
 
+### Popup action is not in focus
+
+When I open a popup menu with action and branch/tag list the focus is on the search box, I have to click twice if I choose a branch or tag.
+I should be able to click once.
+
+You did not resolve the issue. The search button is in focus, but if click on a bracnh name or an action like new branch the focus moves to the whole list first and I have to click again to enforce the
+selection. (brittle dialog dependency)
+
+## Hide all actions
+
+All actions should go to what is called `lower-frequency actions` amd should not be present on a tool bar or branch/tag list.
+Use spec/papiflyfx-docking-github/review1-ui/ui-refactor-plan-codex.md as a reference
+
+When you finish update spec/papiflyfx-docking-github/review1-ui/ui-refactor-progress.md and the spec.
+
+The tasks:
+1. Remove action rows from the ref popup state and keep it branch/tag switching only.
+2. Collapse the main action bar so it only shows the lower-frequency actions trigger, with all commands moved into that menu.
+3. Rewrite the affected FX/theme assertions and update the progress/spec docs to reflect the new action contract.
+4. Run compile/tests as I go so type or behavior regressions don’t accumulate.

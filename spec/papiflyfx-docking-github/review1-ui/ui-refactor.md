@@ -34,7 +34,7 @@ Everything else becomes supporting information or contextual actions.
 ### Toolbar Layout
 
 ```text
-[ GitHub ] [ owner/repo ] [ ● github v ] [ Ahead 2 ] [ Behind 1 ]            [Update] [Commit] [Push] [PR] [...]
+[ GitHub ] [ owner/repo ] [ ● github v ] [ Ahead 2 ] [ Behind 1 ]                                  [...]
 ```
 
 Recommended visual hierarchy:
@@ -43,7 +43,7 @@ Recommended visual hierarchy:
 - The current ref pill is the second readable element.
 - The status dot lives inside the ref pill so the user reads ref + status together.
 - Ahead/behind counters stay compact and secondary.
-- Primary actions stay right-aligned and visually quieter than the identity area.
+- Repository and ref commands stay behind the lower-frequency actions trigger so the identity area stays dominant.
 
 ## Main Elements
 
@@ -111,23 +111,20 @@ Important rule:
 
 ### 4. Action Area
 
-Recommended default visible actions:
+Recommended visible action surface:
 
-- `Update`
-- `Commit`
-- `Push`
-- `PR`
 - `...`
 
 Behavior notes:
 
-- `Commit` is disabled on the default branch, as today.
-- `Push` and `PR` remain disabled until a token is configured.
-- `...` contains lower-frequency actions such as `Rollback`, `Token`, and future repository actions.
+- `...` is the only command surface on the toolbar.
+- It contains `Update`, `Commit`, `Push`, `Pull Request`, `New Branch`, `Rollback`, `Token`, and future repository actions.
+- `Commit` stays disabled on the default branch, as today.
+- `Push` and `Pull Request` remain disabled until a token is configured.
 
 Visual direction:
 
-- Keep actions flatter and less dominant than the repo/ref pills.
+- Keep the lower-frequency actions trigger flatter and less dominant than the repo/ref pills.
 - The current design's large segmented groups should be removed.
 
 ### 5. Status Slot
@@ -154,14 +151,7 @@ but not copy it literally.
 
 ```text
 +------------------------------------------------------+
-| Search branches, tags, and actions                   |
-|------------------------------------------------------|
-| Update project...                                    |
-| Commit...                                            |
-| Push...                                              |
-|------------------------------------------------------|
-| New Branch...                                        |
-| Checkout Tag or Revision...                          |
+| Search branches and tags                             |
 |------------------------------------------------------|
 | Recent                                               |
 |   github                               origin/github |
@@ -187,21 +177,13 @@ but not copy it literally.
 
 Top search field:
 
-- Filters branches, remotes, tags, and branch actions in one place.
+- Filters branches, remotes, and tags in one place.
 - Typing should immediately focus the search field when the popup opens.
 
 Popup size:
 
 - Target width: 360-420 px
 - Max height: about 520 px before scrolling
-
-Top action block:
-
-- `Update project...`
-- `Commit...`
-- `Push...`
-- `New Branch...`
-- `Checkout Tag or Revision...`
 
 Sections:
 
@@ -236,31 +218,31 @@ Tag submenu actions:
 ### Clean local branch
 
 ```text
-[ owner/repo ] [ green-dot github v ] [ Ahead 2 ] [ Behind 1 ]           [Update] [Commit] [Push] [PR] [...]
+[ owner/repo ] [ green-dot github v ] [ Ahead 2 ] [ Behind 1 ]                                  [...]
 ```
 
 ### Dirty working tree
 
 ```text
-[ owner/repo ] [ red-dot github v ] [ 3 changed ]                        [Update] [Commit] [Push] [PR] [...]
+[ owner/repo ] [ red-dot github v ] [ 3 changed ]                                               [...]
 ```
 
 ### Default branch with clean state
 
 ```text
-[ owner/repo ] [ green-dot main v ] [ Default ]                          [Update] [Commit disabled] [Push] [PR] [...]
+[ owner/repo ] [ green-dot main v ] [ Default ]                                                 [...]
 ```
 
 ### Detached on tag
 
 ```text
-[ owner/repo ] [ green-dot v0.9.0 v ] [ Detached ]                       [Update] [Push] [PR] [...]
+[ owner/repo ] [ green-dot v0.9.0 v ] [ Detached ]                                              [...]
 ```
 
 ### Remote-only repository
 
 ```text
-[ owner/repo ] [ gray-dot main v ] [ Remote only ]                                            [PR] [...]
+[ owner/repo ] [ gray-dot main v ] [ Remote only ]                                             [...]
 ```
 
 In remote-only mode, the ref pill should show the remote default branch if available.
@@ -308,15 +290,17 @@ Recommended implementation direction:
 - Replace the branch combo box with a dedicated clickable ref pill.
 - Use `PopupControl` or an equivalent anchored popup instead of a combo box dropdown.
 - Keep repo browser navigation on the repository pill.
-- Move advanced branch operations closer to the ref popup instead of scattering them across the toolbar.
+- Keep the ref popup focused on switching refs and ref-specific submenus only.
+- Route repository and branch-management commands through the lower-frequency actions menu.
 
 ## Summary
 
-The new toolbar should feel like a Git identity bar first and an action strip second.
+The new toolbar should feel like a Git identity bar first and a command menu second.
 
 The key change is this:
 
 - repository pill for navigation
 - ref pill for status + branch/tag switching
+- lower-frequency actions menu for all commands
 - compact state chips only when relevant
 - branch/tag popup as the main control surface for switching refs and related Git actions

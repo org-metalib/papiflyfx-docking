@@ -14,6 +14,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
@@ -76,10 +77,6 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
     private final RefPill refPill;
     private final HBox chipStrip;
     private final HBox actionBar;
-    private final Button updateButton;
-    private final Button commitButton;
-    private final Button pushButton;
-    private final Button prButton;
     private final Button overflowButton;
     private final ContextMenu overflowMenu;
     private final HBox statusSlot;
@@ -137,18 +134,6 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         chipStrip.setAlignment(Pos.CENTER_LEFT);
         bindManagedToVisible(chipStrip);
 
-        updateButton = createActionButton("Update", "github-update-button");
-        updateButton.setOnAction(event -> viewModel.updateRepository());
-
-        commitButton = createActionButton("Commit", "github-commit-button");
-        commitButton.setOnAction(event -> onCommit());
-
-        pushButton = createActionButton("Push", "github-push-button");
-        pushButton.setOnAction(event -> viewModel.push());
-
-        prButton = createActionButton("PR", "github-pr-button");
-        prButton.setOnAction(event -> onCreatePullRequest());
-
         overflowButton = createActionButton("...", "github-overflow-button");
         overflowButton.getStyleClass().add("pf-github-overflow-button");
         overflowButton.setOnAction(event -> toggleOverflowMenu());
@@ -162,7 +147,7 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         overflowMenu.setOnShown(event -> applyOverflowMenuTheme());
         overflowMenu.setOnHidden(event -> overflowButton.pseudoClassStateChanged(SHOWING_PSEUDO_CLASS, false));
 
-        actionBar = new HBox(updateButton, commitButton, pushButton, prButton, overflowButton);
+        actionBar = new HBox(overflowButton);
         actionBar.setId("github-action-bar");
         actionBar.getStyleClass().add("pf-github-action-bar");
         actionBar.setAlignment(Pos.CENTER_LEFT);
@@ -200,18 +185,7 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         successClearPause = new PauseTransition(Duration.seconds(2));
         successClearPause.setOnFinished(event -> viewModel.clearStatusMessage());
 
-        updateButton.disableProperty().bind(viewModel.updateDisabledProperty());
-        commitButton.disableProperty().bind(viewModel.commitDisabledProperty());
-        pushButton.disableProperty().bind(viewModel.pushDisabledProperty());
-        prButton.disableProperty().bind(viewModel.pullRequestDisabledProperty());
         overflowButton.disableProperty().bind(viewModel.busyProperty());
-
-        bindManagedToVisible(updateButton);
-        bindManagedToVisible(commitButton);
-        bindManagedToVisible(pushButton);
-        updateButton.visibleProperty().bind(viewModel.remoteOnlyProperty().not());
-        commitButton.visibleProperty().bind(viewModel.remoteOnlyProperty().not());
-        pushButton.visibleProperty().bind(viewModel.remoteOnlyProperty().not());
 
         refPill.setOnAction(event -> refPopupController.toggle(refPill));
         refPill.addEventFilter(KeyEvent.KEY_PRESSED, this::handleRefPillKeyPressed);
@@ -370,17 +344,33 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
     }
 
     private void refreshOverflowMenu() {
-        MenuItem rollbackItem = new MenuItem("Rollback");
-        rollbackItem.setOnAction(event -> onRollback());
-        rollbackItem.setDisable(viewModel.busyProperty().get() || !viewModel.localAvailableProperty().get());
+        List<MenuItem> items = new java.util.ArrayList<>();
+        boolean localAvailable = viewModel.localAvailableProperty().get();
 
-        MenuItem tokenItem = new MenuItem(viewModel.authenticatedProperty().get() ? "Update Token" : "Set Token");
-        tokenItem.setOnAction(event -> onToken());
-        tokenItem.setDisable(viewModel.busyProperty().get());
+        if (localAvailable) {
+            items.add(createOverflowItem("Update", viewModel::updateRepository, viewModel.updateDisabledProperty().get()));
+            items.add(createOverflowItem("Commit...", this::onCommit, viewModel.commitDisabledProperty().get()));
+            items.add(createOverflowItem("Push", viewModel::push, viewModel.pushDisabledProperty().get()));
+        }
 
-        overflowMenu.getItems().setAll(viewModel.localAvailableProperty().get()
-            ? List.of(rollbackItem, tokenItem)
-            : List.of(tokenItem));
+        items.add(createOverflowItem("Pull Request...", this::onCreatePullRequest, viewModel.pullRequestDisabledProperty().get()));
+
+        if (localAvailable) {
+            items.add(new SeparatorMenuItem());
+            items.add(createOverflowItem("New Branch...", this::onCreateBranch, viewModel.busyProperty().get()));
+            items.add(createOverflowItem("Checkout Tag or Revision...", () -> {
+            }, true));
+            items.add(new SeparatorMenuItem());
+            items.add(createOverflowItem("Rollback...", this::onRollback, viewModel.busyProperty().get()));
+        }
+
+        items.add(createOverflowItem(
+            viewModel.authenticatedProperty().get() ? "Update Token" : "Set Token",
+            this::onToken,
+            viewModel.busyProperty().get()
+        ));
+
+        overflowMenu.getItems().setAll(items);
     }
 
     private void toggleOverflowMenu() {
@@ -455,7 +445,7 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         setPrefHeight(currentTheme.toolbarHeight());
 
         double buttonHeight = currentTheme.buttonHeight();
-        for (Node node : List.of(repoPill, refPill, updateButton, commitButton, pushButton, prButton, overflowButton)) {
+        for (Node node : List.of(repoPill, refPill, overflowButton)) {
             if (node instanceof javafx.scene.control.Control control) {
                 control.setMinHeight(buttonHeight);
                 control.setPrefHeight(buttonHeight);
@@ -463,7 +453,7 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
             }
         }
 
-        for (Labeled labeled : List.of(brandBadge, repoPill, updateButton, commitButton, pushButton, prButton, overflowButton, statusLabel, errorLabel)) {
+        for (Labeled labeled : List.of(brandBadge, repoPill, overflowButton, statusLabel, errorLabel)) {
             labeled.setFont(currentBaseTheme.contentFont());
         }
     }
@@ -487,6 +477,13 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         button.getStyleClass().add("pf-github-action-button");
         button.setMnemonicParsing(false);
         return button;
+    }
+
+    private static MenuItem createOverflowItem(String text, Runnable action, boolean disabled) {
+        MenuItem item = new MenuItem(text);
+        item.setOnAction(event -> action.run());
+        item.setDisable(disabled);
+        return item;
     }
 
     private static Label createChip(SecondaryChip chip) {

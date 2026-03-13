@@ -12,6 +12,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -59,7 +60,7 @@ public final class GitRefPopup {
         searchField = new TextField();
         searchField.setId("github-ref-popup-search");
         searchField.getStyleClass().add("pf-github-ref-popup-search");
-        searchField.setPromptText("Search branches, tags, and actions");
+        searchField.setPromptText("Search branches and tags");
         searchField.addEventFilter(KeyEvent.KEY_PRESSED, this::handleSearchKeyPressed);
 
         listView = new ListView<>(rows);
@@ -68,6 +69,7 @@ public final class GitRefPopup {
         listView.setFocusTraversable(true);
         listView.setCellFactory(ignored -> new RowCell());
         listView.addEventFilter(KeyEvent.KEY_PRESSED, this::handleListKeyPressed);
+        listView.addEventFilter(MouseEvent.MOUSE_RELEASED, this::handleListMouseReleased);
 
         root = new VBox(searchField, listView);
         root.setId("github-ref-popup");
@@ -93,6 +95,7 @@ public final class GitRefPopup {
         submenuList.setFocusTraversable(true);
         submenuList.setCellFactory(ignored -> new SubmenuCell());
         submenuList.addEventFilter(KeyEvent.KEY_PRESSED, this::handleSubmenuKeyPressed);
+        submenuList.addEventFilter(MouseEvent.MOUSE_RELEASED, this::handleSubmenuMouseReleased);
         GitHubThemeSupport.ensureStylesheetLoaded(submenuList, GitHubThemeSupport.TOOLBAR_STYLESHEET);
         submenuPopup.getContent().add(submenuList);
     }
@@ -121,10 +124,8 @@ public final class GitRefPopup {
             return;
         }
         popup.show(anchor, bounds.getMinX(), bounds.getMaxY() + 6);
-        Platform.runLater(() -> {
-            searchField.requestFocus();
-            selectFirstEntry();
-        });
+        searchField.requestFocus();
+        selectFirstEntry();
     }
 
     public void hide() {
@@ -243,6 +244,41 @@ public final class GitRefPopup {
         }
     }
 
+    private void handleListMouseReleased(MouseEvent event) {
+        if (event.getButton() != MouseButton.PRIMARY) {
+            return;
+        }
+        ListCell<RowItem> cell = findParentCell(event.getPickResult().getIntersectedNode());
+        if (cell == null || !(cell.getItem() instanceof EntryRow entryRow)) {
+            return;
+        }
+        listView.getSelectionModel().select(cell.getIndex());
+        if (entryRow.entry() instanceof RefPopupEntry.Ref ref && ref.hasSubmenu() && hasStyleClassInChain(
+            event.getPickResult().getIntersectedNode(),
+            cell,
+            "pf-github-ref-popup-chevron"
+        )) {
+            openSubmenu(cell, ref);
+            event.consume();
+            return;
+        }
+        activateEntry(entryRow.entry());
+        event.consume();
+    }
+
+    private void handleSubmenuMouseReleased(MouseEvent event) {
+        if (event.getButton() != MouseButton.PRIMARY) {
+            return;
+        }
+        ListCell<RefPopupEntry.Action> cell = findParentCell(event.getPickResult().getIntersectedNode());
+        if (cell == null || cell.getItem() == null || !cell.getItem().enabled()) {
+            return;
+        }
+        submenuList.getSelectionModel().select(cell.getIndex());
+        activateSelectedSubmenuAction();
+        event.consume();
+    }
+
     private void activateSelected() {
         RowItem item = listView.getSelectionModel().getSelectedItem();
         if (item instanceof EntryRow entryRow) {
@@ -301,6 +337,30 @@ public final class GitRefPopup {
             }
         }
         return null;
+    }
+
+    private static <T> ListCell<T> findParentCell(Node node) {
+        Node current = node;
+        while (current != null) {
+            if (current instanceof ListCell<?> rawCell) {
+                @SuppressWarnings("unchecked")
+                ListCell<T> cell = (ListCell<T>) rawCell;
+                return cell;
+            }
+            current = current.getParent();
+        }
+        return null;
+    }
+
+    private static boolean hasStyleClassInChain(Node node, Node boundary, String styleClass) {
+        Node current = node;
+        while (current != null && current != boundary) {
+            if (current.getStyleClass().contains(styleClass)) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return current != null && current.getStyleClass().contains(styleClass);
     }
 
     private void openSubmenu(Node owner, RefPopupEntry.Ref ref) {
@@ -393,20 +453,6 @@ public final class GitRefPopup {
             setGraphic(createEntryGraphic(entryRow.entry()));
             setText(null);
             setMouseTransparent(false);
-            setOnMouseClicked(mouseEvent -> {
-                if (mouseEvent.getButton() != MouseButton.PRIMARY) {
-                    return;
-                }
-                if (entryRow.entry() instanceof RefPopupEntry.Ref ref && ref.hasSubmenu()) {
-                    Node target = mouseEvent.getPickResult().getIntersectedNode();
-                    if (target != null && target.getStyleClass().contains("pf-github-ref-popup-chevron")) {
-                        openSubmenu(this, ref);
-                        mouseEvent.consume();
-                        return;
-                    }
-                }
-                activateEntry(entryRow.entry());
-            });
         }
 
         private Node createEntryGraphic(RefPopupEntry entry) {
@@ -502,11 +548,6 @@ public final class GitRefPopup {
             }
             setGraphic(box);
             setText(null);
-            setOnMouseClicked(mouseEvent -> {
-                if (mouseEvent.getButton() == MouseButton.PRIMARY && item.enabled()) {
-                    activateSelectedSubmenuAction();
-                }
-            });
         }
     }
 }

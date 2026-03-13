@@ -469,8 +469,6 @@ public class GitHubToolbarViewModel implements AutoCloseable {
         PopupEntries popupEntries = buildPopupEntries(latestSnapshot);
         List<RefPopupSection> sections = new ArrayList<>();
 
-        addSectionIfNotEmpty(sections, "", filterEntries(buildPrimaryActions(latestSnapshot), normalizedFilter));
-        addSectionIfNotEmpty(sections, "", filterEntries(buildSecondaryActions(latestSnapshot), normalizedFilter));
         addSectionIfNotEmpty(sections, "Recent", filterEntries(buildRecentEntries(popupEntries), normalizedFilter));
         addSectionIfNotEmpty(sections, "Local", filterEntries(popupEntries.localEntries(), normalizedFilter));
 
@@ -483,55 +481,6 @@ public class GitHubToolbarViewModel implements AutoCloseable {
 
         addSectionIfNotEmpty(sections, "Tags", filterEntries(popupEntries.tagEntries(), normalizedFilter));
         refPopupSections.setAll(sections);
-    }
-
-    private List<RefPopupEntry> buildPrimaryActions(ToolbarSnapshot snapshot) {
-        List<RefPopupEntry> entries = new ArrayList<>();
-        if (snapshot.localAvailable()) {
-            entries.add(new RefPopupEntry.Action(
-                "action-update",
-                "Update project...",
-                "",
-                RefPopupEntry.Command.UPDATE,
-                !updateDisabled.get()
-            ));
-            entries.add(new RefPopupEntry.Action(
-                "action-commit",
-                "Commit...",
-                "",
-                RefPopupEntry.Command.COMMIT,
-                !commitDisabled.get()
-            ));
-            entries.add(new RefPopupEntry.Action(
-                "action-push",
-                "Push...",
-                "",
-                RefPopupEntry.Command.PUSH,
-                !pushDisabled.get()
-            ));
-        }
-        return entries;
-    }
-
-    private List<RefPopupEntry> buildSecondaryActions(ToolbarSnapshot snapshot) {
-        List<RefPopupEntry> entries = new ArrayList<>();
-        if (snapshot.localAvailable()) {
-            entries.add(new RefPopupEntry.Action(
-                "action-new-branch",
-                "New Branch...",
-                "",
-                RefPopupEntry.Command.NEW_BRANCH,
-                !busy.get()
-            ));
-            entries.add(new RefPopupEntry.Action(
-                "action-checkout-revision",
-                "Checkout Tag or Revision...",
-                "",
-                RefPopupEntry.Command.CHECKOUT_REVISION,
-                false
-            ));
-        }
-        return entries;
     }
 
     private PopupEntries buildPopupEntries(ToolbarSnapshot snapshot) {

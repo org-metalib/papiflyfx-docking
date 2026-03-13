@@ -1,6 +1,7 @@
 package org.metalib.papifly.fx.github.ui;
 
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
@@ -49,6 +50,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
@@ -79,6 +81,11 @@ class GitHubToolbarFxTest {
 
         assertNotNull(FxTestUtil.callFx(() -> toolbar.lookup("#github-repo-pill")));
         assertNotNull(FxTestUtil.callFx(() -> toolbar.lookup("#github-ref-pill")));
+        assertNotNull(FxTestUtil.callFx(() -> toolbar.lookup("#github-overflow-button")));
+        assertNull(FxTestUtil.callFx(() -> toolbar.lookup("#github-update-button")));
+        assertNull(FxTestUtil.callFx(() -> toolbar.lookup("#github-commit-button")));
+        assertNull(FxTestUtil.callFx(() -> toolbar.lookup("#github-push-button")));
+        assertNull(FxTestUtil.callFx(() -> toolbar.lookup("#github-pr-button")));
         assertEquals("feature/x", refText(toolbar).getText());
         assertTrue(chipTexts(toolbar).contains("Ahead 2"));
         assertTrue(chipTexts(toolbar).contains("Behind 1"));
@@ -88,7 +95,7 @@ class GitHubToolbarFxTest {
     }
 
     @Test
-    void remoteOnlyHidesLocalActionsAndShowsRemoteOnlyChip() {
+    void remoteOnlyHidesLocalMenuActionsAndShowsRemoteOnlyChip(FxRobot robot) {
         GitHubToolbar toolbar = createToolbar(new ToolbarState(
             true,
             "main",
@@ -101,10 +108,18 @@ class GitHubToolbarFxTest {
         ));
         FxTestUtil.runFx(() -> root.getChildren().setAll(toolbar));
 
-        assertFalse(FxTestUtil.callFx(() -> toolbar.lookup("#github-update-button").isVisible()));
-        assertFalse(FxTestUtil.callFx(() -> toolbar.lookup("#github-commit-button").isVisible()));
-        assertFalse(FxTestUtil.callFx(() -> toolbar.lookup("#github-push-button").isVisible()));
-        assertTrue(FxTestUtil.callFx(() -> toolbar.lookup("#github-pr-button").isVisible()));
+        robot.clickOn("#github-overflow-button");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        List<String> overflowItems = overflowItemTexts(robot);
+
+        assertFalse(overflowItems.contains("Update"));
+        assertFalse(overflowItems.contains("Commit..."));
+        assertFalse(overflowItems.contains("Push"));
+        assertFalse(overflowItems.contains("New Branch..."));
+        assertFalse(overflowItems.contains("Rollback..."));
+        assertTrue(overflowItems.contains("Pull Request..."));
+        assertTrue(overflowItems.contains("Set Token"));
         assertTrue(chipTexts(toolbar).contains("Remote only"));
         assertTrue(chipTexts(toolbar).contains("No token"));
         assertTrue(refDot(toolbar).getStyleClass().contains("pf-github-ref-dot-neutral"));
@@ -113,8 +128,8 @@ class GitHubToolbarFxTest {
     }
 
     @Test
-    void defaultBranchDisablesCommitAndShowsDefaultChip() {
-        GitHubToolbar toolbar = createToolbar(new ToolbarState(
+    void defaultBranchDisablesCommitInLowerFrequencyActionsAndShowsDefaultChip(FxRobot robot) {
+        GitHubToolbarViewModel viewModel = createViewModel(new ToolbarState(
             false,
             "main",
             GitRefKind.LOCAL_BRANCH,
@@ -124,9 +139,14 @@ class GitHubToolbarFxTest {
             0,
             0
         ));
+        GitHubToolbar toolbar = FxTestUtil.callFx(() -> new GitHubToolbar(viewModel));
         FxTestUtil.runFx(() -> root.getChildren().setAll(toolbar));
 
-        assertTrue(FxTestUtil.callFx(() -> toolbar.lookup("#github-commit-button").isDisable()));
+        robot.clickOn("#github-overflow-button");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(viewModel.commitDisabledProperty().get());
+        assertTrue(overflowItemTexts(robot).contains("Commit..."));
         assertTrue(chipTexts(toolbar).contains("Default"));
 
         FxTestUtil.runFx(toolbar::close);
@@ -153,7 +173,7 @@ class GitHubToolbarFxTest {
     }
 
     @Test
-    void pushAndPullRequestDisabledUntilTokenProvided() {
+    void pushAndPullRequestDisabledUntilTokenProvided(FxRobot robot) {
         GitHubToolbarViewModel viewModel = createViewModel(new ToolbarState(
             false,
             "feature/x",
@@ -167,15 +187,24 @@ class GitHubToolbarFxTest {
         GitHubToolbar toolbar = FxTestUtil.callFx(() -> new GitHubToolbar(viewModel));
         FxTestUtil.runFx(() -> root.getChildren().setAll(toolbar));
 
-        assertTrue(FxTestUtil.callFx(() -> toolbar.lookup("#github-push-button").isDisable()));
-        assertTrue(FxTestUtil.callFx(() -> toolbar.lookup("#github-pr-button").isDisable()));
+        robot.clickOn("#github-overflow-button");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(overflowItemTexts(robot).contains("Push"));
+        assertTrue(overflowItemTexts(robot).contains("Pull Request..."));
+        assertTrue(viewModel.pushDisabledProperty().get());
+        assertTrue(viewModel.pullRequestDisabledProperty().get());
         assertTrue(chipTexts(toolbar).contains("No token"));
 
         FxTestUtil.runFx(() -> viewModel.saveToken("token"));
         WaitForAsyncUtils.waitForFxEvents();
+        robot.type(KeyCode.ESCAPE);
+        WaitForAsyncUtils.waitForFxEvents();
+        robot.clickOn("#github-overflow-button");
+        WaitForAsyncUtils.waitForFxEvents();
 
-        assertFalse(FxTestUtil.callFx(() -> toolbar.lookup("#github-push-button").isDisable()));
-        assertFalse(FxTestUtil.callFx(() -> toolbar.lookup("#github-pr-button").isDisable()));
+        assertFalse(viewModel.pushDisabledProperty().get());
+        assertFalse(viewModel.pullRequestDisabledProperty().get());
         assertFalse(chipTexts(toolbar).contains("No token"));
 
         FxTestUtil.runFx(toolbar::close);
@@ -247,6 +276,83 @@ class GitHubToolbarFxTest {
         @SuppressWarnings("unchecked")
         ListView<RefPopupEntry.Action> submenuList = robot.lookup("#github-ref-submenu-list").queryAs(ListView.class);
         assertEquals("Checkout and Track", FxTestUtil.callFx(() -> submenuList.getItems().getFirst().primaryText()));
+
+        FxTestUtil.runFx(toolbar::close);
+    }
+
+    @Test
+    void popupAllowsSingleClickRefActivationWhileSearchIsFocused(FxRobot robot) {
+        GitHubToolbar toolbar = createToolbar(new ToolbarState(
+            false,
+            "feature/x",
+            GitRefKind.LOCAL_BRANCH,
+            "main",
+            true,
+            false,
+            0,
+            0
+        ));
+        FxTestUtil.runFx(() -> root.getChildren().setAll(toolbar));
+
+        robot.clickOn("#github-ref-pill");
+        robot.clickOn("v0.9.0");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals("v0.9.0", refText(toolbar).getText());
+        assertFalse(robot.lookup("#github-ref-popup").tryQuery().isPresent());
+
+        FxTestUtil.runFx(toolbar::close);
+    }
+
+    @Test
+    void popupShowsOnlyRefsAndNoCommandRows(FxRobot robot) {
+        GitHubToolbar toolbar = createToolbar(new ToolbarState(
+            false,
+            "feature/x",
+            GitRefKind.LOCAL_BRANCH,
+            "main",
+            true,
+            false,
+            0,
+            0
+        ));
+        FxTestUtil.runFx(() -> root.getChildren().setAll(toolbar));
+
+        robot.clickOn("#github-ref-pill");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        List<String> popupEntries = primaryTexts(robot);
+        assertFalse(popupEntries.contains("Update"));
+        assertFalse(popupEntries.contains("Commit..."));
+        assertFalse(popupEntries.contains("Push"));
+        assertFalse(popupEntries.contains("New Branch..."));
+        assertFalse(popupEntries.contains("Checkout Tag or Revision..."));
+        assertTrue(popupEntries.contains("main"));
+        assertTrue(popupEntries.contains("release"));
+        assertTrue(popupEntries.contains("v0.9.0"));
+
+        FxTestUtil.runFx(toolbar::close);
+    }
+
+    @Test
+    void overflowAllowsSingleClickActionActivation(FxRobot robot) {
+        GitHubToolbar toolbar = createToolbar(new ToolbarState(
+            false,
+            "feature/x",
+            GitRefKind.LOCAL_BRANCH,
+            "main",
+            true,
+            false,
+            0,
+            0
+        ));
+        FxTestUtil.runFx(() -> root.getChildren().setAll(toolbar));
+
+        robot.clickOn("#github-overflow-button");
+        robot.clickOn("Update");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals("Repository updated", FxTestUtil.callFx(() -> ((Label) toolbar.lookup("#github-status-text")).getText()));
 
         FxTestUtil.runFx(toolbar::close);
     }
@@ -411,6 +517,23 @@ class GitHubToolbarFxTest {
             .stream()
             .map(Label::getText)
             .toList();
+    }
+
+    private static List<String> overflowItemTexts(FxRobot robot) {
+        return robot.lookup(".menu-item")
+            .queryAll()
+            .stream()
+            .map(GitHubToolbarFxTest::menuItemText)
+            .filter(text -> !text.isBlank())
+            .toList();
+    }
+
+    private static String menuItemText(Node node) {
+        if (!(node instanceof Parent parent)) {
+            return "";
+        }
+        Node labelNode = parent.lookup(".label");
+        return labelNode instanceof Label label ? label.getText() : "";
     }
 
     private record ToolbarState(
