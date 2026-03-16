@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 PapiflyFX Docking — a multi-module JavaFX docking framework for IDE-style layouts.
-- groupId: `org.metalib.papifly.docking`, version `0.0.6-SNAPSHOT`
+- groupId: `org.metalib.papifly.docking`, version `0.0.15-SNAPSHOT`
 - Java 25, JavaFX 23.0.1, Maven 3.9+
 - Package prefix: `org.metalib.papifly.fx`
 - No FXML, no CSS — all programmatic JavaFX
@@ -44,11 +44,16 @@ sdk use java 25.0.1.fx-zulu
 ```
 papiflyfx-docking-api/      → Public interfaces & records (Theme, ContentFactory, ContentStateAdapter, LeafContentData, DisposableContent)
 papiflyfx-docking-docks/    → Core docking framework (DockManager, DockLeaf, DockTabGroup, DockSplitGroup, serialization)
-papiflyfx-docking-code/     → Canvas-based code editor (CodeEditor, lexers, search, gutter). Depends on api at compile; docks at test only.
-papiflyfx-docking-samples/  → Runnable demo app (NOT published to Maven Central). Depends on both docks + code.
+papiflyfx-docking-code/     → Canvas-based code editor (CodeEditor, lexers, search, gutter)
+papiflyfx-docking-tree/     → Canvas-based virtualized tree component
+papiflyfx-docking-media/    → JavaFX media viewer (uses javafx-media + javafx-web)
+papiflyfx-docking-hugo/     → Dockable Hugo preview (WebView, managed hugo server lifecycle)
+papiflyfx-docking-github/   → GitHub workflow toolbar (JGit-based: branch, commit, push, PR creation, PAT auth)
+papiflyfx-docking-samples/  → Runnable demo app (NOT published to Maven Central)
 ```
 
-Dependency flow: `api` ← `docks` ← `code` (test only) ← `samples`
+Dependency flow: `api` ← `docks` ← `{code, tree, media, hugo, github}` ← `samples`
+All content modules depend on `api` at compile scope and `docks` at test scope only.
 
 ## Architecture
 
@@ -84,6 +89,14 @@ mainContainer (BorderPane)
 - `IncrementalLexerPipeline` with language-specific lexers (Java/JS/JSON/Markdown/PlainText)
 - Controller pattern: `EditorInputController`, `EditorEditController`, `EditorPointerController`, `EditorNavigationController`
 
+### Content Module Pattern
+
+Each content module (code, tree, media, hugo, github) follows the same integration pattern:
+1. A main content `Node` (e.g., `CodeEditor`, `GitHubToolbarContribution`)
+2. A `ContentFactory` implementation for creating content from leaf data
+3. A `ContentStateAdapter` implementation for session persistence
+4. ServiceLoader registration for content-state restore
+
 ## Critical API Patterns
 
 - `DockManager.createTabGroup()` already calls `setupTabGroupDragHandlers` internally — never call it again
@@ -95,6 +108,13 @@ mainContainer (BorderPane)
   ```
 - `leaf.setContentFactoryId(CodeEditorFactory.FACTORY_ID)` — required for session restore
 - `editor.bindThemeProperty(dm.themeProperty())` — live theme sync for code editor
+
+## Maven Module Guidelines
+
+- All dependency versions managed in parent pom via properties
+- All plugin versions managed in parent pom `<pluginManagement>`
+- Modules should be self-contained with clear boundaries
+- Use `./mvnw` (Maven Wrapper), not bare `mvn`
 
 ## Test Setup
 
@@ -109,4 +129,6 @@ mainContainer (BorderPane)
 - Architecture specs: `spec/`
 - Docks module README: `papiflyfx-docking-docks/README.md`
 - Code editor README: `papiflyfx-docking-code/README.md`
+- Hugo module README: `papiflyfx-docking-hugo/README.md`
+- GitHub module README: `papiflyfx-docking-github/README.md`
 - Agent guidelines: `AGENTS.md`

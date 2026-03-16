@@ -3,17 +3,21 @@
 ## Project Structure & Module Organization
 - Root Maven aggregator: `pom.xml` defines the multi-module build.
 - Modules:
+  - `papiflyfx-docking-api/` — shared public API.
   - `papiflyfx-docking-docks/` — docking framework (`src/main/java/org/metalib/papifly/fx/docks`).
-- Tests live in `papiflyfx-docking-docks/src/test/java` (UI-focused TestFX + JUnit 5).
+  - `papiflyfx-docking-code/`, `papiflyfx-docking-tree/`, `papiflyfx-docking-media/`, `papiflyfx-docking-hugo/`, `papiflyfx-docking-github/`, `papiflyfx-docking-samples/` — feature modules and runnable samples.
+- Tests live under `src/test/java` per module (active suites include `papiflyfx-docking-docks`, `papiflyfx-docking-media`, and `papiflyfx-docking-github`).
 - Architecture and design references are kept under `spec/` (e.g., `spec/papiflyfx-docking-docks/README.md`).
 
 ## Build, Test, and Development Commands
 - Java setup (SDKMAN): `sdk use java 25.0.1.fx-zulu` before running Java/Maven commands.
-- Compile all modules: `mvn compile`.
+- Compile all modules: `./mvnw compile`.
 - Run demos:
-  - Docks demo: `mvn javafx:run -pl papiflyfx-docks`.
-- Run tests (docks only): `mvn test -pl papiflyfx-docks`.
-- Headless UI tests: `mvn -Dtestfx.headless=true test -pl papiflyfx-docks`.
+  - Docks demo: `./mvnw javafx:run -pl papiflyfx-docking-docks`.
+  - Samples demo: `./mvnw javafx:run -pl papiflyfx-docking-samples`.
+- Run tests (all modules): `./mvnw test`.
+- Run tests (docks only): `./mvnw test -pl papiflyfx-docking-docks`.
+- Headless UI tests: `./mvnw -Dtestfx.headless=true test`.
 
 ## Coding Style & Naming Conventions
 - Java 25, 4-space indentation, standard JavaFX idioms.
@@ -30,7 +34,7 @@
 
 ## Testing Guidelines
 - Frameworks: JUnit Jupiter + TestFX (UI tests).
-- Naming: `*Test` and UI-focused `*FxTest` under `papiflyfx-docking-docks/src/test/java`.
+- Naming: `*Test` and UI-focused `*FxTest` under module `src/test/java` directories.
 - Prefer deterministic UI tests; use the headless flag for CI or non-GUI environments.
 
 ## Commit & Pull Request Guidelines
