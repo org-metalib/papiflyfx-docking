@@ -17,6 +17,14 @@ Split the settings module into two modules following the same pattern as `papifl
 
 Content modules (`github`, `code`, `hugo`, `login`, future `langchain`/`mcp`) depend only on `settings-api` at compile scope. They never see the settings UI or its implementations.
 
+## Status
+
+- Completed: created `papiflyfx-docking-settings-api` with its README, Maven module, and the full public SPI/storage/secret contract set.
+- Completed: rewired `papiflyfx-docking-settings` to consume `settings-api` and kept UI, persistence, docking integration, and native secret backends in the implementation module.
+- Completed: updated the root module order to place `settings-api` after `papiflyfx-docking-api` and added `papiflyfx-docking-login` before samples.
+- Completed: `github`, `code`, `hugo`, and `login` compile against `settings-api` only and register their `SettingsCategory` providers through `ServiceLoader`.
+- Completed: kept bridge adapters in the contributing implementation modules (`github`, `login`) so the settings split remains acyclic.
+
 ## 3. What Lives in settings-api
 
 Everything a module author needs to **declare** settings, **access** storage, and **store** secrets — but nothing that renders UI or implements persistence.
@@ -55,11 +63,14 @@ papiflyfx-docking-settings-api/
 - `JsonSettingsStorage` (implements `SettingsStorage`)
 - `KeychainSecretStore`, `EncryptedFileSecretStore`, `InMemorySecretStore` (implement `SecretStore`)
 - `SecretStoreFactory`
-- `SecretStoreCredentialAdapter`, `SecretStoreSecureAdapter` (bridges)
 - `SettingsPanel`, `SettingsCategoryList`, `SettingsSearchBar`, `SettingsToolbar`
 - All `*SettingControl` classes
 - `SettingsContentFactory`, `SettingsStateAdapter`
 - Built-in categories: `AppearanceCategory`, `WorkspaceCategory`, `SecurityCategory`
+
+**In contributing implementation modules:**
+- `SecretStoreCredentialAdapter` in `papiflyfx-docking-github`
+- `SecretStoreSecureAdapter` in `papiflyfx-docking-login`
 
 ---
 
@@ -678,8 +689,8 @@ Compared to the original `spec/papiflyfx-docking-settings/plan.md`:
 | `EncryptedFileSecretStore` | `settings/secret/` | stays in `settings` |
 | `InMemorySecretStore` | `settings/secret/` | stays in `settings` |
 | `SecretStoreFactory` | `settings/secret/` | stays in `settings` |
-| `SecretStoreCredentialAdapter` | `settings/secret/` | stays in `settings` |
-| `SecretStoreSecureAdapter` | `settings/secret/` | stays in `settings` |
+| `SecretStoreCredentialAdapter` | `settings/secret/` | implemented in `papiflyfx-docking-github` |
+| `SecretStoreSecureAdapter` | `settings/secret/` | implemented in `papiflyfx-docking-login` |
 | `SettingsPanel` | `settings/ui/` | stays in `settings` |
 | All `*SettingControl` | `settings/ui/controls/` | stays in `settings` |
 | `SettingsContentFactory` | `settings/docking/` | stays in `settings` |

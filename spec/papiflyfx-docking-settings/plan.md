@@ -1456,70 +1456,72 @@ The login module depends on the settings module for `SecretStore` (secret persis
 
 ## 12. Implementation Phases
 
+Implementation status: all phases completed on 2026-03-17.
+
 ### Phase 1: Foundation (core SPI + persistence + secret store)
 
-| # | Task | Description |
-|---|---|---|
-| 1.1 | Create Maven module | `papiflyfx-docking-settings` with POM, add to parent |
-| 1.2 | SPI interfaces | `SettingsCategory`, `SettingsContributor`, `SettingsContext`, `SettingScope`, `SettingDefinition`, `SettingType`, `ValidationResult`, `SettingsValidator`, `SettingsAction` |
-| 1.3 | SecretStore | Interface + `KeychainSecretStore`, `EncryptedFileSecretStore`, `InMemorySecretStore`, `SecretStoreFactory` |
-| 1.4 | SettingsStorage | Interface + `JsonSettingsStorage` with application and workspace scope support |
-| 1.5 | SettingsMigrator | Schema versioning and migration contract |
-| 1.6 | Unit tests | Test storage read/write/scope resolution, secret store encrypt/decrypt, migration |
+| # | Task | Description | Status |
+|---|---|---|---|
+| 1.1 | Create Maven module | `papiflyfx-docking-settings` and `papiflyfx-docking-settings-api` with POMs, add to parent | Completed |
+| 1.2 | SPI interfaces | `SettingsCategory`, `SettingsContributor`, `SettingsContext`, `SettingScope`, `SettingDefinition`, `SettingType`, `ValidationResult`, `SettingsValidator`, `SettingsAction` | Completed |
+| 1.3 | SecretStore | Interface + `KeychainSecretStore`, `EncryptedFileSecretStore`, `InMemorySecretStore`, `SecretStoreFactory` | Completed |
+| 1.4 | SettingsStorage | Interface + `JsonSettingsStorage` with application and workspace scope support | Completed |
+| 1.5 | SettingsMigrator | Schema versioning and migration contract | Completed |
+| 1.6 | Unit tests | Test storage read/write/scope resolution, secret store encrypt/decrypt, migration | Completed |
 
 ### Phase 2: UI Shell
 
-| # | Task | Description |
-|---|---|---|
-| 2.1 | SettingsPanel | Two-pane layout: category list + content area + toolbar |
-| 2.2 | SettingsCategoryList | ListView with icon + label, selection binding |
-| 2.3 | SettingsSearchBar | Filter text field wired to category/definition matching |
-| 2.4 | SettingsToolbar | Apply, Reset buttons + dirty indicator + page action slots |
-| 2.5 | SettingControlFactory | Typed control builders for each SettingType |
-| 2.6 | SecretSettingControl | Masked input with reveal toggle |
-| 2.7 | Theme binding | `SettingsPanel` binds to `themeProperty` for live styling |
-| 2.8 | UI tests | Headless TestFX tests for panel, search, apply/reset |
+| # | Task | Description | Status |
+|---|---|---|---|
+| 2.1 | SettingsPanel | Two-pane layout: category list + content area + toolbar | Completed |
+| 2.2 | SettingsCategoryList | ListView with icon + label, selection binding | Completed |
+| 2.3 | SettingsSearchBar | Filter text field wired to category/definition matching | Completed |
+| 2.4 | SettingsToolbar | Apply, Reset buttons + dirty indicator + page action slots | Completed |
+| 2.5 | SettingControlFactory | Typed control builders for each SettingType | Completed |
+| 2.6 | SecretSettingControl | Masked input with reveal toggle | Completed |
+| 2.7 | Theme binding | `SettingsPanel` binds to `themeProperty` for live styling | Completed |
+| 2.8 | UI tests | Headless TestFX tests for panel, search, apply/reset | Completed |
 
 ### Phase 3: Built-in Categories
 
-| # | Task | Description |
-|---|---|---|
-| 3.1 | AppearanceCategory | Theme switcher (Dark/Light), font size, density |
-| 3.2 | WorkspaceCategory | Restore-on-startup, animation, layout presets |
-| 3.3 | SecurityCategory | List stored secret keys, update/revoke UI |
-| 3.4 | ServiceLoader registration | Register built-in categories |
+| # | Task | Description | Status |
+|---|---|---|---|
+| 3.1 | AppearanceCategory | Theme switcher (Dark/Light), font size, density | Completed |
+| 3.2 | WorkspaceCategory | Restore-on-startup, animation, layout presets | Completed |
+| 3.3 | SecurityCategory | List stored secret keys, update/revoke UI | Completed |
+| 3.4 | ServiceLoader registration | Register built-in categories | Completed |
 
 ### Phase 4: Docking Integration
 
-| # | Task | Description |
-|---|---|---|
-| 4.1 | SettingsContentFactory | Create SettingsPanel as dockable content |
-| 4.2 | SettingsStateAdapter | Save/restore active category selection |
-| 4.3 | ServiceLoader registration | Register ContentStateAdapter |
-| 4.4 | Samples integration | Add settings dock to `papiflyfx-docking-samples` demo app |
+| # | Task | Description | Status |
+|---|---|---|---|
+| 4.1 | SettingsContentFactory | Create SettingsPanel as dockable content | Completed |
+| 4.2 | SettingsStateAdapter | Save/restore active category selection | Completed |
+| 4.3 | ServiceLoader registration | Register ContentStateAdapter | Completed |
+| 4.4 | Samples integration | Add settings dock to `papiflyfx-docking-samples` demo app | Completed |
 
 ### Phase 5: Module Category Contributions
 
-| # | Task | Description |
-|---|---|---|
-| 5.1 | GitHubCategory | PAT management, host config (in `papiflyfx-docking-github`) |
-| 5.2 | EditorCategory | Tab size, font, wrap (in `papiflyfx-docking-code`) |
-| 5.3 | SecretStore bridges | Adapt GitHub `CredentialStore` → `SecretStore`; adapt login `SecureSecretStore` → `SecretStore` |
-| 5.4 | HugoCategory | Binary path, port, flags (in `papiflyfx-docking-hugo`) |
-| 5.5 | AuthenticationCategory | Identity provider config, active sessions, stored tokens (in `papiflyfx-docking-login`) |
+| # | Task | Description | Status |
+|---|---|---|---|
+| 5.1 | GitHubCategory | PAT management, host config (in `papiflyfx-docking-github`) | Completed |
+| 5.2 | EditorCategory | Tab size, font, wrap (in `papiflyfx-docking-code`) | Completed |
+| 5.3 | SecretStore bridges | Adapt GitHub `CredentialStore` → `SecretStore`; adapt login `SecureSecretStore` → `SecretStore` | Completed |
+| 5.4 | HugoCategory | Binary path, port, flags (in `papiflyfx-docking-hugo`) | Completed |
+| 5.5 | AuthenticationCategory | Identity provider config, active sessions, stored tokens (in `papiflyfx-docking-login`) | Completed |
 
 ### Phase 6: Advanced Features (v1.1+)
 
-| # | Task | Description |
-|---|---|---|
-| 6.1 | Settings profiles | Export/import non-secret settings (Codex S27, S28) |
-| 6.2 | Keyboard shortcuts category | Keybinding editor with conflict detection (UC-9) |
-| 6.3 | Network/proxy category | HTTP proxy, TLS, timeouts (UC-10) |
-| 6.4 | AI Models category | LangChain provider profiles, API keys (UC-3) |
-| 6.5 | MCP Servers category | Server CRUD, transport config, trust policy (UC-4) |
-| 6.6 | Custom theme editor | Color pickers for all Theme record fields (UC-1b) |
-| 6.7 | Windows Credential Manager | `WinCredSecretStore` for Windows platform |
-| 6.8 | Linux libsecret | `LibsecretSecretStore` for GNOME/KDE |
+| # | Task | Description | Status |
+|---|---|---|---|
+| 6.1 | Settings profiles | Export/import non-secret settings (Codex S27, S28) | Completed |
+| 6.2 | Keyboard shortcuts category | Keybinding editor with conflict detection (UC-9) | Completed |
+| 6.3 | Network/proxy category | HTTP proxy, TLS, timeouts (UC-10) | Completed |
+| 6.4 | AI Models category | LangChain provider profiles, API keys (UC-3) | Completed |
+| 6.5 | MCP Servers category | Server CRUD, transport config, trust policy (UC-4) | Completed |
+| 6.6 | Custom theme editor | Color pickers for all Theme record fields (UC-1b) | Completed |
+| 6.7 | Windows Credential Manager | `WinCredSecretStore` for Windows platform | Completed |
+| 6.8 | Linux libsecret | `LibsecretSecretStore` for GNOME/KDE | Completed |
 
 ---
 

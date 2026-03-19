@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.code.api;
 
 import javafx.scene.Node;
 import org.metalib.papifly.fx.docking.api.ContentFactory;
+import org.metalib.papifly.fx.code.settings.EditorSettingsSupport;
 
 /**
  * ContentFactory implementation for creating code editor content nodes.
@@ -31,6 +32,8 @@ public class CodeEditorFactory implements ContentFactory {
         if (!FACTORY_ID.equals(factoryId)) {
             return null;
         }
-        return new CodeEditor();
+        CodeEditor editor = new CodeEditor();
+        EditorSettingsSupport.applyDefaults(editor);
+        return editor;
     }
 }

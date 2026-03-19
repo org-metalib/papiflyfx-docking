@@ -19,6 +19,7 @@ import org.metalib.papifly.fx.samples.media.VideoPlayerSample;
 import org.metalib.papifly.fx.samples.media.YouTubeEmbedSample;
 import org.metalib.papifly.fx.samples.hugo.HugoPreviewSample;
 import org.metalib.papifly.fx.samples.github.GitHubToolbarSample;
+import org.metalib.papifly.fx.samples.settings.SettingsPanelSample;
 import org.metalib.papifly.fx.samples.tree.TreeViewNodeInfoSample;
 import org.metalib.papifly.fx.samples.tree.TreeViewSample;
 
@@ -58,7 +59,8 @@ public final class SampleCatalog {
             new YouTubeEmbedSample(),
             new MediaPersistSample(),
             new HugoPreviewSample(),
-            new GitHubToolbarSample()
+            new GitHubToolbarSample(),
+            new SettingsPanelSample()
         );
     }
 }

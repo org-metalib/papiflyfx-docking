@@ -24,6 +24,7 @@ import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
 
+import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -49,6 +50,7 @@ class SamplesSmokeTest {
     void start(Stage stage) {
         this.stage = stage;
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> uncaughtException = throwable);
+        System.setProperty("papiflyfx.app.dir", Path.of(System.getProperty("java.io.tmpdir"), "papiflyfx-samples-smoke").toString());
         stage.setScene(new Scene(new StackPane(), 1200, 800));
         stage.show();
     }

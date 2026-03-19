@@ -29,6 +29,11 @@
         </dependency>
         <dependency>
             <groupId>org.metalib.papifly.docking</groupId>
+            <artifactId>papiflyfx-docking-settings-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.metalib.papifly.docking</groupId>
             <artifactId>papiflyfx-docking-docks</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>

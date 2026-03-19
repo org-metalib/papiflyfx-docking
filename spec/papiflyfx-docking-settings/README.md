@@ -37,3 +37,11 @@ Include code snippets if needed.
 > create spec/papiflyfx-docking-settings/plan-api.md for settings-api module to make the settings module dependency loosly coupled with the other modules
 
 ## Implementation
+
+- Implement everything specified by `spec/papiflyfx-docking-settings/plan.md` and `spec/papiflyfx-docking-settings/plan-api.md`.
+  when you’re done with a task or phase, mark it as completed in the `plan.md`/`plan-api.md` document.
+- Add new `spec/papiflyfx-docking-settings/progress.md` file to track your progress.
+- Do not stop until all tasks and phases are completed. Do not add unnecessary comments or javadocs, do not use any or unknown types.
+- Continuously run typecheck to make sure you’re not introducing new issues.
+- add settings and settings-api modules readme
+
