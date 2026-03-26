@@ -1,6 +1,5 @@
 #
 
-
 ## Phase 1: Research
 
 > read this folder in depth, understand how it works deeply, what it does and all its specificities. when that’s done,
@@ -35,6 +34,21 @@
 > implement it all. when you’re done with a task or phase, mark it as completed in the plan document. do not stop until 
 > all tasks and phases are completed. do not add unnecessary comments or jsdocs, do not use any or unknown types.
 > continuously run typecheck to make sure you’re not introducing new issues.
+
+## Code Quality Analysis
+
+Prompt 1:
+> Score this code from 1 to 10 based on clarity, maintainability, testability, performance, and architecture.
+> Explain the score in bullet points and show key fixes that would raise it.
+
+Prompt 2:
+> Break down the biggest sources of technical debt in this code snippet. Rank them from highest to lowest impact and
+> propose refactoring steps for each.
+
+Prompt 3:
+> Check for unnecessary complexity, large functions, repeated logic, overly large classes, or mixed responsibilities.
+> Recommend how to simplify structure and improve cohesion.
+
 
 
 ## References

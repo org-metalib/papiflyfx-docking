@@ -20,6 +20,10 @@ import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.samples.catalog.SampleCatalog;
 import org.metalib.papifly.fx.samples.docks.PersistSample;
 import org.metalib.papifly.fx.samples.docks.TabGroupSample;
+import org.metalib.papifly.fx.samples.login.LoginSample;
+import org.metalib.papifly.fx.login.core.DefaultAuthSessionBroker;
+import org.metalib.papifly.fx.login.runtime.LoginRuntime;
+import org.metalib.papifly.fx.login.session.AuthState;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
@@ -144,6 +148,151 @@ class SamplesSmokeTest {
             .forEach(Stage::close));
     }
 
+    @Test
+    void loginSampleLoadsAndShowsProviderSelection() {
+        uncaughtException = null;
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        LoginSample loginSample = new LoginSample();
+
+        runFx(() -> {
+            Node content = loginSample.build(stage, themeProperty);
+            StackPane root = (StackPane) stage.getScene().getRoot();
+            root.getChildren().setAll(content);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertNull(uncaughtException, "Exception during LoginSample build: " + uncaughtException);
+
+        boolean[] hasProviderButtons = {false};
+        runFx(() -> hasProviderButtons[0] = hasButtonWithText(stage.getScene().getRoot(), "Sign in with"));
+        assertTrue(hasProviderButtons[0], "Login sample should display provider sign-in buttons");
+    }
+
+    @Test
+    void loginSampleSignInTransitionsToAuthenticated() {
+        uncaughtException = null;
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        LoginSample loginSample = new LoginSample();
+        DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker();
+        LoginRuntime.setBroker(broker);
+
+        runFx(() -> {
+            Node content = loginSample.build(stage, themeProperty);
+            StackPane root = (StackPane) stage.getScene().getRoot();
+            root.getChildren().setAll(content);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        broker.signIn("github");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertNull(uncaughtException, "Exception during login signIn: " + uncaughtException);
+        assertTrue(broker.authStateProperty().get() == AuthState.AUTHENTICATED,
+            "Broker should be in AUTHENTICATED state after signIn");
+    }
+
+    @Test
+    void loginSampleLogoutTransitionsToSignedOut() {
+        uncaughtException = null;
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        LoginSample loginSample = new LoginSample();
+        DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker();
+        LoginRuntime.setBroker(broker);
+
+        runFx(() -> {
+            Node content = loginSample.build(stage, themeProperty);
+            StackPane root = (StackPane) stage.getScene().getRoot();
+            root.getChildren().setAll(content);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        broker.signIn("google");
+        WaitForAsyncUtils.waitForFxEvents();
+        broker.logout(false);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertNull(uncaughtException, "Exception during login logout: " + uncaughtException);
+        assertTrue(broker.authStateProperty().get() == AuthState.SIGNED_OUT,
+            "Broker should be in SIGNED_OUT state after logout");
+    }
+
+    @Test
+    void loginSampleRefreshUpdatesSession() {
+        uncaughtException = null;
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        LoginSample loginSample = new LoginSample();
+        DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker();
+        LoginRuntime.setBroker(broker);
+
+        runFx(() -> {
+            Node content = loginSample.build(stage, themeProperty);
+            StackPane root = (StackPane) stage.getScene().getRoot();
+            root.getChildren().setAll(content);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        broker.signIn("github");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        broker.refresh(true);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertNull(uncaughtException, "Exception during login refresh: " + uncaughtException);
+        assertTrue(broker.activeSession().isPresent(), "Session should still be present after refresh");
+        assertTrue(broker.authStateProperty().get() == AuthState.AUTHENTICATED,
+            "Broker should remain AUTHENTICATED after refresh");
+    }
+
+    @Test
+    void loginSampleMultiAccountSwitching() {
+        uncaughtException = null;
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        LoginSample loginSample = new LoginSample();
+        DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker();
+        LoginRuntime.setBroker(broker);
+
+        runFx(() -> {
+            Node content = loginSample.build(stage, themeProperty);
+            StackPane root = (StackPane) stage.getScene().getRoot();
+            root.getChildren().setAll(content);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        broker.signIn("github");
+        WaitForAsyncUtils.waitForFxEvents();
+        broker.signIn("google");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(broker.allSessions().size() >= 2,
+            "Should have at least 2 sessions after signing in to 2 providers");
+
+        broker.setActiveSession("github", "github-user");
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertNull(uncaughtException, "Exception during multi-account switching: " + uncaughtException);
+        assertTrue(broker.activeSession().isPresent(), "Should have an active session after switch");
+        assertTrue("github".equals(broker.activeSession().get().providerId()),
+            "Active session should be github after switch");
+    }
+
+    @Test
+    void loginSampleThemeToggleDoesNotThrow() {
+        uncaughtException = null;
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        LoginSample loginSample = new LoginSample();
+
+        runFx(() -> {
+            Node content = loginSample.build(stage, themeProperty);
+            StackPane root = (StackPane) stage.getScene().getRoot();
+            root.getChildren().setAll(content);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        runFx(() -> themeProperty.set(Theme.light()));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        runFx(() -> themeProperty.set(Theme.dark()));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertNull(uncaughtException, "Exception during theme toggle on LoginSample: " + uncaughtException);
+    }
+
     // ---------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------
@@ -194,6 +343,22 @@ class SamplesSmokeTest {
             }
         }
         return count;
+    }
+
+    private boolean hasButtonWithText(Node root, String textPrefix) {
+        if (root instanceof javafx.scene.control.Button button) {
+            if (button.getText() != null && button.getText().startsWith(textPrefix)) {
+                return true;
+            }
+        }
+        if (root instanceof Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                if (hasButtonWithText(child, textPrefix)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private void firePrimaryClick(Node node) {

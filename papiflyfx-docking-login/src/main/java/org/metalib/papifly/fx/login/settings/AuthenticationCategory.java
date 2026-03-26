@@ -8,16 +8,21 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import org.metalib.papifly.fx.login.api.AuthSession;
 import org.metalib.papifly.fx.login.api.AuthSessionBroker;
-import org.metalib.papifly.fx.login.api.UserPrincipal;
+import org.metalib.papifly.fx.login.config.LoginProviderSettings;
 import org.metalib.papifly.fx.login.core.DefaultAuthSessionBroker;
+import org.metalib.papifly.fx.login.idapi.UserPrincipal;
+import org.metalib.papifly.fx.login.idapi.providers.GenericOidcProvider;
+import org.metalib.papifly.fx.login.idapi.providers.GitHubProvider;
+import org.metalib.papifly.fx.login.idapi.providers.GoogleProvider;
 import org.metalib.papifly.fx.login.runtime.LoginRuntime;
+import org.metalib.papifly.fx.login.session.AuthSession;
 import org.metalib.papifly.fx.settings.api.SecretKeyNames;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
 import org.metalib.papifly.fx.settings.api.SettingScope;
@@ -26,6 +31,7 @@ import org.metalib.papifly.fx.settings.api.SettingsAction;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.api.ValidationResult;
+import org.metalib.papifly.fx.login.session.AuthState;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -33,13 +39,14 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class AuthenticationCategory implements SettingsCategory {
 
-    private static final String GENERIC_PROVIDER = "generic";
-    private static final String GOOGLE_PROVIDER = "google";
-    private static final String GITHUB_PROVIDER = "github";
+    private static final String GENERIC_PROVIDER = GenericOidcProvider.PROVIDER_ID;
+    private static final String GOOGLE_PROVIDER = GoogleProvider.PROVIDER_ID;
+    private static final String GITHUB_PROVIDER = GitHubProvider.PROVIDER_ID;
     private static final String TOKEN_PREFIX = "login:oauth:refresh:";
 
     private static final SettingDefinition<Boolean> GENERIC_ENABLED = SettingDefinition
@@ -76,22 +83,25 @@ public class AuthenticationCategory implements SettingsCategory {
         .of("login.provider.github.scopes", "GitHub Scopes", SettingType.STRING, "repo read:user")
         .withDescription("Granted scopes for GitHub sessions.");
     private static final SettingDefinition<String> GITHUB_ENTERPRISE_URL = SettingDefinition
-        .of("login.provider.github.enterpriseApiUrl", "GitHub Enterprise API URL", SettingType.STRING, "https://api.github.com")
-        .withDescription("Base API URL for GitHub Enterprise authentication.");
+        .of(LoginProviderSettings.enterpriseUrlKey(), "GitHub Enterprise URL", SettingType.STRING, "")
+        .withDescription("Optional GitHub Enterprise base URL, for example https://ghe.example.com or https://ghe.example.com/api/v3.");
 
     private VBox pane;
     private CheckBox genericEnabledBox;
     private TextField genericDiscoveryField;
     private TextField genericClientIdField;
+    private PasswordField genericClientSecretField;
     private TextField genericScopesField;
     private CheckBox googleEnabledBox;
     private TextField googleClientIdField;
+    private PasswordField googleClientSecretField;
     private TextField googleScopesField;
     private TextField googleWorkspaceDomainField;
     private CheckBox githubEnabledBox;
     private TextField githubClientIdField;
+    private PasswordField githubClientSecretField;
     private TextField githubScopesField;
-    private TextField githubEnterpriseApiField;
+    private TextField githubEnterpriseUrlField;
     private ComboBox<String> providerSelector;
     private TextField subjectField;
     private TextField displayNameField;
@@ -154,15 +164,18 @@ public class AuthenticationCategory implements SettingsCategory {
             genericEnabledBox = new CheckBox("Enable Generic OIDC");
             genericDiscoveryField = new TextField();
             genericClientIdField = new TextField();
+            genericClientSecretField = new PasswordField();
             genericScopesField = new TextField();
             googleEnabledBox = new CheckBox("Enable Google");
             googleClientIdField = new TextField();
+            googleClientSecretField = new PasswordField();
             googleScopesField = new TextField();
             googleWorkspaceDomainField = new TextField();
             githubEnabledBox = new CheckBox("Enable GitHub");
             githubClientIdField = new TextField();
+            githubClientSecretField = new PasswordField();
             githubScopesField = new TextField();
-            githubEnterpriseApiField = new TextField();
+            githubEnterpriseUrlField = new TextField();
             providerSelector = new ComboBox<>();
             subjectField = new TextField();
             displayNameField = new TextField();
@@ -198,15 +211,18 @@ public class AuthenticationCategory implements SettingsCategory {
                 genericEnabledBox,
                 field("Generic OIDC Discovery URL", genericDiscoveryField),
                 field("Generic OIDC Client ID", genericClientIdField),
+                field("Generic OIDC Client Secret", genericClientSecretField),
                 field("Generic OIDC Scopes", genericScopesField),
                 googleEnabledBox,
                 field("Google Client ID", googleClientIdField),
+                field("Google Client Secret", googleClientSecretField),
                 field("Google Scopes", googleScopesField),
                 field("Google Workspace Domain", googleWorkspaceDomainField),
                 githubEnabledBox,
                 field("GitHub Client ID", githubClientIdField),
+                field("GitHub Client Secret", githubClientSecretField),
                 field("GitHub Scopes", githubScopesField),
-                field("GitHub Enterprise API URL", githubEnterpriseApiField)
+                field("GitHub Enterprise URL", githubEnterpriseUrlField)
             );
             VBox draft = section(
                 "Session Draft",
@@ -216,7 +232,7 @@ public class AuthenticationCategory implements SettingsCategory {
                 field("Email", emailField),
                 field("Granted Scopes", sessionScopesField)
             );
-            VBox activeSession = section(
+            VBox activeSessionBox = section(
                 "Active Session",
                 summaryRow("State", authStateLabel),
                 summaryRow("User", activeUserLabel),
@@ -231,7 +247,7 @@ public class AuthenticationCategory implements SettingsCategory {
             );
             VBox.setVgrow(tokenList, Priority.ALWAYS);
 
-            pane = new VBox(16, providers, new Separator(), draft, new Separator(), activeSession, new Separator(), storedTokens);
+            pane = new VBox(16, providers, new Separator(), draft, new Separator(), activeSessionBox, new Separator(), storedTokens);
             pane.setPadding(new Insets(8));
         }
         reset(context);
@@ -244,14 +260,17 @@ public class AuthenticationCategory implements SettingsCategory {
         context.storage().putString(SettingScope.APPLICATION, GENERIC_DISCOVERY_URL.key(), genericDiscoveryField.getText());
         context.storage().putString(SettingScope.APPLICATION, GENERIC_CLIENT_ID.key(), genericClientIdField.getText());
         context.storage().putString(SettingScope.APPLICATION, GENERIC_SCOPES.key(), genericScopesField.getText());
+        storeSecret(context, GENERIC_PROVIDER, genericClientSecretField.getText());
         context.storage().putBoolean(SettingScope.APPLICATION, GOOGLE_ENABLED.key(), googleEnabledBox.isSelected());
         context.storage().putString(SettingScope.APPLICATION, GOOGLE_CLIENT_ID.key(), googleClientIdField.getText());
         context.storage().putString(SettingScope.APPLICATION, GOOGLE_SCOPES.key(), googleScopesField.getText());
         context.storage().putString(SettingScope.APPLICATION, GOOGLE_WORKSPACE_DOMAIN.key(), googleWorkspaceDomainField.getText());
+        storeSecret(context, GOOGLE_PROVIDER, googleClientSecretField.getText());
         context.storage().putBoolean(SettingScope.APPLICATION, GITHUB_ENABLED.key(), githubEnabledBox.isSelected());
         context.storage().putString(SettingScope.APPLICATION, GITHUB_CLIENT_ID.key(), githubClientIdField.getText());
         context.storage().putString(SettingScope.APPLICATION, GITHUB_SCOPES.key(), githubScopesField.getText());
-        context.storage().putString(SettingScope.APPLICATION, GITHUB_ENTERPRISE_URL.key(), githubEnterpriseApiField.getText());
+        context.storage().putString(SettingScope.APPLICATION, GITHUB_ENTERPRISE_URL.key(), githubEnterpriseUrlField.getText());
+        storeSecret(context, GITHUB_PROVIDER, githubClientSecretField.getText());
         context.storage().save();
         dirty = false;
     }
@@ -261,15 +280,26 @@ public class AuthenticationCategory implements SettingsCategory {
         genericEnabledBox.setSelected(context.storage().getBoolean(SettingScope.APPLICATION, GENERIC_ENABLED.key(), GENERIC_ENABLED.defaultValue()));
         genericDiscoveryField.setText(context.storage().getString(SettingScope.APPLICATION, GENERIC_DISCOVERY_URL.key(), GENERIC_DISCOVERY_URL.defaultValue()));
         genericClientIdField.setText(context.storage().getString(SettingScope.APPLICATION, GENERIC_CLIENT_ID.key(), GENERIC_CLIENT_ID.defaultValue()));
+        genericClientSecretField.setText(loadSecret(context, GENERIC_PROVIDER));
         genericScopesField.setText(context.storage().getString(SettingScope.APPLICATION, GENERIC_SCOPES.key(), GENERIC_SCOPES.defaultValue()));
         googleEnabledBox.setSelected(context.storage().getBoolean(SettingScope.APPLICATION, GOOGLE_ENABLED.key(), GOOGLE_ENABLED.defaultValue()));
         googleClientIdField.setText(context.storage().getString(SettingScope.APPLICATION, GOOGLE_CLIENT_ID.key(), GOOGLE_CLIENT_ID.defaultValue()));
+        googleClientSecretField.setText(loadSecret(context, GOOGLE_PROVIDER));
         googleScopesField.setText(context.storage().getString(SettingScope.APPLICATION, GOOGLE_SCOPES.key(), GOOGLE_SCOPES.defaultValue()));
         googleWorkspaceDomainField.setText(context.storage().getString(SettingScope.APPLICATION, GOOGLE_WORKSPACE_DOMAIN.key(), GOOGLE_WORKSPACE_DOMAIN.defaultValue()));
         githubEnabledBox.setSelected(context.storage().getBoolean(SettingScope.APPLICATION, GITHUB_ENABLED.key(), GITHUB_ENABLED.defaultValue()));
         githubClientIdField.setText(context.storage().getString(SettingScope.APPLICATION, GITHUB_CLIENT_ID.key(), GITHUB_CLIENT_ID.defaultValue()));
+        githubClientSecretField.setText(loadSecret(context, GITHUB_PROVIDER));
         githubScopesField.setText(context.storage().getString(SettingScope.APPLICATION, GITHUB_SCOPES.key(), GITHUB_SCOPES.defaultValue()));
-        githubEnterpriseApiField.setText(context.storage().getString(SettingScope.APPLICATION, GITHUB_ENTERPRISE_URL.key(), GITHUB_ENTERPRISE_URL.defaultValue()));
+        githubEnterpriseUrlField.setText(context.storage().getString(
+            SettingScope.APPLICATION,
+            GITHUB_ENTERPRISE_URL.key(),
+            context.storage().getString(
+                SettingScope.APPLICATION,
+                LoginProviderSettings.GITHUB_ENTERPRISE_URL_LEGACY_KEY,
+                GITHUB_ENTERPRISE_URL.defaultValue()
+            )
+        ));
         refreshTokenList(context);
         refreshSessionSummary();
         dirty = false;
@@ -327,18 +357,18 @@ public class AuthenticationCategory implements SettingsCategory {
             context.secretStore().setSecret(refreshTokenRef, "managed-session-token");
         }
 
-        String displayName = value(displayNameField.getText()).isEmpty() ? subject : value(displayNameField.getText());
-        UserPrincipal principal = new UserPrincipal(displayName, value(emailField.getText()), "");
-        Instant issuedAt = Instant.now();
+        String name = value(displayNameField.getText()).isEmpty() ? subject : value(displayNameField.getText());
+        UserPrincipal principal = new UserPrincipal(subject, name, value(emailField.getText()), "");
+        Instant now = Instant.now();
         AuthSession session = new AuthSession(
+            UUID.randomUUID().toString(),
             providerId,
             subject,
             principal,
-            parseScopes(sessionScopesField.getText().isBlank() ? defaultScopes(providerId) : sessionScopesField.getText()),
-            "",
-            refreshTokenRef,
-            issuedAt.plusSeconds(3600),
-            issuedAt
+            AuthState.AUTHENTICATED,
+            now,
+            now.plusSeconds(3600),
+            parseScopes(sessionScopesField.getText().isBlank() ? defaultScopes(providerId) : sessionScopesField.getText())
         );
 
         AuthSessionBroker broker = LoginRuntime.broker();
@@ -408,13 +438,16 @@ public class AuthenticationCategory implements SettingsCategory {
         List<TextField> textFields = List.of(
             genericDiscoveryField,
             genericClientIdField,
+            genericClientSecretField,
             genericScopesField,
             googleClientIdField,
+            googleClientSecretField,
             googleScopesField,
             googleWorkspaceDomainField,
             githubClientIdField,
+            githubClientSecretField,
             githubScopesField,
-            githubEnterpriseApiField,
+            githubEnterpriseUrlField,
             subjectField,
             displayNameField,
             emailField,
@@ -456,13 +489,13 @@ public class AuthenticationCategory implements SettingsCategory {
         if (principal == null) {
             return session.subject();
         }
-        String displayName = value(principal.displayName());
+        String name = value(principal.displayName());
         String email = value(principal.email());
-        if (!displayName.isEmpty() && !email.isEmpty()) {
-            return displayName + " <" + email + '>';
+        if (!name.isEmpty() && !email.isEmpty()) {
+            return name + " <" + email + '>';
         }
-        if (!displayName.isEmpty()) {
-            return displayName;
+        if (!name.isEmpty()) {
+            return name;
         }
         if (!email.isEmpty()) {
             return email;
@@ -490,6 +523,19 @@ public class AuthenticationCategory implements SettingsCategory {
         return text == null ? "" : text.trim();
     }
 
+    private void storeSecret(SettingsContext context, String providerId, String secret) {
+        String key = LoginProviderSettings.clientSecretStoreKey(providerId);
+        if (value(secret).isEmpty()) {
+            context.secretStore().clearSecret(key);
+            return;
+        }
+        context.secretStore().setSecret(key, secret);
+    }
+
+    private String loadSecret(SettingsContext context, String providerId) {
+        return context.secretStore().getSecret(LoginProviderSettings.clientSecretStoreKey(providerId)).orElse("");
+    }
+
     private SessionKey sessionKey(String secretKey) {
         if (!secretKey.startsWith(TOKEN_PREFIX)) {
             return null;
@@ -499,12 +545,12 @@ public class AuthenticationCategory implements SettingsCategory {
         if (separator < 0) {
             return null;
         }
-        String providerId = remainder.substring(0, separator);
-        String subject = remainder.substring(separator + 1);
-        if (providerId.isBlank() || subject.isBlank()) {
+        String pId = remainder.substring(0, separator);
+        String sub = remainder.substring(separator + 1);
+        if (pId.isBlank() || sub.isBlank()) {
             return null;
         }
-        return new SessionKey(providerId, subject);
+        return new SessionKey(pId, sub);
     }
 
     private VBox section(String title, Node... content) {
@@ -515,10 +561,10 @@ public class AuthenticationCategory implements SettingsCategory {
         return box;
     }
 
-    private VBox field(String labelText, Node field) {
+    private VBox field(String labelText, Node fieldNode) {
         Label label = new Label(labelText);
         label.setStyle("-fx-font-weight: bold;");
-        return new VBox(4, label, field);
+        return new VBox(4, label, fieldNode);
     }
 
     private HBox summaryRow(String labelText, Label valueLabel) {

@@ -10,6 +10,7 @@ import org.metalib.papifly.fx.docks.layout.ContentStateRegistry;
 import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.samples.SampleScene;
+import org.metalib.papifly.fx.samples.SamplesRuntimeSupport;
 import org.metalib.papifly.fx.settings.docking.SettingsContentFactory;
 import org.metalib.papifly.fx.settings.docking.SettingsStateAdapter;
 import org.metalib.papifly.fx.settings.runtime.SettingsRuntime;
@@ -29,7 +30,7 @@ public class SettingsPanelSample implements SampleScene {
 
     @Override
     public Node build(Stage ownerStage, ObjectProperty<Theme> themeProperty) {
-        SettingsRuntime runtime = SettingsRuntime.createDefault(themeProperty);
+        SettingsRuntime runtime = SamplesRuntimeSupport.settingsRuntime(themeProperty);
 
         DockManager dockManager = new DockManager();
         dockManager.themeProperty().bind(themeProperty);

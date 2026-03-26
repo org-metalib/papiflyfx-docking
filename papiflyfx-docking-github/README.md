@@ -14,6 +14,8 @@ A GitHub workflow toolbar for PapiflyFX docking applications.
 - Create pull request via GitHub REST API
 - PAT authentication with pluggable token stores
 - Toolbar mounting wrapper for top/bottom host placement
+- Settings panel integration via `GitHubCategory`
+- Theme support with light/dark mode mapping
 
 ## Maven dependency
 
@@ -54,12 +56,75 @@ GitHubToolbar toolbar = new GitHubToolbar(context);
 
 In remote-only mode, local git actions are disabled and PR/auth actions remain available.
 
-## Persistence adapter
+## Module architecture
 
-The module includes `GitHubToolbarStateAdapter` and ServiceLoader registration for optional docking content-state restore.
+```
+papiflyfx-docking-github/
+  api/
+    GitHubToolbar.java            — Main toolbar HBox, FACTORY_ID = "github-toolbar"
+    GitHubToolbarFactory.java     — ContentFactory for docking integration
+    GitHubToolbarStateAdapter.java— ContentStateAdapter for session persistence
+    GitHubToolbarContribution.java— Mounting helper for top/bottom placement
+    GitHubRepoContext.java        — Repository context (remote URI + optional local path)
+  auth/
+    CredentialStore.java          — Pluggable credential SPI
+    PatCredentialStore.java       — In-memory PAT store
+    SecretStoreCredentialAdapter.java — Adapter bridging settings SecretStore
+    KeychainTokenStore.java       — OS keychain-backed store
+    PreferencesTokenStore.java    — java.util.prefs-backed store
+  git/
+    GitRepository.java            — Local repository abstraction
+    JGitRepository.java           — JGit implementation (branch, commit, push, status)
+    GitOperationException.java    — Git operation failures
+  github/
+    GitHubApiService.java         — GitHub REST API client (PR creation, auth)
+    GitHubApiException.java       — API error wrapper
+    RemoteUrlParser.java          — Extracts owner/repo from remote URLs
+  model/
+    BranchRef, TagRef, CommitInfo, CurrentRefState, RepoStatus,
+    PullRequestDraft, PullRequestResult, RefPopupEntry, RefPopupSection,
+    StatusMessage, SecondaryChip, RollbackMode, GitRefKind
+  settings/
+    GitHubCategory.java           — SettingsCategory for host, author, PAT configuration
+  ui/
+    GitHubToolbarViewModel.java   — MVVM view model binding toolbar state
+    CommandRunner.java            — Async git command executor
+    dialog/                       — Commit, NewBranch, PullRequest, Rollback, Token dialogs
+    popup/                        — GitRefPopup for branch/tag selection
+    state/                        — RecentRefStore, PreferencesRecentRefStore
+    theme/                        — GitHubThemeSupport, GitHubToolbarTheme, ThemeMapper
+    toolbar/                      — RefPill branch display widget
+```
+
+## Docking integration
+
+```java
+ContentStateRegistry.register(new GitHubToolbarStateAdapter());
+dockManager.setContentFactory(new GitHubToolbarFactory(repoContext));
+```
+
+The module registers via ServiceLoader:
+- `META-INF/services/org.metalib.papifly.fx.docking.api.ContentStateAdapter`
+- `META-INF/services/org.metalib.papifly.fx.settings.api.SettingsCategory`
+
+## Settings integration
+
+`GitHubCategory` provides settings for:
+- `github.host` — GitHub API host (default: `api.github.com`)
+- `github.author.name` — Commit author name
+- `github.author.email` — Commit author email
+- `github.pat` — Personal access token (stored via `SecretStore`)
+
+## Dependencies
+
+- `papiflyfx-docking-api` — ContentFactory, ContentStateAdapter, Theme
+- `papiflyfx-docking-settings-api` — SettingsCategory, SecretStore, SecretKeyNames
+- `org.eclipse.jgit` — Local git operations
+- JavaFX (controls, base, graphics)
+- `papiflyfx-docking-docks` (test scope only)
 
 ## Run tests
 
 ```bash
-mvn -pl papiflyfx-docking-github -am -Dtestfx.headless=true test
+./mvnw -pl papiflyfx-docking-github -am -Dtestfx.headless=true test
 ```

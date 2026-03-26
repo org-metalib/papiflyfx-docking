@@ -1,6 +1,9 @@
 package org.metalib.papifly.fx.login.api;
 
 import javafx.beans.property.ReadOnlyObjectProperty;
+import org.metalib.papifly.fx.login.idapi.DeviceCodeResponse;
+import org.metalib.papifly.fx.login.session.AuthSession;
+import org.metalib.papifly.fx.login.session.AuthState;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,4 +28,6 @@ public interface AuthSessionBroker {
     ReadOnlyObjectProperty<AuthState> authStateProperty();
 
     ReadOnlyObjectProperty<AuthSession> sessionProperty();
+
+    ReadOnlyObjectProperty<DeviceCodeResponse> deviceCodeProperty();
 }

@@ -1,4 +1,4 @@
-package org.metalib.papifly.fx.login.api;
+package org.metalib.papifly.fx.login.session;
 
 public enum AuthState {
     UNAUTHENTICATED,

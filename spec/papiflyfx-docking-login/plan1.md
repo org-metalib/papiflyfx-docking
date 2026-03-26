@@ -629,7 +629,7 @@ Login tokens integrate with the settings module's `SecurityCategory`:
 
 ## 15. Delivery Phases
 
-### Phase 1 — API Contracts + Scaffold
+### Phase 1 — API Contracts + Scaffold ✅
 
 - `login-idapi`: `IdentityProvider`, `ProviderCapabilities`, `ProviderDescriptor`, `ProviderRegistry`
 - `login-idapi`: Data types (`TokenResponse`, `UserPrincipal`, `DeviceCodeResponse`, `AuthorizationRequest`, `CodeExchangeRequest`)
@@ -637,7 +637,7 @@ Login tokens integrate with the settings module's `SecurityCategory`:
 - `login-session-api`: Data types (`AuthSession`, `AuthState`, `SessionMetadata`, `SessionEvent`)
 - Module skeletons, Maven configuration
 
-### Phase 2 — Core Implementations
+### Phase 2 — Core Implementations ✅
 
 - `login-idapi`: `PkceGenerator`, `LoopbackCallbackServer`, `IdTokenValidator`
 - `login-idapi`: `GenericOidcProvider`, `GoogleProvider`, `GitHubProvider`
@@ -645,7 +645,7 @@ Login tokens integrate with the settings module's `SecurityCategory`:
 - `login-session-api`: `InMemorySecretStore`, `SettingsSecretStoreAdapter`
 - `login-session-api`: `TokenRefreshScheduler`, `SessionStateManager`, `MultiAccountManager`
 
-### Phase 3 — Orchestrator + UI
+### Phase 3 — Orchestrator + UI ✅
 
 - `login`: `DefaultAuthSessionBroker`, `LoginViewModel`
 - `login`: `LoginDockPane`, `AccountStatusWidget`, `DeviceFlowView`, `ProviderSelectionView`
@@ -654,12 +654,12 @@ Login tokens integrate with the settings module's `SecurityCategory`:
 - Refresh scheduler and forced refresh API
 - Metadata restore + multi-account switching
 
-### Phase 4 — Extended Providers + Hardening
+### Phase 4 — Extended Providers + Hardening ✅
 
-- `login-idapi`: `FacebookProvider`, `AppleProvider`, `AmazonProvider`
-- Security hardening pass (§11)
+- `login-idapi`: `FacebookProvider`, `AppleProvider`, `AmazonProvider` (deferred to post-v1)
+- Security hardening pass (§11) — PKCE S256, loopback 127.0.0.1, one-shot server, state/nonce validation
 - Full test coverage across all three modules
-- Settings migration support
+- Settings migration support (`LoginSettingsMigrator`)
 - Sample app integration
 
 ---

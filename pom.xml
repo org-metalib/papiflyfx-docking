@@ -20,6 +20,8 @@
         <module>papiflyfx-docking-media</module>
         <module>papiflyfx-docking-hugo</module>
         <module>papiflyfx-docking-github</module>
+        <module>papiflyfx-docking-login-idapi</module>
+        <module>papiflyfx-docking-login-session-api</module>
         <module>papiflyfx-docking-login</module>
         <module>papiflyfx-docking-samples</module>
     </modules>

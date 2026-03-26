@@ -63,9 +63,9 @@ Merge the follwoing list of the specifications resolving any overlappings and co
 
 ## Implementation
 
-- Implement everything specified by `spec/papiflyfx-docking-github/plan.md`. when you’re done with a task or phase, mark it
-  as completed in the `spec/papiflyfx-docking-github/plan.md` document.
-- Add new `spec/papiflyfx-docking-github/progress.md` file to track your progress.
+- Implement everything specified by `spec/papiflyfx-docking-login/plan1.md`. when you’re done with a task or phase, mark it
+  as completed in the `spec/papiflyfx-docking-login/plan1.md` document.
+- Add new `spec/papiflyfx-docking-login/progress.md` file to track your progress.
 - Do not stop until all tasks and phases are completed. Do not add unnecessary comments or javadocs, do not use any or unknown types.
 - Continuously run typecheck to make sure you’re not introducing new issues.
 - add github module readme

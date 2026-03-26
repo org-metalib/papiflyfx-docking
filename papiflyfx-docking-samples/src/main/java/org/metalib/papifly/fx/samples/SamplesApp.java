@@ -79,6 +79,7 @@ public class SamplesApp extends Application {
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
+        SamplesRuntimeSupport.initialize(themeProperty);
 
         HBox topBar = buildTopBar();
         TreeView<NavigationEntry> sampleTree = buildSampleTree();
