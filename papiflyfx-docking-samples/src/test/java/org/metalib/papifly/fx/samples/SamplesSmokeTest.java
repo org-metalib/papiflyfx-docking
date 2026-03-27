@@ -29,10 +29,13 @@ import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CompletionException;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -74,6 +77,18 @@ class SamplesSmokeTest {
             assertNull(uncaughtException,
                 "Unexpected exception in sample '" + sample.title() + "': " + uncaughtException);
         }
+    }
+
+    @Test
+    void sampleCatalogIncludesProviderSpecificLoginSamples() {
+        List<String> titles = SampleCatalog.all().stream()
+            .map(SampleScene::title)
+            .toList();
+
+        assertTrue(titles.contains("Sign in with Google"));
+        assertTrue(titles.contains("Sign in with GitHub"));
+        assertTrue(titles.contains("Sign in with OIDC"));
+        assertTrue(!titles.contains("Login Panel"));
     }
 
     @Test
@@ -166,6 +181,36 @@ class SamplesSmokeTest {
         boolean[] hasProviderButtons = {false};
         runFx(() -> hasProviderButtons[0] = hasButtonWithText(stage.getScene().getRoot(), "Sign in with"));
         assertTrue(hasProviderButtons[0], "Login sample should display provider sign-in buttons");
+    }
+
+    @Test
+    void providerSpecificLoginSampleShowsOnlyConfiguredProvider() {
+        uncaughtException = null;
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        LoginSample loginSample = new LoginSample("Sign in with GitHub", "github");
+
+        runFx(() -> {
+            Node content = loginSample.build(stage, themeProperty);
+            StackPane root = (StackPane) stage.getScene().getRoot();
+            root.getChildren().setAll(content);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertNull(uncaughtException, "Exception during provider-specific LoginSample build: " + uncaughtException);
+
+        boolean[] hasGitHub = {false};
+        boolean[] hasGoogle = {false};
+        boolean[] hasGenericOidc = {false};
+        runFx(() -> {
+            Node root = stage.getScene().getRoot();
+            hasGitHub[0] = hasButtonWithText(root, "Sign in with GitHub");
+            hasGoogle[0] = hasButtonWithText(root, "Sign in with Google");
+            hasGenericOidc[0] = hasButtonWithText(root, "Sign in with Generic OIDC");
+        });
+
+        assertTrue(hasGitHub[0], "GitHub login sample should show the GitHub button");
+        assertTrue(!hasGoogle[0], "GitHub login sample should hide the Google button");
+        assertTrue(!hasGenericOidc[0], "GitHub login sample should hide the Generic OIDC button");
     }
 
     @Test
@@ -291,6 +336,34 @@ class SamplesSmokeTest {
         WaitForAsyncUtils.waitForFxEvents();
 
         assertNull(uncaughtException, "Exception during theme toggle on LoginSample: " + uncaughtException);
+    }
+
+    @Test
+    void loginSampleUsesRealSamplesRuntimeInitialization() {
+        uncaughtException = null;
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        System.setProperty(
+            "papiflyfx.app.dir",
+            Path.of(System.getProperty("java.io.tmpdir"), "papiflyfx-samples-smoke-google-" + System.nanoTime()).toString()
+        );
+        SamplesRuntimeSupport.initialize(themeProperty);
+        LoginSample loginSample = new LoginSample();
+
+        runFx(() -> {
+            Node content = loginSample.build(stage, themeProperty);
+            StackPane root = (StackPane) stage.getScene().getRoot();
+            root.getChildren().setAll(content);
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        CompletionException error = assertThrows(
+            CompletionException.class,
+            () -> LoginRuntime.broker().signIn("google").join()
+        );
+
+        assertNull(uncaughtException, "Exception during real runtime login sample build: " + uncaughtException);
+        assertTrue(LoginRuntime.broker() instanceof DefaultAuthSessionBroker defaultBroker && defaultBroker.isConfiguredForOAuth());
+        assertTrue(error.getCause().getMessage().contains("client ID"));
     }
 
     // ---------------------------------------------------------------------------

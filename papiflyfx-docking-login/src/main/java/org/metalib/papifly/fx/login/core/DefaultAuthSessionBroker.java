@@ -36,6 +36,8 @@ import java.util.concurrent.TimeUnit;
 
 public class DefaultAuthSessionBroker implements AuthSessionBroker {
 
+    private static final String GOOGLE_PROVIDER_ID = "google";
+
     private final Map<String, AuthSession> sessions = new LinkedHashMap<>();
     private final Map<String, SessionTokenState> sessionTokens = new LinkedHashMap<>();
     private final SimpleObjectProperty<AuthState> authState = new SimpleObjectProperty<>(AuthState.UNAUTHENTICATED);
@@ -299,6 +301,15 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker {
         IdentityProvider provider,
         ProviderSettingsResolver.ProviderRuntimeConfig runtimeConfig
     ) {
+        return signInWithAuthorizationCode(providerId, provider, runtimeConfig, false);
+    }
+
+    private CompletableFuture<AuthSession> signInWithAuthorizationCode(
+        String providerId,
+        IdentityProvider provider,
+        ProviderSettingsResolver.ProviderRuntimeConfig runtimeConfig,
+        boolean googleConsentRetry
+    ) {
         authState.set(AuthState.INITIATING_AUTH);
         final CallbackServerHandle callbackServer;
         try {
@@ -310,7 +321,12 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker {
 
         final AuthorizationRequest request;
         try {
-            request = provider.buildAuthorizationRequest(runtimeConfig.config(), callbackServer.redirectUri());
+            ProviderSettingsResolver.ProviderRuntimeConfig attemptConfig = authorizationAttemptConfig(
+                providerId,
+                runtimeConfig,
+                googleConsentRetry
+            );
+            request = provider.buildAuthorizationRequest(attemptConfig.config(), callbackServer.redirectUri());
             oauthStateStore.store(request.state(), request.nonce(), request.codeVerifier(), request.redirectUri());
             browserLauncher.open(URI.create(request.authUrl()));
         } catch (Exception exception) {
@@ -324,7 +340,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker {
 
         authState.set(AuthState.AWAITING_CALLBACK);
         return callbackServer.callbackParams()
-            .thenCompose(params -> exchangeAuthorizationCode(providerId, provider, runtimeConfig, params))
+            .thenCompose(params -> exchangeAuthorizationCode(providerId, provider, runtimeConfig, params, googleConsentRetry))
             .whenComplete((session, error) -> {
                 callbackServer.close();
                 if (error != null) {
@@ -350,7 +366,14 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker {
                 authState.set(AuthState.POLLING_DEVICE);
                 return pollForDeviceToken(provider, runtimeConfig.config(), deviceCode);
             })
-            .thenCompose(tokenResponse -> completeAuthentication(providerId, provider, runtimeConfig, tokenResponse, null))
+            .thenCompose(tokenResponse -> completeAuthentication(
+                providerId,
+                provider,
+                runtimeConfig,
+                tokenResponse,
+                null,
+                false
+            ))
             .whenComplete((session, error) -> {
                 if (error != null) {
                     synchronized (this) {
@@ -365,7 +388,8 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker {
         String providerId,
         IdentityProvider provider,
         ProviderSettingsResolver.ProviderRuntimeConfig runtimeConfig,
-        Map<String, String> params
+        Map<String, String> params,
+        boolean googleConsentRetry
     ) {
         String error = params.get("error");
         if (error != null && !error.isBlank()) {
@@ -394,8 +418,20 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker {
             state
         );
 
-        return provider.exchangeCode(runtimeConfig.config(), request)
-            .thenCompose(tokenResponse -> completeAuthentication(providerId, provider, runtimeConfig, tokenResponse, null));
+        ProviderSettingsResolver.ProviderRuntimeConfig attemptConfig = authorizationAttemptConfig(
+            providerId,
+            runtimeConfig,
+            googleConsentRetry
+        );
+        return provider.exchangeCode(attemptConfig.config(), request)
+            .thenCompose(tokenResponse -> completeAuthentication(
+                providerId,
+                provider,
+                attemptConfig,
+                tokenResponse,
+                null,
+                googleConsentRetry
+            ));
     }
 
     private CompletableFuture<AuthSession> completeAuthentication(
@@ -403,13 +439,24 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker {
         IdentityProvider provider,
         ProviderSettingsResolver.ProviderRuntimeConfig runtimeConfig,
         TokenResponse tokenResponse,
-        AuthSession previousSession
+        AuthSession previousSession,
+        boolean googleConsentRetry
     ) {
         if (tokenResponse.accessToken() == null || tokenResponse.accessToken().isBlank()) {
             return CompletableFuture.failedFuture(new IllegalStateException("The provider did not return an access token."));
         }
         return provider.fetchUserPrincipal(runtimeConfig.config(), tokenResponse.accessToken())
-            .thenApply(principal -> persistAuthenticatedSession(providerId, runtimeConfig, tokenResponse, principal, previousSession));
+            .thenCompose(principal -> {
+                if (shouldRetryGoogleWithConsent(providerId, tokenResponse, principal)) {
+                    if (googleConsentRetry) {
+                        return CompletableFuture.failedFuture(googleOfflineAccessError());
+                    }
+                    return signInWithAuthorizationCode(providerId, provider, runtimeConfig, true);
+                }
+                return CompletableFuture.completedFuture(
+                    persistAuthenticatedSession(providerId, runtimeConfig, tokenResponse, principal, previousSession)
+                );
+            });
     }
 
     private CompletableFuture<TokenResponse> pollForDeviceToken(
@@ -587,6 +634,42 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker {
 
     private String key(String providerId, String subject) {
         return providerId + ':' + subject;
+    }
+
+    private ProviderSettingsResolver.ProviderRuntimeConfig authorizationAttemptConfig(
+        String providerId,
+        ProviderSettingsResolver.ProviderRuntimeConfig runtimeConfig,
+        boolean googleConsentRetry
+    ) {
+        if (!googleConsentRetry || !GOOGLE_PROVIDER_ID.equals(providerId)) {
+            return runtimeConfig;
+        }
+        Map<String, String> authorizationParameters = new LinkedHashMap<>(runtimeConfig.config().authorizationParameters());
+        authorizationParameters.put("prompt", "consent");
+        ProviderConfig config = runtimeConfig.config().withAuthorizationParameters(authorizationParameters);
+        return new ProviderSettingsResolver.ProviderRuntimeConfig(
+            config,
+            runtimeConfig.workspaceDomain(),
+            runtimeConfig.preferDeviceFlow()
+        );
+    }
+
+    private boolean shouldRetryGoogleWithConsent(String providerId, TokenResponse tokenResponse, UserPrincipal principal) {
+        if (!GOOGLE_PROVIDER_ID.equals(providerId)) {
+            return false;
+        }
+        if (tokenResponse.refreshToken() != null && !tokenResponse.refreshToken().isBlank()) {
+            return false;
+        }
+        return secretStore.getSecret(SecretKeyNames.oauthRefreshToken(providerId, principal.subject()))
+            .map(String::isBlank)
+            .orElse(true);
+    }
+
+    private IllegalStateException googleOfflineAccessError() {
+        return new IllegalStateException(
+            "Google did not grant offline access. The session cannot be refreshed without a refresh token."
+        );
     }
 
     @FunctionalInterface

@@ -7,6 +7,7 @@ The public SPI for PapiflyFX settings. This module contains only interfaces, rec
 - `SettingsCategory` and `SettingsContributor` for ServiceLoader-based category registration
 - `SettingsContext` for access to storage, secrets, theme state, and active scope
 - `SettingsStorage` for non-secret settings persistence
+- `SettingsServicesProvider` for optional ServiceLoader-based access to the default settings-backed storage services
 - `SecretStore` and `SecretKeyNames` for shared secret management
 - typed setting metadata via `SettingDefinition`, `SettingType`, `SettingScope`, `SettingsValidator`, `ValidationResult`, and `SettingsAction`
 

@@ -12,6 +12,7 @@ import org.metalib.papifly.fx.login.idapi.ProviderDescriptor;
 import org.metalib.papifly.fx.login.idapi.ProviderRegistry;
 import org.metalib.papifly.fx.login.idapi.TokenResponse;
 import org.metalib.papifly.fx.login.idapi.UserPrincipal;
+import org.metalib.papifly.fx.login.idapi.providers.GoogleProvider;
 import org.metalib.papifly.fx.login.session.AuthSession;
 import org.metalib.papifly.fx.login.session.AuthState;
 import org.metalib.papifly.fx.settings.api.SecretKeyNames;
@@ -31,8 +32,10 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -142,6 +145,139 @@ class DefaultAuthSessionBrokerTest {
         assertNull(broker.deviceCodeProperty().get());
     }
 
+    @Test
+    void googleSignInRetriesWithConsentWhenRefreshTokenIsMissing() throws Exception {
+        ProviderRegistry registry = new ProviderRegistry();
+        registry.register(new FakeGoogleProvider(
+            new TokenResponse("google-access-1", null, null, "Bearer", 3600, "openid email profile"),
+            new TokenResponse("google-access-2", "google-refresh-2", null, "Bearer", 3600, "openid email profile")
+        ));
+
+        InMemorySettingsStorage storage = new InMemorySettingsStorage();
+        storage.putString(SettingScope.APPLICATION, LoginProviderSettings.clientIdKey(GoogleProvider.PROVIDER_ID), "google-client");
+        InMemorySecretStore secretStore = new InMemorySecretStore();
+        AtomicReference<TestCallbackServer> activeServer = new AtomicReference<>();
+        List<URI> openedUris = new java.util.ArrayList<>();
+
+        DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker(
+            registry,
+            storage,
+            secretStore,
+            uri -> {
+                openedUris.add(uri);
+                TestCallbackServer server = activeServer.get();
+                assertNotNull(server);
+                server.complete(uri, "consent".equals(optionalQueryParameter(uri, "prompt")) ? "consent-code" : "initial-code");
+            },
+            () -> {
+                TestCallbackServer server = new TestCallbackServer();
+                activeServer.set(server);
+                return server;
+            }
+        );
+
+        AuthSession session = broker.signIn(GoogleProvider.PROVIDER_ID).get(5, TimeUnit.SECONDS);
+
+        assertEquals(AuthState.AUTHENTICATED, broker.authStateProperty().get());
+        assertEquals("user-123", session.subject());
+        assertEquals(2, openedUris.size());
+        assertNull(optionalQueryParameter(openedUris.get(0), "prompt"));
+        assertEquals("consent", optionalQueryParameter(openedUris.get(1), "prompt"));
+        assertEquals("offline", requiredQueryParameter(openedUris.get(0), "access_type"));
+        assertEquals(
+            "google-refresh-2",
+            secretStore.getSecret(SecretKeyNames.oauthRefreshToken(GoogleProvider.PROVIDER_ID, "user-123")).orElseThrow()
+        );
+    }
+
+    @Test
+    void googleSignInReusesStoredRefreshTokenWithoutConsentRetry() throws Exception {
+        ProviderRegistry registry = new ProviderRegistry();
+        registry.register(new FakeGoogleProvider(
+            new TokenResponse("google-access-1", null, null, "Bearer", 3600, "openid email profile"),
+            new TokenResponse("google-access-2", null, null, "Bearer", 3600, "openid email profile")
+        ));
+
+        InMemorySettingsStorage storage = new InMemorySettingsStorage();
+        storage.putString(SettingScope.APPLICATION, LoginProviderSettings.clientIdKey(GoogleProvider.PROVIDER_ID), "google-client");
+        InMemorySecretStore secretStore = new InMemorySecretStore();
+        secretStore.setSecret(SecretKeyNames.oauthRefreshToken(GoogleProvider.PROVIDER_ID, "user-123"), "stored-refresh");
+        AtomicReference<TestCallbackServer> activeServer = new AtomicReference<>();
+        List<URI> openedUris = new java.util.ArrayList<>();
+
+        DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker(
+            registry,
+            storage,
+            secretStore,
+            uri -> {
+                openedUris.add(uri);
+                TestCallbackServer server = activeServer.get();
+                assertNotNull(server);
+                server.complete(uri, "initial-code");
+            },
+            () -> {
+                TestCallbackServer server = new TestCallbackServer();
+                activeServer.set(server);
+                return server;
+            }
+        );
+
+        AuthSession session = broker.signIn(GoogleProvider.PROVIDER_ID).get(5, TimeUnit.SECONDS);
+
+        assertEquals(AuthState.AUTHENTICATED, broker.authStateProperty().get());
+        assertEquals("user-123", session.subject());
+        assertEquals(1, openedUris.size());
+        assertNull(optionalQueryParameter(openedUris.get(0), "prompt"));
+        assertEquals(
+            "stored-refresh",
+            secretStore.getSecret(SecretKeyNames.oauthRefreshToken(GoogleProvider.PROVIDER_ID, "user-123")).orElseThrow()
+        );
+    }
+
+    @Test
+    void googleSignInFailsWhenConsentRetryStillDoesNotReturnRefreshToken() {
+        ProviderRegistry registry = new ProviderRegistry();
+        registry.register(new FakeGoogleProvider(
+            new TokenResponse("google-access-1", null, null, "Bearer", 3600, "openid email profile"),
+            new TokenResponse("google-access-2", null, null, "Bearer", 3600, "openid email profile")
+        ));
+
+        InMemorySettingsStorage storage = new InMemorySettingsStorage();
+        storage.putString(SettingScope.APPLICATION, LoginProviderSettings.clientIdKey(GoogleProvider.PROVIDER_ID), "google-client");
+        InMemorySecretStore secretStore = new InMemorySecretStore();
+        AtomicReference<TestCallbackServer> activeServer = new AtomicReference<>();
+        List<URI> openedUris = new java.util.ArrayList<>();
+
+        DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker(
+            registry,
+            storage,
+            secretStore,
+            uri -> {
+                openedUris.add(uri);
+                TestCallbackServer server = activeServer.get();
+                assertNotNull(server);
+                server.complete(uri, "consent".equals(optionalQueryParameter(uri, "prompt")) ? "consent-code" : "initial-code");
+            },
+            () -> {
+                TestCallbackServer server = new TestCallbackServer();
+                activeServer.set(server);
+                return server;
+            }
+        );
+
+        CompletionException error = assertThrows(
+            CompletionException.class,
+            () -> broker.signIn(GoogleProvider.PROVIDER_ID).join()
+        );
+
+        assertTrue(error.getCause() instanceof IllegalStateException);
+        assertTrue(error.getCause().getMessage().contains("offline access"));
+        assertEquals(2, openedUris.size());
+        assertEquals("consent", optionalQueryParameter(openedUris.get(1), "prompt"));
+        assertEquals(AuthState.ERROR, broker.authStateProperty().get());
+        assertFalse(secretStore.getSecret(SecretKeyNames.oauthRefreshToken(GoogleProvider.PROVIDER_ID, "user-123")).isPresent());
+    }
+
     private static String requiredQueryParameter(URI uri, String name) {
         String query = uri.getRawQuery();
         assertNotNull(query);
@@ -156,6 +292,24 @@ class DefaultAuthSessionBrokerTest {
             }
         }
         throw new IllegalArgumentException("Missing query parameter " + name);
+    }
+
+    private static String optionalQueryParameter(URI uri, String name) {
+        String query = uri.getRawQuery();
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+        for (String pair : query.split("&")) {
+            int separator = pair.indexOf('=');
+            if (separator <= 0) {
+                continue;
+            }
+            String key = java.net.URLDecoder.decode(pair.substring(0, separator), StandardCharsets.UTF_8);
+            if (name.equals(key)) {
+                return java.net.URLDecoder.decode(pair.substring(separator + 1), StandardCharsets.UTF_8);
+            }
+        }
+        return null;
     }
 
     private static final class TestCallbackServer implements DefaultAuthSessionBroker.CallbackServerHandle {
@@ -298,6 +452,34 @@ class DefaultAuthSessionBrokerTest {
                 "device-user",
                 "Device User",
                 "device@example.com",
+                ""
+            ));
+        }
+    }
+
+    private static final class FakeGoogleProvider extends GoogleProvider {
+
+        private final TokenResponse initialResponse;
+        private final TokenResponse consentResponse;
+
+        private FakeGoogleProvider(TokenResponse initialResponse, TokenResponse consentResponse) {
+            this.initialResponse = initialResponse;
+            this.consentResponse = consentResponse;
+        }
+
+        @Override
+        public CompletableFuture<TokenResponse> exchangeCode(ProviderConfig config, CodeExchangeRequest request) {
+            return CompletableFuture.completedFuture(
+                "consent-code".equals(request.code()) ? consentResponse : initialResponse
+            );
+        }
+
+        @Override
+        public CompletableFuture<UserPrincipal> fetchUserPrincipal(ProviderConfig config, String accessToken) {
+            return CompletableFuture.completedFuture(new UserPrincipal(
+                "user-123",
+                "Google User",
+                "user@gmail.com",
                 ""
             ));
         }

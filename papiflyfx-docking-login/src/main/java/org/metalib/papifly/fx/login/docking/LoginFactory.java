@@ -20,7 +20,7 @@ public class LoginFactory implements ContentFactory {
     }
 
     public LoginFactory() {
-        this(LoginRuntime.broker(), new ProviderRegistry());
+        this(LoginRuntime.broker(), LoginRuntime.providerRegistry());
     }
 
     @Override

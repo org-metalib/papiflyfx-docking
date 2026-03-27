@@ -20,11 +20,14 @@ public final class SamplesRuntimeSupport {
 
     public static synchronized void initialize(ObjectProperty<Theme> themeProperty) {
         settingsRuntime = SettingsRuntime.createDefault(themeProperty);
-        LoginRuntime.setBroker(new DefaultAuthSessionBroker(
-            LOGIN_PROVIDER_REGISTRY,
-            settingsRuntime.storage(),
-            settingsRuntime.secretStore()
-        ));
+        LoginRuntime.configure(
+            new DefaultAuthSessionBroker(
+                LOGIN_PROVIDER_REGISTRY,
+                settingsRuntime.storage(),
+                settingsRuntime.secretStore()
+            ),
+            LOGIN_PROVIDER_REGISTRY
+        );
     }
 
     public static synchronized SettingsRuntime settingsRuntime(ObjectProperty<Theme> themeProperty) {
@@ -35,7 +38,7 @@ public final class SamplesRuntimeSupport {
     }
 
     public static ProviderRegistry loginProviderRegistry() {
-        return LOGIN_PROVIDER_REGISTRY;
+        return LoginRuntime.providerRegistry();
     }
 
     private static ProviderRegistry createProviderRegistry() {

@@ -62,7 +62,7 @@ final class ProviderSettingsResolver {
             case GitHubProvider.PROVIDER_ID -> githubConfig(clientId, clientSecret, scopes);
             case GenericOidcProvider.PROVIDER_ID -> genericConfig(clientId, clientSecret, scopes);
             default -> new ProviderRuntimeConfig(
-                new ProviderConfig(clientId, emptyToNull(clientSecret), scopes, null, null, null, null, null),
+                new ProviderConfig(clientId, emptyToNull(clientSecret), scopes, null, null, null, null, null, Map.of()),
                 null,
                 false
             );
@@ -83,7 +83,8 @@ final class ProviderSettingsResolver {
             "https://accounts.google.com/o/oauth2/v2/auth",
             "https://oauth2.googleapis.com/token",
             "https://openidconnect.googleapis.com/v1/userinfo",
-            null
+            null,
+            Map.of("access_type", "offline")
         );
         return new ProviderRuntimeConfig(config, emptyToNull(workspaceDomain), false);
     }
@@ -111,7 +112,8 @@ final class ProviderSettingsResolver {
             baseUrl + "/login/oauth/authorize",
             baseUrl + "/login/oauth/access_token",
             apiBase + "/user",
-            enterpriseUrl
+            enterpriseUrl,
+            Map.of()
         );
         return new ProviderRuntimeConfig(config, null, preferDeviceFlow);
     }
@@ -137,7 +139,8 @@ final class ProviderSettingsResolver {
             metadata.authorizationEndpoint(),
             metadata.tokenEndpoint(),
             metadata.userInfoEndpoint(),
-            null
+            null,
+            Map.of()
         );
         return new ProviderRuntimeConfig(config, null, false);
     }

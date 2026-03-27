@@ -17,6 +17,9 @@ import org.metalib.papifly.fx.samples.media.MediaPersistSample;
 import org.metalib.papifly.fx.samples.media.SplitMediaSample;
 import org.metalib.papifly.fx.samples.media.VideoPlayerSample;
 import org.metalib.papifly.fx.samples.media.YouTubeEmbedSample;
+import org.metalib.papifly.fx.login.idapi.providers.GenericOidcProvider;
+import org.metalib.papifly.fx.login.idapi.providers.GitHubProvider;
+import org.metalib.papifly.fx.login.idapi.providers.GoogleProvider;
 import org.metalib.papifly.fx.samples.hugo.HugoPreviewSample;
 import org.metalib.papifly.fx.samples.github.GitHubToolbarSample;
 import org.metalib.papifly.fx.samples.login.LoginSample;
@@ -61,7 +64,9 @@ public final class SampleCatalog {
             new MediaPersistSample(),
             new HugoPreviewSample(),
             new GitHubToolbarSample(),
-            new LoginSample(),
+            new LoginSample("Sign in with Google", GoogleProvider.PROVIDER_ID),
+            new LoginSample("Sign in with GitHub", GitHubProvider.PROVIDER_ID),
+            new LoginSample("Sign in with OIDC", GenericOidcProvider.PROVIDER_ID),
             new SettingsPanelSample()
         );
     }

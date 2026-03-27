@@ -19,6 +19,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 
 public class GenericOidcProvider implements IdentityProvider {
@@ -84,15 +85,19 @@ public class GenericOidcProvider implements IdentityProvider {
         List<String> scopes = config.scopes().isEmpty() ? defaultScopes() : config.scopes();
         String scopeParam = String.join(" ", scopes);
 
-        String authUrl = authorizationEndpoint(config)
-            + "?response_type=code"
-            + "&client_id=" + encode(config.clientId())
-            + "&redirect_uri=" + encode(redirectUri)
-            + "&scope=" + encode(scopeParam)
-            + "&state=" + encode(state)
-            + "&nonce=" + encode(nonce)
-            + "&code_challenge=" + encode(codeChallenge)
-            + "&code_challenge_method=S256";
+        StringJoiner query = new StringJoiner("&");
+        query.add("response_type=code");
+        query.add("client_id=" + encode(config.clientId()));
+        query.add("redirect_uri=" + encode(redirectUri));
+        query.add("scope=" + encode(scopeParam));
+        query.add("state=" + encode(state));
+        query.add("nonce=" + encode(nonce));
+        query.add("code_challenge=" + encode(codeChallenge));
+        query.add("code_challenge_method=S256");
+        config.authorizationParameters().forEach((key, value) ->
+            query.add(encode(key) + "=" + encode(value)));
+
+        String authUrl = authorizationEndpoint(config) + "?" + query;
 
         return new AuthorizationRequest(authUrl, state, nonce, codeVerifier, redirectUri);
     }

@@ -9,7 +9,9 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Labeled;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -31,8 +33,10 @@ import org.metalib.papifly.fx.tree.render.TreeRenderContext;
 import org.metalib.papifly.fx.tree.theme.TreeViewTheme;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -66,6 +70,8 @@ public class SamplesApp extends Application {
     );
     private Stage primaryStage;
     private final StackPane contentArea = new StackPane();
+    private final Map<String, TreeItem<NavigationEntry>> sampleItemsByTitle = new LinkedHashMap<>();
+    private TreeView<NavigationEntry> sampleTree;
     private TreeItem<NavigationEntry> selectedSampleItem;
     private boolean syncingNavigationSelection;
 
@@ -81,8 +87,8 @@ public class SamplesApp extends Application {
         this.primaryStage = stage;
         SamplesRuntimeSupport.initialize(themeProperty);
 
+        sampleTree = buildSampleTree();
         HBox topBar = buildTopBar();
-        TreeView<NavigationEntry> sampleTree = buildSampleTree();
         buildContentArea();
 
         BorderPane root = new BorderPane();
@@ -100,8 +106,19 @@ public class SamplesApp extends Application {
         Label titleLabel = new Label("PapiflyFX Docking Samples");
         titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
 
+        Label authHint = new Label("Configure auth providers in Auth Settings, then try a sign-in sample.");
+        authHint.setStyle("-fx-text-fill: #bbbbbb; -fx-font-size: 12px;");
+
+        Button authSettingsButton = new Button("Auth Settings");
+        styleTopBarButton(authSettingsButton, "#5b6470");
+        authSettingsButton.setOnAction(event -> openSample("Settings Panel"));
+
+        Button loginDemoButton = new Button("Login Demo");
+        styleTopBarButton(loginDemoButton, "#0e639c");
+        loginDemoButton.setOnAction(event -> openSample("Sign in with Google"));
+
         ToggleButton themeToggle = new ToggleButton("Light Mode");
-        themeToggle.setStyle("-fx-background-color: #0e639c; -fx-text-fill: white;");
+        styleTopBarButton(themeToggle, "#0e639c");
         themeToggle.setSelected(false);
         themeToggle.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
             themeProperty.set(isSelected ? Theme.light() : Theme.dark());
@@ -111,7 +128,7 @@ public class SamplesApp extends Application {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox topBar = new HBox(8, titleLabel, spacer, themeToggle);
+        HBox topBar = new HBox(8, titleLabel, authHint, spacer, authSettingsButton, loginDemoButton, themeToggle);
         topBar.setAlignment(Pos.CENTER_LEFT);
         topBar.setPadding(new Insets(8, 12, 8, 12));
         topBar.setStyle("-fx-background-color: #3c3c3c;");
@@ -133,13 +150,21 @@ public class SamplesApp extends Application {
 
     private TreeItem<NavigationEntry> buildNavigationRoot() {
         TreeItem<NavigationEntry> root = new TreeItem<>(new NavigationEntry("", null));
+        sampleItemsByTitle.clear();
         String currentCategory = null;
+        TreeItem<NavigationEntry> currentCategoryItem = null;
         for (SampleScene sample : SampleCatalog.all()) {
             if (!sample.category().equals(currentCategory)) {
                 currentCategory = sample.category();
-                root.addChild(new TreeItem<>(new NavigationEntry(currentCategory, null)));
+                currentCategoryItem = new TreeItem<>(new NavigationEntry(currentCategory, null));
+                currentCategoryItem.setExpanded(true);
+                root.addChild(currentCategoryItem);
             }
-            root.addChild(new TreeItem<>(new NavigationEntry(sample.title(), sample)));
+            TreeItem<NavigationEntry> sampleItem = new TreeItem<>(new NavigationEntry(sample.title(), sample));
+            sampleItemsByTitle.put(sample.title(), sampleItem);
+            if (currentCategoryItem != null) {
+                currentCategoryItem.addChild(sampleItem);
+            }
         }
         root.setExpanded(true);
         return root;
@@ -169,10 +194,7 @@ public class SamplesApp extends Application {
             }
             return;
         }
-        selectedSampleItem = focusedItem;
-        disposeContentArea();
-        Node content = entry.sample().build(primaryStage, themeProperty);
-        contentArea.getChildren().setAll(content);
+        showSample(focusedItem);
     }
 
     @Override
@@ -206,10 +228,53 @@ public class SamplesApp extends Application {
     }
 
     private void buildContentArea() {
-        Label placeholder = new Label("Select a sample from the navigation panel");
+        Label placeholder = new Label("Select a sample from the navigation panel, or use Auth Settings and Login Demo to open a sign-in sample.");
         placeholder.setStyle("-fx-text-fill: #888888; -fx-font-size: 14px;");
+        placeholder.setWrapText(true);
+        placeholder.setMaxWidth(420);
         contentArea.getChildren().add(placeholder);
         contentArea.setStyle("-fx-background-color: #1e1e1e;");
+    }
+
+    private void openSample(String sampleTitle) {
+        if (sampleTree == null) {
+            return;
+        }
+        TreeItem<NavigationEntry> sampleItem = sampleItemsByTitle.get(sampleTitle);
+        if (sampleItem == null) {
+            return;
+        }
+        expandParents(sampleItem);
+        syncingNavigationSelection = true;
+        try {
+            sampleTree.getSelectionModel().selectOnly(sampleItem);
+            sampleTree.getSelectionModel().setFocusedItem(sampleItem);
+        } finally {
+            syncingNavigationSelection = false;
+        }
+        showSample(sampleItem);
+    }
+
+    private void expandParents(TreeItem<NavigationEntry> item) {
+        TreeItem<NavigationEntry> current = item.getParent();
+        while (current != null) {
+            current.setExpanded(true);
+            current = current.getParent();
+        }
+    }
+
+    private void showSample(TreeItem<NavigationEntry> sampleItem) {
+        if (sampleItem == null || sampleItem.getValue() == null || sampleItem.getValue().isCategory()) {
+            return;
+        }
+        selectedSampleItem = sampleItem;
+        disposeContentArea();
+        Node content = sampleItem.getValue().sample().build(primaryStage, themeProperty);
+        contentArea.getChildren().setAll(content);
+    }
+
+    private void styleTopBarButton(Labeled button, String backgroundColor) {
+        button.setStyle("-fx-background-color: " + backgroundColor + "; -fx-text-fill: white;");
     }
 
     private void disposeContentArea() {
