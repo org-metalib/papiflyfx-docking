@@ -32,7 +32,7 @@ jobs:
           ./mvnw -Pmaven-central-publishing,gpg-sign \
                  -Dstyle.color=always \
                  -DskipTests -Darguments="-Dmaven.test.skip=true" \
-                 -Dtestfx.headless=true \
+                 -Dtestfx.headless=true -Djava.awt.headless=true \
                  -B -U -T 1C --errors -Dsurefire.useFile=false \
                  -s ./.mvn/settings.xml \
                  release:prepare \
