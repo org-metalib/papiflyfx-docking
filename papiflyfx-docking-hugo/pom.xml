@@ -92,6 +92,7 @@
                         <prism.order>${prism.order}</prism.order>
                         <prism.text>${prism.text}</prism.text>
                         <java.awt.headless>${java.awt.headless}</java.awt.headless>
+                        <glass.platform>${glass.platform}</glass.platform>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

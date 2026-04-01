@@ -30,4 +30,4 @@ jobs:
           cache: 'maven'
       - name: run `mvn package` (headless)
         run: |
-          ./mvnw -B -U -Dtestfx.headless=true -Dtestfx.platform=Monocle -Dglass.platform=Monocle -Dmonocle.platform=Headless package
+          ./mvnw -B -U -Dtestfx.headless=true package

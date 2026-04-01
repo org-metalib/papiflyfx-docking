@@ -33,6 +33,7 @@
         <testfx.robot>glass</testfx.robot>
         <testfx.platform>Desktop</testfx.platform>
         <monocle.platform>Headless</monocle.platform>
+        <glass.platform>Monocle</glass.platform>
         <prism.order>sw</prism.order>
         <prism.text>t2k</prism.text>
 
