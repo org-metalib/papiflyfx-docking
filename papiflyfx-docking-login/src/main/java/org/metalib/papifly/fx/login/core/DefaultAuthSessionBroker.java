@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.login.core;
 
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import org.metalib.papifly.fx.login.api.AuthSessionAdmin;
 import org.metalib.papifly.fx.login.api.AuthSessionBroker;
 import org.metalib.papifly.fx.login.idapi.AuthorizationRequest;
 import org.metalib.papifly.fx.login.idapi.CodeExchangeRequest;
@@ -34,7 +35,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
-public class DefaultAuthSessionBroker implements AuthSessionBroker {
+public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionAdmin {
 
     private static final String GOOGLE_PROVIDER_ID = "google";
 
@@ -278,6 +279,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker {
         return deviceCode;
     }
 
+    @Override
     public synchronized void upsertSession(AuthSession session) {
         sessions.put(key(session.providerId(), session.subject()), session);
         activeSession.set(session);
@@ -285,6 +287,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker {
         authState.set(session.isExpired(Instant.now()) ? AuthState.EXPIRED : AuthState.AUTHENTICATED);
     }
 
+    @Override
     public synchronized void removeSession(String providerId, String subject) {
         sessions.remove(key(providerId, subject));
         sessionTokens.remove(key(providerId, subject));
