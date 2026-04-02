@@ -12,5 +12,5 @@ Refactoring Plan: Create a step-by-step technical roadmap to bring the code into
 
 Code Example: Provide a 'Before vs. After' snippet for the most critical violation found.
 
-Output Format: Please present your findings as spec/.principals/SOLID/solid-plan.md file.
+Output Format: Please present your findings as spec/.principals/SOLID1/solid-plan.md file.
 
