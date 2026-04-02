@@ -1,0 +1,16 @@
+# SOLID
+
+Act as a Senior Software Architect and Clean Code expert on papiflyfx-dcoking framework.
+
+Your Task:
+
+Audit: Evaluate the project codebase against each of the five SOLID principles. Identify specific classes or methods that violate these principles.
+
+Impact Assessment: Briefly explain how these violations affect the project’s maintainability, testability, or scalability.
+
+Refactoring Plan: Create a step-by-step technical roadmap to bring the code into compliance.
+
+Code Example: Provide a 'Before vs. After' snippet for the most critical violation found.
+
+Output Format: Please present your findings as spec/.principals/SOLID/solid-plan.md file.
+

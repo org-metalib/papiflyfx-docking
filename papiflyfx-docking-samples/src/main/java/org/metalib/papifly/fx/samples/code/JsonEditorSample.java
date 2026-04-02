@@ -31,7 +31,7 @@ public class JsonEditorSample implements SampleScene {
         "  ],\n" +
         "  \"build\": {\n" +
         "    \"java\": \"25\",\n" +
-        "    \"javafx\": \"23.0.1\",\n" +
+        "    \"javafx\": \"25.0.2\",\n" +
         "    \"maven\": \"3.9+\"\n" +
         "  },\n" +
         "  \"themes\": [\n" +

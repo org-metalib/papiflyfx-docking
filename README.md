@@ -4,7 +4,7 @@ A multi-module Java/JavaFX framework for IDE-style docking layouts — drag-and-
 
 ## Overview
 
-PapiflyFX Docking provides composable UI building blocks for desktop applications that need flexible, resizable, dockable panel layouts (similar to IntelliJ IDEA, VS Code, or Eclipse). The project is organized as a Maven multi-module build targeting **Java 25** with **JavaFX 23.0.1**.
+PapiflyFX Docking provides composable UI building blocks for desktop applications that need flexible, resizable, dockable panel layouts (similar to IntelliJ IDEA, VS Code, or Eclipse). The project is organized as a Maven multi-module build targeting **Java 25** with **JavaFX 25.0.2**.
 
 ## Requirements
 
@@ -12,7 +12,7 @@ PapiflyFX Docking provides composable UI building blocks for desktop application
 |------|---------|
 | Java | 25 ([Zulu FX](https://www.azul.com/downloads/) recommended) |
 | Maven | ≥ 3.9 (wrapper included — `./mvnw`) |
-| JavaFX | 23.0.1 (managed via Maven, auto-resolved per platform) |
+| JavaFX | 25.0.2 (managed via Maven, auto-resolved per platform) |
 
 ### Java setup (SDKMAN)
 

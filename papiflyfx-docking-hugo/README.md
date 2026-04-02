@@ -16,7 +16,7 @@ It starts `hugo server`, renders pages inside JavaFX `WebView`, and supports ses
 ## Requirements
 
 - Java 25
-- JavaFX 23.0.1
+- JavaFX 25.0.2
 - Hugo CLI installed and available on `PATH`
 
 ## Maven Dependency

@@ -38,7 +38,7 @@
 
         <maven.version.required>3.9</maven.version.required>
         <maven.version>3.9.12</maven.version>
-        <javafx.version>23.0.1</javafx.version>
+        <javafx.version>25.0.2</javafx.version>
         <javafx.platform>mac</javafx.platform>
         <maven.compiler.release>25</maven.compiler.release>
         <maven.compiler.source>25</maven.compiler.source>
