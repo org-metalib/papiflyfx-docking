@@ -19,8 +19,12 @@ public class LoginFactory implements ContentFactory {
         this.registry = registry;
     }
 
+    public LoginFactory(LoginRuntime runtime) {
+        this(runtime.broker(), runtime.providerRegistry());
+    }
+
     public LoginFactory() {
-        this(LoginRuntime.broker(), LoginRuntime.providerRegistry());
+        this(LoginRuntime.createDefault());
     }
 
     @Override

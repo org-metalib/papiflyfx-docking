@@ -13,6 +13,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
 import javafx.stage.Window;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
@@ -60,6 +61,11 @@ class SamplesSmokeTest {
         System.setProperty("papiflyfx.app.dir", Path.of(System.getProperty("java.io.tmpdir"), "papiflyfx-samples-smoke").toString());
         stage.setScene(new Scene(new StackPane(), 1200, 800));
         stage.show();
+    }
+
+    @BeforeEach
+    void resetRuntimeSupport() {
+        SamplesRuntimeSupport.resetForTests();
     }
 
     @Test
@@ -219,7 +225,7 @@ class SamplesSmokeTest {
         ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
         LoginSample loginSample = new LoginSample();
         DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker();
-        LoginRuntime.setBroker(broker);
+        SamplesRuntimeSupport.setLoginRuntime(LoginRuntime.of(broker, SamplesRuntimeSupport.loginProviderRegistry()));
 
         runFx(() -> {
             Node content = loginSample.build(stage, themeProperty);
@@ -241,7 +247,7 @@ class SamplesSmokeTest {
         ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
         LoginSample loginSample = new LoginSample();
         DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker();
-        LoginRuntime.setBroker(broker);
+        SamplesRuntimeSupport.setLoginRuntime(LoginRuntime.of(broker, SamplesRuntimeSupport.loginProviderRegistry()));
 
         runFx(() -> {
             Node content = loginSample.build(stage, themeProperty);
@@ -265,7 +271,7 @@ class SamplesSmokeTest {
         ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
         LoginSample loginSample = new LoginSample();
         DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker();
-        LoginRuntime.setBroker(broker);
+        SamplesRuntimeSupport.setLoginRuntime(LoginRuntime.of(broker, SamplesRuntimeSupport.loginProviderRegistry()));
 
         runFx(() -> {
             Node content = loginSample.build(stage, themeProperty);
@@ -291,7 +297,7 @@ class SamplesSmokeTest {
         ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
         LoginSample loginSample = new LoginSample();
         DefaultAuthSessionBroker broker = new DefaultAuthSessionBroker();
-        LoginRuntime.setBroker(broker);
+        SamplesRuntimeSupport.setLoginRuntime(LoginRuntime.of(broker, SamplesRuntimeSupport.loginProviderRegistry()));
 
         runFx(() -> {
             Node content = loginSample.build(stage, themeProperty);
@@ -358,11 +364,12 @@ class SamplesSmokeTest {
 
         CompletionException error = assertThrows(
             CompletionException.class,
-            () -> LoginRuntime.broker().signIn("google").join()
+            () -> SamplesRuntimeSupport.loginRuntime(themeProperty).broker().signIn("google").join()
         );
 
         assertNull(uncaughtException, "Exception during real runtime login sample build: " + uncaughtException);
-        assertTrue(LoginRuntime.broker() instanceof DefaultAuthSessionBroker defaultBroker && defaultBroker.isConfiguredForOAuth());
+        assertTrue(SamplesRuntimeSupport.loginRuntime(themeProperty).broker()
+            instanceof DefaultAuthSessionBroker defaultBroker && defaultBroker.isConfiguredForOAuth());
         assertTrue(error.getCause().getMessage().contains("client ID"));
     }
 

@@ -6,6 +6,8 @@ import javafx.scene.paint.Paint;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
+import java.util.Objects;
+
 /**
  * Theme record for programmatic styling without CSS.
  * Contains all visual properties for the docking framework.
@@ -56,33 +58,124 @@ public record Theme(
     double minimizedBarHeight
 ) {
     /**
+     * Creates a theme from grouped color, font, and dimension values.
+     *
+     * @param colors grouped paint values
+     * @param fonts grouped font values
+     * @param dimensions grouped sizing values
+     * @return composed theme
+     */
+    public static Theme of(ThemeColors colors, ThemeFonts fonts, ThemeDimensions dimensions) {
+        Objects.requireNonNull(colors, "colors");
+        Objects.requireNonNull(fonts, "fonts");
+        Objects.requireNonNull(dimensions, "dimensions");
+        return new Theme(
+            colors.background(),
+            colors.headerBackground(),
+            colors.headerBackgroundActive(),
+            colors.accentColor(),
+            colors.textColor(),
+            colors.textColorActive(),
+            colors.borderColor(),
+            colors.dividerColor(),
+            colors.dropHintColor(),
+            fonts.headerFont(),
+            fonts.contentFont(),
+            dimensions.cornerRadius(),
+            dimensions.borderWidth(),
+            dimensions.headerHeight(),
+            dimensions.tabHeight(),
+            dimensions.contentPadding(),
+            colors.buttonHoverBackground(),
+            colors.buttonPressedBackground(),
+            colors.minimizedBarBackground(),
+            dimensions.buttonSpacing(),
+            dimensions.minimizedBarHeight()
+        );
+    }
+
+    /**
+     * Returns the grouped theme colors.
+     *
+     * @return grouped theme paints
+     */
+    public ThemeColors colors() {
+        return new ThemeColors(
+            background,
+            headerBackground,
+            headerBackgroundActive,
+            accentColor,
+            textColor,
+            textColorActive,
+            borderColor,
+            dividerColor,
+            dropHintColor,
+            buttonHoverBackground,
+            buttonPressedBackground,
+            minimizedBarBackground
+        );
+    }
+
+    /**
+     * Returns the grouped theme fonts.
+     *
+     * @return grouped theme fonts
+     */
+    public ThemeFonts fonts() {
+        return new ThemeFonts(headerFont, contentFont);
+    }
+
+    /**
+     * Returns the grouped theme dimensions.
+     *
+     * @return grouped theme metrics
+     */
+    public ThemeDimensions dimensions() {
+        return new ThemeDimensions(
+            cornerRadius,
+            borderWidth,
+            headerHeight,
+            tabHeight,
+            contentPadding,
+            buttonSpacing,
+            minimizedBarHeight
+        );
+    }
+
+    /**
      * Default dark theme.
      *
      * @return the built-in dark theme preset
      */
     public static Theme dark() {
-        return new Theme(
-            Color.rgb(30, 30, 30),           // background
-            Color.rgb(45, 45, 45),           // headerBackground
-            Color.rgb(60, 60, 60),           // headerBackgroundActive
-            Color.rgb(0, 122, 204),          // accentColor (blue)
-            Color.rgb(200, 200, 200),        // textColor
-            Color.WHITE,                      // textColorActive
-            Color.rgb(60, 60, 60),           // borderColor
-            Color.rgb(80, 80, 80),           // dividerColor
-            Color.rgb(0, 122, 204, 0.3),     // dropHintColor
-            Font.font("System", FontWeight.BOLD, 12),  // headerFont
-            Font.font("System", FontWeight.NORMAL, 12), // contentFont
-            4.0,                              // cornerRadius
-            1.0,                              // borderWidth
-            28.0,                             // headerHeight
-            24.0,                             // tabHeight
-            new Insets(4),                    // contentPadding
-            Color.rgb(70, 70, 70),           // buttonHoverBackground
-            Color.rgb(90, 90, 90),           // buttonPressedBackground
-            Color.rgb(40, 40, 40),           // minimizedBarBackground
-            8.0,                              // buttonSpacing
-            24.0                              // minimizedBarHeight
+        return Theme.of(
+            new ThemeColors(
+                Color.rgb(30, 30, 30),
+                Color.rgb(45, 45, 45),
+                Color.rgb(60, 60, 60),
+                Color.rgb(0, 122, 204),
+                Color.rgb(200, 200, 200),
+                Color.WHITE,
+                Color.rgb(60, 60, 60),
+                Color.rgb(80, 80, 80),
+                Color.rgb(0, 122, 204, 0.3),
+                Color.rgb(70, 70, 70),
+                Color.rgb(90, 90, 90),
+                Color.rgb(40, 40, 40)
+            ),
+            new ThemeFonts(
+                Font.font("System", FontWeight.BOLD, 12),
+                Font.font("System", FontWeight.NORMAL, 12)
+            ),
+            new ThemeDimensions(
+                4.0,
+                1.0,
+                28.0,
+                24.0,
+                new Insets(4),
+                8.0,
+                24.0
+            )
         );
     }
 
@@ -92,28 +185,34 @@ public record Theme(
      * @return the built-in light theme preset
      */
     public static Theme light() {
-        return new Theme(
-            Color.rgb(240, 240, 240),        // background
-            Color.rgb(220, 220, 220),        // headerBackground
-            Color.rgb(200, 200, 200),        // headerBackgroundActive
-            Color.rgb(0, 122, 204),          // accentColor (blue)
-            Color.rgb(50, 50, 50),           // textColor
-            Color.BLACK,                      // textColorActive
-            Color.rgb(180, 180, 180),        // borderColor
-            Color.rgb(160, 160, 160),        // dividerColor
-            Color.rgb(0, 122, 204, 0.3),     // dropHintColor
-            Font.font("System", FontWeight.BOLD, 12),  // headerFont
-            Font.font("System", FontWeight.NORMAL, 12), // contentFont
-            4.0,                              // cornerRadius
-            1.0,                              // borderWidth
-            28.0,                             // headerHeight
-            24.0,                             // tabHeight
-            new Insets(4),                    // contentPadding
-            Color.rgb(200, 200, 200),        // buttonHoverBackground
-            Color.rgb(180, 180, 180),        // buttonPressedBackground
-            Color.rgb(210, 210, 210),        // minimizedBarBackground
-            8.0,                              // buttonSpacing
-            24.0                              // minimizedBarHeight
+        return Theme.of(
+            new ThemeColors(
+                Color.rgb(240, 240, 240),
+                Color.rgb(220, 220, 220),
+                Color.rgb(200, 200, 200),
+                Color.rgb(0, 122, 204),
+                Color.rgb(50, 50, 50),
+                Color.BLACK,
+                Color.rgb(180, 180, 180),
+                Color.rgb(160, 160, 160),
+                Color.rgb(0, 122, 204, 0.3),
+                Color.rgb(200, 200, 200),
+                Color.rgb(180, 180, 180),
+                Color.rgb(210, 210, 210)
+            ),
+            new ThemeFonts(
+                Font.font("System", FontWeight.BOLD, 12),
+                Font.font("System", FontWeight.NORMAL, 12)
+            ),
+            new ThemeDimensions(
+                4.0,
+                1.0,
+                28.0,
+                24.0,
+                new Insets(4),
+                8.0,
+                24.0
+            )
         );
     }
 }

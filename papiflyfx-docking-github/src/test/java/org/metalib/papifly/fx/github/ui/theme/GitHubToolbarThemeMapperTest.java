@@ -4,6 +4,9 @@ import javafx.geometry.Insets;
 import javafx.scene.paint.Color;
 import org.junit.jupiter.api.Test;
 import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.docking.api.ThemeColors;
+import org.metalib.papifly.fx.docking.api.ThemeDimensions;
+import org.metalib.papifly.fx.docking.api.ThemeFonts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -41,28 +44,34 @@ class GitHubToolbarThemeMapperTest {
 
     @Test
     void customAccentPropagatesToBusyAndFocus() {
-        Theme custom = new Theme(
-            Color.rgb(30, 30, 30),
-            Color.rgb(45, 45, 45),
-            Color.rgb(60, 60, 60),
-            Color.RED,
-            Color.rgb(200, 200, 200),
-            Color.WHITE,
-            Color.rgb(60, 60, 60),
-            Color.rgb(80, 80, 80),
-            Color.rgb(0, 122, 204, 0.3),
-            javafx.scene.text.Font.font(12),
-            javafx.scene.text.Font.font(12),
-            4.0,
-            1.0,
-            28.0,
-            24.0,
-            Insets.EMPTY,
-            Color.rgb(70, 70, 70),
-            Color.rgb(90, 90, 90),
-            Color.rgb(40, 40, 40),
-            8.0,
-            24.0
+        Theme custom = Theme.of(
+            new ThemeColors(
+                Color.rgb(30, 30, 30),
+                Color.rgb(45, 45, 45),
+                Color.rgb(60, 60, 60),
+                Color.RED,
+                Color.rgb(200, 200, 200),
+                Color.WHITE,
+                Color.rgb(60, 60, 60),
+                Color.rgb(80, 80, 80),
+                Color.rgb(0, 122, 204, 0.3),
+                Color.rgb(70, 70, 70),
+                Color.rgb(90, 90, 90),
+                Color.rgb(40, 40, 40)
+            ),
+            new ThemeFonts(
+                javafx.scene.text.Font.font(12),
+                javafx.scene.text.Font.font(12)
+            ),
+            new ThemeDimensions(
+                4.0,
+                1.0,
+                28.0,
+                24.0,
+                Insets.EMPTY,
+                8.0,
+                24.0
+            )
         );
         GitHubToolbarTheme result = GitHubToolbarThemeMapper.map(custom);
         assertEquals(Color.RED, result.accent());

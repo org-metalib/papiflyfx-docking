@@ -1,22 +1,16 @@
 package org.metalib.papifly.fx.settings.runtime;
 
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.api.SettingsStorage;
 import org.metalib.papifly.fx.settings.api.SecretStore;
-import org.metalib.papifly.fx.settings.persist.JsonSettingsStorage;
-import org.metalib.papifly.fx.settings.secret.SecretStoreFactory;
 
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 
 public final class SettingsRuntime {
-
-    private static final AtomicReference<SettingsRuntime> DEFAULT_RUNTIME = new AtomicReference<>();
 
     private final Path applicationDir;
     private final Path workspaceRoot;
@@ -39,41 +33,45 @@ public final class SettingsRuntime {
     }
 
     public static SettingsRuntime createDefault(ObjectProperty<Theme> themeProperty) {
+        return createDefault(
+            themeProperty,
+            new JsonSettingsStorageFactory(),
+            new DefaultSettingsSecretStoreFactory()
+        );
+    }
+
+    public static SettingsRuntime createDefault(
+        ObjectProperty<Theme> themeProperty,
+        SettingsStorageFactory storageFactory,
+        SettingsSecretStoreFactory secretStoreFactory
+    ) {
         Path applicationDir = resolveApplicationDir();
         Path workspaceRoot = resolveWorkspaceRoot();
-        JsonSettingsStorage storage = new JsonSettingsStorage(
-            applicationDir,
-            workspaceRoot == null ? null : workspaceRoot.resolve(".papiflyfx")
-        );
-        SettingsRuntime runtime = new SettingsRuntime(
+        return create(
             applicationDir,
             workspaceRoot,
-            storage,
-            SecretStoreFactory.createDefault(applicationDir),
+            themeProperty,
+            storageFactory,
+            secretStoreFactory
+        );
+    }
+
+    public static SettingsRuntime create(
+        Path applicationDir,
+        Path workspaceRoot,
+        ObjectProperty<Theme> themeProperty,
+        SettingsStorageFactory storageFactory,
+        SettingsSecretStoreFactory secretStoreFactory
+    ) {
+        Objects.requireNonNull(storageFactory, "storageFactory");
+        Objects.requireNonNull(secretStoreFactory, "secretStoreFactory");
+        return new SettingsRuntime(
+            applicationDir,
+            workspaceRoot,
+            storageFactory.create(applicationDir, workspaceRoot),
+            secretStoreFactory.create(applicationDir),
             themeProperty
         );
-        DEFAULT_RUNTIME.set(runtime);
-        return runtime;
-    }
-
-    public static SettingsRuntime getDefault() {
-        SettingsRuntime existing = DEFAULT_RUNTIME.get();
-        if (existing != null) {
-            return existing;
-        }
-        return createDefault(new SimpleObjectProperty<>(Theme.dark()));
-    }
-
-    public static void setDefault(SettingsRuntime runtime) {
-        DEFAULT_RUNTIME.set(runtime);
-    }
-
-    public static SecretStore defaultSecretStore() {
-        return getDefault().secretStore();
-    }
-
-    public static SettingsStorage defaultStorage() {
-        return getDefault().storage();
     }
 
     public SettingsContext context(SettingScope activeScope) {

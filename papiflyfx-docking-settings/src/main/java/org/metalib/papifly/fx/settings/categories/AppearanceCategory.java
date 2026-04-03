@@ -4,6 +4,9 @@ import javafx.scene.Node;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.docking.api.ThemeColors;
+import org.metalib.papifly.fx.docking.api.ThemeDimensions;
+import org.metalib.papifly.fx.docking.api.ThemeFonts;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
 import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingType;
@@ -172,28 +175,34 @@ public class AppearanceCategory implements SettingsCategory {
     ) {
         Theme base = mode == ThemeMode.LIGHT ? Theme.light() : Theme.dark();
         double densityScale = density == Density.COMPACT ? 0.9 : 1.0;
-        return new Theme(
-            Color.web(background),
-            base.headerBackground(),
-            base.headerBackgroundActive(),
-            Color.web(accent),
-            base.textColor(),
-            base.textColorActive(),
-            Color.web(border),
-            base.dividerColor(),
-            base.dropHintColor(),
-            javafx.scene.text.Font.font(base.headerFont().getFamily(), base.headerFont().getSize() * densityScale),
-            javafx.scene.text.Font.font(base.contentFont().getFamily(), fontSize),
-            base.cornerRadius(),
-            base.borderWidth(),
-            base.headerHeight() * densityScale,
-            base.tabHeight() * densityScale,
-            base.contentPadding(),
-            base.buttonHoverBackground(),
-            base.buttonPressedBackground(),
-            base.minimizedBarBackground(),
-            base.buttonSpacing(),
-            base.minimizedBarHeight() * densityScale
+        return Theme.of(
+            new ThemeColors(
+                Color.web(background),
+                base.colors().headerBackground(),
+                base.colors().headerBackgroundActive(),
+                Color.web(accent),
+                base.colors().textColor(),
+                base.colors().textColorActive(),
+                Color.web(border),
+                base.colors().dividerColor(),
+                base.colors().dropHintColor(),
+                base.colors().buttonHoverBackground(),
+                base.colors().buttonPressedBackground(),
+                base.colors().minimizedBarBackground()
+            ),
+            new ThemeFonts(
+                javafx.scene.text.Font.font(base.fonts().headerFont().getFamily(), base.fonts().headerFont().getSize() * densityScale),
+                javafx.scene.text.Font.font(base.fonts().contentFont().getFamily(), fontSize)
+            ),
+            new ThemeDimensions(
+                base.dimensions().cornerRadius(),
+                base.dimensions().borderWidth(),
+                base.dimensions().headerHeight() * densityScale,
+                base.dimensions().tabHeight() * densityScale,
+                base.dimensions().contentPadding(),
+                base.dimensions().buttonSpacing(),
+                base.dimensions().minimizedBarHeight() * densityScale
+            )
         );
     }
 

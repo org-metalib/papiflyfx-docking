@@ -119,7 +119,11 @@ public class AuthenticationCategory implements SettingsCategory {
     private boolean dirty;
 
     public AuthenticationCategory() {
-        this(LoginRuntime::broker);
+        this(LoginRuntime.createDefault());
+    }
+
+    AuthenticationCategory(LoginRuntime runtime) {
+        this(runtime::broker);
     }
 
     AuthenticationCategory(Supplier<AuthSessionBroker> brokerSupplier) {

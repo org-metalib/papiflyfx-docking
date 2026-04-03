@@ -16,6 +16,7 @@ import org.metalib.papifly.fx.login.idapi.ProviderRegistry;
 import org.metalib.papifly.fx.login.runtime.LoginRuntime;
 import org.metalib.papifly.fx.login.ui.LoginDockPane;
 import org.metalib.papifly.fx.samples.SampleScene;
+import org.metalib.papifly.fx.samples.SamplesRuntimeSupport;
 
 import java.util.List;
 import java.util.Objects;
@@ -50,18 +51,20 @@ public class LoginSample implements SampleScene {
 
     @Override
     public Node build(Stage ownerStage, ObjectProperty<Theme> themeProperty) {
-        AuthSessionBroker broker = LoginRuntime.broker();
-        ProviderRegistry runtimeRegistry = LoginRuntime.providerRegistry();
+        LoginRuntime runtime = SamplesRuntimeSupport.loginRuntime(themeProperty);
+        AuthSessionBroker broker = runtime.broker();
+        ProviderRegistry runtimeRegistry = runtime.providerRegistry();
         ProviderRegistry displayRegistry = displayRegistry(runtimeRegistry);
+        LoginFactory loginFactory = new LoginFactory(broker, displayRegistry);
 
         DockManager dockManager = new DockManager();
         dockManager.themeProperty().bind(themeProperty);
         dockManager.setOwnerStage(ownerStage);
 
         ContentStateRegistry stateRegistry = new ContentStateRegistry();
-        stateRegistry.register(new LoginStateAdapter());
+        stateRegistry.register(new LoginStateAdapter(loginFactory));
         dockManager.setContentStateRegistry(stateRegistry);
-        dockManager.setContentFactory(new LoginFactory(broker, displayRegistry));
+        dockManager.setContentFactory(loginFactory);
 
         LoginDockPane loginPane = new LoginDockPane(broker, displayRegistry);
         DockLeaf leaf = dockManager.createLeaf(sampleTitle, loginPane);

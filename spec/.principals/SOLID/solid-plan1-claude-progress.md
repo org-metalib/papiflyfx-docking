@@ -203,6 +203,120 @@ Impact:
 - The UI and higher-level code no longer need a reverse mapping from concrete classes back to display names
 - This removes the main `instanceof` backend-name branch called out in the SOLID plan
 
+### 10. Split `SettingsCategory` into focused ISP facets
+
+Added:
+
+- `papiflyfx-docking-settings-api/src/main/java/org/metalib/papifly/fx/settings/api/DefaultSettingsCategory.java`
+- `papiflyfx-docking-settings-api/src/main/java/org/metalib/papifly/fx/settings/api/SettingsCategoryMetadata.java`
+- `papiflyfx-docking-settings-api/src/main/java/org/metalib/papifly/fx/settings/api/SettingsCategoryDefinitions.java`
+- `papiflyfx-docking-settings-api/src/main/java/org/metalib/papifly/fx/settings/api/SettingsCategoryUI.java`
+
+Updated:
+
+- `papiflyfx-docking-settings-api/src/main/java/org/metalib/papifly/fx/settings/api/SettingsCategory.java`
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/ui/SettingsPanel.java`
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/ui/SettingsCategoryList.java`
+
+What changed:
+
+- Split the old `SettingsCategory` contract into metadata, definitions/actions, and UI/lifecycle facets
+- Added `DefaultSettingsCategory` as a convenience composed base over the split facets
+- Kept `SettingsCategory` as the aggregate discovery contract while moving callers onto the narrower facet types where they only need a subset of the behavior
+- Updated the settings UI classes to sort, render, search, and pane-build through the new focused seams instead of relying on one broad interface everywhere
+
+Impact:
+
+- The settings SPI now exposes the ISP split called out in the plan without breaking the ServiceLoader category-discovery model
+- Metadata/search concerns and lifecycle/view concerns are no longer forced to share a single all-purpose contract
+
+### 11. Decomposed `Theme` into grouped value objects
+
+Added:
+
+- `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/docking/api/ThemeColors.java`
+- `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/docking/api/ThemeFonts.java`
+- `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/docking/api/ThemeDimensions.java`
+
+Updated:
+
+- `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/docking/api/Theme.java`
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/categories/AppearanceCategory.java`
+- `papiflyfx-docking-code/src/test/java/org/metalib/papifly/fx/code/theme/CodeEditorThemeMapperTest.java`
+- `papiflyfx-docking-github/src/test/java/org/metalib/papifly/fx/github/ui/theme/GitHubToolbarThemeMapperTest.java`
+
+What changed:
+
+- Added grouped `ThemeColors`, `ThemeFonts`, and `ThemeDimensions` records
+- Added `Theme.of(...)`, `Theme.colors()`, `Theme.fonts()`, and `Theme.dimensions()` so callers can compose and consume smaller value groups instead of always rebuilding 21 positional fields
+- Updated theme-construction call sites and custom-theme tests to use the grouped values
+
+Impact:
+
+- The theme API now has the smaller concern groupings that Phase 3 requested
+- New theme composition code is less error-prone than manually re-specifying the full record each time
+
+### 12. Inverted `SettingsRuntime` creation and removed the default singleton
+
+Added:
+
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/runtime/SettingsStorageFactory.java`
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/runtime/JsonSettingsStorageFactory.java`
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/runtime/SettingsSecretStoreFactory.java`
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/runtime/DefaultSettingsSecretStoreFactory.java`
+- `papiflyfx-docking-settings/src/test/java/org/metalib/papifly/fx/settings/runtime/SettingsRuntimeTest.java`
+
+Updated:
+
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/runtime/SettingsRuntime.java`
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/runtime/DefaultSettingsServicesProvider.java`
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/docking/SettingsContentFactory.java`
+- `papiflyfx-docking-settings/src/main/java/org/metalib/papifly/fx/settings/docking/SettingsStateAdapter.java`
+- `papiflyfx-docking-samples/src/main/java/org/metalib/papifly/fx/samples/settings/SettingsPanelSample.java`
+
+What changed:
+
+- Replaced the hard-coded `JsonSettingsStorage` and static `SecretStoreFactory` calls inside `SettingsRuntime` with injected storage/secret-store factory interfaces
+- Removed the `SettingsRuntime` global singleton path and moved settings-panel/session restore code onto explicitly supplied runtime instances
+- Kept a default no-arg bridge only where a ServiceLoader-created adapter/provider still needs a self-contained runtime instance
+- Added a focused unit test verifying the injected factory path
+
+Impact:
+
+- The settings runtime now follows the plan’s DIP guidance instead of acting as a hidden global service locator
+- Docking restoration and settings content creation use explicit runtime ownership rather than implicit process-wide state
+
+### 13. Inverted `LoginRuntime` broker creation and removed static runtime state from callers
+
+Added:
+
+- `papiflyfx-docking-login/src/main/java/org/metalib/papifly/fx/login/runtime/AuthSessionBrokerFactory.java`
+- `papiflyfx-docking-login/src/main/java/org/metalib/papifly/fx/login/runtime/DefaultAuthSessionBrokerFactory.java`
+- `papiflyfx-docking-login/src/test/java/org/metalib/papifly/fx/login/runtime/LoginRuntimeTest.java`
+
+Updated:
+
+- `papiflyfx-docking-login/src/main/java/org/metalib/papifly/fx/login/runtime/LoginRuntime.java`
+- `papiflyfx-docking-login/src/main/java/org/metalib/papifly/fx/login/docking/LoginFactory.java`
+- `papiflyfx-docking-login/src/main/java/org/metalib/papifly/fx/login/docking/LoginStateAdapter.java`
+- `papiflyfx-docking-login/src/main/java/org/metalib/papifly/fx/login/settings/AuthenticationCategory.java`
+- `papiflyfx-docking-samples/src/main/java/org/metalib/papifly/fx/samples/SamplesRuntimeSupport.java`
+- `papiflyfx-docking-samples/src/main/java/org/metalib/papifly/fx/samples/login/LoginSample.java`
+- `papiflyfx-docking-login/src/test/java/org/metalib/papifly/fx/login/runtime/LoginRuntimeFxTest.java`
+- `papiflyfx-docking-samples/src/test/java/org/metalib/papifly/fx/samples/SamplesSmokeTest.java`
+
+What changed:
+
+- Reworked `LoginRuntime` from a static singleton holder into an instance runtime with injected provider-registry and broker-factory seams
+- Added `DefaultAuthSessionBrokerFactory` so default broker creation still supports the optional settings-backed storage path without hard-coding concrete creation inside `LoginRuntime`
+- Updated login content/state restoration, sample runtime support, and smoke tests to pass explicit runtime/factory instances
+- Tightened restore behavior by letting `LoginStateAdapter` reuse an injected `LoginFactory` instead of always rebuilding from a separate static runtime
+
+Impact:
+
+- The login runtime now depends on a broker factory abstraction rather than constructing `DefaultAuthSessionBroker` directly
+- The samples/login integration no longer relies on process-wide static broker/registry mutation to swap runtimes during tests
+
 ## Validation
 
 Executed:
@@ -210,6 +324,8 @@ Executed:
 ```bash
 ./mvnw -pl papiflyfx-docking-docks -am test -Dtestfx.headless=true
 ./mvnw -pl papiflyfx-docking-docks,papiflyfx-docking-settings,papiflyfx-docking-settings-api -am test -Dtestfx.headless=true
+./mvnw -pl papiflyfx-docking-login,papiflyfx-docking-settings -am test -Dtestfx.headless=true
+./mvnw -pl papiflyfx-docking-samples -am test -Dtest=SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true
 ```
 
 Result:
@@ -219,25 +335,22 @@ Result:
 - 54 tests passed
 - Follow-up validation across `papiflyfx-docking-docks`, `papiflyfx-docking-settings`, and `papiflyfx-docking-settings-api` passed
 - 62 tests passed in the combined validation run
+- Follow-up validation across `papiflyfx-docking-login`, `papiflyfx-docking-settings`, and their upstream dependencies passed
+- 77 tests passed in the login/settings validation run
+- Focused sample smoke validation passed with 12 tests green while compiling the full upstream dependency chain
 
 ## Remaining Roadmap Items
 
 ### Still open from `solid-plan1-claude.md`
 
-- Phase 3:
-  - split fat interfaces such as `SettingsCategory`
-  - decompose the `Theme` record into smaller concerns
 - Phase 4:
   - extract collaborators from `DefaultAuthSessionBroker`
   - split `AuthenticationCategory`
   - decompose `DockTabGroup` and `DockSplitGroup` internally
-- Phase 5:
-  - invert runtime dependencies in `SettingsRuntime`
-  - invert runtime dependencies in `LoginRuntime`
-  - extract placeholder construction from `LayoutFactory`
 
 ### Notes
 
 - This refactor intentionally preserved the existing `new DockManager()` and `new DockManager(Theme)` call sites used throughout the codebase.
 - `LayoutFactory` and `DockTreeService` are still concrete collaborators owned by `DockManager`; the main Phase 1 lifecycle concerns are extracted, while broader inversion work remains for later phases.
-- The docks-side visitor slice is complete enough to remove the targeted `DockElement`/`LayoutNode` branch hotspots, but broader non-docks SOLID work remains across the login and settings modules.
+- The Phase 3 and Phase 5 roadmap items from `solid-plan1-claude.md` are now implemented; the remaining plan work is concentrated in the larger SRP slices from Phase 4.
+- A broader full-reactor test run reached an unrelated JVM crash inside `papiflyfx-docking-media`; sample validation was therefore executed with a targeted `SamplesSmokeTest` run that still compiles the full upstream graph without invoking the flaky unrelated media suite.

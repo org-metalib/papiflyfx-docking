@@ -24,7 +24,6 @@ import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -36,8 +35,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
 public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionAdmin {
-
-    private static final String GOOGLE_PROVIDER_ID = "google";
 
     private final Map<String, AuthSession> sessions = new LinkedHashMap<>();
     private final Map<String, SessionTokenState> sessionTokens = new LinkedHashMap<>();
@@ -51,6 +48,9 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
     private final SecretStore secretStore;
     private final BrowserLauncher browserLauncher;
     private final CallbackServerFactory callbackServerFactory;
+    private final TokenManager tokenManager;
+    private final SessionPersistenceService sessionPersistenceService;
+    private final OAuthFlowExecutor oauthFlowExecutor;
 
     public DefaultAuthSessionBroker() {
         this.providerRegistry = null;
@@ -58,6 +58,16 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
         this.secretStore = null;
         this.browserLauncher = BrowserLauncher.desktop();
         this.callbackServerFactory = CallbackServerFactory.loopback();
+        this.tokenManager = null;
+        this.sessionPersistenceService = new SessionPersistenceService(
+            this,
+            sessions,
+            authState,
+            activeSession,
+            deviceCode,
+            null
+        );
+        this.oauthFlowExecutor = new OAuthFlowExecutor(browserLauncher, callbackServerFactory, oauthStateStore, authState, deviceCode);
     }
 
     public DefaultAuthSessionBroker(ProviderRegistry providerRegistry, SettingsStorage settingsStorage, SecretStore secretStore) {
@@ -85,6 +95,16 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
         this.secretStore = secretStore;
         this.browserLauncher = browserLauncher;
         this.callbackServerFactory = callbackServerFactory;
+        this.tokenManager = new TokenManager(secretStore, sessionTokens);
+        this.sessionPersistenceService = new SessionPersistenceService(
+            this,
+            sessions,
+            authState,
+            activeSession,
+            deviceCode,
+            tokenManager
+        );
+        this.oauthFlowExecutor = new OAuthFlowExecutor(browserLauncher, callbackServerFactory, oauthStateStore, authState, deviceCode);
     }
 
     public boolean isConfiguredForOAuth() {
@@ -95,7 +115,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
     public synchronized CompletableFuture<AuthSession> signIn(String providerId) {
         deviceCode.set(null);
         if (!isConfiguredForOAuth()) {
-            return signInStub(providerId);
+            return CompletableFuture.completedFuture(sessionPersistenceService.signInStub(providerId));
         }
 
         try {
@@ -120,7 +140,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
         deviceCode.set(null);
         if (!isConfiguredForOAuth()) {
             authState.set(AuthState.POLLING_DEVICE);
-            return signInStub(providerId);
+            return CompletableFuture.completedFuture(sessionPersistenceService.signInStub(providerId));
         }
 
         try {
@@ -139,16 +159,13 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
             return refreshStub();
         }
 
-        AuthSession session = activeSession.get();
+        AuthSession session = sessionPersistenceService.activeSession().orElse(null);
         if (session == null) {
             authState.set(AuthState.ERROR);
             return CompletableFuture.failedFuture(new IllegalStateException("No active session."));
         }
 
-        SessionTokenState tokenState = sessionTokens.get(key(session.providerId(), session.subject()));
-        String refreshToken = tokenState != null && tokenState.refreshToken() != null
-            ? tokenState.refreshToken()
-            : secretStore.getSecret(SecretKeyNames.oauthRefreshToken(session.providerId(), session.subject())).orElse(null);
+        String refreshToken = tokenManager.refreshToken(session);
         if ((refreshToken == null || refreshToken.isBlank()) && !force && !session.isExpired(Instant.now())) {
             return CompletableFuture.completedFuture(session);
         }
@@ -208,7 +225,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
             return CompletableFuture.completedFuture(null);
         }
 
-        AuthSession session = activeSession.get();
+        AuthSession session = sessionPersistenceService.activeSession().orElse(null);
         if (session == null) {
             authState.set(AuthState.SIGNED_OUT);
             return CompletableFuture.completedFuture(null);
@@ -216,10 +233,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
 
         CompletableFuture<Void> revokeFuture = CompletableFuture.completedFuture(null);
         if (revokeRemote) {
-            SessionTokenState tokenState = sessionTokens.get(key(session.providerId(), session.subject()));
-            String token = tokenState != null && tokenState.accessToken() != null
-                ? tokenState.accessToken()
-                : secretStore.getSecret(SecretKeyNames.oauthRefreshToken(session.providerId(), session.subject())).orElse(null);
+            String token = tokenManager.revokeToken(session);
             if (token != null && !token.isBlank()) {
                 try {
                     IdentityProvider provider = provider(session.providerId());
@@ -237,7 +251,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
                 authState.set(AuthState.SIGNED_OUT);
                 if (revokeRemote) {
                     secretStore.clearSecret(SecretKeyNames.oauthRefreshToken(session.providerId(), session.subject()));
-                    removeSession(session.providerId(), session.subject());
+                    sessionPersistenceService.removeSession(session.providerId(), session.subject());
                 }
             }
             if (error != null) {
@@ -249,19 +263,17 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
 
     @Override
     public synchronized Optional<AuthSession> activeSession() {
-        return Optional.ofNullable(activeSession.get());
+        return sessionPersistenceService.activeSession();
     }
 
     @Override
     public synchronized List<AuthSession> allSessions() {
-        return List.copyOf(sessions.values());
+        return sessionPersistenceService.allSessions();
     }
 
     @Override
     public synchronized void setActiveSession(String providerId, String subject) {
-        AuthSession session = sessions.get(key(providerId, subject));
-        activeSession.set(session);
-        authState.set(session == null ? AuthState.SIGNED_OUT : AuthState.AUTHENTICATED);
+        sessionPersistenceService.setActiveSession(providerId, subject);
     }
 
     @Override
@@ -281,22 +293,12 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
 
     @Override
     public synchronized void upsertSession(AuthSession session) {
-        sessions.put(key(session.providerId(), session.subject()), session);
-        activeSession.set(session);
-        deviceCode.set(null);
-        authState.set(session.isExpired(Instant.now()) ? AuthState.EXPIRED : AuthState.AUTHENTICATED);
+        sessionPersistenceService.upsertSession(session);
     }
 
     @Override
     public synchronized void removeSession(String providerId, String subject) {
-        sessions.remove(key(providerId, subject));
-        sessionTokens.remove(key(providerId, subject));
-        AuthSession session = activeSession.get();
-        if (session != null && providerId.equals(session.providerId()) && subject.equals(session.subject())) {
-            activeSession.set(null);
-            deviceCode.set(null);
-            authState.set(AuthState.SIGNED_OUT);
-        }
+        sessionPersistenceService.removeSession(providerId, subject);
     }
 
     private CompletableFuture<AuthSession> signInWithAuthorizationCode(
@@ -313,39 +315,16 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
         ProviderSettingsResolver.ProviderRuntimeConfig runtimeConfig,
         boolean googleConsentRetry
     ) {
-        authState.set(AuthState.INITIATING_AUTH);
-        final CallbackServerHandle callbackServer;
-        try {
-            callbackServer = callbackServerFactory.start();
-        } catch (IOException exception) {
-            authState.set(AuthState.ERROR);
-            return CompletableFuture.failedFuture(new IllegalStateException("Unable to start the local OAuth callback server.", exception));
-        }
-
-        final AuthorizationRequest request;
-        try {
-            ProviderSettingsResolver.ProviderRuntimeConfig attemptConfig = authorizationAttemptConfig(
-                providerId,
-                runtimeConfig,
-                googleConsentRetry
-            );
-            request = provider.buildAuthorizationRequest(attemptConfig.config(), callbackServer.redirectUri());
-            oauthStateStore.store(request.state(), request.nonce(), request.codeVerifier(), request.redirectUri());
-            browserLauncher.open(URI.create(request.authUrl()));
-        } catch (Exception exception) {
-            callbackServer.close();
-            authState.set(AuthState.ERROR);
-            return CompletableFuture.failedFuture(new IllegalStateException(
-                "Unable to open the system browser. Retry after fixing desktop browser integration.",
-                exception
-            ));
-        }
-
-        authState.set(AuthState.AWAITING_CALLBACK);
-        return callbackServer.callbackParams()
+        return oauthFlowExecutor.startAuthorizationCodeFlow(redirectUri -> {
+                ProviderSettingsResolver.ProviderRuntimeConfig attemptConfig = authorizationAttemptConfig(
+                    providerId,
+                    runtimeConfig,
+                    googleConsentRetry
+                );
+                return provider.buildAuthorizationRequest(attemptConfig.config(), redirectUri);
+            })
             .thenCompose(params -> exchangeAuthorizationCode(providerId, provider, runtimeConfig, params, googleConsentRetry))
             .whenComplete((session, error) -> {
-                callbackServer.close();
                 if (error != null) {
                     synchronized (this) {
                         authState.set(AuthState.ERROR);
@@ -359,16 +338,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
         IdentityProvider provider,
         ProviderSettingsResolver.ProviderRuntimeConfig runtimeConfig
     ) {
-        authState.set(AuthState.INITIATING_AUTH);
-        return provider.requestDeviceCode(runtimeConfig.config())
-            .thenCompose(deviceCode -> {
-                synchronized (this) {
-                    this.deviceCode.set(deviceCode);
-                }
-                openDeviceVerification(deviceCode);
-                authState.set(AuthState.POLLING_DEVICE);
-                return pollForDeviceToken(provider, runtimeConfig.config(), deviceCode);
-            })
+        return oauthFlowExecutor.startDeviceFlow(provider, runtimeConfig.config())
             .thenCompose(tokenResponse -> completeAuthentication(
                 providerId,
                 provider,
@@ -405,8 +375,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
             return CompletableFuture.failedFuture(new IllegalStateException("Missing OAuth state in callback."));
         }
 
-        OAuthStateStore.StateEntry stateEntry = oauthStateStore.consume(state)
-            .orElseThrow(() -> new IllegalStateException("The OAuth callback state did not match the sign-in request."));
+        OAuthStateStore.StateEntry stateEntry = oauthFlowExecutor.consumeState(state);
 
         String code = params.get("code");
         if (code == null || code.isBlank()) {
@@ -452,7 +421,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
             .thenCompose(principal -> {
                 if (shouldRetryGoogleWithConsent(providerId, tokenResponse, principal)) {
                     if (googleConsentRetry) {
-                        return CompletableFuture.failedFuture(googleOfflineAccessError());
+                        return CompletableFuture.failedFuture(tokenManager.googleOfflineAccessError());
                     }
                     return signInWithAuthorizationCode(providerId, provider, runtimeConfig, true);
                 }
@@ -462,110 +431,20 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
             });
     }
 
-    private CompletableFuture<TokenResponse> pollForDeviceToken(
-        IdentityProvider provider,
-        ProviderConfig config,
-        DeviceCodeResponse deviceCode
-    ) {
-        long intervalSeconds = deviceCode.interval() > 0 ? deviceCode.interval() : 5;
-        Instant deadline = Instant.now().plusSeconds(Math.max(deviceCode.expiresIn(), intervalSeconds));
-        return pollForDeviceToken(provider, config, deviceCode.deviceCode(), intervalSeconds, deadline);
-    }
-
-    private CompletableFuture<TokenResponse> pollForDeviceToken(
-        IdentityProvider provider,
-        ProviderConfig config,
-        String deviceCode,
-        long intervalSeconds,
-        Instant deadline
-    ) {
-        return provider.pollDeviceToken(config, deviceCode)
-            .thenCompose(tokenResponse -> {
-                if (tokenResponse.accessToken() != null && !tokenResponse.accessToken().isBlank()) {
-                    return CompletableFuture.completedFuture(tokenResponse);
-                }
-                if (!Instant.now().isBefore(deadline)) {
-                    return CompletableFuture.failedFuture(new IllegalStateException("Device authorization expired before it was approved."));
-                }
-                return CompletableFuture.runAsync(
-                    () -> { },
-                    CompletableFuture.delayedExecutor(intervalSeconds, TimeUnit.SECONDS)
-                ).thenCompose(ignored -> pollForDeviceToken(provider, config, deviceCode, intervalSeconds, deadline));
-            });
-    }
-
-    private void openDeviceVerification(DeviceCodeResponse deviceCode) {
-        String uri = deviceCode.verificationUriComplete() != null && !deviceCode.verificationUriComplete().isBlank()
-            ? deviceCode.verificationUriComplete()
-            : deviceCode.verificationUri();
-        if (uri == null || uri.isBlank() || deviceCode.userCode() == null || deviceCode.userCode().isBlank()) {
-            throw new IllegalStateException("The provider did not return a valid device verification URL and user code.");
-        }
-        try {
-            browserLauncher.open(URI.create(uri));
-        } catch (Exception exception) {
-            // Device flow can continue without automatic browser launch because the UI shows the URL and user code.
-        }
-    }
-
-    private synchronized AuthSession persistAuthenticatedSession(
+    private AuthSession persistAuthenticatedSession(
         String providerId,
         ProviderSettingsResolver.ProviderRuntimeConfig runtimeConfig,
         TokenResponse tokenResponse,
         UserPrincipal principal,
         AuthSession previousSession
     ) {
-        validatePrincipal(providerId, runtimeConfig, principal);
-
-        Instant now = Instant.now();
-        Instant expiresAt = tokenResponse.expiresIn() > 0
-            ? now.plusSeconds(tokenResponse.expiresIn())
-            : (previousSession != null ? previousSession.expiresAt() : null);
-        Set<String> scopes = tokenResponse.scope() != null && !tokenResponse.scope().isBlank()
-            ? Set.copyOf(List.of(tokenResponse.scope().trim().split("\\s+")))
-            : Set.copyOf(runtimeConfig.config().scopes());
-
-        AuthSession session = new AuthSession(
-            previousSession != null ? previousSession.sessionId() : UUID.randomUUID().toString(),
+        return sessionPersistenceService.persistAuthenticatedSession(
             providerId,
-            principal.subject(),
+            runtimeConfig,
+            tokenResponse,
             principal,
-            AuthState.AUTHENTICATED,
-            previousSession != null ? previousSession.createdAt() : now,
-            expiresAt,
-            scopes
+            previousSession
         );
-
-        String refreshToken = tokenResponse.refreshToken();
-        if (refreshToken != null && !refreshToken.isBlank()) {
-            secretStore.setSecret(SecretKeyNames.oauthRefreshToken(providerId, principal.subject()), refreshToken);
-        } else {
-            refreshToken = secretStore.getSecret(SecretKeyNames.oauthRefreshToken(providerId, principal.subject())).orElse(null);
-        }
-        sessionTokens.put(key(providerId, principal.subject()), new SessionTokenState(
-            tokenResponse.accessToken(),
-            refreshToken,
-            tokenResponse.tokenType(),
-            tokenResponse.idToken(),
-            runtimeConfig.config()
-        ));
-        upsertSession(session);
-        return session;
-    }
-
-    private void validatePrincipal(
-        String providerId,
-        ProviderSettingsResolver.ProviderRuntimeConfig runtimeConfig,
-        UserPrincipal principal
-    ) {
-        if (!"google".equals(providerId) || runtimeConfig.workspaceDomain() == null) {
-            return;
-        }
-        String email = principal.email();
-        String expectedDomain = runtimeConfig.workspaceDomain().toLowerCase(Locale.ROOT);
-        if (email == null || !email.toLowerCase(Locale.ROOT).endsWith("@" + expectedDomain)) {
-            throw new IllegalStateException("The signed-in Google account must belong to " + runtimeConfig.workspaceDomain() + '.');
-        }
     }
 
     private IdentityProvider provider(String providerId) {
@@ -582,51 +461,6 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
         }
     }
 
-    private CompletableFuture<AuthSession> signInStub(String providerId) {
-        authState.set(AuthState.INITIATING_AUTH);
-        AuthSession session = sessions.values().stream()
-            .filter(candidate -> providerId.equals(candidate.providerId()))
-            .findFirst()
-            .orElseGet(() -> createStubSession(providerId, providerId + "-user"));
-        upsertSession(session);
-        return CompletableFuture.completedFuture(session);
-    }
-
-    private CompletableFuture<AuthSession> refreshStub() {
-        AuthSession session = activeSession.get();
-        if (session == null) {
-            authState.set(AuthState.ERROR);
-            return CompletableFuture.failedFuture(new IllegalStateException("No active session."));
-        }
-        authState.set(AuthState.REFRESHING);
-        AuthSession refreshed = new AuthSession(
-            session.sessionId(),
-            session.providerId(),
-            session.subject(),
-            session.principal(),
-            AuthState.AUTHENTICATED,
-            session.createdAt(),
-            Instant.now().plusSeconds(3600),
-            session.scopes()
-        );
-        upsertSession(refreshed);
-        return CompletableFuture.completedFuture(refreshed);
-    }
-
-    private AuthSession createStubSession(String providerId, String subject) {
-        Instant now = Instant.now();
-        return new AuthSession(
-            UUID.randomUUID().toString(),
-            providerId,
-            subject,
-            new UserPrincipal(subject, subject, subject + "@local", ""),
-            AuthState.AUTHENTICATED,
-            now,
-            now.plusSeconds(3600),
-            Set.of("openid")
-        );
-    }
-
     private Throwable rootCause(Throwable error) {
         Throwable current = error;
         while (current instanceof CompletionException && current.getCause() != null) {
@@ -635,16 +469,12 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
         return current;
     }
 
-    private String key(String providerId, String subject) {
-        return providerId + ':' + subject;
-    }
-
     private ProviderSettingsResolver.ProviderRuntimeConfig authorizationAttemptConfig(
         String providerId,
         ProviderSettingsResolver.ProviderRuntimeConfig runtimeConfig,
         boolean googleConsentRetry
     ) {
-        if (!googleConsentRetry || !GOOGLE_PROVIDER_ID.equals(providerId)) {
+        if (!googleConsentRetry || !"google".equals(providerId)) {
             return runtimeConfig;
         }
         Map<String, String> authorizationParameters = new LinkedHashMap<>(runtimeConfig.config().authorizationParameters());
@@ -658,21 +488,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
     }
 
     private boolean shouldRetryGoogleWithConsent(String providerId, TokenResponse tokenResponse, UserPrincipal principal) {
-        if (!GOOGLE_PROVIDER_ID.equals(providerId)) {
-            return false;
-        }
-        if (tokenResponse.refreshToken() != null && !tokenResponse.refreshToken().isBlank()) {
-            return false;
-        }
-        return secretStore.getSecret(SecretKeyNames.oauthRefreshToken(providerId, principal.subject()))
-            .map(String::isBlank)
-            .orElse(true);
-    }
-
-    private IllegalStateException googleOfflineAccessError() {
-        return new IllegalStateException(
-            "Google did not grant offline access. The session cannot be refreshed without a refresh token."
-        );
+        return tokenManager.shouldRetryGoogleWithConsent(providerId, tokenResponse, principal);
     }
 
     @FunctionalInterface
@@ -732,7 +548,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
         void close();
     }
 
-    private record SessionTokenState(
+    record SessionTokenState(
         String accessToken,
         String refreshToken,
         String tokenType,

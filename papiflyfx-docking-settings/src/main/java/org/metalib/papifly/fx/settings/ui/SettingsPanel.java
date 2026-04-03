@@ -14,6 +14,9 @@ import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
+import org.metalib.papifly.fx.settings.api.SettingsCategoryDefinitions;
+import org.metalib.papifly.fx.settings.api.SettingsCategoryMetadata;
+import org.metalib.papifly.fx.settings.api.SettingsCategoryUI;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.api.SettingsContributor;
 import org.metalib.papifly.fx.settings.runtime.SettingsRuntime;
@@ -131,7 +134,7 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
             contributor.getCategories().forEach(category -> loaded.put(category.id(), category))
         );
         List<SettingsCategory> categories = new ArrayList<>(loaded.values());
-        categories.sort(Comparator.comparingInt(SettingsCategory::order).thenComparing(SettingsCategory::displayName));
+        categories.sort(Comparator.comparingInt(SettingsCategoryMetadata::order).thenComparing(SettingsCategoryMetadata::displayName));
         categoriesById.clear();
         for (SettingsCategory category : categories) {
             categoriesById.put(category.id(), category);
@@ -166,7 +169,7 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
             return;
         }
         activeCategory = category;
-        Node pane = paneCache.computeIfAbsent(category.id(), ignored -> category.buildSettingsPane(currentContext()));
+        Node pane = paneCache.computeIfAbsent(category.id(), ignored -> buildPane(category));
         contentArea.getChildren().setAll(pane);
         refreshToolbarState();
     }
@@ -184,8 +187,16 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
     }
 
     private void refreshToolbarState() {
-        toolbar.setDirty(activeCategory != null && activeCategory.isDirty());
+        toolbar.setDirty(activeCategory != null && isDirty(activeCategory));
         toolbar.setActions(activeCategory == null ? List.of() : activeCategory.actions(), this::currentContext);
+    }
+
+    private Node buildPane(SettingsCategoryUI category) {
+        return category.buildSettingsPane(currentContext());
+    }
+
+    private boolean isDirty(SettingsCategoryUI category) {
+        return category.isDirty();
     }
 
     private void applyTheme(Theme theme) {
