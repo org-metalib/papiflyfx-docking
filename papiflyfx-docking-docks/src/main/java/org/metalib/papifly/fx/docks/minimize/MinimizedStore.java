@@ -1,6 +1,7 @@
 package org.metalib.papifly.fx.docks.minimize;
 
 import org.metalib.papifly.fx.docks.core.DockElement;
+import org.metalib.papifly.fx.docks.core.DockElementVisitor;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockSplitGroup;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
@@ -164,14 +165,32 @@ public class MinimizedStore {
             }
 
             DockElement groupParent = parent.getParent();
-            if (groupParent instanceof DockSplitGroup split) {
-                boolean isFirst = split.getFirst() == parent;
-                DropZone zone = split.getOrientation() == javafx.geometry.Orientation.HORIZONTAL
-                    ? (isFirst ? DropZone.WEST : DropZone.EAST)
-                    : (isFirst ? DropZone.NORTH : DropZone.SOUTH);
-                DockElement sibling = isFirst ? split.getSecond() : split.getFirst();
-                String siblingId = sibling != null ? sibling.getMetadata().id() : null;
-                return RestoreHint.forSplit(split.getMetadata().id(), zone, split.getDividerPosition(), siblingId);
+            if (groupParent != null) {
+                RestoreHint splitHint = groupParent.accept(new DockElementVisitor<>() {
+                    @Override
+                    public RestoreHint visitTabGroup(DockTabGroup tabGroup) {
+                        return null;
+                    }
+
+                    @Override
+                    public RestoreHint visitSplitGroup(DockSplitGroup splitGroup) {
+                        boolean isFirst = splitGroup.getFirst() == parent;
+                        DropZone zone = splitGroup.getOrientation() == javafx.geometry.Orientation.HORIZONTAL
+                            ? (isFirst ? DropZone.WEST : DropZone.EAST)
+                            : (isFirst ? DropZone.NORTH : DropZone.SOUTH);
+                        DockElement sibling = isFirst ? splitGroup.getSecond() : splitGroup.getFirst();
+                        String siblingId = sibling != null ? sibling.getMetadata().id() : null;
+                        return RestoreHint.forSplit(
+                            splitGroup.getMetadata().id(),
+                            zone,
+                            splitGroup.getDividerPosition(),
+                            siblingId
+                        );
+                    }
+                });
+                if (splitHint != null) {
+                    return splitHint;
+                }
             }
 
             return RestoreHint.forTab(parent.getMetadata().id(), index);

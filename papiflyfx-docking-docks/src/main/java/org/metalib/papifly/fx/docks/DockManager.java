@@ -8,30 +8,26 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import org.metalib.papifly.fx.docking.api.ContentFactory;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.docks.core.DockData;
 import org.metalib.papifly.fx.docks.core.DockElement;
+import org.metalib.papifly.fx.docks.core.DockElementVisitor;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockSplitGroup;
 import org.metalib.papifly.fx.docks.core.DockState;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
 import org.metalib.papifly.fx.docks.drag.DragManager;
-import org.metalib.papifly.fx.docks.drag.DropZone;
-import org.metalib.papifly.fx.docks.floating.FloatingDockWindow;
-import org.metalib.papifly.fx.docks.floating.FloatingWindowManager;
-import org.metalib.papifly.fx.docking.api.ContentFactory;
-import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.docks.layout.ContentStateRegistry;
 import org.metalib.papifly.fx.docks.layout.LayoutFactory;
 import org.metalib.papifly.fx.docks.layout.data.DockSessionData;
 import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
-import org.metalib.papifly.fx.docks.minimize.MinimizedBar;
 import org.metalib.papifly.fx.docks.minimize.MinimizedStore;
-import org.metalib.papifly.fx.docks.minimize.RestoreHint;
 import org.metalib.papifly.fx.docks.render.OverlayCanvas;
+import org.metalib.papifly.fx.docks.serial.DockSessionPersistence;
 
-import javafx.geometry.Rectangle2D;
 import java.nio.file.Path;
-import java.util.logging.Logger;
+import java.util.Objects;
 
 /**
  * Central manager for the docking framework.
@@ -40,34 +36,23 @@ import java.util.logging.Logger;
  */
 public class DockManager {
 
-    private static final Logger LOG = Logger.getLogger(DockManager.class.getName());
     public static final String ROOT_PANE_MANAGER_PROPERTY = DockManager.class.getName() + ".rootPaneManager";
 
     private final BorderPane mainContainer;
     private final StackPane rootPane;
     private final StackPane dockingLayer;
     private final OverlayCanvas overlayLayer;
-    private final MinimizedBar minimizedBar;
-    private final ObjectProperty<Theme> themeProperty;
     private final ObjectProperty<DockElement> rootElement;
+    private final DockManagerContext serviceContext;
+    private final DockThemeService themeService;
     private final DragManager dragManager;
     private final LayoutFactory layoutFactory;
-    private final MinimizedStore minimizedStore;
     private final DockTreeService treeService;
+    private final DockFloatingService floatingService;
+    private final DockMinMaxService minMaxService;
     private final DockSessionService sessionService;
 
-    private FloatingWindowManager floatingWindowManager;
-    private Stage ownerStage;
     private ContentFactory contentFactory;
-
-    // Maximize state
-    private DockLeaf maximizedLeaf;
-    private DockTabGroup maximizedGroup;
-    private DockElement savedRootBeforeMaximize;
-    private RestoreHint maximizeRestoreHint;
-
-    // Floating restore hints (leaf ID -> hint)
-    private final java.util.Map<String, RestoreHint> floatingRestoreHints = new java.util.HashMap<>();
 
     /**
      * Creates a new DockManager with default dark theme.
@@ -82,84 +67,82 @@ public class DockManager {
      * @param theme initial dock theme
      */
     public DockManager(Theme theme) {
-        this.themeProperty = new SimpleObjectProperty<>(theme);
-        this.rootElement = new SimpleObjectProperty<>();
+        this(theme, DockManagerServices.defaults());
+    }
 
-        // Create layered structure
+    /**
+     * Creates a new DockManager with explicit service wiring.
+     *
+     * @param theme initial dock theme
+     * @param services service factories used to build the manager collaborators
+     */
+    public DockManager(Theme theme, DockManagerServices services) {
+        Objects.requireNonNull(theme, "theme");
+        Objects.requireNonNull(services, "services");
+
+        this.rootElement = new SimpleObjectProperty<>();
+        this.serviceContext = new ServiceContext();
+
         dockingLayer = new StackPane();
-        dockingLayer.setMinSize(0, 0); // Allow shrinking
+        dockingLayer.setMinSize(0, 0);
         overlayLayer = new OverlayCanvas();
 
         rootPane = new StackPane(dockingLayer, overlayLayer);
-        rootPane.setMinSize(0, 0); // Allow shrinking
+        rootPane.setMinSize(0, 0);
 
-        // Create minimized bar at the bottom
-        minimizedBar = new MinimizedBar(themeProperty);
-        minimizedBar.setOnRestore(this::restoreLeaf);
-
-        // Create minimized store
-        minimizedStore = new MinimizedStore();
-        minimizedStore.setOnLeafAdded(minimizedBar::addLeaf);
-        minimizedStore.setOnLeafRemoved(minimizedBar::removeLeaf);
-
-        // Create main container with docking area and minimized bar
         mainContainer = new BorderPane();
         mainContainer.setCenter(rootPane);
-        mainContainer.setBottom(minimizedBar);
         mainContainer.setMinSize(0, 0);
         mainContainer.getProperties().put(ROOT_PANE_MANAGER_PROPERTY, this);
 
-        // Bind overlay size to root
         rootPane.widthProperty().addListener((obs, oldVal, newVal) ->
             overlayLayer.resize(newVal.doubleValue(), rootPane.getHeight()));
         rootPane.heightProperty().addListener((obs, oldVal, newVal) ->
             overlayLayer.resize(rootPane.getWidth(), newVal.doubleValue()));
 
-        // Initialize drag manager with tab group factory that sets up drag handlers
-        dragManager = new DragManager(this::getRoot, overlayLayer, this::setRoot, themeProperty, this::createTabGroup);
-
-        // Initialize layout factory
-        layoutFactory = new LayoutFactory(themeProperty);
+        themeService = services.themeServiceFactory().create(theme, dockingLayer);
+        layoutFactory = new LayoutFactory(themeProperty());
         treeService = new DockTreeService(this);
-        sessionService = new DockSessionService(this, treeService);
-        // Apply theme background
-        applyTheme(theme);
-        themeProperty.addListener((obs, oldTheme, newTheme) -> applyTheme(newTheme));
+        floatingService = services.floatingServiceFactory().create(serviceContext);
+        minMaxService = services.minMaxServiceFactory().create(serviceContext, floatingService);
+        sessionService = services.sessionServiceFactory().create(serviceContext, treeService, floatingService, minMaxService);
+        mainContainer.setBottom(minMaxService.getMinimizedBar());
 
-        // Setup global mouse handlers for drag operations
+        dragManager = new DragManager(this::getRoot, overlayLayer, this::setRoot, themeProperty(), this::createTabGroup);
         setupDragHandlers();
     }
 
+    /**
+     * Creates a new default manager for the given theme.
+     *
+     * @param theme initial dock theme
+     * @return a manager with the default service wiring
+     */
+    public static DockManager createDefault(Theme theme) {
+        return new DockManager(theme);
+    }
+
+    /**
+     * Creates a new default manager using the dark theme.
+     *
+     * @return a manager with the default service wiring
+     */
+    public static DockManager createDefault() {
+        return new DockManager();
+    }
+
     private void setupDragHandlers() {
-        // Mouse drag handler at root level - must call onDrag even before threshold is crossed
         rootPane.addEventFilter(MouseEvent.MOUSE_DRAGGED, event -> {
             if (dragManager.hasDragContext()) {
                 dragManager.onDrag(event);
             }
         });
 
-        // Mouse release handler at root level
         rootPane.addEventFilter(MouseEvent.MOUSE_RELEASED, event -> {
             if (dragManager.hasDragContext()) {
                 dragManager.endDrag(event);
             }
         });
-    }
-
-    private void applyTheme(Theme theme) {
-        if (theme != null) {
-            dockingLayer.setStyle("-fx-background-color: " + toHexString(theme.background()) + ";");
-        }
-    }
-
-    private String toHexString(javafx.scene.paint.Paint paint) {
-        if (paint instanceof javafx.scene.paint.Color color) {
-            return String.format("#%02X%02X%02X",
-                (int) (color.getRed() * 255),
-                (int) (color.getGreen() * 255),
-                (int) (color.getBlue() * 255));
-        }
-        return "#1E1E1E";
     }
 
     /**
@@ -179,41 +162,7 @@ public class DockManager {
      * @param stage owner stage for floating windows
      */
     public void setOwnerStage(Stage stage) {
-        this.ownerStage = stage;
-        this.floatingWindowManager = new FloatingWindowManager(stage, themeProperty, this::createTabGroup);
-
-        // Setup callbacks for floating window manager
-        floatingWindowManager.setOnDockBack(this::dockLeaf);
-        floatingWindowManager.setOnClose(this::closeLeaf);
-    }
-
-    boolean ensureFloatingWindowManager(String operation) {
-        if (floatingWindowManager != null) {
-            return true;
-        }
-        Stage stage = resolveOwnerStage();
-        if (stage == null) {
-            LOG.warning(() -> "Cannot " + operation
-                + ": owner stage not set and no Stage is attached to the DockManager root. "
-                + "Call setOwnerStage(stage) first.");
-            return false;
-        }
-        setOwnerStage(stage);
-        return true;
-    }
-
-    private Stage resolveOwnerStage() {
-        if (ownerStage != null) {
-            return ownerStage;
-        }
-        if (rootPane.getScene() == null) {
-            return null;
-        }
-        if (rootPane.getScene().getWindow() instanceof Stage stage) {
-            ownerStage = stage;
-            return stage;
-        }
-        return null;
+        floatingService.setOwnerStage(stage);
     }
 
     /**
@@ -259,16 +208,24 @@ public class DockManager {
         if (element == null) {
             return;
         }
-        if (element instanceof DockTabGroup tabGroup) {
-            setupTabGroupDragHandlers(tabGroup);
-            setupTabGroupButtonHandlers(tabGroup);
-            for (DockLeaf leaf : tabGroup.getTabs()) {
-                setupLeafCloseHandler(leaf);
+        element.accept(new DockElementVisitor<>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                setupTabGroupDragHandlers(tabGroup);
+                setupTabGroupButtonHandlers(tabGroup);
+                for (DockLeaf leaf : tabGroup.getTabs()) {
+                    setupLeafCloseHandler(leaf);
+                }
+                return null;
             }
-        } else if (element instanceof DockSplitGroup split) {
-            wireHandlers(split.getFirst());
-            wireHandlers(split.getSecond());
-        }
+
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitGroup) {
+                wireHandlers(splitGroup.getFirst());
+                wireHandlers(splitGroup.getSecond());
+                return null;
+            }
+        });
     }
 
     /**
@@ -286,7 +243,7 @@ public class DockManager {
      * @return observable theme property
      */
     public ObjectProperty<Theme> themeProperty() {
-        return themeProperty;
+        return themeService.themeProperty();
     }
 
     /**
@@ -295,7 +252,7 @@ public class DockManager {
      * @return current theme
      */
     public Theme getTheme() {
-        return themeProperty.get();
+        return themeService.getTheme();
     }
 
     /**
@@ -304,7 +261,7 @@ public class DockManager {
      * @param theme new theme
      */
     public void setTheme(Theme theme) {
-        themeProperty.set(theme);
+        themeService.setTheme(theme);
     }
 
     /**
@@ -321,8 +278,8 @@ public class DockManager {
      *
      * @return floating window manager, or {@code null} until owner stage is set
      */
-    public FloatingWindowManager getFloatingWindowManager() {
-        return floatingWindowManager;
+    public org.metalib.papifly.fx.docks.floating.FloatingWindowManager getFloatingWindowManager() {
+        return floatingService.getFloatingWindowManager();
     }
 
     /**
@@ -331,7 +288,7 @@ public class DockManager {
      * @return minimized leaf store
      */
     public MinimizedStore getMinimizedStore() {
-        return minimizedStore;
+        return minMaxService.getMinimizedStore();
     }
 
     /**
@@ -386,13 +343,13 @@ public class DockManager {
      * Closes a leaf, removing it from its parent.
      */
     private void closeLeaf(DockLeaf leaf) {
-        if (maximizedLeaf == leaf) {
-            restoreMaximized();
+        restoreMaximizedIfNecessary(leaf);
+
+        if (floatingService.isFloating(leaf)) {
+            floatingService.unfloatLeaf(leaf);
         }
 
-        if (floatingWindowManager != null && floatingWindowManager.isFloating(leaf)) {
-            floatingWindowManager.unfloatLeaf(leaf);
-        }
+        minMaxService.removeMinimizedLeaf(leaf);
 
         DockTabGroup parent = leaf.getParent();
         if (parent != null) {
@@ -403,7 +360,7 @@ public class DockManager {
         }
 
         leaf.dispose();
-        floatingRestoreHints.remove(leaf.getMetadata().id());
+        floatingService.forgetRestoreHint(leaf.getMetadata().id());
     }
 
     /**
@@ -412,7 +369,7 @@ public class DockManager {
      * @return newly created tab group with handlers wired
      */
     public DockTabGroup createTabGroup() {
-        DockTabGroup tabGroup = new DockTabGroup(themeProperty);
+        DockTabGroup tabGroup = new DockTabGroup(themeProperty());
         setupTabGroupDragHandlers(tabGroup);
         setupTabGroupButtonHandlers(tabGroup);
         return tabGroup;
@@ -517,8 +474,6 @@ public class DockManager {
         setRoot(layout);
     }
 
-    // === Session Persistence API ===
-
     /**
      * Captures the current session including layout, floating windows, minimized and maximized state.
      *
@@ -562,7 +517,7 @@ public class DockManager {
      *
      * @param path the file path to write to
      * @throws DockSessionPersistence.SessionSerializationException if serialization fails
-     * @throws DockSessionPersistence.SessionFileIOException        if file I/O fails
+     * @throws DockSessionPersistence.SessionFileIOException if file I/O fails
      */
     public void saveSessionToFile(Path path) {
         sessionService.saveSessionToFile(path);
@@ -572,47 +527,11 @@ public class DockManager {
      * Loads a session from a JSON file.
      *
      * @param path the file path to read from
-     * @throws DockSessionPersistence.SessionFileIOException        if file I/O fails
+     * @throws DockSessionPersistence.SessionFileIOException if file I/O fails
      * @throws DockSessionPersistence.SessionSerializationException if deserialization fails
      */
     public void loadSessionFromFile(Path path) {
         sessionService.loadSessionFromFile(path);
-    }
-
-    /**
-     * Restores a leaf as floating without overwriting its restore hint.
-     * Used internally during session restoration.
-     *
-     * @param leaf        the leaf to float
-     * @param restoreHint the restore hint for docking back
-     * @param bounds      the window bounds, or null for default
-     */
-    boolean restoreFloating(DockLeaf leaf, RestoreHint restoreHint, Rectangle2D bounds) {
-        if (!ensureFloatingWindowManager("restore floating leaf")) {
-            return false;
-        }
-
-        String leafId = leaf.getMetadata().id();
-
-        // Store restore hint
-        if (restoreHint != null) {
-            floatingRestoreHints.put(leafId, restoreHint);
-        }
-
-        // Update state
-        updateLeafState(leaf, DockState.FLOATING);
-
-        // Create floating window
-        FloatingDockWindow window = floatingWindowManager.floatLeaf(leaf);
-
-        // Apply bounds if provided
-        if (bounds != null) {
-            window.setBounds(bounds);
-        }
-
-        // Show window
-        window.show();
-        return true;
     }
 
     /**
@@ -621,16 +540,15 @@ public class DockManager {
      * @param tabGroup tab group to wire with drag handlers
      */
     public void setupTabGroupDragHandlers(DockTabGroup tabGroup) {
-        // Tab-specific drag handling using event filters to capture events from child tabs
         tabGroup.getTabBar().addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-            if (!event.isPrimaryButtonDown()) return;
+            if (!event.isPrimaryButtonDown()) {
+                return;
+            }
 
-            // Find which tab was clicked
             Node target = event.getPickResult().getIntersectedNode();
             while (target != null && target != tabGroup.getTabBar()) {
                 if (target.getUserData() instanceof DockLeaf leaf) {
                     dragManager.startDrag(leaf, event);
-                    // Don't consume - let click handler work for tab selection
                     return;
                 }
                 target = target.getParent();
@@ -650,14 +568,11 @@ public class DockManager {
             }
             boolean wasDragging = dragManager.isDragging();
             dragManager.endDrag(event);
-            // Only consume if we actually dragged (not just clicked)
             if (wasDragging) {
                 event.consume();
             }
         });
     }
-
-    // === Floating Window API ===
 
     /**
      * Floats a leaf from the dock tree into a floating window.
@@ -665,33 +580,7 @@ public class DockManager {
      * @param leaf leaf to float
      */
     public void floatLeaf(DockLeaf leaf) {
-        if (!ensureFloatingWindowManager("float leaf")) {
-            return;
-        }
-
-        if (maximizedLeaf == leaf) {
-            restoreMaximized();
-        }
-
-        if (floatingWindowManager.isFloating(leaf)) {
-            floatingWindowManager.getWindow(leaf).toFront();
-            return;
-        }
-
-        // Capture restore hint BEFORE removing from tree
-        String leafId = leaf.getMetadata().id();
-        RestoreHint hint = MinimizedStore.captureRestoreHint(leaf);
-        floatingRestoreHints.put(leafId, hint);
-
-        // Remove from dock tree
-        treeService.removeLeafFromDock(leaf);
-
-        // Update state
-        updateLeafState(leaf, DockState.FLOATING);
-
-        // Create floating window
-        FloatingDockWindow window = floatingWindowManager.floatLeaf(leaf);
-        window.show();
+        floatingService.floatLeaf(leaf);
     }
 
     /**
@@ -702,35 +591,7 @@ public class DockManager {
      * @param y screen y position for the floating window
      */
     public void floatLeaf(DockLeaf leaf, double x, double y) {
-        if (!ensureFloatingWindowManager("float leaf")) {
-            return;
-        }
-
-        if (maximizedLeaf == leaf) {
-            restoreMaximized();
-        }
-
-        if (floatingWindowManager.isFloating(leaf)) {
-            FloatingDockWindow window = floatingWindowManager.getWindow(leaf);
-            if (window != null) {
-                window.show(x, y);
-            }
-            return;
-        }
-
-        // Capture restore hint BEFORE removing from tree
-        String leafId = leaf.getMetadata().id();
-        RestoreHint hint = MinimizedStore.captureRestoreHint(leaf);
-        floatingRestoreHints.put(leafId, hint);
-
-        // Remove from dock tree
-        treeService.removeLeafFromDock(leaf);
-
-        // Update state
-        updateLeafState(leaf, DockState.FLOATING);
-
-        // Create floating window at position
-        floatingWindowManager.floatLeaf(leaf, x, y);
+        floatingService.floatLeaf(leaf, x, y);
     }
 
     /**
@@ -739,26 +600,8 @@ public class DockManager {
      * @param leaf leaf to dock
      */
     public void dockLeaf(DockLeaf leaf) {
-        if (floatingWindowManager != null && floatingWindowManager.isFloating(leaf)) {
-            floatingWindowManager.unfloatLeaf(leaf);
-        }
-
-        // Update state
-        updateLeafState(leaf, DockState.DOCKED);
-
-        // Try to restore to original position using saved hint
-        String leafId = leaf.getMetadata().id();
-        RestoreHint hint = floatingRestoreHints.remove(leafId);
-
-        if (hint != null && treeService.tryRestoreWithHint(leaf, hint)) {
-            return; // Successfully restored to original position
-        }
-
-        // Fallback: insert at default position
-        treeService.insertLeafIntoDock(leaf);
+        floatingService.dockLeaf(leaf);
     }
-
-    // === Minimize API ===
 
     /**
      * Minimizes a leaf, removing it from the dock tree and adding to minimized bar.
@@ -766,27 +609,7 @@ public class DockManager {
      * @param leaf leaf to minimize
      */
     public void minimizeLeaf(DockLeaf leaf) {
-        // If maximized, restore first
-        if (maximizedLeaf == leaf) {
-            restoreMaximized();
-        }
-
-        // If floating, unfloat first
-        if (floatingWindowManager != null && floatingWindowManager.isFloating(leaf)) {
-            floatingWindowManager.unfloatLeaf(leaf);
-        }
-
-        // Capture restore hint
-        RestoreHint hint = MinimizedStore.captureRestoreHint(leaf);
-
-        // Remove from dock tree
-        treeService.removeLeafFromDock(leaf);
-
-        // Update state
-        updateLeafState(leaf, DockState.MINIMIZED);
-
-        // Add to minimized store
-        minimizedStore.addLeaf(leaf, hint);
+        minMaxService.minimizeLeaf(leaf);
     }
 
     /**
@@ -795,19 +618,7 @@ public class DockManager {
      * @param leaf leaf to restore
      */
     public void restoreLeaf(DockLeaf leaf) {
-        if (!minimizedStore.isMinimized(leaf)) {
-            return;
-        }
-
-        RestoreHint hint = minimizedStore.removeLeaf(leaf);
-
-        // Update state
-        updateLeafState(leaf, DockState.DOCKED);
-
-        // Try to restore to original position, or fallback to default
-        if (!treeService.tryRestoreWithHint(leaf, hint)) {
-            treeService.insertLeafIntoDock(leaf);
-        }
+        minMaxService.restoreLeaf(leaf);
     }
 
     /**
@@ -816,13 +627,8 @@ public class DockManager {
      * @param leafId identifier of the leaf to restore
      */
     public void restoreLeaf(String leafId) {
-        DockLeaf leaf = minimizedStore.getLeaf(leafId);
-        if (leaf != null) {
-            restoreLeaf(leaf);
-        }
+        minMaxService.restoreLeaf(leafId);
     }
-
-    // === Maximize API ===
 
     /**
      * Maximizes a leaf to fill the entire dock area.
@@ -831,105 +637,14 @@ public class DockManager {
      * @param leaf leaf to maximize
      */
     public void maximizeLeaf(DockLeaf leaf) {
-        if (maximizedLeaf != null) {
-            restoreMaximized();
-        }
-
-        // If floating, dock first
-        if (floatingWindowManager != null && floatingWindowManager.isFloating(leaf)) {
-            floatingWindowManager.unfloatLeaf(leaf);
-        }
-
-        DockTabGroup originalParent = leaf.getParent();
-        if (originalParent != null) {
-            int index = originalParent.getTabs().indexOf(leaf);
-            maximizeRestoreHint = RestoreHint.forTab(originalParent.getMetadata().id(), index);
-        } else {
-            maximizeRestoreHint = RestoreHint.defaultRestore();
-        }
-        maximizedLeaf = leaf;
-
-        if (originalParent != null) {
-            originalParent.removeLeaf(leaf);
-        }
-
-        // Save the current root
-        savedRootBeforeMaximize = rootElement.get();
-
-        // Remove the root from view
-        if (savedRootBeforeMaximize != null) {
-            dockingLayer.getChildren().remove(savedRootBeforeMaximize.getNode());
-        }
-
-        maximizedGroup = createTabGroup();
-        maximizedGroup.addLeaf(leaf);
-        maximizedGroup.setMaximized(true);
-
-        // Add the maximized group's node directly to fill the dock area
-        dockingLayer.getChildren().add(0, maximizedGroup.getNode());
-
-        // Update state
-        updateLeafState(leaf, DockState.MAXIMIZED);
+        minMaxService.maximizeLeaf(leaf);
     }
 
     /**
      * Restores from maximized state to previous layout.
      */
     public void restoreMaximized() {
-        if (maximizedLeaf == null) {
-            return;
-        }
-
-        DockLeaf leaf = maximizedLeaf;
-
-        if (maximizedGroup != null) {
-            dockingLayer.getChildren().remove(maximizedGroup.getNode());
-            maximizedGroup.removeLeaf(leaf);
-            maximizedGroup = null;
-        }
-
-        // Restore the original root to docking layer
-        if (savedRootBeforeMaximize != null) {
-            dockingLayer.getChildren().add(0, savedRootBeforeMaximize.getNode());
-            rootElement.set(savedRootBeforeMaximize);
-        }
-
-        // Re-insert the leaf at its original position
-        if (maximizeRestoreHint != null && maximizeRestoreHint.parentId() != null) {
-            DockElement target = treeService.findElementById(savedRootBeforeMaximize, maximizeRestoreHint.parentId());
-            if (target instanceof DockTabGroup tabGroup) {
-                int index = Math.min(maximizeRestoreHint.tabIndex(), tabGroup.getTabs().size());
-                tabGroup.addLeaf(Math.max(0, index), leaf);
-                tabGroup.setActiveTab(leaf);
-                tabGroup.refreshActiveTabContent();
-            } else if (target instanceof DockSplitGroup split) {
-                // Re-insert into split at original position
-                DropZone zone = maximizeRestoreHint.zone();
-                if (zone == DropZone.WEST || zone == DropZone.NORTH) {
-                    DockTabGroup tabGroup = createTabGroup();
-                    tabGroup.addLeaf(leaf);
-                    split.setFirst(tabGroup);
-                } else {
-                    DockTabGroup tabGroup = createTabGroup();
-                    tabGroup.addLeaf(leaf);
-                    split.setSecond(tabGroup);
-                }
-            } else {
-                // Fallback: insert into dock
-                treeService.insertLeafIntoDock(leaf);
-            }
-        } else {
-            // No hint - insert at default position
-            treeService.insertLeafIntoDock(leaf);
-        }
-
-        // Update state
-        updateLeafState(leaf, DockState.DOCKED);
-
-        maximizedLeaf = null;
-        maximizedGroup = null;
-        savedRootBeforeMaximize = null;
-        maximizeRestoreHint = null;
+        minMaxService.restoreMaximized();
     }
 
     /**
@@ -938,7 +653,7 @@ public class DockManager {
      * @return {@code true} when a leaf is currently maximized
      */
     public boolean isMaximized() {
-        return maximizedLeaf != null;
+        return minMaxService.isMaximized();
     }
 
     /**
@@ -947,15 +662,7 @@ public class DockManager {
      * @return maximized leaf, or {@code null} when none
      */
     public DockLeaf getMaximizedLeaf() {
-        return maximizedLeaf;
-    }
-
-    java.util.Map<String, RestoreHint> floatingRestoreHints() {
-        return floatingRestoreHints;
-    }
-
-    RestoreHint maximizeRestoreHint() {
-        return maximizeRestoreHint;
+        return minMaxService.getMaximizedLeaf();
     }
 
     /**
@@ -966,26 +673,21 @@ public class DockManager {
         leaf.metadataProperty().set(current.withState(state));
     }
 
+    private void restoreMaximizedIfNecessary(DockLeaf leaf) {
+        if (minMaxService.getMaximizedLeaf() == leaf) {
+            minMaxService.restoreMaximized();
+        }
+    }
+
     /**
      * Disposes of the dock manager and all elements.
      */
     public void dispose() {
-        if (themeProperty.isBound()) {
-            themeProperty.unbind();
-        }
         mainContainer.getProperties().remove(ROOT_PANE_MANAGER_PROPERTY);
-        ownerStage = null;
 
-        // Dispose floating windows
-        if (floatingWindowManager != null) {
-            floatingWindowManager.dispose();
-            floatingWindowManager = null;
-        }
-        floatingRestoreHints.clear();
-
-        // Clear minimized store
-        minimizedStore.clear();
-        minimizedBar.clear();
+        floatingService.dispose();
+        minMaxService.dispose();
+        themeService.dispose();
 
         DockElement root = rootElement.get();
         if (root != null) {
@@ -995,8 +697,6 @@ public class DockManager {
         dockingLayer.getChildren().clear();
         contentFactory = null;
     }
-
-    // === Fluent Builder API ===
 
     /**
      * Creates a new DockManager builder.
@@ -1014,6 +714,7 @@ public class DockManager {
         private Theme theme = Theme.dark();
         private LayoutNode layout;
         private ContentFactory contentFactory;
+        private DockManagerServices services = DockManagerServices.defaults();
 
         /**
          * Creates a builder with default configuration.
@@ -1055,12 +756,23 @@ public class DockManager {
         }
 
         /**
+         * Sets the service wiring to use for the created manager.
+         *
+         * @param services service factories
+         * @return this builder
+         */
+        public Builder withServices(DockManagerServices services) {
+            this.services = services;
+            return this;
+        }
+
+        /**
          * Builds a configured {@link DockManager}.
          *
          * @return configured dock manager
          */
         public DockManager build() {
-            DockManager manager = new DockManager(theme);
+            DockManager manager = new DockManager(theme, services);
             if (contentFactory != null) {
                 manager.setContentFactory(contentFactory);
             }
@@ -1068,6 +780,79 @@ public class DockManager {
                 manager.setRoot(layout);
             }
             return manager;
+        }
+    }
+
+    private final class ServiceContext implements DockManagerContext {
+
+        @Override
+        public DockElement getRoot() {
+            return DockManager.this.getRoot();
+        }
+
+        @Override
+        public void setRoot(DockElement element) {
+            DockManager.this.setRoot(element);
+        }
+
+        @Override
+        public void restore(LayoutNode layout) {
+            DockManager.this.restore(layout);
+        }
+
+        @Override
+        public ObjectProperty<DockElement> rootProperty() {
+            return DockManager.this.rootProperty();
+        }
+
+        @Override
+        public ObjectProperty<Theme> themeProperty() {
+            return DockManager.this.themeProperty();
+        }
+
+        @Override
+        public LayoutFactory getLayoutFactory() {
+            return DockManager.this.getLayoutFactory();
+        }
+
+        @Override
+        public DockTreeService getTreeService() {
+            return treeService;
+        }
+
+        @Override
+        public DockTabGroup createTabGroup() {
+            return DockManager.this.createTabGroup();
+        }
+
+        @Override
+        public void setupLeafCloseHandler(DockLeaf leaf) {
+            DockManager.this.setupLeafCloseHandler(leaf);
+        }
+
+        @Override
+        public void updateLeafState(DockLeaf leaf, DockState state) {
+            DockManager.this.updateLeafState(leaf, state);
+        }
+
+        @Override
+        public void restoreMaximizedIfNecessary(DockLeaf leaf) {
+            DockManager.this.restoreMaximizedIfNecessary(leaf);
+        }
+
+        @Override
+        public void closeLeaf(DockLeaf leaf) {
+            DockManager.this.closeLeaf(leaf);
+        }
+
+        @Override
+        public StackPane getDockingLayer() {
+            return dockingLayer;
+        }
+
+        @Override
+        public StackPane getRootStack() {
+            return rootPane;
         }
     }
 }

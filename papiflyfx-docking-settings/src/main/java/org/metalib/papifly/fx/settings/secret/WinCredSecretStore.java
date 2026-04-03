@@ -103,6 +103,11 @@ public class WinCredSecretStore implements SecretStore {
         return keys;
     }
 
+    @Override
+    public String backendName() {
+        return "Windows Credential Manager";
+    }
+
     private boolean isWindows() {
         String os = System.getProperty("os.name", "").toLowerCase();
         return os.contains("win");

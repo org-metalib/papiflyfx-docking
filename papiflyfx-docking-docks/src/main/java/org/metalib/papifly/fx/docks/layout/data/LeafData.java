@@ -17,6 +17,11 @@ public record LeafData(
     LeafContentData content
 ) implements LayoutNode {
 
+    @Override
+    public <T> T accept(LayoutNodeVisitor<T> visitor) {
+        return visitor.visitLeaf(this);
+    }
+
     /**
      * Creates a LeafData with the given parameters.
      *

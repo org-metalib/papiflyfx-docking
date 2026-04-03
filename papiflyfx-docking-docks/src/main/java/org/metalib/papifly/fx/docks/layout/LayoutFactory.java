@@ -3,7 +3,6 @@ package org.metalib.papifly.fx.docks.layout;
 import javafx.beans.property.ObjectProperty;
 import javafx.geometry.Orientation;
 import javafx.scene.Node;
-import javafx.scene.control.Label;
 import org.metalib.papifly.fx.docking.api.ContentFactory;
 import org.metalib.papifly.fx.docking.api.ContentStateAdapter;
 import org.metalib.papifly.fx.docking.api.LeafContentData;
@@ -14,6 +13,7 @@ import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockSplitGroup;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
 import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
+import org.metalib.papifly.fx.docks.layout.data.LayoutNodeVisitor;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.SplitData;
 import org.metalib.papifly.fx.docks.layout.data.TabGroupData;
@@ -32,6 +32,7 @@ public class LayoutFactory {
     private final ObjectProperty<Theme> themeProperty;
     private ContentFactory contentFactory;
     private ContentStateRegistry contentStateRegistry;
+    private PlaceholderFactory placeholderFactory;
 
     /**
      * Creates a LayoutFactory with the given theme property and content factory.
@@ -40,9 +41,25 @@ public class LayoutFactory {
      * @param contentFactory content factory used for content restoration
      */
     public LayoutFactory(ObjectProperty<Theme> themeProperty, ContentFactory contentFactory) {
+        this(themeProperty, contentFactory, new DefaultPlaceholderFactory());
+    }
+
+    /**
+     * Creates a LayoutFactory with explicit placeholder creation.
+     *
+     * @param themeProperty theme property used for created UI elements
+     * @param contentFactory content factory used for content restoration
+     * @param placeholderFactory placeholder factory used when content cannot be restored
+     */
+    public LayoutFactory(
+        ObjectProperty<Theme> themeProperty,
+        ContentFactory contentFactory,
+        PlaceholderFactory placeholderFactory
+    ) {
         this.themeProperty = themeProperty;
         this.contentFactory = contentFactory;
         this.contentStateRegistry = ContentStateRegistry.fromServiceLoader();
+        this.placeholderFactory = placeholderFactory;
     }
 
     /**
@@ -73,6 +90,15 @@ public class LayoutFactory {
     }
 
     /**
+     * Updates the placeholder factory used when layout content cannot be restored.
+     *
+     * @param placeholderFactory placeholder factory
+     */
+    public void setPlaceholderFactory(PlaceholderFactory placeholderFactory) {
+        this.placeholderFactory = placeholderFactory;
+    }
+
+    /**
      * Gets the content state registry used to restore content.
      *
      * @return content state registry
@@ -91,12 +117,22 @@ public class LayoutFactory {
         if (node == null) {
             return null;
         }
+        return node.accept(new LayoutNodeVisitor<>() {
+            @Override
+            public DockElement visitLeaf(LeafData leaf) {
+                return buildSingleTabGroup(leaf);
+            }
 
-        return switch (node) {
-            case LeafData leaf -> buildSingleTabGroup(leaf);
-            case SplitData split -> buildSplit(split);
-            case TabGroupData tabGroup -> buildTabGroup(tabGroup);
-        };
+            @Override
+            public DockElement visitSplit(SplitData split) {
+                return buildSplit(split);
+            }
+
+            @Override
+            public DockElement visitTabGroup(TabGroupData tabGroup) {
+                return buildTabGroup(tabGroup);
+            }
+        });
     }
 
     /**
@@ -135,9 +171,7 @@ public class LayoutFactory {
 
         // Placeholder only after both adapter and factory attempts fail
         if (content == null) {
-            content = contentData != null
-                ? createMissingContentPlaceholder(contentData)
-                : createMissingContentPlaceholder(data.id(), data.title());
+            content = placeholderFactory.createPlaceholder(data, contentData);
         }
 
         if (content != null) {
@@ -161,22 +195,6 @@ public class LayoutFactory {
             );
         }
         return contentData;
-    }
-
-    private Node createMissingContentPlaceholder(LeafContentData contentData) {
-        String typeKey = contentData.typeKey() != null ? contentData.typeKey() : "unknown";
-        String contentId = contentData.contentId();
-        String labelText = contentId != null
-            ? "Missing content: " + typeKey + " (" + contentId + ")"
-            : "Missing content: " + typeKey;
-        return new Label(labelText);
-    }
-
-    private Node createMissingContentPlaceholder(String leafId, String title) {
-        String labelText = title != null
-            ? "Missing content: " + title + " (" + leafId + ")"
-            : "Missing content: " + leafId;
-        return new Label(labelText);
     }
 
     private DockTabGroup buildSingleTabGroup(LeafData data) {

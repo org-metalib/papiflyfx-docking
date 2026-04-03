@@ -34,4 +34,9 @@ public class InMemorySecretStore implements SecretStore {
     public Set<String> listKeys() {
         return new LinkedHashSet<>(values.keySet());
     }
+
+    @Override
+    public String backendName() {
+        return "In Memory";
+    }
 }

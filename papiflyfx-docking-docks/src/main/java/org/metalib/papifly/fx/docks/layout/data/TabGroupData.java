@@ -15,6 +15,11 @@ public record TabGroupData(
     int activeTabIndex
 ) implements LayoutNode {
 
+    @Override
+    public <T> T accept(LayoutNodeVisitor<T> visitor) {
+        return visitor.visitTabGroup(this);
+    }
+
     /**
      * Creates a TabGroupData with the given tabs, first tab active.
      *

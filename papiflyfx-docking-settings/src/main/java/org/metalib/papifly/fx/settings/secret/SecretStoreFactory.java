@@ -29,21 +29,6 @@ public final class SecretStoreFactory {
     }
 
     public static String backendName(SecretStore secretStore) {
-        if (secretStore instanceof KeychainSecretStore) {
-            return "macOS Keychain";
-        }
-        if (secretStore instanceof EncryptedFileSecretStore) {
-            return "Encrypted File";
-        }
-        if (secretStore instanceof LibsecretSecretStore) {
-            return "libsecret";
-        }
-        if (secretStore instanceof WinCredSecretStore) {
-            return "Windows Credential Manager";
-        }
-        if (secretStore instanceof InMemorySecretStore) {
-            return "In Memory";
-        }
-        return secretStore.getClass().getSimpleName();
+        return secretStore.backendName();
     }
 }

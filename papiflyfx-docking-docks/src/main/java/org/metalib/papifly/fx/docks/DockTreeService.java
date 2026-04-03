@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.docks;
 
 import javafx.geometry.Orientation;
 import org.metalib.papifly.fx.docks.core.DockElement;
+import org.metalib.papifly.fx.docks.core.DockElementVisitor;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockSplitGroup;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
@@ -19,27 +20,7 @@ final class DockTreeService {
     }
 
     void removeElement(DockElement element) {
-        DockElement parent = element.getParent();
-
-        if (parent instanceof DockSplitGroup split) {
-            DockElement sibling = (split.getFirst() == element) ? split.getSecond() : split.getFirst();
-
-            detachChild(split, element);
-            detachChild(split, sibling);
-
-            DockElement grandparent = split.getParent();
-            if (grandparent instanceof DockSplitGroup grandSplit) {
-                grandSplit.replaceChild(split, sibling);
-            } else if (grandparent == null) {
-                manager.setRoot(sibling);
-            }
-
-            split.dispose();
-        } else if (parent == null) {
-            manager.setRoot((DockElement) null);
-        }
-
-        element.dispose();
+        removeElementInternal(element, true);
     }
 
     void removeLeafFromDock(DockLeaf leaf) {
@@ -47,7 +28,7 @@ final class DockTreeService {
         if (parent != null) {
             parent.removeLeaf(leaf);
             if (parent.getTabs().isEmpty()) {
-                removeElementWithoutDispose(parent);
+                removeElementInternal(parent, false);
             }
         }
     }
@@ -56,17 +37,26 @@ final class DockTreeService {
         DockElement currentRoot = manager.getRoot();
 
         if (currentRoot == null) {
-            DockTabGroup tabGroup = manager.createTabGroup();
-            tabGroup.addLeaf(leaf);
+            DockTabGroup tabGroup = createTabGroupWithLeaf(leaf);
             manager.setRoot(tabGroup);
-        } else if (currentRoot instanceof DockTabGroup tabGroup) {
-            tabGroup.addLeaf(leaf);
-        } else {
-            DockTabGroup tabGroup = manager.createTabGroup();
-            tabGroup.addLeaf(leaf);
-            DockSplitGroup newSplit = manager.createHorizontalSplit(currentRoot, tabGroup, 0.75);
-            manager.setRoot(newSplit);
+            return;
         }
+
+        currentRoot.accept(new DockElementVisitor<Void>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                tabGroup.addLeaf(leaf);
+                return null;
+            }
+
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitGroup) {
+                DockTabGroup tabGroup = createTabGroupWithLeaf(leaf);
+                DockSplitGroup newSplit = manager.createHorizontalSplit(splitGroup, tabGroup, 0.75);
+                manager.setRoot(newSplit);
+                return null;
+            }
+        });
     }
 
     boolean tryRestoreWithHint(DockLeaf leaf, RestoreHint hint) {
@@ -76,30 +66,8 @@ final class DockTreeService {
 
         if (hint.parentId() != null) {
             DockElement target = findElementById(manager.getRoot(), hint.parentId());
-
-            if (target instanceof DockTabGroup tabGroup && hint.zone() == DropZone.TAB_BAR) {
-                int index = Math.min(hint.tabIndex(), tabGroup.getTabs().size());
-                tabGroup.addLeaf(index >= 0 ? index : tabGroup.getTabs().size(), leaf);
+            if (target != null && restoreIntoParentTarget(target, leaf, hint)) {
                 return true;
-            }
-
-            if (target instanceof DockSplitGroup split) {
-                DropZone zone = hint.zone();
-                if (zone == DropZone.WEST || zone == DropZone.NORTH) {
-                    if (split.getFirst() == null) {
-                        DockTabGroup tabGroup = manager.createTabGroup();
-                        tabGroup.addLeaf(leaf);
-                        split.setFirst(tabGroup);
-                        return true;
-                    }
-                } else if (zone == DropZone.EAST || zone == DropZone.SOUTH) {
-                    if (split.getSecond() == null) {
-                        DockTabGroup tabGroup = manager.createTabGroup();
-                        tabGroup.addLeaf(leaf);
-                        split.setSecond(tabGroup);
-                        return true;
-                    }
-                }
             }
         }
 
@@ -115,20 +83,13 @@ final class DockTreeService {
                 DockSplitGroup newSplit = new DockSplitGroup(orientation, manager.themeProperty());
                 newSplit.setDividerPosition(hint.splitPosition());
 
-                if (siblingParent instanceof DockSplitGroup parentSplit) {
-                    parentSplit.replaceChild(sibling, newSplit);
-                } else if (siblingParent == null) {
-                    manager.setRoot(newSplit);
-                }
+                replaceChildAtParent(siblingParent, sibling, newSplit);
 
+                DockTabGroup tabGroup = createTabGroupWithLeaf(leaf);
                 if (leafFirst) {
-                    DockTabGroup tabGroup = manager.createTabGroup();
-                    tabGroup.addLeaf(leaf);
                     newSplit.setFirst(tabGroup);
                     newSplit.setSecond(sibling);
                 } else {
-                    DockTabGroup tabGroup = manager.createTabGroup();
-                    tabGroup.addLeaf(leaf);
                     newSplit.setFirst(sibling);
                     newSplit.setSecond(tabGroup);
                 }
@@ -147,55 +108,133 @@ final class DockTreeService {
         if (element.getMetadata().id().equals(id)) {
             return element;
         }
-        if (element instanceof DockSplitGroup split) {
-            DockElement found = findElementById(split.getFirst(), id);
-            if (found != null) {
-                return found;
-            }
-            return findElementById(split.getSecond(), id);
-        }
-        if (element instanceof DockTabGroup tabGroup) {
-            for (DockLeaf tab : tabGroup.getTabs()) {
-                if (tab.getMetadata().id().equals(id)) {
-                    return tabGroup;
+        return element.accept(new DockElementVisitor<>() {
+            @Override
+            public DockElement visitTabGroup(DockTabGroup tabGroup) {
+                for (DockLeaf tab : tabGroup.getTabs()) {
+                    if (tab.getMetadata().id().equals(id)) {
+                        return tabGroup;
+                    }
                 }
+                return null;
             }
-        }
-        return null;
+
+            @Override
+            public DockElement visitSplitGroup(DockSplitGroup splitGroup) {
+                DockElement found = findElementById(splitGroup.getFirst(), id);
+                return found != null ? found : findElementById(splitGroup.getSecond(), id);
+            }
+        });
     }
 
     void collectLeaves(DockElement element, Collection<DockLeaf> leaves) {
         if (element == null) {
             return;
         }
-        if (element instanceof DockTabGroup tabGroup) {
-            leaves.addAll(tabGroup.getTabs());
-        } else if (element instanceof DockSplitGroup split) {
-            collectLeaves(split.getFirst(), leaves);
-            collectLeaves(split.getSecond(), leaves);
+        element.accept(new DockElementVisitor<>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                leaves.addAll(tabGroup.getTabs());
+                return null;
+            }
+
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitGroup) {
+                collectLeaves(splitGroup.getFirst(), leaves);
+                collectLeaves(splitGroup.getSecond(), leaves);
+                return null;
+            }
+        });
+    }
+
+    private boolean restoreIntoParentTarget(DockElement target, DockLeaf leaf, RestoreHint hint) {
+        return target.accept(new DockElementVisitor<>() {
+            @Override
+            public Boolean visitTabGroup(DockTabGroup tabGroup) {
+                if (hint.zone() != DropZone.TAB_BAR) {
+                    return false;
+                }
+                int index = Math.min(hint.tabIndex(), tabGroup.getTabs().size());
+                tabGroup.addLeaf(index >= 0 ? index : tabGroup.getTabs().size(), leaf);
+                return true;
+            }
+
+            @Override
+            public Boolean visitSplitGroup(DockSplitGroup splitGroup) {
+                DropZone zone = hint.zone();
+                if (zone == DropZone.WEST || zone == DropZone.NORTH) {
+                    if (splitGroup.getFirst() == null) {
+                        splitGroup.setFirst(createTabGroupWithLeaf(leaf));
+                        return true;
+                    }
+                } else if (zone == DropZone.EAST || zone == DropZone.SOUTH) {
+                    if (splitGroup.getSecond() == null) {
+                        splitGroup.setSecond(createTabGroupWithLeaf(leaf));
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+    }
+
+    private void removeElementInternal(DockElement element, boolean disposeElement) {
+        DockElement parent = element.getParent();
+        if (parent == null) {
+            manager.setRoot((DockElement) null);
+            if (disposeElement) {
+                element.dispose();
+            }
+            return;
+        }
+
+        parent.accept(new DockElementVisitor<>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                return null;
+            }
+
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitGroup) {
+                DockElement sibling = (splitGroup.getFirst() == element) ? splitGroup.getSecond() : splitGroup.getFirst();
+
+                detachChild(splitGroup, element);
+                detachChild(splitGroup, sibling);
+
+                replaceChildAtParent(splitGroup.getParent(), splitGroup, sibling);
+                splitGroup.dispose();
+                return null;
+            }
+        });
+
+        if (disposeElement) {
+            element.dispose();
         }
     }
 
-    private void removeElementWithoutDispose(DockElement element) {
-        DockElement parent = element.getParent();
+    private DockTabGroup createTabGroupWithLeaf(DockLeaf leaf) {
+        DockTabGroup tabGroup = manager.createTabGroup();
+        tabGroup.addLeaf(leaf);
+        return tabGroup;
+    }
 
-        if (parent instanceof DockSplitGroup split) {
-            DockElement sibling = (split.getFirst() == element) ? split.getSecond() : split.getFirst();
-
-            detachChild(split, element);
-            detachChild(split, sibling);
-
-            DockElement grandparent = split.getParent();
-            if (grandparent instanceof DockSplitGroup grandSplit) {
-                grandSplit.replaceChild(split, sibling);
-            } else if (grandparent == null) {
-                manager.setRoot(sibling);
+    private void replaceChildAtParent(DockElement parent, DockElement oldChild, DockElement newChild) {
+        if (parent == null) {
+            manager.setRoot(newChild);
+            return;
+        }
+        parent.accept(new DockElementVisitor<>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                return null;
             }
 
-            split.dispose();
-        } else if (parent == null) {
-            manager.setRoot((DockElement) null);
-        }
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitGroup) {
+                splitGroup.replaceChild(oldChild, newChild);
+                return null;
+            }
+        });
     }
 
     private void detachChild(DockSplitGroup split, DockElement child) {

@@ -31,6 +31,15 @@ public interface DockElement {
     LayoutNode serialize();
 
     /**
+     * Visits this element using a type-safe visitor instead of external {@code instanceof} checks.
+     *
+     * @param visitor visitor to apply
+     * @param <T> visitor result type
+     * @return visitor result
+     */
+    <T> T accept(DockElementVisitor<T> visitor);
+
+    /**
      * Disposes of this element, unbinding listeners and freeing resources.
      */
     void dispose();

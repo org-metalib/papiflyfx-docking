@@ -318,6 +318,11 @@ public class DockSplitGroup implements DockElement {
     }
 
     @Override
+    public <T> T accept(DockElementVisitor<T> visitor) {
+        return visitor.visitSplitGroup(this);
+    }
+
+    @Override
     public void dispose() {
         if (themeListener != null) {
             themeProperty.removeListener(themeListener);
