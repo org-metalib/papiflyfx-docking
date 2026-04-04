@@ -24,6 +24,7 @@ import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -156,7 +157,7 @@ public class DefaultAuthSessionBroker implements AuthSessionBroker, AuthSessionA
     @Override
     public synchronized CompletableFuture<AuthSession> refresh(boolean force) {
         if (!isConfiguredForOAuth()) {
-            return refreshStub();
+            return CompletableFuture.completedFuture(sessionPersistenceService.refreshStub());
         }
 
         AuthSession session = sessionPersistenceService.activeSession().orElse(null);
