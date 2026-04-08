@@ -1,6 +1,6 @@
 # PapiflyFX Docking Agent Operating Model
 
-This directory defines how the specialized repository agents collaborate. The role files describe each specialist. This document defines how work is routed, how handoffs happen, and what must be true before a task is considered complete.
+This directory defines how the specialized repository agents collaborate. The role files describe each specialist. This document defines how work is routed, how handoffs happen, and what must be true before a task is considered complete. For the concrete day-to-day workflow, use [playbook.md](playbook.md) as the operational companion to this document. For ready-to-paste Claude/Codex session starters, use [prompts.md](prompts.md). For the shortest operator version, use [cheatsheet.md](cheatsheet.md).
 
 ## Team Topology
 

@@ -100,6 +100,7 @@ papiflyfx-docking/
 
 - Module specs and design docs: `spec/` directory
 - Docks implementation plan: `spec/papiflyfx-docking-docks/IMPLEMENTATION_PLAN.md`
+- Agent operating model, playbook, prompt pack, and cheat sheet: `spec/agents/README.md`, `spec/agents/playbook.md`, `spec/agents/prompts.md`, and `spec/agents/cheatsheet.md`
 
 ## Similar Projects
 
