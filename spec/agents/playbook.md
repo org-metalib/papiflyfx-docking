@@ -29,6 +29,7 @@ Use this table to pick the lead agent first.
 | Maven, settings runtime, samples, dependency/plugin updates, release readiness | `@ops-engineer` | `@qa-engineer`, `@auth-specialist` for secret-store concerns |
 | Login, IDPs, sessions, tokens, secure storage | `@auth-specialist` | `@qa-engineer`, `@ui-ux-designer`, `@ops-engineer` when samples/settings move |
 | Theme API, CSS, spacing, interaction polish, accessibility | `@ui-ux-designer` | Owning domain agent, `@qa-engineer` for interaction regressions |
+| UI Standardization across all modules | `@ui-ux-designer` | `@spec-steward`, `@feature-dev`, `@core-architect`, `@qa-engineer` |
 | Test strategy, test infra, coverage gaps, flakiness, headless profile issues | `@qa-engineer` | Owning domain agent, `@ops-engineer` for build wiring |
 | Ambiguous, roadmap-driven, documentation-heavy, or cross-cutting work | `@spec-steward` | Owning domain agent plus any triggered reviewers |
 
@@ -46,6 +47,7 @@ If two rows both apply, start with `@spec-steward` and make the routing decision
 | Settings runtime or persistence format change | `@ops-engineer` | `@qa-engineer`, `@auth-specialist` if secrets are involved | `plan.md`, compatibility notes, `validation.md` | Backward-compatibility check and focused module tests |
 | Sample-app wiring or demo coverage | `@ops-engineer` | Owning domain agent, `@qa-engineer` | `progress.md`, `validation.md` | Sample run path or smoke test update |
 | Theme/CSS polish in one existing module | `@ui-ux-designer` | Owning domain agent, `@qa-engineer` if behavior changes | `progress.md` for scoped work; full spec set if cross-module | Visual verification in affected states and targeted tests if interaction changed |
+| UI Standardization across all modules | `@ui-ux-designer` | `@spec-steward`, `@feature-dev`, `@core-architect`, `@qa-engineer` | `research.md`, `plan.md`, `progress.md`, `validation.md` | Consistent CSS variables, 100% theme binding coverage, shared component reuse |
 | Test infrastructure or headless stability work | `@qa-engineer` | `@ops-engineer`, owning domain agent | `plan.md`, `progress.md`, `validation.md` | Headless rerun across affected modules |
 | Roadmap, plans, delivery tracking, cross-cutting documentation | `@spec-steward` | Owning domain agent | Relevant `research.md` or `plan.md`, doc updates | Consistency review against current code and specs |
 
