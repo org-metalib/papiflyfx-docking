@@ -1,4 +1,57 @@
-# Repository Guidelines
+# PapiflyFX Docking Agent Team
+
+This repository is managed by a team of specialized AI agents. Each agent has a specific domain of expertise and follows the project's [SOLID principles](spec/.principals/SOLID/README.md) and [Coding Guidelines](README.md).
+
+## Agent Roles & Responsibilities
+
+### 1. Core Architect (@core-architect)
+- **Primary Domain**: `papiflyfx-docking-api`, `papiflyfx-docking-docks`.
+- **Responsibilities**:
+  - Maintains the foundational docking API and its core implementation.
+  - Ensures layout serialization, floating windows, and session persistence remain robust.
+  - Guards the SOLID principles across the codebase.
+  - Reviews and approves changes to shared contracts and SPIs.
+- **Focus Area**: `org.metalib.papifly.fx.docks`, `org.metalib.papifly.fx.api`.
+
+### 2. Feature Developer (@feature-dev)
+- **Primary Domain**: Content modules (`code`, `tree`, `media`, `hugo`, `github`).
+- **Responsibilities**:
+  - Implements new dockable content types and maintains their functional state.
+  - Ensures proper integration with `ContentFactory` and `ContentStateAdapter`.
+  - Builds programmatic UI components and layout logic for feature docks.
+  - Follows JavaFX best practices (no FXML).
+- **Focus Area**: `papiflyfx-docking-code`, `papiflyfx-docking-tree`, `papiflyfx-docking-media`, `papiflyfx-docking-hugo`, `papiflyfx-docking-github`.
+
+### 3. Build & Runtime Engineer (@ops-engineer)
+- **Primary Domain**: `pom.xml`, `papiflyfx-docking-settings`, `papiflyfx-docking-samples`.
+- **Responsibilities**:
+  - Manages the multi-module Maven build and dependency versions.
+  - Maintains the settings runtime, persistence, and secret-store backends.
+  - Ensures all modules compile and tests pass in headless mode.
+  - Updates demo samples to showcase new framework features.
+- **Focus Area**: Root `pom.xml`, `papiflyfx-docking-settings`, `papiflyfx-docking-samples`.
+
+### 4. Auth & Security Specialist (@auth-specialist)
+- **Primary Domain**: `papiflyfx-docking-login-idapi`, `papiflyfx-docking-login-session-api`, `papiflyfx-docking-login`.
+- **Responsibilities**:
+  - Manages identity provider (IDP) integrations and the authentication SPI.
+  - Ensures secure session lifecycle and storage.
+  - Implements the functional login UI and its integration with the framework.
+  - Handles secret management and encrypted storage.
+- **Focus Area**: `org.metalib.papifly.fx.login`.
+
+### 5. UI/UX Designer (@ui-ux-designer)
+- **Primary Domain**: `papiflyfx-docking-api` (Theme API), CSS in `code`, `tree`, `github`.
+- **Responsibilities**:
+  - Defines and leads the visual identity and user experience across all modules.
+  - Sets standards for theme definitions, color palettes, and CSS styling.
+  - Optimizes layout consistency, spacing, and ergonomic UI flows.
+  - Reviews and audits UI implementations for accessibility and polish.
+- **Focus Area**: CSS stylesheets, `Theme` implementations, and UI component layout code.
+
+---
+
+## Repository Guidelines
 
 ## Project Structure & Module Organization
 - Root Maven aggregator: `pom.xml` defines the multi-module build and shared dependency/plugin management.
