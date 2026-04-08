@@ -7,10 +7,10 @@ and interaction patterns through a multiagent workflow.
 ## Phased Approach
 
 ### Phase 1: Audit & Standards Definition (Lead: @ui-ux-designer)
-- [ ] Audit existing UI/UX across all modules.
-- [ ] Research and define a set of shared CSS variables in `papiflyfx-docking-api` or a common UI module.
-- [ ] Document the standard spacing system (e.g., 4px grid) and corner radii (e.g., 4px).
-- [ ] Define standard visual states for common components (Hover, Active, Focused, Selected).
+- [x] Audit existing UI/UX across all modules.
+- [x] Research and define a set of shared CSS variables in `papiflyfx-docking-api` or a common UI module.
+- [x] Document the standard spacing system (e.g., 4px grid) and corner radii (e.g., 4px).
+- [x] Define standard visual states for common components (Hover, Active, Focused, Selected).
 
 ### Phase 2: Shared Component Extraction (Lead: @ui-ux-designer, Contributor: @feature-dev)
 - [ ] Identify common UI patterns (Pills, Chips, Status Slots, Popups).
