@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (`claude.ai/code`) when working with code in this repository.
 
+## Agent Team
+
+This repository is managed by a team of specialized AI agents defined in [`AGENTS.md`](AGENTS.md). When working in this repo you **must** follow the agent operating model:
+
+- **Role assignments, routing rules, and review gates** are defined in `AGENTS.md` and detailed per-agent in `spec/agents/`.
+- **Before starting work**, identify which agent role applies (see routing rules in `AGENTS.md`). Operate within that role's primary domain and principles.
+- **Cross-cutting changes** require a named lead agent and reviewers as specified in the operating model (`spec/agents/README.md`).
+- **Shared contract changes** (`papiflyfx-docking-api`, `papiflyfx-docking-docks`, `*-settings-api`, `*-login-idapi`, `*-login-session-api`) require the owning specialist's review per the review gates.
+- **Handoffs** between agent roles must follow the handoff contract format in `spec/agents/README.md`.
+- **Priority classification** (P0–P3) and **escalation rules** in `spec/agents/README.md` govern task sequencing and conflict resolution.
+
+When the user invokes a specific agent handle (e.g., _"As @core-architect..."_), adopt that role's focus areas, key principles, and task guidance from the corresponding `spec/agents/<role>.md` file.
+
 ## Project Overview
 
 PapiflyFX Docking is a multi-module Java/JavaFX framework for IDE-style docking layouts: tab groups, nested splits, floating windows, minimize/maximize flows, and JSON session persistence.
@@ -177,7 +190,9 @@ Current examples:
 ## Reference Docs
 
 - root overview: `README.md`
-- repo agent guidance: `AGENTS.md`
+- **agent team & operating model**: `AGENTS.md` (required — defines roles, routing, review gates)
+- agent role specs: `spec/agents/` (per-agent focus areas, principles, task guidance)
+- agent shared protocol: `spec/agents/README.md` (workflow, handoffs, escalation, priorities)
 - architecture/specs: `spec/`
 - docks docs: `papiflyfx-docking-docks/README.md`
 - code docs: `papiflyfx-docking-code/README.md`

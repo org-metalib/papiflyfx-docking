@@ -12,7 +12,7 @@ The Feature Developer implements and enhances the content modules (`code`, `tree
 ## Key Principles
 1. **Liskov Substitution**: New `ContentFactory` and `ContentStateAdapter` implementations must honor the shared contracts.
 2. **Encapsulation**: Keep feature-specific logic within its module; avoid leaking details into `papiflyfx-docking-api`.
-3. Theme Integration**: Implement `bindThemeProperty(...)` or equivalent to respond to theme changes as defined by the UI/UX Designer.
+3. **Theme Integration**: Implement `bindThemeProperty(...)` or equivalent to respond to theme changes as defined by the UI/UX Designer.
 4. **Programmatic UI**: Use only programmatic JavaFX; avoid FXML.
 
 ## Task Guidance

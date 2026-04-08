@@ -23,7 +23,7 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 - **Focus Area**: `papiflyfx-docking-code`, `papiflyfx-docking-tree`, `papiflyfx-docking-media`, `papiflyfx-docking-hugo`, `papiflyfx-docking-github`.
 
 ### 3. Build & Runtime Engineer (@ops-engineer)
-- **Primary Domain**: `pom.xml`, `papiflyfx-docking-settings`, `papiflyfx-docking-samples`.
+- **Primary Domain**: `pom.xml`, `papiflyfx-docking-settings-api`, `papiflyfx-docking-settings`, `papiflyfx-docking-samples`.
 - **Responsibilities**:
   - Manages the multi-module Maven build and dependency versions.
   - Maintains the settings runtime, persistence, and secret-store backends.
@@ -49,7 +49,61 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
   - Reviews and audits UI implementations for accessibility and polish.
 - **Focus Area**: CSS stylesheets, `Theme` implementations, and UI component layout code.
 
+### 6. QA & Test Engineer (@qa-engineer)
+- **Primary Domain**: Test strategy, test infrastructure, coverage analysis, regression suites.
+- **Responsibilities**:
+  - Owns the testing approach across unit, integration, and UI levels for all modules.
+  - Identifies coverage gaps, especially in session restore, floating windows, drag-and-drop, and theme switching.
+  - Ensures bug fixes include regression tests and that test suites remain green and deterministic.
+  - Maintains TestFX/Monocle configuration, headless profiles, and shared test utilities.
+- **Focus Area**: `src/test/` across all modules, Surefire configuration, headless profiles, benchmark tags.
+
+### 7. Spec & Delivery Steward (@spec-steward)
+- **Primary Domain**: `spec/`, root `README.md`, module-level documentation, roadmap and progress documents.
+- **Responsibilities**:
+  - Owns task intake for ambiguous or cross-cutting work and routes it to the correct specialist.
+  - Maintains `research.md`, `plan.md`, `progress.md`, and `validation.md` style artifacts under `spec/`.
+  - Keeps specs, roadmap, README files, and implementation status aligned with the codebase.
+  - Verifies that cross-module changes include explicit scope, acceptance criteria, and validation notes.
+- **Focus Area**: `spec/**`, repository-level docs, change plans, and delivery tracking.
+
 ---
+
+## Agent Operating Model
+
+- Use `spec/agents/README.md` as the shared operating protocol for task routing, handoffs, review gates, and the definition of done.
+- Assign exactly one lead agent per task. Supporting agents may advise or review, but ownership stays with the lead until handoff.
+- Route work by primary domain first:
+  - Docking core, layout model, serialization, shared API/SPIs: `@core-architect`
+  - Content modules and dockable features: `@feature-dev`
+  - Build, settings, samples, dependency management, release readiness: `@ops-engineer`
+  - Authentication, sessions, IDPs, secret handling: `@auth-specialist`
+  - Theme, CSS, interaction polish, accessibility, ergonomic review: `@ui-ux-designer`
+  - Test strategy, test infrastructure, coverage gaps, regression suites: `@qa-engineer`
+  - Specs, roadmap, planning, progress tracking, cross-cutting coordination: `@spec-steward`
+- Cross-cutting work must declare a lead plus the required reviewers before implementation starts.
+- Shared contract changes require review from the owning specialist before they are considered complete.
+- No agent should update the same file concurrently with another agent without an explicit handoff note.
+
+## Delivery Workflow
+
+- Follow the repository's spec-first workflow for non-trivial changes:
+  - Research: capture findings in the relevant `spec/.../research.md` when the area is unfamiliar, risky, or architectural.
+  - Planning: document the intended approach in `plan.md`, including affected modules, invariants, and validation strategy.
+  - Implementation: keep `progress.md` current as major phases are completed.
+  - Validation: record automated checks, manual verification, and remaining risks in `validation.md` or the progress log.
+- Any task that changes public APIs, session formats, security behavior, or user-facing flows should update the relevant spec and README documentation before closing.
+
+## Review Gates
+
+- Changes to `papiflyfx-docking-api` or `papiflyfx-docking-docks` require `@core-architect` review.
+- Changes involving secrets, tokens, OAuth, session storage, or authentication flows require `@auth-specialist` review.
+- Changes to build logic, dependency versions, publishing, settings persistence, or sample coverage require `@ops-engineer` review.
+- Changes to theme definitions, CSS, visual interaction states, or layout ergonomics require `@ui-ux-designer` review.
+- Changes to roadmap items, plans, progress notes, or repository-level docs require `@spec-steward` review plus the owning domain agent for technical accuracy.
+- Changes to test infrastructure, headless profiles, Surefire configuration, or test utilities require `@qa-engineer` review.
+- Bug fixes should include a regression test validated by `@qa-engineer`.
+- New dockable content or restorable content flows should be reviewed by `@feature-dev` and, when shared contracts change, `@core-architect`.
 
 ## Repository Guidelines
 
@@ -73,6 +127,7 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 - Runnable demos live in `papiflyfx-docking-samples/`.
 - Tests live under `src/test/java` per module. Active suites currently exist in `code`, `docks`, `github`, `hugo`, `login-idapi`, `login`, `media`, `samples`, `settings`, and `tree`.
 - Architecture and design references live under `spec/` plus module-level `README.md` files.
+- Agent coordination references live under `spec/agents/`.
 
 ## Build, Test, and Development Commands
 - Java setup (SDKMAN): `sdk use java 25.0.1.fx-zulu`
