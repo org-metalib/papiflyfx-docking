@@ -13,9 +13,9 @@ and interaction patterns through a multiagent workflow.
 - [x] Define standard visual states for common components (Hover, Active, Focused, Selected).
 
 ### Phase 2: Shared Component Extraction (Lead: @ui-ux-designer, Contributor: @feature-dev)
-- [ ] Identify common UI patterns (Pills, Chips, Status Slots, Popups).
-- [ ] Move reusable UI components to a shared location (e.g., `papiflyfx-docking-api` if light, or a new `papiflyfx-docking-ui-common` module).
-- [ ] Update components to use the new shared CSS variables.
+- [x] Identify common UI patterns (Pills, Chips, Status Slots, Popups).
+- [x] Move reusable UI components to a shared location (e.g., `papiflyfx-docking-api` if light, or a new `papiflyfx-docking-ui-common` module).
+- [x] Update components to use the new shared CSS variables.
 
 ### Phase 3: Module-Level Refactoring (Lead: @feature-dev, Reviewer: @ui-ux-designer)
 - [ ] **GitHub Module**: Align `github-toolbar.css` with the new shared standards.

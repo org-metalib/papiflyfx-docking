@@ -47,6 +47,11 @@ import org.metalib.papifly.fx.github.ui.theme.GitHubThemeSupport;
 import org.metalib.papifly.fx.github.ui.theme.GitHubToolbarTheme;
 import org.metalib.papifly.fx.github.ui.theme.GitHubToolbarThemeMapper;
 import org.metalib.papifly.fx.github.ui.toolbar.RefPill;
+import org.metalib.papifly.fx.ui.UiChipLabel;
+import org.metalib.papifly.fx.ui.UiChipVariant;
+import org.metalib.papifly.fx.ui.UiPillButton;
+import org.metalib.papifly.fx.ui.UiStatusSlot;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.awt.Desktop;
 import java.io.IOException;
@@ -61,14 +66,6 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
 
     public static final String FACTORY_ID = "github-toolbar";
     private static final PseudoClass SHOWING_PSEUDO_CLASS = PseudoClass.getPseudoClass("showing");
-
-    private static final List<String> CHIP_VARIANTS = List.of(
-        "pf-github-chip-accent",
-        "pf-github-chip-success",
-        "pf-github-chip-warning",
-        "pf-github-chip-danger",
-        "pf-github-chip-muted"
-    );
 
     private final GitHubToolbarViewModel viewModel;
 
@@ -112,15 +109,16 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         this.viewModel = Objects.requireNonNull(viewModel, "viewModel");
 
         GitHubThemeSupport.ensureStylesheetLoaded(this, GitHubThemeSupport.TOOLBAR_STYLESHEET);
+        UiStyleSupport.ensureCommonStylesheetLoaded(this);
         getStyleClass().add("pf-github-toolbar");
         setId("github-toolbar");
         setAlignment(Pos.CENTER_LEFT);
 
-        brandBadge = new Label("GitHub");
+        brandBadge = new UiChipLabel("GitHub", UiChipVariant.ACCENT);
         brandBadge.setId("github-brand-badge");
         brandBadge.getStyleClass().add("pf-github-brand-badge");
 
-        repoPill = new Button(viewModel.context().owner() + "/" + viewModel.context().repo());
+        repoPill = new UiPillButton(viewModel.context().owner() + "/" + viewModel.context().repo());
         repoPill.setId("github-repo-pill");
         repoPill.getStyleClass().add("pf-github-repo-pill");
         repoPill.setMnemonicParsing(false);
@@ -160,18 +158,17 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
 
         statusLabel = new Label();
         statusLabel.setId("github-status-text");
-        statusLabel.getStyleClass().add("pf-github-status-label");
+        statusLabel.getStyleClass().addAll("pf-github-status-label", "pf-ui-status-text");
         statusLabel.textProperty().bind(viewModel.statusTextProperty());
 
-        errorLabel = new Label();
+        errorLabel = new UiChipLabel("", UiChipVariant.DANGER);
         errorLabel.setId("github-error-text");
         errorLabel.getStyleClass().add("pf-github-error-label");
         errorLabel.textProperty().bind(viewModel.errorTextProperty());
 
-        statusSlot = new HBox(busyIndicator, statusLabel, errorLabel);
+        statusSlot = new UiStatusSlot(busyIndicator, statusLabel, errorLabel);
         statusSlot.setId("github-status-slot");
         statusSlot.getStyleClass().add("pf-github-status-slot");
-        statusSlot.setAlignment(Pos.CENTER_LEFT);
         bindManagedToVisible(statusSlot);
 
         Region spacer = new Region();
@@ -487,17 +484,19 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
     }
 
     private static Label createChip(SecondaryChip chip) {
-        Label label = new Label(chip.text());
+        UiChipLabel label = new UiChipLabel(chip.text(), mapVariant(chip.variant()));
         label.getStyleClass().add("pf-github-chip");
-        label.getStyleClass().removeAll(CHIP_VARIANTS);
-        switch (chip.variant()) {
-            case ACCENT -> label.getStyleClass().add("pf-github-chip-accent");
-            case SUCCESS -> label.getStyleClass().add("pf-github-chip-success");
-            case WARNING -> label.getStyleClass().add("pf-github-chip-warning");
-            case DANGER -> label.getStyleClass().add("pf-github-chip-danger");
-            case MUTED -> label.getStyleClass().add("pf-github-chip-muted");
-        }
         return label;
+    }
+
+    private static UiChipVariant mapVariant(SecondaryChip.Variant variant) {
+        return switch (variant) {
+            case ACCENT -> UiChipVariant.ACCENT;
+            case SUCCESS -> UiChipVariant.SUCCESS;
+            case WARNING -> UiChipVariant.WARNING;
+            case DANGER -> UiChipVariant.DANGER;
+            case MUTED -> UiChipVariant.MUTED;
+        };
     }
 
     private static void bindManagedToVisible(Node node) {
@@ -520,10 +519,12 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
     }
 
     private static String buildRootStyle(Theme baseTheme, GitHubToolbarTheme toolbarTheme) {
-        String family = baseTheme.contentFont() == null ? "System" : baseTheme.contentFont().getFamily().replace("\"", "\\\"");
-        double size = baseTheme.contentFont() == null ? 12.0 : baseTheme.contentFont().getSize();
         return GitHubThemeSupport.themeVariables(toolbarTheme)
-            + String.format(Locale.ROOT, "-fx-font-family: \"%s\";-fx-font-size: %.1fpx;", family, size);
+            + UiStyleSupport.metricVariables()
+            + UiStyleSupport.fontVariables(baseTheme.contentFont())
+            + String.format(Locale.ROOT, "-fx-font-family: \"%s\";-fx-font-size: %.1fpx;",
+            baseTheme.contentFont() == null ? "System" : baseTheme.contentFont().getFamily().replace("\"", "\\\""),
+            baseTheme.contentFont() == null ? 12.0 : baseTheme.contentFont().getSize());
     }
 
     private static GitHubToolbarViewModel buildViewModel(GitHubRepoContext context, CredentialStore credentialStore) {

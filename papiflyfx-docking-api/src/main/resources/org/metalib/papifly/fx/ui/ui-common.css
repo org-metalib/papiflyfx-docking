@@ -1,0 +1,254 @@
+.pf-ui-overlay-surface {
+    -fx-background-color: -pf-ui-surface-overlay;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: -pf-ui-radius-md;
+    -fx-background-radius: -pf-ui-radius-md;
+}
+
+.pf-ui-popup-surface {
+    -fx-background-color: -pf-ui-surface-overlay;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-padding: 12px;
+    -fx-spacing: 8px;
+    -fx-effect: dropshadow(three-pass-box, -pf-ui-shadow-overlay, 18, 0.18, 0, 8);
+}
+
+.pf-ui-popup-list {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.pf-ui-popup-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.pf-ui-popup-list .list-cell:selected {
+    -fx-background-color: -pf-ui-surface-selected;
+    -fx-background-radius: -pf-ui-radius-md;
+}
+
+.pf-ui-popup-list .list-cell:hover {
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-background-radius: -pf-ui-radius-md;
+}
+
+.pf-ui-compact-field,
+.pf-ui-field {
+    -fx-font-size: 11px;
+    -fx-min-height: 24px;
+    -fx-pref-height: 24px;
+    -fx-max-height: 24px;
+    -fx-background-color: -pf-ui-surface-control;
+    -fx-background-radius: 8px;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-radius: 8px;
+    -fx-border-width: 1;
+    -fx-text-fill: -pf-ui-text-primary;
+    -fx-prompt-text-fill: -pf-ui-text-muted;
+}
+
+.pf-ui-compact-field:focused,
+.pf-ui-field:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ui-compact-field:disabled,
+.pf-ui-field:disabled {
+    -fx-text-fill: -pf-ui-text-disabled;
+    -fx-opacity: 1.0;
+}
+
+.pf-ui-result-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: -pf-ui-text-muted;
+    -fx-padding: 0px 4px 0px 4px;
+}
+
+.pf-ui-chip {
+    -fx-font-size: 11px;
+    -fx-min-height: 24px;
+    -fx-pref-height: 24px;
+    -fx-max-height: 24px;
+    -fx-padding: 0px 8px 0px 8px;
+    -fx-background-color: -pf-ui-surface-panel-subtle;
+    -fx-border-color: -pf-ui-border-subtle;
+    -fx-border-width: 1;
+    -fx-border-radius: 999px;
+    -fx-background-radius: 999px;
+    -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-ui-chip-neutral {
+    -fx-background-color: -pf-ui-surface-panel-subtle;
+}
+
+.pf-ui-chip-accent {
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-border-color: -pf-ui-accent;
+}
+
+.pf-ui-chip-success {
+    -fx-background-color: -pf-ui-success-subtle;
+    -fx-border-color: -pf-ui-success;
+}
+
+.pf-ui-chip-warning {
+    -fx-background-color: -pf-ui-warning-subtle;
+    -fx-border-color: -pf-ui-warning;
+}
+
+.pf-ui-chip-danger {
+    -fx-background-color: -pf-ui-danger-subtle;
+    -fx-border-color: -pf-ui-danger;
+}
+
+.pf-ui-chip-muted {
+    -fx-text-fill: -pf-ui-text-muted;
+}
+
+.pf-ui-chip-toggle,
+.pf-ui-chip-button {
+    -fx-font-size: 11px;
+    -fx-min-height: 24px;
+    -fx-pref-height: 24px;
+    -fx-max-height: 24px;
+    -fx-min-width: 24px;
+    -fx-padding: 0px 8px 0px 8px;
+    -fx-background-color: transparent;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: -pf-ui-text-primary;
+    -fx-content-display: left;
+    -fx-graphic-text-gap: 4px;
+}
+
+.pf-ui-chip-toggle:hover,
+.pf-ui-chip-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ui-chip-toggle:selected,
+.pf-ui-chip-button:selected {
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-border-color: -pf-ui-accent;
+}
+
+.pf-ui-chip-toggle:focused,
+.pf-ui-chip-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ui-chip-toggle:disabled,
+.pf-ui-chip-button:disabled {
+    -fx-text-fill: -pf-ui-text-disabled;
+    -fx-opacity: 1.0;
+}
+
+.pf-ui-pill {
+    -fx-min-height: 28px;
+    -fx-pref-height: 28px;
+    -fx-max-height: 28px;
+    -fx-background-color: -pf-ui-surface-panel-subtle;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 999px;
+    -fx-background-radius: 999px;
+    -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-ui-pill:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ui-pill:armed {
+    -fx-background-color: -pf-ui-surface-control-pressed;
+}
+
+.pf-ui-pill:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ui-icon-button {
+    -fx-min-width: 22px;
+    -fx-pref-width: 22px;
+    -fx-max-width: 22px;
+    -fx-min-height: 22px;
+    -fx-pref-height: 22px;
+    -fx-max-height: 22px;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.pf-ui-icon-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ui-icon-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ui-compact-action-button,
+.pf-ui-action-button {
+    -fx-font-size: 11px;
+    -fx-min-height: 24px;
+    -fx-pref-height: 24px;
+    -fx-max-height: 24px;
+    -fx-background-color: -pf-ui-surface-control;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: -pf-ui-text-primary;
+    -fx-padding: 0px 8px 0px 8px;
+}
+
+.pf-ui-compact-action-button:hover,
+.pf-ui-action-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ui-compact-action-button:focused,
+.pf-ui-action-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ui-compact-action-button:disabled,
+.pf-ui-action-button:disabled {
+    -fx-text-fill: -pf-ui-text-disabled;
+    -fx-opacity: 1.0;
+}
+
+.pf-ui-compact-action-button-secondary,
+.pf-ui-action-secondary {
+    -fx-background-color: transparent;
+}
+
+.pf-ui-icon {
+    -fx-fill: -pf-ui-text-primary;
+    -fx-stroke: -pf-ui-text-primary;
+}
+
+.pf-ui-status-slot {
+    -fx-spacing: 8px;
+    -fx-alignment: center-left;
+}
+
+.pf-ui-status-text {
+    -fx-text-fill: -pf-ui-text-muted;
+}
+
+.pf-ui-status-label {
+    -fx-text-fill: -pf-ui-text-muted;
+}

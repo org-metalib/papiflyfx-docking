@@ -8,7 +8,6 @@ import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
-import javafx.scene.effect.DropShadow;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -20,6 +19,9 @@ import javafx.scene.shape.SVGPath;
 import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 import org.metalib.papifly.fx.searchui.SearchOverlayBase;
+import org.metalib.papifly.fx.ui.UiChipToggle;
+import org.metalib.papifly.fx.ui.UiMetrics;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -38,7 +40,7 @@ public class SearchController extends SearchOverlayBase {
 
     private static final String STYLESHEET_NAME = "search-overlay.css";
     private static final PseudoClass NO_RESULTS_PSEUDO_CLASS = PseudoClass.getPseudoClass("no-results");
-    private static final double FIELD_HEIGHT = 24.0;
+    private static final double FIELD_HEIGHT = UiMetrics.CONTROL_HEIGHT_COMPACT;
 
     private CodeEditorTheme theme = CodeEditorTheme.dark();
     private final SearchModel searchModel;
@@ -74,15 +76,16 @@ public class SearchController extends SearchOverlayBase {
     public SearchController(SearchModel searchModel) {
         this.searchModel = searchModel;
 
-        getStyleClass().add("pf-search-overlay");
-        setPadding(new Insets(2, 4, 2, 4));
-        setSpacing(2);
+        getStyleClass().addAll("pf-search-overlay", "pf-ui-popup-surface");
+        setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_2, UiMetrics.SPACE_1, UiMetrics.SPACE_2));
+        setSpacing(UiMetrics.SPACE_1);
         setMinWidth(520);
         setPrefWidth(620);
         setMaxWidth(760);
         setMaxHeight(Region.USE_PREF_SIZE);
         setManaged(false);
         setVisible(false);
+        UiStyleSupport.ensureCommonStylesheetLoaded(this);
         ensureStylesheetLoaded();
 
         searchField = createTextField("Find");
@@ -125,7 +128,7 @@ public class SearchController extends SearchOverlayBase {
         });
 
         matchCountLabel = new Label();
-        matchCountLabel.getStyleClass().add("pf-search-result-label");
+        matchCountLabel.getStyleClass().addAll("pf-search-result-label", "pf-ui-result-label");
         matchCountLabel.setMinWidth(76);
         matchCountLabel.setAlignment(Pos.CENTER_RIGHT);
 
@@ -188,20 +191,20 @@ public class SearchController extends SearchOverlayBase {
         replaceAllButton = createActionButton("All", this::replaceAll, false);
 
         StackPane searchInput = createSearchInput();
-        HBox searchMiddle = new HBox(2, caseSensitiveToggle, wholeWordToggle, regexToggle, inSelectionToggle, matchCountLabel);
+        HBox searchMiddle = new HBox(UiMetrics.SPACE_1, caseSensitiveToggle, wholeWordToggle, regexToggle, inSelectionToggle, matchCountLabel);
         searchMiddle.setAlignment(Pos.CENTER_LEFT);
-        HBox searchRight = new HBox(2, prevButton, nextButton, chevronButton, closeButton);
+        HBox searchRight = new HBox(UiMetrics.SPACE_1, prevButton, nextButton, chevronButton, closeButton);
         searchRight.setAlignment(Pos.CENTER_RIGHT);
-        HBox searchRow = new HBox(2, searchInput, searchMiddle, searchRight);
+        HBox searchRow = new HBox(UiMetrics.SPACE_1, searchInput, searchMiddle, searchRight);
         searchRow.getStyleClass().add("pf-search-row");
         searchRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(searchInput, Priority.ALWAYS);
 
-        HBox replaceMiddle = new HBox(2, preserveCaseToggle);
+        HBox replaceMiddle = new HBox(UiMetrics.SPACE_1, preserveCaseToggle);
         replaceMiddle.setAlignment(Pos.CENTER_LEFT);
-        HBox replaceRight = new HBox(2, skipButton, replaceButton, replaceAllButton);
+        HBox replaceRight = new HBox(UiMetrics.SPACE_1, skipButton, replaceButton, replaceAllButton);
         replaceRight.setAlignment(Pos.CENTER_RIGHT);
-        replaceRow = new HBox(2, replaceField, replaceMiddle, replaceRight);
+        replaceRow = new HBox(UiMetrics.SPACE_1, replaceField, replaceMiddle, replaceRight);
         replaceRow.getStyleClass().add("pf-search-row");
         replaceRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(replaceField, Priority.ALWAYS);
@@ -484,7 +487,7 @@ public class SearchController extends SearchOverlayBase {
     private TextField createTextField(String promptText) {
         TextField field = new TextField();
         field.setPromptText(promptText);
-        field.getStyleClass().add("pf-search-field");
+        field.getStyleClass().addAll("pf-search-field", "pf-ui-compact-field");
         field.setMinHeight(FIELD_HEIGHT);
         field.setPrefHeight(FIELD_HEIGHT);
         field.setMaxHeight(FIELD_HEIGHT);
@@ -500,7 +503,7 @@ public class SearchController extends SearchOverlayBase {
         leadingIcon.getStyleClass().add("pf-search-leading-icon");
         leadingIcon.setGraphic(searchIcon);
         leadingIcon.setMouseTransparent(true);
-        searchField.setPadding(new Insets(0, 6, 0, 20));
+        searchField.setPadding(new Insets(0, UiMetrics.SPACE_2 - 2.0, 0, UiMetrics.SPACE_5));
         StackPane.setAlignment(searchField, Pos.CENTER_LEFT);
         StackPane.setAlignment(leadingIcon, Pos.CENTER_LEFT);
         input.getChildren().addAll(searchField, leadingIcon);
@@ -509,14 +512,14 @@ public class SearchController extends SearchOverlayBase {
     }
 
     private ToggleButton createChipToggle(String text) {
-        ToggleButton toggle = new ToggleButton(text);
-        toggle.getStyleClass().add("pf-search-chip");
+        ToggleButton toggle = new UiChipToggle(text);
+        toggle.getStyleClass().addAll("pf-search-chip", "pf-ui-chip-toggle");
         return toggle;
     }
 
     private Button createIconButton(SVGPath icon, Runnable action) {
         Button button = new Button();
-        button.getStyleClass().add("pf-search-icon-button");
+        button.getStyleClass().addAll("pf-search-icon-button", "pf-ui-icon-button");
         button.setGraphic(icon);
         button.setOnAction(e -> action.run());
         return button;
@@ -524,9 +527,9 @@ public class SearchController extends SearchOverlayBase {
 
     private Button createActionButton(String text, Runnable action, boolean secondary) {
         Button button = new Button(text);
-        button.getStyleClass().add("pf-search-action-button");
+        button.getStyleClass().addAll("pf-search-action-button", "pf-ui-compact-action-button");
         if (secondary) {
-            button.getStyleClass().add("pf-search-action-secondary");
+            button.getStyleClass().addAll("pf-search-action-secondary", "pf-ui-compact-action-button-secondary");
         }
         button.setOnAction(e -> action.run());
         button.setDisable(true);
@@ -535,6 +538,7 @@ public class SearchController extends SearchOverlayBase {
 
     private SVGPath createIcon(String svgPath, double size) {
         SVGPath icon = SearchIcons.createIcon(svgPath, size);
+        icon.getStyleClass().add("pf-ui-icon");
         iconNodes.add(icon);
         return icon;
     }
@@ -561,7 +565,33 @@ public class SearchController extends SearchOverlayBase {
     }
 
     private void applyThemeColors() {
-        setStyle("""
+        Color accent = UiStyleSupport.asColor(theme.searchOverlayAccentBorder(), Color.web("#007acc"));
+        Color success = Color.web("#47a473");
+        Color warning = Color.web("#c69a31");
+        Color danger = UiStyleSupport.asColor(theme.searchOverlayNoResultsBorder(), Color.web("#d16969"));
+        setStyle(UiStyleSupport.metricVariables() + UiStyleSupport.fontVariables(null) + """
+            -pf-ui-surface-panel: %s;
+            -pf-ui-surface-panel-subtle: %s;
+            -pf-ui-surface-overlay: %s;
+            -pf-ui-surface-control: %s;
+            -pf-ui-surface-control-hover: %s;
+            -pf-ui-surface-control-pressed: %s;
+            -pf-ui-surface-selected: %s;
+            -pf-ui-text-primary: %s;
+            -pf-ui-text-muted: %s;
+            -pf-ui-text-disabled: %s;
+            -pf-ui-border-default: %s;
+            -pf-ui-border-subtle: %s;
+            -pf-ui-border-focus: %s;
+            -pf-ui-accent: %s;
+            -pf-ui-accent-subtle: %s;
+            -pf-ui-success: %s;
+            -pf-ui-success-subtle: %s;
+            -pf-ui-warning: %s;
+            -pf-ui-warning-subtle: %s;
+            -pf-ui-danger: %s;
+            -pf-ui-danger-subtle: %s;
+            -pf-ui-shadow-overlay: %s;
             -pf-search-bg: %s;
             -pf-search-panel-border: %s;
             -pf-search-accent: %s;
@@ -578,44 +608,47 @@ public class SearchController extends SearchOverlayBase {
             -pf-search-integrated-toggle-active: %s;
             -pf-search-error-bg: %s;
             """.formatted(
-            paintToCss(theme.searchOverlayBackground(), "#252526"),
-            paintToCss(theme.searchOverlayPanelBorder(), "#3f3f46"),
-            paintToCss(theme.searchOverlayAccentBorder(), "#007acc"),
-            paintToCss(theme.searchOverlayPrimaryText(), "#d4d4d4"),
-            paintToCss(theme.searchOverlaySecondaryText(), "#858585"),
-            paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
-            paintToCss(theme.searchOverlayControlBorder(), "#555555"),
-            paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
-            paintToCss(theme.searchOverlayControlActiveBackground(), "#164f7a"),
-            paintToCss(theme.searchOverlayControlFocusedBorder(), "#007acc"),
-            paintToCss(theme.searchOverlayControlDisabledText(), "#7a7a7a"),
-            paintToCss(theme.searchOverlayNoResultsBorder(), "#d16969"),
-            paintToCss(theme.searchOverlayShadowColor(), "rgba(0, 0, 0, 0.25)"),
-            paintToCss(theme.searchOverlayIntegratedToggleActive(), "#007acc"),
-            paintToCss(theme.searchOverlayErrorBackground(), "rgba(209, 105, 105, 0.16)")
+            UiStyleSupport.paintToCss(theme.searchOverlayBackground(), "#252526"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
+            UiStyleSupport.paintToCss(theme.searchOverlayBackground(), "#252526"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlActiveBackground(), "#164f7a"),
+            UiStyleSupport.paintToCss(theme.searchOverlayIntegratedToggleActive(), "#007acc"),
+            UiStyleSupport.paintToCss(theme.searchOverlayPrimaryText(), "#d4d4d4"),
+            UiStyleSupport.paintToCss(theme.searchOverlaySecondaryText(), "#858585"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlDisabledText(), "#7a7a7a"),
+            UiStyleSupport.paintToCss(theme.searchOverlayPanelBorder(), "#3f3f46"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlBorder(), "#555555"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlFocusedBorder(), "#007acc"),
+            UiStyleSupport.paintToCss(accent, "#007acc"),
+            UiStyleSupport.paintToCss(theme.searchOverlayIntegratedToggleActive(), "#007acc"),
+            UiStyleSupport.paintToCss(success, "#47a473"),
+            UiStyleSupport.paintToCss(new Color(success.getRed(), success.getGreen(), success.getBlue(), 0.14), "rgba(71, 164, 115, 0.14)"),
+            UiStyleSupport.paintToCss(warning, "#c69a31"),
+            UiStyleSupport.paintToCss(new Color(warning.getRed(), warning.getGreen(), warning.getBlue(), 0.14), "rgba(198, 154, 49, 0.14)"),
+            UiStyleSupport.paintToCss(danger, "#d16969"),
+            UiStyleSupport.paintToCss(theme.searchOverlayErrorBackground(), "rgba(209, 105, 105, 0.16)"),
+            UiStyleSupport.paintToCss(theme.searchOverlayShadowColor(), "rgba(0, 0, 0, 0.25)"),
+            UiStyleSupport.paintToCss(theme.searchOverlayBackground(), "#252526"),
+            UiStyleSupport.paintToCss(theme.searchOverlayPanelBorder(), "#3f3f46"),
+            UiStyleSupport.paintToCss(accent, "#007acc"),
+            UiStyleSupport.paintToCss(theme.searchOverlayPrimaryText(), "#d4d4d4"),
+            UiStyleSupport.paintToCss(theme.searchOverlaySecondaryText(), "#858585"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlBorder(), "#555555"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlActiveBackground(), "#164f7a"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlFocusedBorder(), "#007acc"),
+            UiStyleSupport.paintToCss(theme.searchOverlayControlDisabledText(), "#7a7a7a"),
+            UiStyleSupport.paintToCss(danger, "#d16969"),
+            UiStyleSupport.paintToCss(theme.searchOverlayShadowColor(), "rgba(0, 0, 0, 0.25)"),
+            UiStyleSupport.paintToCss(theme.searchOverlayIntegratedToggleActive(), "#007acc"),
+            UiStyleSupport.paintToCss(theme.searchOverlayErrorBackground(), "rgba(209, 105, 105, 0.16)")
         ));
-        Color iconColor = asColor(theme.searchOverlayPrimaryText(), Color.web("#d4d4d4"));
+        Color iconColor = UiStyleSupport.asColor(theme.searchOverlayPrimaryText(), Color.web("#d4d4d4"));
         for (SVGPath icon : iconNodes) {
             icon.setFill(iconColor);
         }
-        Color shadowColor = asColor(theme.searchOverlayShadowColor(), Color.color(0, 0, 0, 0.25));
-        setEffect(new DropShadow(10, shadowColor));
-    }
-
-    private static Color asColor(Paint paint, Color fallback) {
-        if (paint instanceof Color color) {
-            return color;
-        }
-        return fallback;
-    }
-
-    private static String paintToCss(Paint paint, String fallback) {
-        if (paint instanceof Color color) {
-            int red = (int) Math.round(color.getRed() * 255.0);
-            int green = (int) Math.round(color.getGreen() * 255.0);
-            int blue = (int) Math.round(color.getBlue() * 255.0);
-            return String.format(Locale.ROOT, "rgba(%d, %d, %d, %.3f)", red, green, blue, color.getOpacity());
-        }
-        return fallback;
     }
 }

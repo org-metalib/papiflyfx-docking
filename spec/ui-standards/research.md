@@ -227,6 +227,36 @@ Standard height rules:
 - Tree search should adopt the same compact overlay tokens as code search instead of keeping a separate search surface language.
 - Canvas modules should migrate scrollbar geometry, disclosure sizing, gutter widths, and icon metrics into shared theme-derived metrics after the CSS token layer lands.
 
+## Phase 2 Extraction Decision
+- Lead: `@ui-ux-designer`
+- Required reviewers: `@feature-dev`, `@core-architect`
+- Target shared module: `papiflyfx-docking-api`
+
+Rationale:
+- The extracted pieces are lightweight JavaFX primitives plus shared CSS/token helpers.
+- `code`, `tree`, and `github` already depend on `papiflyfx-docking-api`, so a new `papiflyfx-docking-ui-common` module would add module churn without isolating a heavier runtime concern.
+- This keeps the rollout additive and preserves the existing `ObjectProperty<Theme>` binding flow in each feature module.
+
+### Components Identified For Extraction
+- Popups / overlay surfaces:
+  - Shared CSS surface and compact-control classes in `org.metalib.papifly.fx.ui` (`ui-common.css`) plus shared token helpers in `UiStyleSupport`.
+  - First adopters: `SearchController`, `GoToLineController`, `TreeSearchOverlay`, and `GitRefPopup`.
+- Chips:
+  - Shared semantic chip label `UiChipLabel` and `UiChipVariant`.
+  - First adopters: GitHub secondary chips and the GitHub error chip.
+  - Shared chip-toggle styling is also used by code search toggles so compact chips now share one base treatment across modules.
+- Pills:
+  - Shared `UiPillButton` extracted for rounded trigger pills.
+  - First adopters: GitHub repository pill and ref pill (`RefPill` now extends the shared base).
+- Status slots:
+  - Shared `UiStatusSlot` extracted as the compact inline container for busy / status / error content.
+  - First adopter: GitHub toolbar status area.
+
+### Phase 2 Compatibility Notes
+- Functional behavior stays in the feature modules; only visual primitives and styling helpers moved into `papiflyfx-docking-api`.
+- Theme switching still flows from the module-owned theme property. Shared controls consume projected `-pf-ui-*` variables rather than creating a second theme source.
+- Existing module selectors and ids were retained where tests and feature logic depend on them, so the extracted controls remain drop-in replacements during Phase 3 cleanup.
+
 ## Audit Inputs
 - `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/docking/api/Theme.java`
 - `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/docking/api/ThemeColors.java`

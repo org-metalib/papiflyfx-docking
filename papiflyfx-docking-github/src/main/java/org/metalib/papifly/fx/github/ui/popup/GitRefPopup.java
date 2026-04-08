@@ -23,6 +23,8 @@ import org.metalib.papifly.fx.github.model.GitRefKind;
 import org.metalib.papifly.fx.github.model.RefPopupEntry;
 import org.metalib.papifly.fx.github.model.RefPopupSection;
 import org.metalib.papifly.fx.github.ui.theme.GitHubThemeSupport;
+import org.metalib.papifly.fx.ui.UiMetrics;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,13 +61,13 @@ public final class GitRefPopup {
         rows = FXCollections.observableArrayList();
         searchField = new TextField();
         searchField.setId("github-ref-popup-search");
-        searchField.getStyleClass().add("pf-github-ref-popup-search");
+        searchField.getStyleClass().addAll("pf-github-ref-popup-search", "pf-ui-compact-field");
         searchField.setPromptText("Search branches and tags");
         searchField.addEventFilter(KeyEvent.KEY_PRESSED, this::handleSearchKeyPressed);
 
         listView = new ListView<>(rows);
         listView.setId("github-ref-popup-list");
-        listView.getStyleClass().add("pf-github-ref-popup-list");
+        listView.getStyleClass().addAll("pf-github-ref-popup-list", "pf-ui-popup-list");
         listView.setFocusTraversable(true);
         listView.setCellFactory(ignored -> new RowCell());
         listView.addEventFilter(KeyEvent.KEY_PRESSED, this::handleListKeyPressed);
@@ -73,9 +75,10 @@ public final class GitRefPopup {
 
         root = new VBox(searchField, listView);
         root.setId("github-ref-popup");
-        root.getStyleClass().add("pf-github-ref-popup");
+        root.getStyleClass().addAll("pf-github-ref-popup", "pf-ui-popup-surface");
         root.setPrefWidth(392);
         root.setMaxHeight(520);
+        UiStyleSupport.ensureCommonStylesheetLoaded(root);
         GitHubThemeSupport.ensureStylesheetLoaded(root, GitHubThemeSupport.TOOLBAR_STYLESHEET);
 
         popup.getContent().add(root);
@@ -91,11 +94,12 @@ public final class GitRefPopup {
 
         submenuList = new ListView<>();
         submenuList.setId("github-ref-submenu-list");
-        submenuList.getStyleClass().add("pf-github-ref-submenu-list");
+        submenuList.getStyleClass().addAll("pf-github-ref-submenu-list", "pf-ui-popup-list", "pf-ui-popup-surface");
         submenuList.setFocusTraversable(true);
         submenuList.setCellFactory(ignored -> new SubmenuCell());
         submenuList.addEventFilter(KeyEvent.KEY_PRESSED, this::handleSubmenuKeyPressed);
         submenuList.addEventFilter(MouseEvent.MOUSE_RELEASED, this::handleSubmenuMouseReleased);
+        UiStyleSupport.ensureCommonStylesheetLoaded(submenuList);
         GitHubThemeSupport.ensureStylesheetLoaded(submenuList, GitHubThemeSupport.TOOLBAR_STYLESHEET);
         submenuPopup.getContent().add(submenuList);
     }
@@ -123,7 +127,7 @@ public final class GitRefPopup {
         if (bounds == null) {
             return;
         }
-        popup.show(anchor, bounds.getMinX(), bounds.getMaxY() + 6);
+        popup.show(anchor, bounds.getMinX(), bounds.getMaxY() + UiMetrics.SPACE_1 + 2.0);
         searchField.requestFocus();
         selectFirstEntry();
     }
@@ -373,7 +377,7 @@ public final class GitRefPopup {
         if (bounds == null) {
             return;
         }
-        submenuPopup.show(owner, bounds.getMaxX() + 4, bounds.getMinY());
+        submenuPopup.show(owner, bounds.getMaxX() + UiMetrics.SPACE_1, bounds.getMinY());
         Platform.runLater(submenuList::requestFocus);
     }
 

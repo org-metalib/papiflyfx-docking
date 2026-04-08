@@ -5,7 +5,6 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.effect.DropShadow;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -16,6 +15,8 @@ import javafx.scene.shape.SVGPath;
 import org.metalib.papifly.fx.searchui.SearchIconPaths;
 import org.metalib.papifly.fx.searchui.SearchOverlayBase;
 import org.metalib.papifly.fx.tree.theme.TreeViewTheme;
+import org.metalib.papifly.fx.ui.UiMetrics;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -43,20 +44,21 @@ public final class TreeSearchOverlay extends SearchOverlayBase {
 
     public TreeSearchOverlay() {
         super();
-        getStyleClass().add("pf-tree-search-overlay");
-        setSpacing(2.0);
-        setPadding(new Insets(2.0, 4.0, 2.0, 4.0));
+        getStyleClass().addAll("pf-tree-search-overlay", "pf-ui-popup-surface");
+        setSpacing(UiMetrics.SPACE_1);
+        setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_2, UiMetrics.SPACE_1, UiMetrics.SPACE_2));
         setPrefWidth(380.0);
         setMaxWidth(Region.USE_PREF_SIZE);
         setMaxHeight(Region.USE_PREF_SIZE);
+        UiStyleSupport.ensureCommonStylesheetLoaded(this);
         ensureStylesheetLoaded();
 
         queryField.setPromptText("Find");
-        queryField.getStyleClass().add("pf-tree-search-field");
+        queryField.getStyleClass().addAll("pf-tree-search-field", "pf-ui-compact-field");
         queryField.setMinWidth(48.0);
-        queryField.setMinHeight(24.0);
-        queryField.setPrefHeight(24.0);
-        queryField.setMaxHeight(24.0);
+        queryField.setMinHeight(UiMetrics.CONTROL_HEIGHT_COMPACT);
+        queryField.setPrefHeight(UiMetrics.CONTROL_HEIGHT_COMPACT);
+        queryField.setMaxHeight(UiMetrics.CONTROL_HEIGHT_COMPACT);
         queryField.textProperty().addListener((obs, oldValue, newValue) -> {
             if (!programmaticUpdate) {
                 onQueryChanged.accept(newValue == null ? "" : newValue);
@@ -76,7 +78,7 @@ public final class TreeSearchOverlay extends SearchOverlayBase {
             }
         });
 
-        resultLabel.getStyleClass().add("pf-tree-search-result-label");
+        resultLabel.getStyleClass().addAll("pf-tree-search-result-label", "pf-ui-result-label");
         resultLabel.setMinWidth(48.0);
         resultLabel.setPrefWidth(76.0);
         resultLabel.setAlignment(Pos.CENTER_RIGHT);
@@ -87,7 +89,7 @@ public final class TreeSearchOverlay extends SearchOverlayBase {
         Button nextButton = createIconButton(SearchIconPaths.ARROW_DOWN, 10.0, onNext);
         Button closeButton = createIconButton(SearchIconPaths.CLOSE, 10.0, this::close);
 
-        HBox row = new HBox(2.0, queryField, resultLabel, prevButton, nextButton, closeButton);
+        HBox row = new HBox(UiMetrics.SPACE_1, queryField, resultLabel, prevButton, nextButton, closeButton);
         row.getStyleClass().add("pf-tree-search-row");
         row.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(queryField, Priority.ALWAYS);
@@ -178,35 +180,58 @@ public final class TreeSearchOverlay extends SearchOverlayBase {
 
     public void setTheme(TreeViewTheme theme) {
         TreeViewTheme safeTheme = theme == null ? TreeViewTheme.dark() : theme;
-        String panelBackground = paintToCss(safeTheme.rowBackgroundAlternate(), "#252526");
-        String panelBorder = paintToCss(safeTheme.connectingLineColor(), "#3f3f46");
-        String accent = paintToCss(safeTheme.focusedBorder(), "#007acc");
-        String text = paintToCss(safeTheme.textColor(), "#d4d4d4");
-        String mutedText = paintToCss(withOpacity(safeTheme.textColor(), 0.66), "#858585");
-        String controlBackground = paintToCss(safeTheme.rowBackground(), "#1e1e1e");
-        String controlBorder = paintToCss(safeTheme.connectingLineColor(), "#555555");
-        String controlHover = paintToCss(safeTheme.hoverBackground(), "#2a2d2e");
-        setStyle("""
-            -pf-tree-search-bg: %s;
-            -pf-tree-search-panel-border: %s;
-            -pf-tree-search-accent: %s;
-            -pf-tree-search-text: %s;
-            -pf-tree-search-muted-text: %s;
-            -pf-tree-search-control-bg: %s;
-            -pf-tree-search-control-border: %s;
-            -pf-tree-search-control-hover-bg: %s;
+        Color accent = UiStyleSupport.asColor(safeTheme.focusedBorder(), Color.web("#007acc"));
+        Color success = Color.web("#47a473");
+        Color warning = Color.web("#c69a31");
+        Color danger = Color.web("#d16969");
+        setStyle(UiStyleSupport.metricVariables() + UiStyleSupport.fontVariables(null) + """
+            -pf-ui-surface-panel: %s;
+            -pf-ui-surface-panel-subtle: %s;
+            -pf-ui-surface-overlay: %s;
+            -pf-ui-surface-control: %s;
+            -pf-ui-surface-control-hover: %s;
+            -pf-ui-surface-control-pressed: %s;
+            -pf-ui-surface-selected: %s;
+            -pf-ui-text-primary: %s;
+            -pf-ui-text-muted: %s;
+            -pf-ui-text-disabled: %s;
+            -pf-ui-border-default: %s;
+            -pf-ui-border-subtle: %s;
+            -pf-ui-border-focus: %s;
+            -pf-ui-accent: %s;
+            -pf-ui-accent-subtle: %s;
+            -pf-ui-success: %s;
+            -pf-ui-success-subtle: %s;
+            -pf-ui-warning: %s;
+            -pf-ui-warning-subtle: %s;
+            -pf-ui-danger: %s;
+            -pf-ui-danger-subtle: %s;
+            -pf-ui-shadow-overlay: %s;
             """.formatted(
-            panelBackground,
-            panelBorder,
-            accent,
-            text,
-            mutedText,
-            controlBackground,
-            controlBorder,
-            controlHover
+            UiStyleSupport.paintToCss(safeTheme.rowBackgroundAlternate(), "#252526"),
+            UiStyleSupport.paintToCss(safeTheme.rowBackground(), "#1e1e1e"),
+            UiStyleSupport.paintToCss(safeTheme.rowBackgroundAlternate(), "#252526"),
+            UiStyleSupport.paintToCss(safeTheme.rowBackground(), "#1e1e1e"),
+            UiStyleSupport.paintToCss(safeTheme.hoverBackground(), "#2a2d2e"),
+            UiStyleSupport.paintToCss(safeTheme.hoverBackground(), "#2a2d2e"),
+            UiStyleSupport.paintToCss(UiStyleSupport.alpha(accent, Color.web("#007acc"), 0.12), "rgba(0, 122, 204, 0.12)"),
+            UiStyleSupport.paintToCss(safeTheme.textColor(), "#d4d4d4"),
+            UiStyleSupport.paintToCss(withOpacity(safeTheme.textColor(), 0.66), "#858585"),
+            UiStyleSupport.paintToCss(withOpacity(safeTheme.textColor(), 0.5), "#7a7a7a"),
+            UiStyleSupport.paintToCss(safeTheme.connectingLineColor(), "#3f3f46"),
+            UiStyleSupport.paintToCss(safeTheme.connectingLineColor(), "#555555"),
+            UiStyleSupport.paintToCss(accent, "#007acc"),
+            UiStyleSupport.paintToCss(accent, "#007acc"),
+            UiStyleSupport.paintToCss(UiStyleSupport.alpha(accent, Color.web("#007acc"), 0.12), "rgba(0, 122, 204, 0.12)"),
+            UiStyleSupport.paintToCss(success, "#47a473"),
+            UiStyleSupport.paintToCss(new Color(success.getRed(), success.getGreen(), success.getBlue(), 0.14), "rgba(71, 164, 115, 0.14)"),
+            UiStyleSupport.paintToCss(warning, "#c69a31"),
+            UiStyleSupport.paintToCss(new Color(warning.getRed(), warning.getGreen(), warning.getBlue(), 0.14), "rgba(198, 154, 49, 0.14)"),
+            UiStyleSupport.paintToCss(danger, "#d16969"),
+            UiStyleSupport.paintToCss(new Color(danger.getRed(), danger.getGreen(), danger.getBlue(), 0.16), "rgba(209, 105, 105, 0.16)"),
+            "rgba(0, 0, 0, 0.25)"
         ));
-        setEffect(new DropShadow(10.0, Color.color(0.0, 0.0, 0.0, 0.25)));
-        Color iconColor = asColor(safeTheme.textColor(), Color.web("#d4d4d4"));
+        Color iconColor = UiStyleSupport.asColor(safeTheme.textColor(), Color.web("#d4d4d4"));
         for (SVGPath icon : iconNodes) {
             icon.setFill(iconColor);
         }
@@ -214,7 +239,7 @@ public final class TreeSearchOverlay extends SearchOverlayBase {
 
     private Button createIconButton(String path, double size, Runnable action) {
         Button button = new Button();
-        button.getStyleClass().add("pf-tree-search-icon-button");
+        button.getStyleClass().addAll("pf-tree-search-icon-button", "pf-ui-icon-button");
         button.setGraphic(createIcon(path, size));
         button.setFocusTraversable(false);
         button.setOnAction(event -> action.run());
@@ -226,6 +251,7 @@ public final class TreeSearchOverlay extends SearchOverlayBase {
 
     private SVGPath createIcon(String path, double size) {
         SVGPath icon = SearchIconPaths.createIcon(path, size);
+        icon.getStyleClass().add("pf-ui-icon");
         iconNodes.add(icon);
         return icon;
     }
