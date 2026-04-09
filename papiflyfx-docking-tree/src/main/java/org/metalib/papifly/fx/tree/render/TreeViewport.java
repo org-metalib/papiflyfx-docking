@@ -13,6 +13,7 @@ import org.metalib.papifly.fx.tree.model.FlattenedTree;
 import org.metalib.papifly.fx.tree.model.TreeSelectionModel;
 import org.metalib.papifly.fx.tree.theme.TreeViewTheme;
 import org.metalib.papifly.fx.tree.util.GlyphCache;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,12 +21,12 @@ import java.util.function.Function;
 
 public class TreeViewport<T> extends Region {
 
-    public static final double SCROLLBAR_WIDTH = 12.0;
-    public static final double SCROLLBAR_THUMB_PAD = 2.0;
-    public static final double MIN_THUMB_SIZE = 24.0;
-    public static final double SCROLLBAR_RADIUS = 8.0;
-    public static final double INFO_TOGGLE_MARGIN = 4.0;
-    public static final double INFO_TOGGLE_SIZE = 12.0;
+    public static final double SCROLLBAR_WIDTH = UiMetrics.SPACE_3;
+    public static final double SCROLLBAR_THUMB_PAD = UiMetrics.SPACE_1 * 0.5;
+    public static final double MIN_THUMB_SIZE = UiMetrics.SPACE_6;
+    public static final double SCROLLBAR_RADIUS = UiMetrics.RADIUS_MD;
+    public static final double INFO_TOGGLE_MARGIN = UiMetrics.SPACE_1;
+    public static final double INFO_TOGGLE_SIZE = UiMetrics.SPACE_3;
 
     private final Canvas canvas = new Canvas();
     private final GlyphCache glyphCache = new GlyphCache();
@@ -571,7 +572,7 @@ public class TreeViewport<T> extends Region {
             double width = (row.depth() * theme.indentWidth())
                 + theme.indentWidth()
                 + theme.iconSize()
-                + 10.0
+                + (UiMetrics.SPACE_2 * 2.0)
                 + textWidth;
             max = Math.max(max, width);
         }

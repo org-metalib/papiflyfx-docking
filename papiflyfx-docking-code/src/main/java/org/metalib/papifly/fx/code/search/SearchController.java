@@ -503,7 +503,7 @@ public class SearchController extends SearchOverlayBase {
         leadingIcon.getStyleClass().add("pf-search-leading-icon");
         leadingIcon.setGraphic(searchIcon);
         leadingIcon.setMouseTransparent(true);
-        searchField.setPadding(new Insets(0, UiMetrics.SPACE_2 - 2.0, 0, UiMetrics.SPACE_5));
+        searchField.setPadding(new Insets(0, UiMetrics.SPACE_2, 0, UiMetrics.SPACE_5));
         StackPane.setAlignment(searchField, Pos.CENTER_LEFT);
         StackPane.setAlignment(leadingIcon, Pos.CENTER_LEFT);
         input.getChildren().addAll(searchField, leadingIcon);

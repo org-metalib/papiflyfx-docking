@@ -4,6 +4,7 @@ import javafx.geometry.Insets;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 public final class GitHubToolbarThemeMapper {
 
@@ -45,10 +46,10 @@ public final class GitHubToolbarThemeMapper {
 
         Insets basePadding = resolved.contentPadding() == null ? Insets.EMPTY : resolved.contentPadding();
         Insets contentPadding = new Insets(
-            Math.max(8.0, basePadding.getTop() + 4.0),
-            Math.max(12.0, basePadding.getRight() + 8.0),
-            Math.max(8.0, basePadding.getBottom() + 4.0),
-            Math.max(12.0, basePadding.getLeft() + 8.0)
+            Math.max(UiMetrics.SPACE_2, snapToGrid(basePadding.getTop() + UiMetrics.SPACE_1)),
+            Math.max(UiMetrics.SPACE_3, snapToGrid(basePadding.getRight() + UiMetrics.SPACE_2)),
+            Math.max(UiMetrics.SPACE_2, snapToGrid(basePadding.getBottom() + UiMetrics.SPACE_1)),
+            Math.max(UiMetrics.SPACE_3, snapToGrid(basePadding.getLeft() + UiMetrics.SPACE_2))
         );
 
         return new GitHubToolbarTheme(
@@ -76,12 +77,12 @@ public final class GitHubToolbarThemeMapper {
             busyTrack,
             busyIndicator,
             shadow,
-            Math.max(8.0, resolved.cornerRadius() + 4.0),
-            Math.max(5.0, resolved.cornerRadius() + 1.0),
-            Math.max(46.0, resolved.headerHeight() + 16.0),
-            Math.max(28.0, resolved.tabHeight() + 4.0),
+            Math.max(UiMetrics.RADIUS_MD, snapToGrid(resolved.cornerRadius() + UiMetrics.SPACE_1)),
+            Math.max(UiMetrics.RADIUS_SM, snapToGrid(resolved.cornerRadius())),
+            Math.max(UiMetrics.TOOLBAR_HEIGHT, snapToGrid(resolved.headerHeight() + UiMetrics.SPACE_4)),
+            Math.max(UiMetrics.CONTROL_HEIGHT_REGULAR, snapToGrid(resolved.tabHeight() + UiMetrics.SPACE_1)),
             contentPadding,
-            Math.max(6.0, resolved.buttonSpacing() * 0.75)
+            Math.max(UiMetrics.SPACE_1, snapToGrid(resolved.buttonSpacing()))
         );
     }
 
@@ -109,5 +110,9 @@ public final class GitHubToolbarThemeMapper {
 
     private static double clamp(double value) {
         return Math.max(0.0, Math.min(1.0, value));
+    }
+
+    private static double snapToGrid(double value) {
+        return Math.max(UiMetrics.SPACE_1, Math.rint(value / UiMetrics.SPACE_1) * UiMetrics.SPACE_1);
     }
 }

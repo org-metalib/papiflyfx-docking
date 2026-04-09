@@ -10,7 +10,10 @@ import javafx.scene.layout.BorderWidths;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.hugo.process.HugoServerProcessManager;
+import org.metalib.papifly.fx.ui.UiMetrics;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 public final class HugoPreviewStatusBar extends HBox {
 
@@ -57,13 +60,14 @@ public final class HugoPreviewStatusBar extends HBox {
 
     private final Label stateLabel = new Label("Stopped");
     private final Label messageLabel = new Label();
+    private Theme currentTheme = Theme.dark();
 
     public HugoPreviewStatusBar() {
         setId("hugo-preview-status");
         stateLabel.setId("hugo-preview-status-state");
         messageLabel.setId("hugo-preview-status-message");
-        setSpacing(12);
-        setPadding(new Insets(6, 10, 6, 10));
+        setSpacing(UiMetrics.SPACE_3);
+        setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_3, UiMetrics.SPACE_1, UiMetrics.SPACE_3));
         setAlignment(Pos.CENTER_LEFT);
 
         stateLabel.setMinWidth(120);
@@ -124,15 +128,30 @@ public final class HugoPreviewStatusBar extends HBox {
     }
 
     public void applyVisualStyle() {
+        Color background = UiStyleSupport.asColor(currentTheme.headerBackground(), Color.web("#0e1627"));
+        Color border = UiStyleSupport.asColor(currentTheme.borderColor(), Color.web("#1f2f49"));
         setStyle(compact("""
-            -fx-background-color: linear-gradient(to bottom, #0e1627, #0a1120);
-            """));
+            -fx-background-color: linear-gradient(to bottom, %s, %s);
+            """.formatted(
+            UiStyleSupport.paintToCss(background, "#0e1627"),
+            UiStyleSupport.paintToCss(background.darker(), "#0a1120")
+        )));
         setBorder(new Border(new BorderStroke(
-            Color.web("#1f2f49"),
+            border,
             BorderStrokeStyle.SOLID,
             javafx.scene.layout.CornerRadii.EMPTY,
             new BorderWidths(1, 0, 0, 0)
         )));
+    }
+
+    public void applyTheme(Theme theme) {
+        currentTheme = theme == null ? Theme.dark() : theme;
+        applyVisualStyle();
+        javafx.scene.text.Font font = currentTheme.contentFont();
+        if (font != null) {
+            stateLabel.setFont(font);
+            messageLabel.setFont(font);
+        }
     }
 
     private static String compact(String style) {

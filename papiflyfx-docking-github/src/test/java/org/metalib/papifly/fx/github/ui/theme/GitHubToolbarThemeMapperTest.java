@@ -7,6 +7,7 @@ import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.docking.api.ThemeColors;
 import org.metalib.papifly.fx.docking.api.ThemeDimensions;
 import org.metalib.papifly.fx.docking.api.ThemeFonts;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -29,8 +30,10 @@ class GitHubToolbarThemeMapperTest {
         assertEquals(Theme.dark().accentColor(), result.accent());
         assertEquals(Theme.dark().accentColor(), result.focusBorder());
         assertEquals(Theme.dark().accentColor(), result.busyIndicator());
-        assertTrue(result.cornerRadius() >= 8.0);
-        assertTrue(result.buttonHeight() >= 28.0);
+        assertEquals(UiMetrics.RADIUS_MD, result.cornerRadius());
+        assertEquals(UiMetrics.CONTROL_HEIGHT_REGULAR, result.buttonHeight());
+        assertEquals(UiMetrics.TOOLBAR_HEIGHT, result.toolbarHeight());
+        assertEquals(UiMetrics.SPACE_2, result.groupGap());
     }
 
     @Test

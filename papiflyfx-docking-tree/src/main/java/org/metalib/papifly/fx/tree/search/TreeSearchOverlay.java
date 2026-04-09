@@ -55,7 +55,7 @@ public final class TreeSearchOverlay extends SearchOverlayBase {
 
         queryField.setPromptText("Find");
         queryField.getStyleClass().addAll("pf-tree-search-field", "pf-ui-compact-field");
-        queryField.setMinWidth(48.0);
+        queryField.setMinWidth(UiMetrics.SPACE_6 * 2.0);
         queryField.setMinHeight(UiMetrics.CONTROL_HEIGHT_COMPACT);
         queryField.setPrefHeight(UiMetrics.CONTROL_HEIGHT_COMPACT);
         queryField.setMaxHeight(UiMetrics.CONTROL_HEIGHT_COMPACT);
@@ -79,15 +79,15 @@ public final class TreeSearchOverlay extends SearchOverlayBase {
         });
 
         resultLabel.getStyleClass().addAll("pf-tree-search-result-label", "pf-ui-result-label");
-        resultLabel.setMinWidth(48.0);
-        resultLabel.setPrefWidth(76.0);
+        resultLabel.setMinWidth(UiMetrics.SPACE_6 * 2.0);
+        resultLabel.setPrefWidth(UiMetrics.SPACE_5 * 4.0);
         resultLabel.setAlignment(Pos.CENTER_RIGHT);
         resultLabel.setManaged(false);
         resultLabel.setVisible(false);
 
-        Button prevButton = createIconButton(SearchIconPaths.ARROW_UP, 10.0, onPrevious);
-        Button nextButton = createIconButton(SearchIconPaths.ARROW_DOWN, 10.0, onNext);
-        Button closeButton = createIconButton(SearchIconPaths.CLOSE, 10.0, this::close);
+        Button prevButton = createIconButton(SearchIconPaths.ARROW_UP, UiMetrics.SPACE_3 - UiMetrics.SPACE_1, onPrevious);
+        Button nextButton = createIconButton(SearchIconPaths.ARROW_DOWN, UiMetrics.SPACE_3 - UiMetrics.SPACE_1, onNext);
+        Button closeButton = createIconButton(SearchIconPaths.CLOSE, UiMetrics.SPACE_3 - UiMetrics.SPACE_1, this::close);
 
         HBox row = new HBox(UiMetrics.SPACE_1, queryField, resultLabel, prevButton, nextButton, closeButton);
         row.getStyleClass().add("pf-tree-search-row");
@@ -243,9 +243,9 @@ public final class TreeSearchOverlay extends SearchOverlayBase {
         button.setGraphic(createIcon(path, size));
         button.setFocusTraversable(false);
         button.setOnAction(event -> action.run());
-        button.setMinSize(22.0, 22.0);
-        button.setPrefSize(22.0, 22.0);
-        button.setMaxSize(22.0, 22.0);
+        button.setMinSize(UiMetrics.ICON_BUTTON_SIZE_COMPACT, UiMetrics.ICON_BUTTON_SIZE_COMPACT);
+        button.setPrefSize(UiMetrics.ICON_BUTTON_SIZE_COMPACT, UiMetrics.ICON_BUTTON_SIZE_COMPACT);
+        button.setMaxSize(UiMetrics.ICON_BUTTON_SIZE_COMPACT, UiMetrics.ICON_BUTTON_SIZE_COMPACT);
         return button;
     }
 

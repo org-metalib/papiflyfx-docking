@@ -13,7 +13,10 @@ import javafx.scene.layout.BorderWidths;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.hugo.process.HugoServerProcessManager;
+import org.metalib.papifly.fx.ui.UiMetrics;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 public final class HugoPreviewToolbar extends HBox {
 
@@ -132,6 +135,7 @@ public final class HugoPreviewToolbar extends HBox {
     private final Tooltip forwardTooltip = new Tooltip("Go to next page");
     private final Tooltip reloadTooltip = new Tooltip("Reload current page");
     private final Tooltip openInBrowserTooltip = new Tooltip("Open current page in system browser");
+    private Theme currentTheme = Theme.dark();
 
     public HugoPreviewToolbar(
         Runnable onStart,
@@ -142,10 +146,10 @@ public final class HugoPreviewToolbar extends HBox {
         Runnable onOpenExternal
     ) {
         setId("hugo-preview-toolbar");
-        setSpacing(10);
-        setPadding(new Insets(8, 10, 8, 10));
+        setSpacing(UiMetrics.SPACE_2);
+        setPadding(new Insets(UiMetrics.SPACE_2, UiMetrics.SPACE_3, UiMetrics.SPACE_2, UiMetrics.SPACE_3));
         setAlignment(Pos.CENTER_LEFT);
-        setMinHeight(46);
+        setMinHeight(UiMetrics.TOOLBAR_HEIGHT);
 
         startButton.setId("hugo-preview-start");
         stopButton.setId("hugo-preview-stop");
@@ -195,9 +199,9 @@ public final class HugoPreviewToolbar extends HBox {
         styleButton(reloadButton, BUTTON_NEUTRAL_BASE, BUTTON_NEUTRAL_HOVER, BUTTON_DISABLED_COMPACT);
         styleButton(openInBrowserButton, BUTTON_OPEN_BASE, BUTTON_OPEN_HOVER, BUTTON_DISABLED_WIDE);
 
-        backButton.setPrefWidth(40);
-        forwardButton.setPrefWidth(40);
-        reloadButton.setPrefWidth(68);
+        backButton.setPrefWidth(UiMetrics.SPACE_5 * 2.0);
+        forwardButton.setPrefWidth(UiMetrics.SPACE_5 * 2.0);
+        reloadButton.setPrefWidth(UiMetrics.SPACE_4 * 4.0);
 
         addressLink.setTooltip(addressTooltip);
         addressLink.setTextOverrun(OverrunStyle.LEADING_ELLIPSIS);
@@ -259,15 +263,35 @@ public final class HugoPreviewToolbar extends HBox {
     }
 
     public void applyVisualStyle() {
+        Color toolbarBackground = UiStyleSupport.asColor(currentTheme.headerBackground(), Color.web("#111a2d"));
+        Color toolbarBorder = UiStyleSupport.asColor(currentTheme.borderColor(), Color.web("#21324f"));
         setStyle(compact("""
-            -fx-background-color: linear-gradient(to bottom, #111a2d, #0b1323);
-            """));
+            -fx-background-color: linear-gradient(to bottom, %s, %s);
+            """.formatted(
+            UiStyleSupport.paintToCss(toolbarBackground, "#111a2d"),
+            UiStyleSupport.paintToCss(toolbarBackground.darker(), "#0b1323")
+        )));
         setBorder(new Border(new BorderStroke(
-            Color.web("#21324f"),
+            toolbarBorder,
             BorderStrokeStyle.SOLID,
             javafx.scene.layout.CornerRadii.EMPTY,
             new BorderWidths(0, 0, 1, 0)
         )));
+    }
+
+    public void applyTheme(Theme theme) {
+        currentTheme = theme == null ? Theme.dark() : theme;
+        applyVisualStyle();
+        javafx.scene.text.Font font = currentTheme.contentFont();
+        for (Button button : new Button[] {startButton, stopButton, backButton, forwardButton, reloadButton, openInBrowserButton}) {
+            if (font != null) {
+                button.setFont(font);
+            }
+            button.setTextFill(UiStyleSupport.asColor(currentTheme.textColorActive(), Color.web("#edf3ff")));
+        }
+        if (font != null) {
+            addressLink.setFont(font);
+        }
     }
 
     public void setServerState(HugoServerProcessManager.State state) {
@@ -281,9 +305,9 @@ public final class HugoPreviewToolbar extends HBox {
     }
 
     private HBox createGroup(javafx.scene.Node... children) {
-        HBox group = new HBox(6, children);
+        HBox group = new HBox(UiMetrics.SPACE_2, children);
         group.setAlignment(Pos.CENTER_LEFT);
-        group.setPadding(new Insets(2, 6, 2, 6));
+        group.setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_2, UiMetrics.SPACE_1, UiMetrics.SPACE_2));
         group.setBorder(new Border(new BorderStroke(
             Color.web("#2b4366"),
             BorderStrokeStyle.SOLID,

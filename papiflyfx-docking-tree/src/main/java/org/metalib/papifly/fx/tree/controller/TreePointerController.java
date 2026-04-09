@@ -10,6 +10,7 @@ import org.metalib.papifly.fx.tree.model.TreeNodeInfoModel;
 import org.metalib.papifly.fx.tree.model.TreeNodeInfoToggleMode;
 import org.metalib.papifly.fx.tree.model.TreeSelectionModel;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.List;
 import java.util.Objects;
@@ -182,7 +183,7 @@ public final class TreePointerController<T> {
         if (event == null || event.isConsumed()) {
             return false;
         }
-        double lineFactor = Math.max(8.0, viewport.rowHeight() * 0.6);
+        double lineFactor = Math.max(UiMetrics.SPACE_2, viewport.rowHeight() * 0.6);
         double verticalDelta = -event.getDeltaY() * lineFactor / 40.0;
         double horizontalDelta = -event.getDeltaX() * lineFactor / 40.0;
         if (event.isShiftDown() && Math.abs(event.getDeltaY()) > Math.abs(event.getDeltaX())) {

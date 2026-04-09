@@ -105,17 +105,20 @@ class HugoPreviewPaneFxTest {
         ObjectProperty<Theme> theme = new SimpleObjectProperty<>(Theme.dark());
         FxTestUtil.runFx(() -> pane.bindThemeProperty(theme));
 
+        String initialPaneStyle = FxTestUtil.callFx(pane::getStyle);
         String initialToolbarStyle = FxTestUtil.callFx(() -> ((Region) pane.lookup("#hugo-preview-toolbar")).getStyle());
         String initialUserStyleSheet = FxTestUtil.callFx(() -> ((WebView) pane.lookup("#hugo-preview-webview"))
             .getEngine().getUserStyleSheetLocation());
         FxTestUtil.runFx(() -> theme.set(Theme.light()));
         FxTestUtil.waitForFx();
 
+        String updatedPaneStyle = FxTestUtil.callFx(pane::getStyle);
         String updatedToolbarStyle = FxTestUtil.callFx(() -> ((Region) pane.lookup("#hugo-preview-toolbar")).getStyle());
         String updatedUserStyleSheet = FxTestUtil.callFx(() -> ((WebView) pane.lookup("#hugo-preview-webview"))
             .getEngine().getUserStyleSheetLocation());
 
-        assertEquals(initialToolbarStyle, updatedToolbarStyle);
+        assertFalse(initialPaneStyle.equals(updatedPaneStyle));
+        assertFalse(initialToolbarStyle.equals(updatedToolbarStyle));
         assertEquals(initialUserStyleSheet, updatedUserStyleSheet);
         assertEquals(null, updatedUserStyleSheet);
 

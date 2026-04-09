@@ -42,6 +42,7 @@ import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 import org.metalib.papifly.fx.code.theme.CodeEditorThemeMapper;
 import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -622,9 +623,11 @@ public class CodeEditor extends StackPane implements DisposableContent {
     }
 
     private void updateOverlayMargins() {
-        double rightInset = viewport.isVerticalScrollbarVisible() ? Viewport.SCROLLBAR_WIDTH + 6.0 : 16.0;
+        double rightInset = viewport.isVerticalScrollbarVisible()
+            ? Viewport.SCROLLBAR_WIDTH + UiMetrics.SPACE_2
+            : UiMetrics.SPACE_4;
         StackPane.setMargin(this.searchController, new Insets(0, rightInset, 0, 0));
-        StackPane.setMargin(this.goToLineController, new Insets(6, rightInset, 0, 0));
+        StackPane.setMargin(this.goToLineController, new Insets(UiMetrics.SPACE_2, rightInset, 0, 0));
     }
 
     // --- State properties ---

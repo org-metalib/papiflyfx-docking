@@ -10,7 +10,7 @@
 }
 
 .pf-github-brand-badge {
-    -fx-padding: 4 10 4 10;
+    -fx-padding: 4 12 4 12;
     -fx-background-color: -pf-ui-accent-subtle;
     -fx-border-color: -pf-ui-accent;
     -fx-border-width: 1;
@@ -22,7 +22,7 @@
 
 .pf-github-repo-pill,
 .pf-github-ref-pill {
-    -fx-padding: 0 14 0 14;
+    -fx-padding: 0 16 0 16;
     -fx-text-fill: -pf-github-text;
 }
 
@@ -69,9 +69,9 @@
 
 .pf-github-ref-kind,
 .pf-github-ref-popup-kind {
-    -fx-min-width: 18;
+    -fx-min-width: 20;
     -fx-alignment: center;
-    -fx-padding: 1 4 1 4;
+    -fx-padding: 0 4 0 4;
     -fx-background-color: -pf-github-control-bg;
     -fx-background-radius: 999px;
     -fx-text-fill: -pf-github-text;
@@ -112,7 +112,7 @@
 }
 
 .pf-github-chip-strip {
-    -fx-spacing: 6;
+    -fx-spacing: 8;
 }
 
 .pf-github-chip {
@@ -153,7 +153,7 @@
 }
 
 .pf-github-status-slot {
-    -fx-padding: 0 0 0 6;
+    -fx-padding: 0 0 0 8;
 }
 
 .pf-github-busy-indicator {
@@ -170,7 +170,7 @@
 
 .pf-github-ref-popup,
 .pf-github-ref-submenu-list {
-    -fx-padding: 10;
+    -fx-padding: 12;
     -fx-spacing: 8;
 }
 
@@ -221,9 +221,9 @@
 }
 
 .pf-github-ref-popup-entry {
-    -fx-spacing: 10;
+    -fx-spacing: 12;
     -fx-alignment: center-left;
-    -fx-padding: 8 10 8 10;
+    -fx-padding: 8 12 8 12;
 }
 
 .pf-github-ref-popup-entry-disabled {
@@ -260,14 +260,14 @@
     -fx-border-color: -pf-github-group-border;
     -fx-border-radius: 12;
     -fx-border-width: 1;
-    -fx-padding: 6;
-    -fx-effect: dropshadow(three-pass-box, -pf-github-shadow, 18, 0.18, 0, 8);
+    -fx-padding: 8;
+    -fx-effect: dropshadow(three-pass-box, -pf-github-shadow, 20, 0.18, 0, 8);
 }
 
 .pf-github-overflow-menu .menu-item {
     -fx-background-color: transparent;
     -fx-background-radius: 8;
-    -fx-padding: 8 10 8 10;
+    -fx-padding: 8 12 8 12;
 }
 
 .pf-github-overflow-menu .menu-item > .label {

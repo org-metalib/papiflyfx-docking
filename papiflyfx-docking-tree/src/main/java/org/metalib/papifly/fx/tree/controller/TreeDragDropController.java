@@ -15,6 +15,7 @@ import org.metalib.papifly.fx.tree.model.FlattenedTree;
 import org.metalib.papifly.fx.tree.model.TreeExpansionModel;
 import org.metalib.papifly.fx.tree.model.TreeSelectionModel;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -187,7 +188,7 @@ public final class TreeDragDropController<T> {
             return;
         }
         graphics.setStroke(viewport.getTheme().focusedBorder());
-        graphics.setLineWidth(2.0);
+        graphics.setLineWidth(UiMetrics.SPACE_1 * 0.5);
         switch (dropHint.position()) {
             case BEFORE -> {
                 double y = dropHint.rowY() + 1.0;

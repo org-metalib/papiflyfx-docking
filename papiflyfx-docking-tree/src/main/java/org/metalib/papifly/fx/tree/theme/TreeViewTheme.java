@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.tree.theme;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.text.Font;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 public record TreeViewTheme(
     Paint background,
@@ -43,9 +44,9 @@ public record TreeViewTheme(
             Color.rgb(255, 255, 255, 0.46),
             Color.rgb(255, 255, 255, 0.58),
             Font.font("System", 13),
-            24.0,
-            18.0,
-            14.0
+            UiMetrics.SPACE_6,
+            UiMetrics.SPACE_5,
+            UiMetrics.SPACE_4
         );
     }
 
@@ -67,9 +68,9 @@ public record TreeViewTheme(
             Color.rgb(0, 0, 0, 0.38),
             Color.rgb(0, 0, 0, 0.5),
             Font.font("System", 13),
-            24.0,
-            18.0,
-            14.0
+            UiMetrics.SPACE_6,
+            UiMetrics.SPACE_5,
+            UiMetrics.SPACE_4
         );
     }
 }

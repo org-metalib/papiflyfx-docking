@@ -7,6 +7,7 @@ import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.shape.StrokeLineJoin;
 import org.metalib.papifly.fx.tree.api.CellState;
 import org.metalib.papifly.fx.tree.api.TreeItem;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 final class TreeContentPass<T> implements TreeRenderPass<T> {
 
@@ -33,7 +34,7 @@ final class TreeContentPass<T> implements TreeRenderPass<T> {
         drawDisclosure(context, row);
         drawInfoToggle(context, row);
 
-        double iconX = row.depth() * context.indentWidth() + context.indentWidth() + 2.0 - context.horizontalScrollOffset();
+        double iconX = context.textOriginX(row) - context.iconSize() - UiMetrics.SPACE_2;
         double iconY = row.y() + ((row.height() - context.iconSize()) * 0.5);
         drawIcon(context, item, iconX, iconY);
 

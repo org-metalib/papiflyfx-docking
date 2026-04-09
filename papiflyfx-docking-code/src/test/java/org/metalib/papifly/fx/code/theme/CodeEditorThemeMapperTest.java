@@ -24,8 +24,9 @@ class CodeEditorThemeMapperTest {
         assertNotNull(result);
         // Background comes from the base theme
         assertEquals(Theme.dark().background(), result.editorBackground());
-        // Gutter matches editor
-        assertEquals(result.editorBackground(), result.gutterBackground());
+        // Gutter now uses a subtle panel variant rather than a flat clone of the editor canvas.
+        Color gutter = (Color) result.gutterBackground();
+        assertTrue(gutter.getBrightness() > 0.10 && gutter.getBrightness() < 0.20);
         // Accent flows to bookmark and search accent border
         assertEquals(Theme.dark().accentColor(), result.markerBookmarkColor());
         assertEquals(Theme.dark().accentColor(), result.searchOverlayAccentBorder());

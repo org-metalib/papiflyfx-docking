@@ -20,6 +20,7 @@ import org.metalib.papifly.fx.code.folding.VisibleLineMap;
 import org.metalib.papifly.fx.code.lexer.TokenMap;
 import org.metalib.papifly.fx.code.search.SearchMatch;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -43,19 +44,19 @@ public class Viewport extends Region {
     /**
      * Scrollbar track thickness in pixels.
      */
-    public static final double SCROLLBAR_WIDTH = 12.0;
+    public static final double SCROLLBAR_WIDTH = UiMetrics.SPACE_3;
     /**
      * Thumb inset from track edge in pixels.
      */
-    public static final double SCROLLBAR_THUMB_PAD = 2.0;
+    public static final double SCROLLBAR_THUMB_PAD = UiMetrics.SPACE_1 * 0.5;
     /**
      * Minimum scrollbar thumb size in pixels.
      */
-    public static final double MIN_THUMB_SIZE = 24.0;
+    public static final double MIN_THUMB_SIZE = UiMetrics.SPACE_6;
     /**
      * Scrollbar corner radius in pixels.
      */
-    public static final double SCROLLBAR_RADIUS = 8.0;
+    public static final double SCROLLBAR_RADIUS = UiMetrics.RADIUS_MD;
 
     private final Canvas canvas;
     private final GlyphCache glyphCache;

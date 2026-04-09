@@ -18,10 +18,10 @@ and interaction patterns through a multiagent workflow.
 - [x] Update components to use the new shared CSS variables.
 
 ### Phase 3: Module-Level Refactoring (Lead: @feature-dev, Reviewer: @ui-ux-designer)
-- [ ] **GitHub Module**: Align `github-toolbar.css` with the new shared standards.
-- [ ] **Code Module**: Update `CodeEditorTheme` and canvas mappers to follow the new color/spacing guidelines.
-- [ ] **Tree Module**: Update `TreeViewTheme` and canvas mappers.
-- [ ] **Media/Hugo Modules**: Ensure full `Theme` property binding and UI layout alignment.
+- [x] **GitHub Module**: Align `github-toolbar.css` with the new shared standards.
+- [x] **Code Module**: Update `CodeEditorTheme` and canvas mappers to follow the new color/spacing guidelines.
+- [x] **Tree Module**: Update `TreeViewTheme` and canvas mappers.
+- [x] **Media/Hugo Modules**: Ensure full `Theme` property binding and UI layout alignment.
 
 ### Phase 4: Validation & Testing (Lead: @qa-engineer, Reviewer: @ui-ux-designer)
 - [ ] Update existing `FxTest` classes to include visual/layout assertions.
