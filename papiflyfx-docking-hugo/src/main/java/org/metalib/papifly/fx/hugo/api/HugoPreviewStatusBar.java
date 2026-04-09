@@ -17,49 +17,10 @@ import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 public final class HugoPreviewStatusBar extends HBox {
 
-    private static final String STATE_STOPPED_STYLE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #273a5b, #1f2d47);
-        -fx-text-fill: #dde7ff;
-        -fx-font-size: 11px;
-        -fx-font-weight: 700;
-        -fx-padding: 3 10 3 10;
-        -fx-background-radius: 100;
-        -fx-border-radius: 100;
-        -fx-border-color: #3c5786;
-        """);
-    private static final String STATE_STARTING_STYLE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #6f5a1f, #564317);
-        -fx-text-fill: #fff6d7;
-        -fx-font-size: 11px;
-        -fx-font-weight: 700;
-        -fx-padding: 3 10 3 10;
-        -fx-background-radius: 100;
-        -fx-border-radius: 100;
-        -fx-border-color: #93752a;
-        """);
-    private static final String STATE_RUNNING_STYLE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #2f7a53, #225a3d);
-        -fx-text-fill: #ecfff4;
-        -fx-font-size: 11px;
-        -fx-font-weight: 700;
-        -fx-padding: 3 10 3 10;
-        -fx-background-radius: 100;
-        -fx-border-radius: 100;
-        -fx-border-color: #47a473;
-        """);
-    private static final String STATE_ERROR_STYLE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #8e3f4c, #6d2c38);
-        -fx-text-fill: #fff1f3;
-        -fx-font-size: 11px;
-        -fx-font-weight: 700;
-        -fx-padding: 3 10 3 10;
-        -fx-background-radius: 100;
-        -fx-border-radius: 100;
-        -fx-border-color: #bf5f71;
-        """);
-
     private final Label stateLabel = new Label("Stopped");
     private final Label messageLabel = new Label();
+    private HugoServerProcessManager.State currentState = HugoServerProcessManager.State.STOPPED;
+    private int currentPort;
     private Theme currentTheme = Theme.dark();
 
     public HugoPreviewStatusBar() {
@@ -72,47 +33,18 @@ public final class HugoPreviewStatusBar extends HBox {
 
         stateLabel.setMinWidth(120);
         stateLabel.setAlignment(Pos.CENTER);
-        stateLabel.setStyle(STATE_STOPPED_STYLE);
-        messageLabel.setStyle(compact("""
-            -fx-text-fill: #b6c4de;
-            -fx-font-size: 11px;
-            """));
         messageLabel.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(messageLabel, Priority.ALWAYS);
         getChildren().setAll(stateLabel, messageLabel);
 
         applyVisualStyle();
+        applyStateStyle();
     }
 
     public void setServerState(HugoServerProcessManager.State state, int port) {
-        if (state == null) {
-            stateLabel.setText("Unknown");
-            stateLabel.setStyle(STATE_STOPPED_STYLE);
-            return;
-        }
-        if (state == HugoServerProcessManager.State.RUNNING && port > 0) {
-            stateLabel.setText("Running on " + port);
-            stateLabel.setStyle(STATE_RUNNING_STYLE);
-            return;
-        }
-        switch (state) {
-            case STOPPED -> {
-                stateLabel.setText("Stopped");
-                stateLabel.setStyle(STATE_STOPPED_STYLE);
-            }
-            case STARTING -> {
-                stateLabel.setText("Starting");
-                stateLabel.setStyle(STATE_STARTING_STYLE);
-            }
-            case RUNNING -> {
-                stateLabel.setText("Running");
-                stateLabel.setStyle(STATE_RUNNING_STYLE);
-            }
-            case ERROR -> {
-                stateLabel.setText("Error");
-                stateLabel.setStyle(STATE_ERROR_STYLE);
-            }
-        }
+        currentState = state == null ? HugoServerProcessManager.State.STOPPED : state;
+        currentPort = port;
+        applyStateStyle();
     }
 
     public void setMessage(String message) {
@@ -130,6 +62,7 @@ public final class HugoPreviewStatusBar extends HBox {
     public void applyVisualStyle() {
         Color background = UiStyleSupport.asColor(currentTheme.headerBackground(), Color.web("#0e1627"));
         Color border = UiStyleSupport.asColor(currentTheme.borderColor(), Color.web("#1f2f49"));
+        Color text = UiStyleSupport.asColor(currentTheme.textColor(), Color.web("#b6c4de"));
         setStyle(compact("""
             -fx-background-color: linear-gradient(to bottom, %s, %s);
             """.formatted(
@@ -142,16 +75,106 @@ public final class HugoPreviewStatusBar extends HBox {
             javafx.scene.layout.CornerRadii.EMPTY,
             new BorderWidths(1, 0, 0, 0)
         )));
+        messageLabel.setTextFill(text);
     }
 
     public void applyTheme(Theme theme) {
         currentTheme = theme == null ? Theme.dark() : theme;
         applyVisualStyle();
+        applyStateStyle();
         javafx.scene.text.Font font = currentTheme.contentFont();
         if (font != null) {
             stateLabel.setFont(font);
             messageLabel.setFont(font);
         }
+    }
+
+    private void applyStateStyle() {
+        Color background = UiStyleSupport.asColor(currentTheme.background(), Color.web("#0b1323"));
+        Color panel = UiStyleSupport.asColor(currentTheme.headerBackgroundActive(),
+            UiStyleSupport.asColor(currentTheme.headerBackground(), background));
+        Color accent = UiStyleSupport.asColor(currentTheme.accentColor(), Color.web("#007acc"));
+        Color border = UiStyleSupport.asColor(currentTheme.borderColor(), Color.web("#3c5786"));
+        Color pressed = UiStyleSupport.asColor(currentTheme.buttonPressedBackground(), accent);
+        Color textPrimary = UiStyleSupport.asColor(currentTheme.textColor(), Color.web("#dde7ff"));
+        Color textActive = UiStyleSupport.asColor(currentTheme.textColorActive(), Color.WHITE);
+
+        Color stateBackground;
+        Color stateBorder;
+        Color stateText;
+
+        if (currentState == HugoServerProcessManager.State.RUNNING && currentPort > 0) {
+            stateLabel.setText("Running on " + currentPort);
+            stateBackground = accent;
+            stateBorder = accent;
+            stateText = textActive;
+        } else {
+            switch (currentState) {
+                case STARTING -> {
+                    stateLabel.setText("Starting");
+                    stateBackground = alpha(accent, 0.16);
+                    stateBorder = accent;
+                    stateText = textPrimary;
+                }
+                case RUNNING -> {
+                    stateLabel.setText("Running");
+                    stateBackground = accent;
+                    stateBorder = accent;
+                    stateText = textActive;
+                }
+                case ERROR -> {
+                    stateLabel.setText("Error");
+                    stateBackground = pressed;
+                    stateBorder = accent;
+                    stateText = textActive;
+                }
+                case STOPPED -> {
+                    stateLabel.setText("Stopped");
+                    stateBackground = blend(panel, background, 0.26);
+                    stateBorder = alpha(border, 0.85);
+                    stateText = textPrimary;
+                }
+                default -> {
+                    stateLabel.setText("Unknown");
+                    stateBackground = blend(panel, background, 0.26);
+                    stateBorder = alpha(border, 0.85);
+                    stateText = textPrimary;
+                }
+            }
+        }
+
+        stateLabel.setStyle(compact("""
+            -fx-background-color: linear-gradient(to bottom, %s, %s);
+            -fx-text-fill: %s;
+            -fx-padding: %.1f %.1f %.1f %.1f;
+            -fx-background-radius: %.1f;
+            -fx-border-radius: %.1f;
+            -fx-border-color: %s;
+            -fx-opacity: 1.0;
+            """.formatted(
+            UiStyleSupport.paintToCss(stateBackground, "#273a5b"),
+            UiStyleSupport.paintToCss(stateBackground.darker(), "#1f2d47"),
+            UiStyleSupport.paintToCss(stateText, "#dde7ff"),
+            UiMetrics.SPACE_1,
+            UiMetrics.SPACE_3,
+            UiMetrics.SPACE_1,
+            UiMetrics.SPACE_3,
+            UiMetrics.RADIUS_PILL,
+            UiMetrics.RADIUS_PILL,
+            UiStyleSupport.paintToCss(stateBorder, "#3c5786")
+        )));
+    }
+
+    private static Color blend(Color base, Color mix, double weight) {
+        return base.interpolate(mix, clamp(weight));
+    }
+
+    private static Color alpha(Color color, double opacity) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), clamp(opacity));
+    }
+
+    private static double clamp(double value) {
+        return Math.max(0.0, Math.min(1.0, value));
     }
 
     private static String compact(String style) {

@@ -1,6 +1,8 @@
 package org.metalib.papifly.fx.tree.api;
 
 import javafx.application.Platform;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -16,12 +18,14 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.junit.jupiter.api.Test;
 import org.metalib.papifly.fx.tree.model.TreeNodeInfoFocusPolicy;
 import org.metalib.papifly.fx.tree.model.TreeNodeInfoMode;
 import org.metalib.papifly.fx.tree.model.TreeNodeInfoToggleMode;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
 import org.metalib.papifly.fx.tree.search.TreeSearchOverlay;
+import org.metalib.papifly.fx.ui.UiMetrics;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
@@ -216,6 +220,34 @@ class TreeViewFxTest {
         assertTrue(overlayHeight < treeHeight * 0.25);
         assertTrue(callOnFx(() -> overlay.getStyleClass().contains("pf-tree-search-overlay")));
         assertTrue(callOnFx(() -> overlay.lookupAll(".pf-tree-search-field").size() == 1));
+    }
+
+    @Test
+    void treeViewportAndSearchOverlayUseSharedMetrics() {
+        flushLayout();
+        assertEquals(UiMetrics.SPACE_6, callOnFx(() -> treeView.getViewport().rowHeight()), 0.01);
+        assertEquals(UiMetrics.SPACE_5, callOnFx(() -> treeView.getViewport().getTheme().indentWidth()), 0.01);
+        assertEquals(UiMetrics.SPACE_4, callOnFx(() -> treeView.getViewport().getTheme().iconSize()), 0.01);
+
+        runOnFx(() -> treeView.openSearch("node"));
+        flushLayout();
+
+        TreeSearchOverlay overlay = callOnFx(() -> treeView.getChildren().stream()
+            .filter(TreeSearchOverlay.class::isInstance)
+            .map(TreeSearchOverlay.class::cast)
+            .findFirst()
+            .orElseThrow());
+        TextField searchField = callOnFx(() -> (TextField) overlay.lookup(".pf-tree-search-field"));
+        ButtonWrapper closeButton = callOnFx(() -> new ButtonWrapper((Region) overlay.lookupAll(".pf-tree-search-icon-button").stream()
+            .map(Region.class::cast)
+            .reduce((first, second) -> second)
+            .orElseThrow()));
+
+        assertEquals(UiMetrics.SPACE_2, callOnFx(overlay::getSpacing), 0.01);
+        assertEquals(UiMetrics.SPACE_3, callOnFx(() -> overlay.getPadding().getTop()), 0.01);
+        assertEquals(UiMetrics.SPACE_3, callOnFx(() -> overlay.getPadding().getRight()), 0.01);
+        assertEquals(UiMetrics.CONTROL_HEIGHT_COMPACT, callOnFx(searchField::getHeight), 1.0);
+        assertEquals(UiMetrics.ICON_BUTTON_SIZE_COMPACT, callOnFx(closeButton.region()::getWidth), 1.0);
     }
 
     @Test
@@ -717,6 +749,61 @@ class TreeViewFxTest {
     }
 
     @Test
+    void hoveredItemUsesHoverBackgroundColor() {
+        runOnFx(() -> {
+            TreeItem<String> root = new TreeItem<>("root");
+            TreeItem<String> first = new TreeItem<>("first");
+            root.addChild(first);
+            treeView.setShowRoot(false);
+            treeView.setRoot(root);
+            treeView.getSelectionModel().clearSelection();
+            treeView.getSelectionModel().setFocusedItem(null);
+            treeView.getViewport().setHoveredItem(first);
+        });
+        flushLayout();
+
+        WritableImage snapshot = callOnFx(() -> treeView.getViewport().snapshot(null, null));
+        Bounds rowBounds = callOnFx(() -> treeView.getViewport().rowBounds(0));
+        double viewportWidth = callOnFx(() -> treeView.getViewport().getWidth());
+        double viewportHeight = callOnFx(() -> treeView.getViewport().getHeight());
+        double xScale = snapshot.getWidth() / Math.max(1.0, viewportWidth);
+        double yScale = snapshot.getHeight() / Math.max(1.0, viewportHeight);
+        Color rowColor = colorAt(snapshot, 2.0 * xScale, (rowBounds.getMinY() + (rowBounds.getHeight() * 0.5)) * yScale);
+        Color hoverBackground = callOnFx(() -> (Color) treeView.getTreeViewTheme().hoverBackground());
+
+        assertTrue(isColorClose(rowColor, hoverBackground, 0.04));
+    }
+
+    @Test
+    void boundThemePropertyUpdatesTreeAndSearchOverlayColors() {
+        ObjectProperty<Theme> theme = new SimpleObjectProperty<>(Theme.dark());
+        runOnFx(() -> {
+            treeView.bindThemeProperty(theme);
+            treeView.openSearch("node");
+        });
+        flushLayout();
+
+        TreeSearchOverlay overlay = callOnFx(() -> treeView.getChildren().stream()
+            .filter(TreeSearchOverlay.class::isInstance)
+            .map(TreeSearchOverlay.class::cast)
+            .findFirst()
+            .orElseThrow());
+        String darkStyle = callOnFx(overlay::getStyle);
+        Color darkText = callOnFx(() -> (Color) treeView.getTreeViewTheme().textColor());
+
+        runOnFx(() -> theme.set(Theme.light()));
+        flushLayout();
+
+        String lightStyle = callOnFx(overlay::getStyle);
+        Color lightText = callOnFx(() -> (Color) treeView.getTreeViewTheme().textColor());
+
+        assertFalse(darkStyle.equals(lightStyle));
+        assertTrue(darkStyle.contains("-pf-ui-surface-overlay"));
+        assertTrue(lightStyle.contains("-pf-ui-surface-overlay"));
+        assertTrue(darkText.getBrightness() > lightText.getBrightness());
+    }
+
+    @Test
     void platformShortcutTogglesFocusedNodeInfo() {
         runOnFx(() -> {
             TreeItem<String> root = new TreeItem<>("root");
@@ -868,6 +955,9 @@ class TreeViewFxTest {
             && Math.abs(actual.getGreen() - expected.getGreen()) <= tolerance
             && Math.abs(actual.getBlue() - expected.getBlue()) <= tolerance
             && Math.abs(actual.getOpacity() - expected.getOpacity()) <= tolerance;
+    }
+
+    private record ButtonWrapper(Region region) {
     }
 
     private void clickInfoToggleAtRow(int rowIndex) {

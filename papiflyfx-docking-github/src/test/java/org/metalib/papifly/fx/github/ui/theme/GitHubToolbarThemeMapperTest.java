@@ -83,6 +83,34 @@ class GitHubToolbarThemeMapperTest {
     }
 
     @Test
+    void spaciousThemeDimensionsSnapToSharedGrid() {
+        Theme spacious = Theme.of(
+            Theme.dark().colors(),
+            Theme.dark().fonts(),
+            new ThemeDimensions(
+                8.0,
+                1.0,
+                40.0,
+                32.0,
+                new Insets(9.0, 13.0, 11.0, 15.0),
+                12.0,
+                24.0
+            )
+        );
+
+        GitHubToolbarTheme result = GitHubToolbarThemeMapper.map(spacious);
+
+        assertEquals(12.0, result.cornerRadius(), 0.01);
+        assertEquals(36.0, result.buttonHeight(), 0.01);
+        assertEquals(56.0, result.toolbarHeight(), 0.01);
+        assertEquals(12.0, result.groupGap(), 0.01);
+        assertEquals(12.0, result.contentPadding().getTop(), 0.01);
+        assertEquals(20.0, result.contentPadding().getRight(), 0.01);
+        assertEquals(16.0, result.contentPadding().getBottom(), 0.01);
+        assertEquals(24.0, result.contentPadding().getLeft(), 0.01);
+    }
+
+    @Test
     void isDarkDetectsDarkColors() {
         assertTrue(GitHubToolbarThemeMapper.isDark(Color.BLACK));
         assertTrue(GitHubToolbarThemeMapper.isDark(Color.web("#1e1e1e")));

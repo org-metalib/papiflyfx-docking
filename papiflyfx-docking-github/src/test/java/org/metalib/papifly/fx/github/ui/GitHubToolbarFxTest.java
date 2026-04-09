@@ -9,7 +9,9 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,8 @@ import org.metalib.papifly.fx.github.model.RefPopupEntry;
 import org.metalib.papifly.fx.github.model.RepoStatus;
 import org.metalib.papifly.fx.github.model.RollbackMode;
 import org.metalib.papifly.fx.github.model.TagRef;
+import org.metalib.papifly.fx.github.ui.theme.GitHubToolbarThemeMapper;
+import org.metalib.papifly.fx.ui.UiMetrics;
 import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
@@ -92,6 +96,84 @@ class GitHubToolbarFxTest {
         assertTrue(refDot(toolbar).getStyleClass().contains("pf-github-ref-dot-dirty"));
 
         FxTestUtil.runFx(toolbar::close);
+    }
+
+    @Test
+    void toolbarUsesSharedPillChipAndStatusMetrics() {
+        GitHubToolbar toolbar = createToolbar(new ToolbarState(
+            false,
+            "feature/x",
+            GitRefKind.LOCAL_BRANCH,
+            "main",
+            true,
+            true,
+            2,
+            1
+        ));
+        FxTestUtil.runFx(() -> {
+            root.getChildren().setAll(toolbar);
+            root.applyCss();
+            root.layout();
+        });
+
+        Region repoPill = FxTestUtil.callFx(() -> (Region) toolbar.lookup("#github-repo-pill"));
+        Region refPill = FxTestUtil.callFx(() -> (Region) toolbar.lookup("#github-ref-pill"));
+        Region firstChip = FxTestUtil.callFx(() -> (Region) ((HBox) toolbar.lookup("#github-chip-strip")).getChildren().getFirst());
+        HBox statusSlot = FxTestUtil.callFx(() -> (HBox) toolbar.lookup("#github-status-slot"));
+        HBox chipStrip = FxTestUtil.callFx(() -> (HBox) toolbar.lookup("#github-chip-strip"));
+        HBox actionBar = FxTestUtil.callFx(() -> (HBox) toolbar.lookup("#github-action-bar"));
+
+        assertTrue(FxTestUtil.callFx(toolbar::getHeight) >= UiMetrics.TOOLBAR_HEIGHT);
+        assertEquals(UiMetrics.CONTROL_HEIGHT_REGULAR, FxTestUtil.callFx(repoPill::getHeight), 1.0);
+        assertEquals(UiMetrics.CONTROL_HEIGHT_REGULAR, FxTestUtil.callFx(refPill::getHeight), 1.0);
+        assertEquals(UiMetrics.CONTROL_HEIGHT_COMPACT, FxTestUtil.callFx(firstChip::getHeight), 1.0);
+        assertEquals(UiMetrics.SPACE_2, FxTestUtil.callFx(statusSlot::getSpacing), 0.01);
+        assertEquals(UiMetrics.SPACE_2, FxTestUtil.callFx(chipStrip::getSpacing), 0.01);
+        assertEquals(UiMetrics.SPACE_2, FxTestUtil.callFx(actionBar::getSpacing), 0.01);
+
+        FxTestUtil.runFx(toolbar::close);
+    }
+
+    @Test
+    void repoPillPressedStateUsesSharedPressedBackground() {
+        GitHubToolbar toolbar = createToolbar(new ToolbarState(
+            false,
+            "feature/x",
+            GitRefKind.LOCAL_BRANCH,
+            "main",
+            true,
+            false,
+            0,
+            0
+        ), Theme.dark());
+        FxTestUtil.runFx(() -> {
+            root.getChildren().setAll(toolbar);
+            root.applyCss();
+            root.layout();
+        });
+
+        Region repoPill = FxTestUtil.callFx(() -> (Region) toolbar.lookup("#github-repo-pill"));
+        Color defaultBackground = FxTestUtil.callFx(() -> backgroundColor(repoPill));
+
+        FxTestUtil.runFx(() -> {
+            ((javafx.scene.control.Button) repoPill).arm();
+            repoPill.applyCss();
+            repoPill.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        Color pressedBackground = FxTestUtil.callFx(() -> backgroundColor(repoPill));
+        Color expectedPressed = (Color) GitHubToolbarThemeMapper.map(Theme.dark()).controlBackgroundPressed();
+
+        assertNotNull(defaultBackground);
+        assertNotNull(pressedBackground);
+        assertFalse(colorsClose(defaultBackground, pressedBackground, 0.01));
+        assertTrue(colorsClose(expectedPressed, pressedBackground, 0.03));
+
+        FxTestUtil.runFx(() -> {
+            ((javafx.scene.control.Button) repoPill).disarm();
+            toolbar.close();
+        });
     }
 
     @Test
@@ -517,6 +599,23 @@ class GitHubToolbarFxTest {
             .stream()
             .map(Label::getText)
             .toList();
+    }
+
+    private static Color backgroundColor(Region region) {
+        if (region.getBackground() == null || region.getBackground().getFills().isEmpty()) {
+            return null;
+        }
+        if (region.getBackground().getFills().getFirst().getFill() instanceof Color color) {
+            return color;
+        }
+        return null;
+    }
+
+    private static boolean colorsClose(Color expected, Color actual, double tolerance) {
+        return Math.abs(expected.getRed() - actual.getRed()) <= tolerance
+            && Math.abs(expected.getGreen() - actual.getGreen()) <= tolerance
+            && Math.abs(expected.getBlue() - actual.getBlue()) <= tolerance
+            && Math.abs(expected.getOpacity() - actual.getOpacity()) <= tolerance;
     }
 
     private static List<String> overflowItemTexts(FxRobot robot) {

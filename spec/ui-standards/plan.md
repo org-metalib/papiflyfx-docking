@@ -24,9 +24,9 @@ and interaction patterns through a multiagent workflow.
 - [x] **Media/Hugo Modules**: Ensure full `Theme` property binding and UI layout alignment.
 
 ### Phase 4: Validation & Testing (Lead: @qa-engineer, Reviewer: @ui-ux-designer)
-- [ ] Update existing `FxTest` classes to include visual/layout assertions.
-- [ ] Verify that theme switching works correctly in both light and dark modes across all modules.
-- [ ] Ensure that layout density settings (e.g., compact vs. spacious) are respected.
+- [x] Update existing `FxTest` classes to include visual/layout assertions.
+- [x] Verify that theme switching works correctly in both light and dark modes across all modules.
+- [x] Ensure that layout density settings (e.g., compact vs. spacious) are respected.
 
 ### Phase 5: Documentation & Guidelines Update (Lead: @spec-steward)
 - [ ] Update the root `README.md` and module-level docs to include the new UI standards.

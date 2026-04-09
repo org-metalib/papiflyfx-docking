@@ -19,110 +19,6 @@ import org.metalib.papifly.fx.ui.UiMetrics;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 public final class HugoPreviewToolbar extends HBox {
-
-    private static final String BUTTON_NEUTRAL_BASE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #253652, #1b2940);
-        -fx-border-color: #334f7a;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-text-fill: #edf3ff;
-        -fx-font-size: 12px;
-        -fx-font-weight: 600;
-        -fx-padding: 6 10 6 10;
-        """);
-    private static final String BUTTON_NEUTRAL_HOVER = compact("""
-        -fx-background-color: linear-gradient(to bottom, #2f4466, #223352);
-        -fx-border-color: #3f6397;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-text-fill: #edf3ff;
-        -fx-font-size: 12px;
-        -fx-font-weight: 600;
-        -fx-padding: 6 10 6 10;
-        """);
-    private static final String BUTTON_START_BASE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #2f7a53, #225a3d);
-        -fx-border-color: #44a06f;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-text-fill: #f4fff8;
-        -fx-font-size: 12px;
-        -fx-font-weight: 700;
-        -fx-padding: 6 12 6 12;
-        """);
-    private static final String BUTTON_START_HOVER = compact("""
-        -fx-background-color: linear-gradient(to bottom, #3a9163, #2b704c);
-        -fx-border-color: #58bc82;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-text-fill: #f4fff8;
-        -fx-font-size: 12px;
-        -fx-font-weight: 700;
-        -fx-padding: 6 12 6 12;
-        """);
-    private static final String BUTTON_STOP_BASE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #8a3946, #692733);
-        -fx-border-color: #b14f5f;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-text-fill: #fff3f4;
-        -fx-font-size: 12px;
-        -fx-font-weight: 700;
-        -fx-padding: 6 12 6 12;
-        """);
-    private static final String BUTTON_STOP_HOVER = compact("""
-        -fx-background-color: linear-gradient(to bottom, #9a4655, #78303c);
-        -fx-border-color: #cb6576;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-text-fill: #fff3f4;
-        -fx-font-size: 12px;
-        -fx-font-weight: 700;
-        -fx-padding: 6 12 6 12;
-        """);
-    private static final String BUTTON_OPEN_BASE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #2a587f, #1d4365);
-        -fx-border-color: #3e7aaa;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-text-fill: #eff8ff;
-        -fx-font-size: 12px;
-        -fx-font-weight: 600;
-        -fx-padding: 6 12 6 12;
-        """);
-    private static final String BUTTON_OPEN_HOVER = compact("""
-        -fx-background-color: linear-gradient(to bottom, #326998, #245279);
-        -fx-border-color: #5194cd;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-text-fill: #eff8ff;
-        -fx-font-size: 12px;
-        -fx-font-weight: 600;
-        -fx-padding: 6 12 6 12;
-        """);
-    private static final String BUTTON_DISABLED_COMPACT = compact("""
-        -fx-background-color: linear-gradient(to bottom, #2a3240, #1f2733);
-        -fx-border-color: #3b4558;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-text-fill: #8290a8;
-        -fx-font-size: 12px;
-        -fx-font-weight: 600;
-        -fx-padding: 6 10 6 10;
-        -fx-opacity: 1.0;
-        """);
-    private static final String BUTTON_DISABLED_WIDE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #2a3240, #1f2733);
-        -fx-border-color: #3b4558;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-text-fill: #8290a8;
-        -fx-font-size: 12px;
-        -fx-font-weight: 600;
-        -fx-padding: 6 12 6 12;
-        -fx-opacity: 1.0;
-        """);
-
     private final Button startButton = new Button("Start");
     private final Button stopButton = new Button("Stop");
     private final Button backButton = new Button("<");
@@ -135,6 +31,9 @@ public final class HugoPreviewToolbar extends HBox {
     private final Tooltip forwardTooltip = new Tooltip("Go to next page");
     private final Tooltip reloadTooltip = new Tooltip("Reload current page");
     private final Tooltip openInBrowserTooltip = new Tooltip("Open current page in system browser");
+    private final HBox serverControls;
+    private final HBox navigationControls;
+    private final HBox addressContainer;
     private Theme currentTheme = Theme.dark();
 
     public HugoPreviewToolbar(
@@ -192,12 +91,12 @@ public final class HugoPreviewToolbar extends HBox {
         openInBrowserButton.setOnAction(event -> onOpenExternal.run());
         addressLink.setOnAction(event -> onOpenExternal.run());
 
-        styleButton(startButton, BUTTON_START_BASE, BUTTON_START_HOVER, BUTTON_DISABLED_WIDE);
-        styleButton(stopButton, BUTTON_STOP_BASE, BUTTON_STOP_HOVER, BUTTON_DISABLED_WIDE);
-        styleButton(backButton, BUTTON_NEUTRAL_BASE, BUTTON_NEUTRAL_HOVER, BUTTON_DISABLED_COMPACT);
-        styleButton(forwardButton, BUTTON_NEUTRAL_BASE, BUTTON_NEUTRAL_HOVER, BUTTON_DISABLED_COMPACT);
-        styleButton(reloadButton, BUTTON_NEUTRAL_BASE, BUTTON_NEUTRAL_HOVER, BUTTON_DISABLED_COMPACT);
-        styleButton(openInBrowserButton, BUTTON_OPEN_BASE, BUTTON_OPEN_HOVER, BUTTON_DISABLED_WIDE);
+        styleButton(startButton, ButtonRole.EMPHASIS, UiMetrics.SPACE_3);
+        styleButton(stopButton, ButtonRole.SECONDARY, UiMetrics.SPACE_3);
+        styleButton(backButton, ButtonRole.NEUTRAL, UiMetrics.SPACE_2);
+        styleButton(forwardButton, ButtonRole.NEUTRAL, UiMetrics.SPACE_2);
+        styleButton(reloadButton, ButtonRole.NEUTRAL, UiMetrics.SPACE_2);
+        styleButton(openInBrowserButton, ButtonRole.EMPHASIS, UiMetrics.SPACE_3);
 
         backButton.setPrefWidth(UiMetrics.SPACE_5 * 2.0);
         forwardButton.setPrefWidth(UiMetrics.SPACE_5 * 2.0);
@@ -206,29 +105,14 @@ public final class HugoPreviewToolbar extends HBox {
         addressLink.setTooltip(addressTooltip);
         addressLink.setTextOverrun(OverrunStyle.LEADING_ELLIPSIS);
         addressLink.setMaxWidth(Double.MAX_VALUE);
-        addressLink.setStyle(compact("""
-            -fx-text-fill: #8ad8ff;
-            -fx-font-size: 12px;
-            -fx-font-weight: 600;
-            -fx-padding: 5 10 5 10;
-            -fx-underline: false;
-            """));
+        addressLink.setUnderline(false);
+        addressLink.setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_2, UiMetrics.SPACE_1, UiMetrics.SPACE_2));
 
-        HBox serverControls = createGroup(startButton, stopButton);
-        HBox navigationControls = createGroup(backButton, forwardButton, reloadButton);
-        HBox addressContainer = new HBox(addressLink);
+        serverControls = createGroup(startButton, stopButton);
+        navigationControls = createGroup(backButton, forwardButton, reloadButton);
+        addressContainer = new HBox(addressLink);
         addressContainer.setAlignment(Pos.CENTER_LEFT);
-        addressContainer.setPadding(new Insets(2, 8, 2, 8));
-        addressContainer.setBorder(new Border(new BorderStroke(
-            Color.web("#2a4366"),
-            BorderStrokeStyle.SOLID,
-            new javafx.scene.layout.CornerRadii(10),
-            new BorderWidths(1)
-        )));
-        addressContainer.setStyle(compact("""
-            -fx-background-color: linear-gradient(to bottom, #101b2e, #0c1526);
-            -fx-background-radius: 10;
-            """));
+        addressContainer.setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_2, UiMetrics.SPACE_1, UiMetrics.SPACE_2));
 
         HBox.setHgrow(addressContainer, Priority.ALWAYS);
         addressLink.setMaxWidth(Double.MAX_VALUE);
@@ -263,8 +147,8 @@ public final class HugoPreviewToolbar extends HBox {
     }
 
     public void applyVisualStyle() {
-        Color toolbarBackground = UiStyleSupport.asColor(currentTheme.headerBackground(), Color.web("#111a2d"));
-        Color toolbarBorder = UiStyleSupport.asColor(currentTheme.borderColor(), Color.web("#21324f"));
+        Color toolbarBackground = asColor(currentTheme.headerBackground(), asColor(currentTheme.background(), Color.web("#111a2d")));
+        Color toolbarBorder = asColor(currentTheme.borderColor(), Color.web("#21324f"));
         setStyle(compact("""
             -fx-background-color: linear-gradient(to bottom, %s, %s);
             """.formatted(
@@ -277,6 +161,12 @@ public final class HugoPreviewToolbar extends HBox {
             javafx.scene.layout.CornerRadii.EMPTY,
             new BorderWidths(0, 0, 1, 0)
         )));
+        applyGroupStyle(serverControls);
+        applyGroupStyle(navigationControls);
+        applyAddressStyle();
+        for (Button button : new Button[] {startButton, stopButton, backButton, forwardButton, reloadButton, openInBrowserButton}) {
+            applyButtonStyle(button);
+        }
     }
 
     public void applyTheme(Theme theme) {
@@ -287,7 +177,6 @@ public final class HugoPreviewToolbar extends HBox {
             if (font != null) {
                 button.setFont(font);
             }
-            button.setTextFill(UiStyleSupport.asColor(currentTheme.textColorActive(), Color.web("#edf3ff")));
         }
         if (font != null) {
             addressLink.setFont(font);
@@ -308,21 +197,11 @@ public final class HugoPreviewToolbar extends HBox {
         HBox group = new HBox(UiMetrics.SPACE_2, children);
         group.setAlignment(Pos.CENTER_LEFT);
         group.setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_2, UiMetrics.SPACE_1, UiMetrics.SPACE_2));
-        group.setBorder(new Border(new BorderStroke(
-            Color.web("#2b4366"),
-            BorderStrokeStyle.SOLID,
-            new javafx.scene.layout.CornerRadii(10),
-            new BorderWidths(1)
-        )));
-        group.setStyle(compact("""
-            -fx-background-color: linear-gradient(to bottom, #152138, #101a2f);
-            -fx-background-radius: 10;
-            """));
         return group;
     }
 
-    private void styleButton(Button button, String baseStyle, String hoverStyle, String disabledStyle) {
-        button.setUserData(new ButtonStyles(baseStyle, hoverStyle, disabledStyle));
+    private void styleButton(Button button, ButtonRole role, double horizontalPadding) {
+        button.setUserData(new ButtonStyles(role, horizontalPadding));
         button.setFocusTraversable(true);
         button.hoverProperty().addListener((obs, oldHover, hover) -> applyButtonStyle(button));
         button.disableProperty().addListener((obs, oldDisabled, disabled) -> applyButtonStyle(button));
@@ -340,17 +219,134 @@ public final class HugoPreviewToolbar extends HBox {
         if (!(userData instanceof ButtonStyles styles)) {
             return;
         }
+        Color canvas = asColor(currentTheme.background(), Color.web("#0b1323"));
+        Color panel = asColor(currentTheme.headerBackground(), canvas);
+        Color accent = asColor(currentTheme.accentColor(), Color.web("#007acc"));
+        Color border = asColor(currentTheme.borderColor(), Color.web("#2b4366"));
+        Color hover = asColor(currentTheme.buttonHoverBackground(), blend(panel, accent, 0.18));
+        Color pressed = asColor(currentTheme.buttonPressedBackground(), blend(panel, accent, 0.28));
+        Color textPrimary = asColor(currentTheme.textColor(), Color.web("#dfe7f7"));
+        Color textActive = asColor(currentTheme.textColorActive(), Color.WHITE);
+
+        Color baseBackground = switch (styles.role()) {
+            case EMPHASIS -> accent;
+            case SECONDARY -> pressed;
+            case NEUTRAL -> blend(panel, canvas, 0.22);
+        };
+        Color baseBorder = styles.role() == ButtonRole.EMPHASIS ? accent : alpha(border, 0.90);
+        Color baseText = styles.role() == ButtonRole.EMPHASIS ? textActive : textPrimary;
+
         if (button.isDisable()) {
-            button.setStyle(styles.disabledStyle());
+            Color disabledBackground = blend(canvas, panel, 0.28);
+            Color disabledBorder = alpha(border, 0.55);
+            Color disabledText = alpha(textPrimary, 0.58);
+            button.setStyle(buttonStyle(disabledBackground, disabledBorder, disabledText, styles.horizontalPadding()));
             return;
         }
-        button.setStyle(button.isHover() ? styles.hoverStyle() : styles.baseStyle());
+
+        Color resolvedBackground = button.isHover()
+            ? blend(baseBackground, hover, 0.50)
+            : baseBackground;
+        Color resolvedBorder = button.isHover()
+            ? blend(baseBorder, accent, 0.32)
+            : baseBorder;
+        button.setStyle(buttonStyle(resolvedBackground, resolvedBorder, baseText, styles.horizontalPadding()));
+    }
+
+    private void applyGroupStyle(HBox group) {
+        Color canvas = asColor(currentTheme.background(), Color.web("#0b1323"));
+        Color panel = asColor(currentTheme.headerBackground(), canvas);
+        Color border = asColor(currentTheme.borderColor(), Color.web("#2b4366"));
+        Color background = blend(panel, canvas, 0.22);
+        group.setBorder(new Border(new BorderStroke(
+            alpha(border, 0.85),
+            BorderStrokeStyle.SOLID,
+            new javafx.scene.layout.CornerRadii(UiMetrics.RADIUS_MD),
+            new BorderWidths(1)
+        )));
+        group.setStyle(compact("""
+            -fx-background-color: linear-gradient(to bottom, %s, %s);
+            -fx-background-radius: %.1f;
+            """.formatted(
+            UiStyleSupport.paintToCss(background, "#152138"),
+            UiStyleSupport.paintToCss(background.darker(), "#101a2f"),
+            UiMetrics.RADIUS_MD
+        )));
+    }
+
+    private void applyAddressStyle() {
+        Color canvas = asColor(currentTheme.background(), Color.web("#0b1323"));
+        Color panel = asColor(currentTheme.headerBackgroundActive(), asColor(currentTheme.headerBackground(), canvas));
+        Color border = asColor(currentTheme.borderColor(), Color.web("#2a4366"));
+        Color accent = asColor(currentTheme.accentColor(), Color.web("#8ad8ff"));
+        Color background = blend(panel, canvas, 0.18);
+
+        addressContainer.setBorder(new Border(new BorderStroke(
+            alpha(border, 0.82),
+            BorderStrokeStyle.SOLID,
+            new javafx.scene.layout.CornerRadii(UiMetrics.RADIUS_MD),
+            new BorderWidths(1)
+        )));
+        addressContainer.setStyle(compact("""
+            -fx-background-color: linear-gradient(to bottom, %s, %s);
+            -fx-background-radius: %.1f;
+            """.formatted(
+            UiStyleSupport.paintToCss(background, "#101b2e"),
+            UiStyleSupport.paintToCss(background.darker(), "#0c1526"),
+            UiMetrics.RADIUS_MD
+        )));
+        addressLink.setTextFill(accent);
+    }
+
+    private String buttonStyle(Color background, Color border, Color text, double horizontalPadding) {
+        return compact("""
+            -fx-background-color: linear-gradient(to bottom, %s, %s);
+            -fx-border-color: %s;
+            -fx-border-radius: %.1f;
+            -fx-background-radius: %.1f;
+            -fx-text-fill: %s;
+            -fx-padding: %.1f %.1f %.1f %.1f;
+            -fx-opacity: 1.0;
+            """.formatted(
+            UiStyleSupport.paintToCss(background, "#253652"),
+            UiStyleSupport.paintToCss(background.darker(), "#1b2940"),
+            UiStyleSupport.paintToCss(border, "#334f7a"),
+            UiMetrics.RADIUS_MD,
+            UiMetrics.RADIUS_MD,
+            UiStyleSupport.paintToCss(text, "#edf3ff"),
+            UiMetrics.SPACE_1,
+            horizontalPadding,
+            UiMetrics.SPACE_1,
+            horizontalPadding
+        ));
+    }
+
+    private static Color asColor(javafx.scene.paint.Paint paint, Color fallback) {
+        return UiStyleSupport.asColor(paint, fallback);
+    }
+
+    private static Color blend(Color base, Color mix, double weight) {
+        return base.interpolate(mix, clamp(weight));
+    }
+
+    private static Color alpha(Color color, double opacity) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), clamp(opacity));
+    }
+
+    private static double clamp(double value) {
+        return Math.max(0.0, Math.min(1.0, value));
     }
 
     private static String compact(String style) {
         return style.replace("\n", "").trim();
     }
 
-    private record ButtonStyles(String baseStyle, String hoverStyle, String disabledStyle) {
+    private enum ButtonRole {
+        NEUTRAL,
+        SECONDARY,
+        EMPHASIS
+    }
+
+    private record ButtonStyles(ButtonRole role, double horizontalPadding) {
     }
 }

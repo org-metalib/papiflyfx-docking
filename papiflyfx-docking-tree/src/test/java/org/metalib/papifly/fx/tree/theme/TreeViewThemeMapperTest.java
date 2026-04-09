@@ -77,4 +77,27 @@ class TreeViewThemeMapperTest {
         assertEquals(Color.RED, result.focusedBorder());
         assertEquals(UiMetrics.SPACE_6, result.rowHeight());
     }
+
+    @Test
+    void spaciousThemeDimensionsExpandMetricsOnGrid() {
+        Theme spacious = Theme.of(
+            Theme.dark().colors(),
+            Theme.dark().fonts(),
+            new ThemeDimensions(
+                8.0,
+                1.0,
+                40.0,
+                36.0,
+                Insets.EMPTY,
+                12.0,
+                24.0
+            )
+        );
+
+        TreeViewTheme result = TreeViewThemeMapper.map(spacious);
+
+        assertEquals(36.0, result.rowHeight(), 0.01);
+        assertEquals(24.0, result.indentWidth(), 0.01);
+        assertEquals(UiMetrics.SPACE_4, result.iconSize(), 0.01);
+    }
 }
