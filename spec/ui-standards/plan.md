@@ -29,8 +29,12 @@ and interaction patterns through a multiagent workflow.
 - [x] Ensure that layout density settings (e.g., compact vs. spacious) are respected.
 
 ### Phase 5: Documentation & Guidelines Update (Lead: @spec-steward)
-- [ ] Update the root `README.md` and module-level docs to include the new UI standards.
-- [ ] Update `spec/agents/playbook.md` with the finalized multiagent UI workflow.
+- [x] Update the root `README.md` and module-level docs to include the new UI standards.
+- [x] Update `spec/agents/playbook.md` with the finalized multiagent UI workflow.
+
+## Closure Status
+- [x] Planned Phase 1-5 rollout is complete.
+- [ ] Repo-wide cleanup of every fallback literal color and fully shared adoption of every shared primitive remains follow-up work outside this rollout.
 
 ## Multiagent Workflow
 
@@ -44,6 +48,6 @@ and interaction patterns through a multiagent workflow.
 
 ## Acceptance Criteria
 - [ ] No hardcoded colors or "magic number" spacing in module-local CSS/Java.
-- [ ] All UI components react consistently to `Theme` changes (colors, fonts, dimensions).
+- [x] All UI components react consistently to `Theme` changes (colors, fonts, dimensions).
 - [ ] Shared components (Pills, Chips, Status) are used across at least two different modules.
-- [ ] UI test suite passes in headless mode with high coverage for theme/layout states.
+- [x] UI test suite passes in headless mode with high coverage for theme/layout states.

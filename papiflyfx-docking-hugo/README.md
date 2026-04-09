@@ -11,7 +11,7 @@ It starts `hugo server`, renders pages inside JavaFX `WebView`, and supports ses
 - Toolbar actions: start, stop, back, forward, reload, open in browser
 - External navigation guard (keeps embedded view on local Hugo origin)
 - Docking persistence via `ContentStateAdapter` + `LeafContentData`
-- Dedicated Hugo chrome styling that keeps page content independent from docking theme colors
+- Theme-aware host chrome for toolbar, status, and placeholder surfaces while leaving page content independent
 
 ## Requirements
 
@@ -70,7 +70,16 @@ leaf.setContentData(LeafContentData.of(
 preview.bindThemeProperty(dockManager.themeProperty());
 ```
 
-Binding is optional and does not recolor Hugo page content.
+Binding is optional and themes only the host chrome. It does not recolor Hugo page content inside `WebView`.
+
+## Theme And UI Standards
+
+The Hugo module participates in the shared UI standardization rollout at the host-chrome layer.
+
+- `Theme` remains the only runtime styling input.
+- Toolbar and status-bar density follow the shared `UiMetrics` scale.
+- Theme changes restyle the preview host surface, toolbar, status badges, and placeholder state.
+- Embedded site content remains controlled by the page itself and is intentionally not recolored by docking theme tokens.
 
 ## Persisted State
 
@@ -96,11 +105,11 @@ State codec: `HugoPreviewStateCodec`
 ## Run Tests
 
 ```bash
-mvn -pl papiflyfx-docking-hugo test
+./mvnw -pl papiflyfx-docking-hugo test
 ```
 
 ## Headless UI Tests
 
 ```bash
-mvn -pl papiflyfx-docking-hugo -Dtestfx.headless=true test
+./mvnw -pl papiflyfx-docking-hugo -Dtestfx.headless=true test
 ```

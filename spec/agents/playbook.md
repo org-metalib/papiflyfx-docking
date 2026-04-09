@@ -167,6 +167,27 @@ Fast path rules:
 4. Ask `@qa-engineer` to verify interaction-sensitive regressions.
 5. Validate hover, focus, active, detached, and theme-switched states when relevant.
 
+### Cross-Module UI Standardization
+
+Use this workflow for any task that changes visual tokens, shared controls, or density rules across multiple modules.
+
+1. Lead with `@ui-ux-designer` for the audit and token-definition phase.
+2. Keep `Theme` as the only runtime styling source. Project CSS variables and shared metrics from `Theme`; do not create a second theme state.
+3. Add shared primitives in `papiflyfx-docking-api` first when the abstraction is lightweight enough to stay additive.
+4. Ask `@core-architect` to review any shared API, SPI, or theme-helper change before feature modules adopt it.
+5. Hand off module adoption to `@feature-dev` once shared primitives and token helpers are settled.
+6. Keep shared controls drop-in compatible and preserve existing ids, style classes, and `bindThemeProperty(...)` entry points while refactoring.
+7. Ask `@qa-engineer` to add layout/state assertions for spacing, hover, active, selected, and theme-switch cases before declaring the rollout stable.
+8. Run `./mvnw -Dtestfx.headless=true test` as the closing validation step for the rollout, not as the first check.
+9. Close with `@spec-steward` updating root docs, module READMEs, plan state, and any workflow guidance learned during the rollout.
+
+Lessons learned from the first UI standardization pass:
+
+- Put shared spacing, radii, and control heights behind `UiMetrics` instead of repeating module-local constants.
+- Prefer shared popup surfaces and compact-control classes over per-module overlay CSS vocabularies.
+- Validate JavaFX visual state transitions in FX tests rather than assuming mapper/unit tests are sufficient.
+- Treat intermittent headless fork-start failures as infrastructure issues unless module-local reports show an actual test regression.
+
 ### Docs, Roadmap, Or Cross-Cutting Coordination
 
 1. Lead with `@spec-steward`.
@@ -336,3 +357,4 @@ The lead agent should not start implementation until these are clear:
 - "Add searchable outline panel to the tree module" -> `@feature-dev` lead, `@qa-engineer` and `@ui-ux-designer` reviewers, `@core-architect` only if shared contracts move.
 - "Add GitHub login provider with persisted session" -> `@auth-specialist` lead, `@qa-engineer` and `@ui-ux-designer` reviewers, `@ops-engineer` if samples or settings storage are updated.
 - "Stabilize headless TestFX failures in samples" -> `@qa-engineer` lead, `@ops-engineer` reviewer, owning module agent if the fix touches product code.
+- "Roll out a new shared spacing/token system across code, tree, github, media, and hugo" -> `@ui-ux-designer` lead for standards and shared primitives, `@feature-dev` lead for module adoption, `@qa-engineer` lead for validation, `@spec-steward` lead for closure docs.
