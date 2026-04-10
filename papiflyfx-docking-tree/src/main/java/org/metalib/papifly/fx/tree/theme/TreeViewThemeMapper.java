@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.tree.theme;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
 import org.metalib.papifly.fx.ui.UiMetrics;
 
 public final class TreeViewThemeMapper {
@@ -15,16 +16,17 @@ public final class TreeViewThemeMapper {
         if (theme == null) {
             return TreeViewTheme.dark();
         }
-        boolean dark = isDark(theme.background());
-        Color background = asColor(theme.background(), dark ? Color.web("#1e1e1e") : Color.web("#ffffff"));
-        Color headerBackground = asColor(theme.headerBackground(), blend(background, dark ? Color.WHITE : Color.BLACK, dark ? 0.08 : 0.05));
-        Color accent = asColor(theme.accentColor(), Color.web("#007acc"));
-        Color textPrimary = asColor(theme.textColor(), dark ? Color.web("#d4d4d4") : Color.web("#1e1e1e"));
-        Color textActive = asColor(theme.textColorActive(), dark ? Color.WHITE : Color.BLACK);
-        Color border = asColor(theme.borderColor(), dark ? Color.web("#3f3f46") : Color.web("#c8c8c8"));
-        Color divider = asColor(theme.dividerColor(), blend(border, textPrimary, dark ? 0.18 : 0.10));
-        Color hover = asColor(theme.buttonHoverBackground(), alpha(accent, dark ? 0.12 : 0.08));
-        Color pressed = asColor(theme.buttonPressedBackground(), alpha(accent, dark ? 0.20 : 0.14));
+        Theme resolved = UiCommonThemeSupport.resolvedTheme(theme);
+        boolean dark = isDark(resolved.background());
+        Color background = UiCommonThemeSupport.background(resolved);
+        Color headerBackground = UiCommonThemeSupport.headerBackground(resolved);
+        Color accent = UiCommonThemeSupport.accent(resolved);
+        Color textPrimary = UiCommonThemeSupport.textPrimary(resolved);
+        Color textActive = UiCommonThemeSupport.textActive(resolved);
+        Color border = UiCommonThemeSupport.border(resolved);
+        Color divider = UiCommonThemeSupport.divider(resolved);
+        Color hover = UiCommonThemeSupport.hover(resolved);
+        Color pressed = UiCommonThemeSupport.pressed(resolved);
         Color scrollbarTrack = alpha(border, dark ? 0.22 : 0.12);
         Color scrollbarThumb = alpha(textPrimary, dark ? 0.32 : 0.24);
         Color scrollbarThumbHover = alpha(textPrimary, dark ? 0.46 : 0.36);
@@ -63,13 +65,6 @@ public final class TreeViewThemeMapper {
             return color.getBrightness() < DARK_THRESHOLD;
         }
         return true;
-    }
-
-    private static Color asColor(Paint paint, Color fallback) {
-        if (paint instanceof Color color) {
-            return color;
-        }
-        return fallback;
     }
 
     private static Color blend(Color base, Color mix, double weight) {

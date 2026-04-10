@@ -49,6 +49,7 @@ import org.metalib.papifly.fx.github.ui.theme.GitHubToolbarThemeMapper;
 import org.metalib.papifly.fx.github.ui.toolbar.RefPill;
 import org.metalib.papifly.fx.ui.UiChipLabel;
 import org.metalib.papifly.fx.ui.UiChipVariant;
+import org.metalib.papifly.fx.ui.UiMetrics;
 import org.metalib.papifly.fx.ui.UiPillButton;
 import org.metalib.papifly.fx.ui.UiStatusSlot;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
@@ -153,8 +154,8 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
         busyIndicator = new ProgressIndicator();
         busyIndicator.setId("github-busy-indicator");
         busyIndicator.getStyleClass().add("pf-github-busy-indicator");
-        busyIndicator.setPrefSize(16, 16);
-        busyIndicator.setMaxSize(16, 16);
+        busyIndicator.setPrefSize(UiMetrics.SPACE_4, UiMetrics.SPACE_4);
+        busyIndicator.setMaxSize(UiMetrics.SPACE_4, UiMetrics.SPACE_4);
 
         statusLabel = new Label();
         statusLabel.setId("github-status-text");

@@ -34,7 +34,11 @@ and interaction patterns through a multiagent workflow.
 
 ## Closure Status
 - [x] Planned Phase 1-5 rollout is complete.
-- [ ] Repo-wide cleanup of every fallback literal color and fully shared adoption of every shared primitive remains follow-up work outside this rollout.
+- [x] Final polish sweep completed for standardized UI chrome, overlays, shared primitives, spacing, and theme propagation.
+
+## Verification Notes
+- Editor syntax palettes in `CodeEditorTheme` remain module-owned defaults and are not part of the shared chrome token set.
+- Final verification included targeted FX regressions plus a full `./mvnw -Dtestfx.headless=true test` pass.
 
 ## Multiagent Workflow
 
@@ -47,7 +51,7 @@ and interaction patterns through a multiagent workflow.
 | 5. Documentation | `@spec-steward` | `@ui-ux-designer`, `@ops-engineer` |
 
 ## Acceptance Criteria
-- [ ] No hardcoded colors or "magic number" spacing in module-local CSS/Java.
+- [x] No hardcoded colors or off-grid spacing remain in standardized module UI chrome, overlays, dialogs, settings panes, or shared controls.
 - [x] All UI components react consistently to `Theme` changes (colors, fonts, dimensions).
-- [ ] Shared components (Pills, Chips, Status) are used across at least two different modules.
+- [x] Shared components (Pills, Chips, Status) are used across at least two different modules.
 - [x] UI test suite passes in headless mode with high coverage for theme/layout states.

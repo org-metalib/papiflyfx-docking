@@ -12,10 +12,12 @@ import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.hugo.process.HugoServerProcessManager;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
 import org.metalib.papifly.fx.ui.UiMetrics;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
+import org.metalib.papifly.fx.ui.UiStatusSlot;
 
-public final class HugoPreviewStatusBar extends HBox {
+public final class HugoPreviewStatusBar extends UiStatusSlot {
 
     private final Label stateLabel = new Label("Stopped");
     private final Label messageLabel = new Label();
@@ -31,7 +33,7 @@ public final class HugoPreviewStatusBar extends HBox {
         setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_3, UiMetrics.SPACE_1, UiMetrics.SPACE_3));
         setAlignment(Pos.CENTER_LEFT);
 
-        stateLabel.setMinWidth(120);
+        stateLabel.setMinWidth(UiMetrics.SPACE_5 * 6.0);
         stateLabel.setAlignment(Pos.CENTER);
         messageLabel.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(messageLabel, Priority.ALWAYS);
@@ -60,14 +62,14 @@ public final class HugoPreviewStatusBar extends HBox {
     }
 
     public void applyVisualStyle() {
-        Color background = UiStyleSupport.asColor(currentTheme.headerBackground(), Color.web("#0e1627"));
-        Color border = UiStyleSupport.asColor(currentTheme.borderColor(), Color.web("#1f2f49"));
-        Color text = UiStyleSupport.asColor(currentTheme.textColor(), Color.web("#b6c4de"));
+        Color background = UiCommonThemeSupport.headerBackground(currentTheme);
+        Color border = UiCommonThemeSupport.border(currentTheme);
+        Color text = UiCommonThemeSupport.textPrimary(currentTheme);
         setStyle(compact("""
             -fx-background-color: linear-gradient(to bottom, %s, %s);
             """.formatted(
-            UiStyleSupport.paintToCss(background, "#0e1627"),
-            UiStyleSupport.paintToCss(background.darker(), "#0a1120")
+            UiStyleSupport.paintToCss(background, "transparent"),
+            UiStyleSupport.paintToCss(background.darker(), "transparent")
         )));
         setBorder(new Border(new BorderStroke(
             border,
@@ -79,7 +81,7 @@ public final class HugoPreviewStatusBar extends HBox {
     }
 
     public void applyTheme(Theme theme) {
-        currentTheme = theme == null ? Theme.dark() : theme;
+        currentTheme = UiCommonThemeSupport.resolvedTheme(theme);
         applyVisualStyle();
         applyStateStyle();
         javafx.scene.text.Font font = currentTheme.contentFont();
@@ -90,14 +92,14 @@ public final class HugoPreviewStatusBar extends HBox {
     }
 
     private void applyStateStyle() {
-        Color background = UiStyleSupport.asColor(currentTheme.background(), Color.web("#0b1323"));
-        Color panel = UiStyleSupport.asColor(currentTheme.headerBackgroundActive(),
-            UiStyleSupport.asColor(currentTheme.headerBackground(), background));
-        Color accent = UiStyleSupport.asColor(currentTheme.accentColor(), Color.web("#007acc"));
-        Color border = UiStyleSupport.asColor(currentTheme.borderColor(), Color.web("#3c5786"));
-        Color pressed = UiStyleSupport.asColor(currentTheme.buttonPressedBackground(), accent);
-        Color textPrimary = UiStyleSupport.asColor(currentTheme.textColor(), Color.web("#dde7ff"));
-        Color textActive = UiStyleSupport.asColor(currentTheme.textColorActive(), Color.WHITE);
+        Color background = UiCommonThemeSupport.background(currentTheme);
+        Color panel = UiCommonThemeSupport.headerBackgroundActive(currentTheme);
+        Color accent = UiCommonThemeSupport.accent(currentTheme);
+        Color border = UiCommonThemeSupport.border(currentTheme);
+        Color pressed = UiCommonThemeSupport.pressed(currentTheme);
+        Color danger = UiCommonThemeSupport.danger(currentTheme);
+        Color textPrimary = UiCommonThemeSupport.textPrimary(currentTheme);
+        Color textActive = UiCommonThemeSupport.textActive(currentTheme);
 
         Color stateBackground;
         Color stateBorder;
@@ -124,8 +126,8 @@ public final class HugoPreviewStatusBar extends HBox {
                 }
                 case ERROR -> {
                     stateLabel.setText("Error");
-                    stateBackground = pressed;
-                    stateBorder = accent;
+                    stateBackground = blend(pressed, danger, 0.55);
+                    stateBorder = danger;
                     stateText = textActive;
                 }
                 case STOPPED -> {
@@ -152,16 +154,16 @@ public final class HugoPreviewStatusBar extends HBox {
             -fx-border-color: %s;
             -fx-opacity: 1.0;
             """.formatted(
-            UiStyleSupport.paintToCss(stateBackground, "#273a5b"),
-            UiStyleSupport.paintToCss(stateBackground.darker(), "#1f2d47"),
-            UiStyleSupport.paintToCss(stateText, "#dde7ff"),
+            UiStyleSupport.paintToCss(stateBackground, "transparent"),
+            UiStyleSupport.paintToCss(stateBackground.darker(), "transparent"),
+            UiStyleSupport.paintToCss(stateText, "transparent"),
             UiMetrics.SPACE_1,
             UiMetrics.SPACE_3,
             UiMetrics.SPACE_1,
             UiMetrics.SPACE_3,
             UiMetrics.RADIUS_PILL,
             UiMetrics.RADIUS_PILL,
-            UiStyleSupport.paintToCss(stateBorder, "#3c5786")
+            UiStyleSupport.paintToCss(stateBorder, "transparent")
         )));
     }
 

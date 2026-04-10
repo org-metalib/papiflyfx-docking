@@ -127,7 +127,7 @@ public final class GitRefPopup {
         if (bounds == null) {
             return;
         }
-        popup.show(anchor, bounds.getMinX(), bounds.getMaxY() + UiMetrics.SPACE_1 + 2.0);
+        popup.show(anchor, bounds.getMinX(), bounds.getMaxY() + UiMetrics.SPACE_1 + UiMetrics.SPACE_1 * 0.5);
         searchField.requestFocus();
         selectFirstEntry();
     }

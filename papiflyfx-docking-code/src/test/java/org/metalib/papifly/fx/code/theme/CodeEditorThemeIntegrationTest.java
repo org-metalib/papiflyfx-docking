@@ -136,7 +136,8 @@ class CodeEditorThemeIntegrationTest {
 
         String lightStyle = editor.getSearchController().getStyle();
         assertNotEquals(darkStyle, lightStyle);
-        assertTrue(lightStyle.contains("-pf-search-bg"));
+        assertTrue(lightStyle.contains("-pf-ui-surface-overlay"));
+        assertTrue(lightStyle.contains("-pf-ui-accent"));
     }
 
     @Test
@@ -194,7 +195,10 @@ class CodeEditorThemeIntegrationTest {
 
         Color selectedBackground = runOnFxAndGet(() -> backgroundColor(toggle));
         Color expectedSelected = runOnFxAndGet(() ->
-            (Color) editor.getEditorTheme().searchOverlayIntegratedToggleActive());
+            {
+                Color accent = (Color) editor.getEditorTheme().searchOverlayAccentBorder();
+                return new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 0.16);
+            });
 
         assertNotNull(defaultBackground);
         assertNotNull(selectedBackground);

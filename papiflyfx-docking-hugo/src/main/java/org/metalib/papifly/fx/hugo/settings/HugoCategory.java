@@ -11,6 +11,7 @@ import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingType;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.List;
 
@@ -73,13 +74,13 @@ public class HugoCategory implements SettingsCategory {
             buildDraftsBox.selectedProperty().addListener((obs, oldValue, newValue) -> dirty = true);
 
             pane = new VBox(
-                12,
+                UiMetrics.SPACE_3,
                 field("Hugo Binary", binaryField),
                 field("Preferred Port", portField),
                 field("Bind Address", bindAddressField),
                 buildDraftsBox
             );
-            pane.setPadding(new Insets(8));
+            pane.setPadding(new Insets(UiMetrics.SPACE_2));
         }
         reset(context);
         return pane;
@@ -112,7 +113,7 @@ public class HugoCategory implements SettingsCategory {
     private VBox field(String labelText, TextField field) {
         Label label = new Label(labelText);
         label.setStyle("-fx-font-weight: bold;");
-        return new VBox(4, label, field);
+        return new VBox(UiMetrics.SPACE_1, label, field);
     }
 
     private int parse(String value, int defaultValue) {

@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.code.theme;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
 
 /**
  * Maps a docking {@link Theme} to a {@link CodeEditorTheme} by composition.
@@ -31,20 +32,18 @@ public final class CodeEditorThemeMapper {
             return CodeEditorTheme.dark();
         }
 
-        boolean dark = isDark(theme.background());
+        Theme resolved = UiCommonThemeSupport.resolvedTheme(theme);
+        boolean dark = isDark(resolved.background());
         CodeEditorTheme base = dark ? CodeEditorTheme.dark() : CodeEditorTheme.light();
-        Color background = asColor(theme.background(), dark ? Color.web("#1e1e1e") : Color.web("#ffffff"));
-        Color headerBackground = asColor(theme.headerBackground(), blend(background, dark ? Color.WHITE : Color.BLACK, dark ? 0.08 : 0.05));
-        Color accent = asColor(theme.accentColor(), Color.web("#007acc"));
-        Color headerBackgroundActive = asColor(
-            theme.headerBackgroundActive(),
-            blend(headerBackground, accent, dark ? 0.18 : 0.12)
-        );
-        Color textPrimary = asColor(theme.textColor(), dark ? Color.web("#d4d4d4") : Color.web("#1e1e1e"));
-        Color textActive = asColor(theme.textColorActive(), dark ? Color.WHITE : Color.BLACK);
-        Color border = asColor(theme.borderColor(), dark ? Color.web("#3f3f46") : Color.web("#c8c8c8"));
-        Color hover = asColor(theme.buttonHoverBackground(), blend(headerBackgroundActive, accent, dark ? 0.10 : 0.06));
-        Color pressed = asColor(theme.buttonPressedBackground(), blend(headerBackgroundActive, accent, dark ? 0.20 : 0.12));
+        Color background = UiCommonThemeSupport.background(resolved);
+        Color headerBackground = UiCommonThemeSupport.headerBackground(resolved);
+        Color accent = UiCommonThemeSupport.accent(resolved);
+        Color headerBackgroundActive = UiCommonThemeSupport.headerBackgroundActive(resolved);
+        Color textPrimary = UiCommonThemeSupport.textPrimary(resolved);
+        Color textActive = UiCommonThemeSupport.textActive(resolved);
+        Color border = UiCommonThemeSupport.border(resolved);
+        Color hover = UiCommonThemeSupport.hover(resolved);
+        Color pressed = UiCommonThemeSupport.pressed(resolved);
         Color selection = alpha(accent, dark ? 0.24 : 0.18);
         Color lineNumber = blend(textPrimary, background, dark ? 0.42 : 0.56);
         Color currentLine = blend(background, headerBackgroundActive, dark ? 0.52 : 0.36);
@@ -58,7 +57,7 @@ public final class CodeEditorThemeMapper {
         Color overlayControlBorder = alpha(border, dark ? 0.88 : 0.72);
         Color overlaySecondaryText = blend(textPrimary, background, dark ? 0.36 : 0.48);
         Color gutterBackground = blend(background, headerBackground, dark ? 0.16 : 0.10);
-        Color shadow = alpha(Color.BLACK, dark ? 0.25 : 0.18);
+        Color shadow = UiCommonThemeSupport.shadowColor(resolved, 0.25, 0.18);
 
         return new CodeEditorTheme(
             background,

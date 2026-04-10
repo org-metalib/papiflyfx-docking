@@ -15,16 +15,18 @@ import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.hugo.process.HugoServerProcessManager;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
 import org.metalib.papifly.fx.ui.UiMetrics;
+import org.metalib.papifly.fx.ui.UiPillButton;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 public final class HugoPreviewToolbar extends HBox {
-    private final Button startButton = new Button("Start");
-    private final Button stopButton = new Button("Stop");
+    private final Button startButton = new UiPillButton("Start");
+    private final Button stopButton = new UiPillButton("Stop");
     private final Button backButton = new Button("<");
     private final Button forwardButton = new Button(">");
     private final Button reloadButton = new Button("Reload");
-    private final Button openInBrowserButton = new Button("Open Browser");
+    private final Button openInBrowserButton = new UiPillButton("Open Browser");
     private final Hyperlink addressLink = new Hyperlink("-");
     private final Tooltip addressTooltip = new Tooltip("-");
     private final Tooltip backTooltip = new Tooltip("Go to previous page");
@@ -147,13 +149,13 @@ public final class HugoPreviewToolbar extends HBox {
     }
 
     public void applyVisualStyle() {
-        Color toolbarBackground = asColor(currentTheme.headerBackground(), asColor(currentTheme.background(), Color.web("#111a2d")));
-        Color toolbarBorder = asColor(currentTheme.borderColor(), Color.web("#21324f"));
+        Color toolbarBackground = UiCommonThemeSupport.headerBackground(currentTheme);
+        Color toolbarBorder = UiCommonThemeSupport.border(currentTheme);
         setStyle(compact("""
             -fx-background-color: linear-gradient(to bottom, %s, %s);
             """.formatted(
-            UiStyleSupport.paintToCss(toolbarBackground, "#111a2d"),
-            UiStyleSupport.paintToCss(toolbarBackground.darker(), "#0b1323")
+            UiStyleSupport.paintToCss(toolbarBackground, "transparent"),
+            UiStyleSupport.paintToCss(toolbarBackground.darker(), "transparent")
         )));
         setBorder(new Border(new BorderStroke(
             toolbarBorder,
@@ -170,7 +172,7 @@ public final class HugoPreviewToolbar extends HBox {
     }
 
     public void applyTheme(Theme theme) {
-        currentTheme = theme == null ? Theme.dark() : theme;
+        currentTheme = UiCommonThemeSupport.resolvedTheme(theme);
         applyVisualStyle();
         javafx.scene.text.Font font = currentTheme.contentFont();
         for (Button button : new Button[] {startButton, stopButton, backButton, forwardButton, reloadButton, openInBrowserButton}) {
@@ -219,14 +221,14 @@ public final class HugoPreviewToolbar extends HBox {
         if (!(userData instanceof ButtonStyles styles)) {
             return;
         }
-        Color canvas = asColor(currentTheme.background(), Color.web("#0b1323"));
-        Color panel = asColor(currentTheme.headerBackground(), canvas);
-        Color accent = asColor(currentTheme.accentColor(), Color.web("#007acc"));
-        Color border = asColor(currentTheme.borderColor(), Color.web("#2b4366"));
-        Color hover = asColor(currentTheme.buttonHoverBackground(), blend(panel, accent, 0.18));
-        Color pressed = asColor(currentTheme.buttonPressedBackground(), blend(panel, accent, 0.28));
-        Color textPrimary = asColor(currentTheme.textColor(), Color.web("#dfe7f7"));
-        Color textActive = asColor(currentTheme.textColorActive(), Color.WHITE);
+        Color canvas = UiCommonThemeSupport.background(currentTheme);
+        Color panel = UiCommonThemeSupport.headerBackground(currentTheme);
+        Color accent = UiCommonThemeSupport.accent(currentTheme);
+        Color border = UiCommonThemeSupport.border(currentTheme);
+        Color hover = UiCommonThemeSupport.hover(currentTheme);
+        Color pressed = UiCommonThemeSupport.pressed(currentTheme);
+        Color textPrimary = UiCommonThemeSupport.textPrimary(currentTheme);
+        Color textActive = UiCommonThemeSupport.textActive(currentTheme);
 
         Color baseBackground = switch (styles.role()) {
             case EMPHASIS -> accent;
@@ -254,9 +256,9 @@ public final class HugoPreviewToolbar extends HBox {
     }
 
     private void applyGroupStyle(HBox group) {
-        Color canvas = asColor(currentTheme.background(), Color.web("#0b1323"));
-        Color panel = asColor(currentTheme.headerBackground(), canvas);
-        Color border = asColor(currentTheme.borderColor(), Color.web("#2b4366"));
+        Color canvas = UiCommonThemeSupport.background(currentTheme);
+        Color panel = UiCommonThemeSupport.headerBackground(currentTheme);
+        Color border = UiCommonThemeSupport.border(currentTheme);
         Color background = blend(panel, canvas, 0.22);
         group.setBorder(new Border(new BorderStroke(
             alpha(border, 0.85),
@@ -268,17 +270,17 @@ public final class HugoPreviewToolbar extends HBox {
             -fx-background-color: linear-gradient(to bottom, %s, %s);
             -fx-background-radius: %.1f;
             """.formatted(
-            UiStyleSupport.paintToCss(background, "#152138"),
-            UiStyleSupport.paintToCss(background.darker(), "#101a2f"),
+            UiStyleSupport.paintToCss(background, "transparent"),
+            UiStyleSupport.paintToCss(background.darker(), "transparent"),
             UiMetrics.RADIUS_MD
         )));
     }
 
     private void applyAddressStyle() {
-        Color canvas = asColor(currentTheme.background(), Color.web("#0b1323"));
-        Color panel = asColor(currentTheme.headerBackgroundActive(), asColor(currentTheme.headerBackground(), canvas));
-        Color border = asColor(currentTheme.borderColor(), Color.web("#2a4366"));
-        Color accent = asColor(currentTheme.accentColor(), Color.web("#8ad8ff"));
+        Color canvas = UiCommonThemeSupport.background(currentTheme);
+        Color panel = UiCommonThemeSupport.headerBackgroundActive(currentTheme);
+        Color border = UiCommonThemeSupport.border(currentTheme);
+        Color accent = UiCommonThemeSupport.accent(currentTheme);
         Color background = blend(panel, canvas, 0.18);
 
         addressContainer.setBorder(new Border(new BorderStroke(
@@ -291,8 +293,8 @@ public final class HugoPreviewToolbar extends HBox {
             -fx-background-color: linear-gradient(to bottom, %s, %s);
             -fx-background-radius: %.1f;
             """.formatted(
-            UiStyleSupport.paintToCss(background, "#101b2e"),
-            UiStyleSupport.paintToCss(background.darker(), "#0c1526"),
+            UiStyleSupport.paintToCss(background, "transparent"),
+            UiStyleSupport.paintToCss(background.darker(), "transparent"),
             UiMetrics.RADIUS_MD
         )));
         addressLink.setTextFill(accent);
@@ -308,21 +310,17 @@ public final class HugoPreviewToolbar extends HBox {
             -fx-padding: %.1f %.1f %.1f %.1f;
             -fx-opacity: 1.0;
             """.formatted(
-            UiStyleSupport.paintToCss(background, "#253652"),
-            UiStyleSupport.paintToCss(background.darker(), "#1b2940"),
-            UiStyleSupport.paintToCss(border, "#334f7a"),
+            UiStyleSupport.paintToCss(background, "transparent"),
+            UiStyleSupport.paintToCss(background.darker(), "transparent"),
+            UiStyleSupport.paintToCss(border, "transparent"),
             UiMetrics.RADIUS_MD,
             UiMetrics.RADIUS_MD,
-            UiStyleSupport.paintToCss(text, "#edf3ff"),
+            UiStyleSupport.paintToCss(text, "transparent"),
             UiMetrics.SPACE_1,
             horizontalPadding,
             UiMetrics.SPACE_1,
             horizontalPadding
         ));
-    }
-
-    private static Color asColor(javafx.scene.paint.Paint paint, Color fallback) {
-        return UiStyleSupport.asColor(paint, fallback);
     }
 
     private static Color blend(Color base, Color mix, double weight) {

@@ -13,6 +13,7 @@ import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingType;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.List;
 
@@ -79,14 +80,14 @@ public class GitHubCategory implements SettingsCategory {
             patField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
 
             pane = new VBox(
-                12,
+                UiMetrics.SPACE_3,
                 field("GitHub Host", hostField),
                 field("Commit Author Name", authorNameField),
                 field("Commit Author Email", authorEmailField),
                 field("Personal Access Token", patField),
                 revealPat
             );
-            pane.setPadding(new Insets(8));
+            pane.setPadding(new Insets(UiMetrics.SPACE_2));
         }
         reset(context);
         return pane;
@@ -119,6 +120,6 @@ public class GitHubCategory implements SettingsCategory {
     private VBox field(String labelText, Node field) {
         Label label = new Label(labelText);
         label.setStyle("-fx-font-weight: bold;");
-        return new VBox(4, label, field);
+        return new VBox(UiMetrics.SPACE_1, label, field);
     }
 }

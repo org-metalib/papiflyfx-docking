@@ -11,6 +11,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.github.model.BranchRef;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -44,9 +45,9 @@ public class NewBranchDialog extends Dialog<NewBranchDialog.Result> {
         }
 
         GridPane grid = new GridPane();
-        grid.setHgap(8);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(12));
+        grid.setHgap(UiMetrics.SPACE_2);
+        grid.setVgap(UiMetrics.SPACE_2);
+        grid.setPadding(new Insets(UiMetrics.SPACE_3));
         grid.addRow(0, new Label("Name"), nameField);
         grid.addRow(1, new Label("Start Point"), startPoint);
 

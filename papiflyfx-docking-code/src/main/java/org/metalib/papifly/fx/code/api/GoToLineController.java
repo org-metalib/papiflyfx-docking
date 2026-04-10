@@ -16,6 +16,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
 import org.metalib.papifly.fx.code.search.SearchIcons;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
+import org.metalib.papifly.fx.ui.UiCommonPalette;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
 import org.metalib.papifly.fx.ui.UiMetrics;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
 
@@ -30,6 +32,9 @@ public class GoToLineController extends VBox {
 
     private static final String STYLESHEET_NAME = "go-to-line-overlay.css";
     private static final PseudoClass INVALID_PSEUDO_CLASS = PseudoClass.getPseudoClass("invalid");
+    private static final double OVERLAY_MIN_WIDTH = UiMetrics.SPACE_6 * 11.0;
+    private static final double OVERLAY_PREF_WIDTH = UiMetrics.SPACE_6 * 13.0;
+    private static final double OVERLAY_MAX_WIDTH = UiMetrics.SPACE_6 * 15.0;
 
     private CodeEditorTheme theme = CodeEditorTheme.dark();
     private final TextField lineField;
@@ -46,9 +51,9 @@ public class GoToLineController extends VBox {
         getStyleClass().addAll("pf-goto-overlay", "pf-ui-popup-surface");
         setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_2, UiMetrics.SPACE_1, UiMetrics.SPACE_2));
         setSpacing(UiMetrics.SPACE_1);
-        setMinWidth(260);
-        setPrefWidth(300);
-        setMaxWidth(360);
+        setMinWidth(OVERLAY_MIN_WIDTH);
+        setPrefWidth(OVERLAY_PREF_WIDTH);
+        setMaxWidth(OVERLAY_MAX_WIDTH);
         setMaxHeight(Region.USE_PREF_SIZE);
         setManaged(false);
         setVisible(false);
@@ -248,63 +253,40 @@ public class GoToLineController extends VBox {
     private SVGPath createIcon(String svgPath, double size) {
         SVGPath icon = SearchIcons.createIcon(svgPath, size);
         icon.getStyleClass().addAll("pf-goto-icon", "pf-ui-icon");
-        Color iconColor = UiStyleSupport.asColor(theme.searchOverlayPrimaryText(), Color.web("#d4d4d4"));
+        Color iconColor = UiStyleSupport.asColor(
+            theme.searchOverlayPrimaryText(),
+            UiStyleSupport.asColor(theme.editorForeground(), Color.TRANSPARENT)
+        );
         icon.setFill(iconColor);
         return icon;
     }
 
     private void applyThemeColors() {
-        Color success = Color.web("#47a473");
-        Color warning = Color.web("#c69a31");
-        Color danger = UiStyleSupport.asColor(theme.searchOverlayNoResultsBorder(), Color.web("#d16969"));
-        setStyle(UiStyleSupport.metricVariables() + UiStyleSupport.fontVariables(null) + """
-            -pf-ui-surface-panel: %s;
-            -pf-ui-surface-panel-subtle: %s;
-            -pf-ui-surface-overlay: %s;
-            -pf-ui-surface-control: %s;
-            -pf-ui-surface-control-hover: %s;
-            -pf-ui-surface-control-pressed: %s;
-            -pf-ui-surface-selected: %s;
-            -pf-ui-text-primary: %s;
-            -pf-ui-text-muted: %s;
-            -pf-ui-text-disabled: %s;
-            -pf-ui-border-default: %s;
-            -pf-ui-border-subtle: %s;
-            -pf-ui-border-focus: %s;
-            -pf-ui-accent: %s;
-            -pf-ui-accent-subtle: %s;
-            -pf-ui-success: %s;
-            -pf-ui-success-subtle: %s;
-            -pf-ui-warning: %s;
-            -pf-ui-warning-subtle: %s;
-            -pf-ui-danger: %s;
-            -pf-ui-danger-subtle: %s;
-            -pf-ui-shadow-overlay: %s;
-            """.formatted(
-            UiStyleSupport.paintToCss(theme.searchOverlayBackground(), "#252526"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
-            UiStyleSupport.paintToCss(theme.searchOverlayBackground(), "#252526"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
-            UiStyleSupport.paintToCss(theme.searchOverlayPrimaryText(), "#d4d4d4"),
-            UiStyleSupport.paintToCss(theme.searchOverlaySecondaryText(), "#858585"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlDisabledText(), "#7a7a7a"),
-            UiStyleSupport.paintToCss(theme.searchOverlayPanelBorder(), "#3f3f46"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlBorder(), "#555555"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlFocusedBorder(), "#007acc"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlFocusedBorder(), "#007acc"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
-            UiStyleSupport.paintToCss(success, "#47a473"),
-            UiStyleSupport.paintToCss(new Color(success.getRed(), success.getGreen(), success.getBlue(), 0.14), "rgba(71, 164, 115, 0.14)"),
-            UiStyleSupport.paintToCss(warning, "#c69a31"),
-            UiStyleSupport.paintToCss(new Color(warning.getRed(), warning.getGreen(), warning.getBlue(), 0.14), "rgba(198, 154, 49, 0.14)"),
-            UiStyleSupport.paintToCss(danger, "#d16969"),
-            UiStyleSupport.paintToCss(new Color(danger.getRed(), danger.getGreen(), danger.getBlue(), 0.16), "rgba(209, 105, 105, 0.16)"),
-            UiStyleSupport.paintToCss(theme.searchOverlayShadowColor(), "rgba(0, 0, 0, 0.25)")
-        ));
-        Color iconColor = UiStyleSupport.asColor(theme.searchOverlayPrimaryText(), Color.web("#d4d4d4"));
+        boolean dark = UiCommonThemeSupport.isDark(theme.editorBackground());
+        UiCommonPalette palette = new UiCommonPalette(
+            theme.searchOverlayBackground(),
+            theme.searchOverlayPanelBorder(),
+            theme.searchOverlayPrimaryText(),
+            theme.searchOverlaySecondaryText(),
+            theme.searchOverlayControlDisabledText(),
+            theme.searchOverlayControlBackground(),
+            theme.searchOverlayControlHoverBackground(),
+            theme.searchOverlayControlActiveBackground(),
+            theme.searchOverlayControlFocusedBorder(),
+            theme.searchOverlayAccentBorder(),
+            UiCommonThemeSupport.semanticColor(dark, UiCommonThemeSupport.SemanticTone.SUCCESS),
+            UiCommonThemeSupport.semanticColor(dark, UiCommonThemeSupport.SemanticTone.WARNING),
+            theme.searchOverlayNoResultsBorder(),
+            theme.searchOverlayAccentBorder(),
+            theme.searchOverlayShadowColor()
+        );
+        setStyle(UiStyleSupport.metricVariables()
+            + UiStyleSupport.fontVariables(null)
+            + UiCommonThemeSupport.themeVariables(palette));
+        Color iconColor = UiStyleSupport.asColor(
+            theme.searchOverlayPrimaryText(),
+            UiStyleSupport.asColor(theme.editorForeground(), Color.TRANSPARENT)
+        );
         lookupAll(".pf-goto-icon").forEach(node -> {
             if (node instanceof SVGPath icon) {
                 icon.setFill(iconColor);

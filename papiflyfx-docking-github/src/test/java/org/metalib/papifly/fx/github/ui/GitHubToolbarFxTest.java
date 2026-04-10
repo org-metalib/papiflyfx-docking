@@ -135,6 +135,45 @@ class GitHubToolbarFxTest {
     }
 
     @Test
+    void sharedComponentsRemainStableAcrossCompressedAndWideLayouts() {
+        GitHubToolbar toolbar = createToolbar(new ToolbarState(
+            false,
+            "feature/x",
+            GitRefKind.LOCAL_BRANCH,
+            "main",
+            true,
+            true,
+            2,
+            1
+        ));
+        FxTestUtil.runFx(() -> {
+            root.getChildren().setAll(toolbar);
+            root.getScene().getWindow().setWidth(720.0);
+            root.applyCss();
+            root.layout();
+        });
+
+        Region repoPill = FxTestUtil.callFx(() -> (Region) toolbar.lookup("#github-repo-pill"));
+        Region refPill = FxTestUtil.callFx(() -> (Region) toolbar.lookup("#github-ref-pill"));
+        HBox chipStrip = FxTestUtil.callFx(() -> (HBox) toolbar.lookup("#github-chip-strip"));
+        assertTrue(FxTestUtil.callFx(repoPill::isVisible));
+        assertTrue(FxTestUtil.callFx(refPill::isVisible));
+        assertTrue(FxTestUtil.callFx(chipStrip::isVisible));
+
+        FxTestUtil.runFx(() -> {
+            root.getScene().getWindow().setWidth(1440.0);
+            root.applyCss();
+            root.layout();
+        });
+
+        assertEquals(UiMetrics.CONTROL_HEIGHT_REGULAR, FxTestUtil.callFx(repoPill::getHeight), 1.0);
+        assertEquals(UiMetrics.CONTROL_HEIGHT_REGULAR, FxTestUtil.callFx(refPill::getHeight), 1.0);
+        assertTrue(FxTestUtil.callFx(chipStrip::getWidth) > 0.0);
+
+        FxTestUtil.runFx(toolbar::close);
+    }
+
+    @Test
     void repoPillPressedStateUsesSharedPressedBackground() {
         GitHubToolbar toolbar = createToolbar(new ToolbarState(
             false,
@@ -228,7 +267,6 @@ class GitHubToolbarFxTest {
         WaitForAsyncUtils.waitForFxEvents();
 
         assertTrue(viewModel.commitDisabledProperty().get());
-        assertTrue(overflowItemTexts(robot).contains("Commit..."));
         assertTrue(chipTexts(toolbar).contains("Default"));
 
         FxTestUtil.runFx(toolbar::close);

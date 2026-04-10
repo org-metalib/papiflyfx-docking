@@ -20,6 +20,8 @@ import org.metalib.papifly.fx.code.document.Document;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 import org.metalib.papifly.fx.searchui.SearchOverlayBase;
 import org.metalib.papifly.fx.ui.UiChipToggle;
+import org.metalib.papifly.fx.ui.UiCommonPalette;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
 import org.metalib.papifly.fx.ui.UiMetrics;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
 
@@ -41,6 +43,10 @@ public class SearchController extends SearchOverlayBase {
     private static final String STYLESHEET_NAME = "search-overlay.css";
     private static final PseudoClass NO_RESULTS_PSEUDO_CLASS = PseudoClass.getPseudoClass("no-results");
     private static final double FIELD_HEIGHT = UiMetrics.CONTROL_HEIGHT_COMPACT;
+    private static final double OVERLAY_MIN_WIDTH = UiMetrics.SPACE_6 * 22.0;
+    private static final double OVERLAY_PREF_WIDTH = UiMetrics.SPACE_6 * 26.0;
+    private static final double OVERLAY_MAX_WIDTH = UiMetrics.SPACE_6 * 32.0;
+    private static final double RESULT_LABEL_MIN_WIDTH = UiMetrics.SPACE_4 * 5.0;
 
     private CodeEditorTheme theme = CodeEditorTheme.dark();
     private final SearchModel searchModel;
@@ -79,9 +85,9 @@ public class SearchController extends SearchOverlayBase {
         getStyleClass().addAll("pf-search-overlay", "pf-ui-popup-surface");
         setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_2, UiMetrics.SPACE_1, UiMetrics.SPACE_2));
         setSpacing(UiMetrics.SPACE_1);
-        setMinWidth(520);
-        setPrefWidth(620);
-        setMaxWidth(760);
+        setMinWidth(OVERLAY_MIN_WIDTH);
+        setPrefWidth(OVERLAY_PREF_WIDTH);
+        setMaxWidth(OVERLAY_MAX_WIDTH);
         setMaxHeight(Region.USE_PREF_SIZE);
         setManaged(false);
         setVisible(false);
@@ -129,7 +135,7 @@ public class SearchController extends SearchOverlayBase {
 
         matchCountLabel = new Label();
         matchCountLabel.getStyleClass().addAll("pf-search-result-label", "pf-ui-result-label");
-        matchCountLabel.setMinWidth(76);
+        matchCountLabel.setMinWidth(RESULT_LABEL_MIN_WIDTH);
         matchCountLabel.setAlignment(Pos.CENTER_RIGHT);
 
         caseSensitiveToggle = createChipToggle("Aa");
@@ -565,88 +571,31 @@ public class SearchController extends SearchOverlayBase {
     }
 
     private void applyThemeColors() {
-        Color accent = UiStyleSupport.asColor(theme.searchOverlayAccentBorder(), Color.web("#007acc"));
-        Color success = Color.web("#47a473");
-        Color warning = Color.web("#c69a31");
-        Color danger = UiStyleSupport.asColor(theme.searchOverlayNoResultsBorder(), Color.web("#d16969"));
-        setStyle(UiStyleSupport.metricVariables() + UiStyleSupport.fontVariables(null) + """
-            -pf-ui-surface-panel: %s;
-            -pf-ui-surface-panel-subtle: %s;
-            -pf-ui-surface-overlay: %s;
-            -pf-ui-surface-control: %s;
-            -pf-ui-surface-control-hover: %s;
-            -pf-ui-surface-control-pressed: %s;
-            -pf-ui-surface-selected: %s;
-            -pf-ui-text-primary: %s;
-            -pf-ui-text-muted: %s;
-            -pf-ui-text-disabled: %s;
-            -pf-ui-border-default: %s;
-            -pf-ui-border-subtle: %s;
-            -pf-ui-border-focus: %s;
-            -pf-ui-accent: %s;
-            -pf-ui-accent-subtle: %s;
-            -pf-ui-success: %s;
-            -pf-ui-success-subtle: %s;
-            -pf-ui-warning: %s;
-            -pf-ui-warning-subtle: %s;
-            -pf-ui-danger: %s;
-            -pf-ui-danger-subtle: %s;
-            -pf-ui-shadow-overlay: %s;
-            -pf-search-bg: %s;
-            -pf-search-panel-border: %s;
-            -pf-search-accent: %s;
-            -pf-search-text: %s;
-            -pf-search-muted-text: %s;
-            -pf-search-control-bg: %s;
-            -pf-search-control-border: %s;
-            -pf-search-control-hover-bg: %s;
-            -pf-search-control-active-bg: %s;
-            -pf-search-control-focused-border: %s;
-            -pf-search-control-disabled-text: %s;
-            -pf-search-no-results-border: %s;
-            -pf-search-shadow: %s;
-            -pf-search-integrated-toggle-active: %s;
-            -pf-search-error-bg: %s;
-            """.formatted(
-            UiStyleSupport.paintToCss(theme.searchOverlayBackground(), "#252526"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
-            UiStyleSupport.paintToCss(theme.searchOverlayBackground(), "#252526"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlActiveBackground(), "#164f7a"),
-            UiStyleSupport.paintToCss(theme.searchOverlayIntegratedToggleActive(), "#007acc"),
-            UiStyleSupport.paintToCss(theme.searchOverlayPrimaryText(), "#d4d4d4"),
-            UiStyleSupport.paintToCss(theme.searchOverlaySecondaryText(), "#858585"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlDisabledText(), "#7a7a7a"),
-            UiStyleSupport.paintToCss(theme.searchOverlayPanelBorder(), "#3f3f46"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlBorder(), "#555555"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlFocusedBorder(), "#007acc"),
-            UiStyleSupport.paintToCss(accent, "#007acc"),
-            UiStyleSupport.paintToCss(theme.searchOverlayIntegratedToggleActive(), "#007acc"),
-            UiStyleSupport.paintToCss(success, "#47a473"),
-            UiStyleSupport.paintToCss(new Color(success.getRed(), success.getGreen(), success.getBlue(), 0.14), "rgba(71, 164, 115, 0.14)"),
-            UiStyleSupport.paintToCss(warning, "#c69a31"),
-            UiStyleSupport.paintToCss(new Color(warning.getRed(), warning.getGreen(), warning.getBlue(), 0.14), "rgba(198, 154, 49, 0.14)"),
-            UiStyleSupport.paintToCss(danger, "#d16969"),
-            UiStyleSupport.paintToCss(theme.searchOverlayErrorBackground(), "rgba(209, 105, 105, 0.16)"),
-            UiStyleSupport.paintToCss(theme.searchOverlayShadowColor(), "rgba(0, 0, 0, 0.25)"),
-            UiStyleSupport.paintToCss(theme.searchOverlayBackground(), "#252526"),
-            UiStyleSupport.paintToCss(theme.searchOverlayPanelBorder(), "#3f3f46"),
-            UiStyleSupport.paintToCss(accent, "#007acc"),
-            UiStyleSupport.paintToCss(theme.searchOverlayPrimaryText(), "#d4d4d4"),
-            UiStyleSupport.paintToCss(theme.searchOverlaySecondaryText(), "#858585"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlBorder(), "#555555"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlActiveBackground(), "#164f7a"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlFocusedBorder(), "#007acc"),
-            UiStyleSupport.paintToCss(theme.searchOverlayControlDisabledText(), "#7a7a7a"),
-            UiStyleSupport.paintToCss(danger, "#d16969"),
-            UiStyleSupport.paintToCss(theme.searchOverlayShadowColor(), "rgba(0, 0, 0, 0.25)"),
-            UiStyleSupport.paintToCss(theme.searchOverlayIntegratedToggleActive(), "#007acc"),
-            UiStyleSupport.paintToCss(theme.searchOverlayErrorBackground(), "rgba(209, 105, 105, 0.16)")
-        ));
-        Color iconColor = UiStyleSupport.asColor(theme.searchOverlayPrimaryText(), Color.web("#d4d4d4"));
+        boolean dark = UiCommonThemeSupport.isDark(theme.editorBackground());
+        UiCommonPalette palette = new UiCommonPalette(
+            theme.searchOverlayBackground(),
+            theme.searchOverlayPanelBorder(),
+            theme.searchOverlayPrimaryText(),
+            theme.searchOverlaySecondaryText(),
+            theme.searchOverlayControlDisabledText(),
+            theme.searchOverlayControlBackground(),
+            theme.searchOverlayControlHoverBackground(),
+            theme.searchOverlayControlActiveBackground(),
+            theme.searchOverlayControlFocusedBorder(),
+            theme.searchOverlayAccentBorder(),
+            UiCommonThemeSupport.semanticColor(dark, UiCommonThemeSupport.SemanticTone.SUCCESS),
+            UiCommonThemeSupport.semanticColor(dark, UiCommonThemeSupport.SemanticTone.WARNING),
+            theme.searchOverlayNoResultsBorder(),
+            theme.searchOverlayAccentBorder(),
+            theme.searchOverlayShadowColor()
+        );
+        setStyle(UiStyleSupport.metricVariables()
+            + UiStyleSupport.fontVariables(null)
+            + UiCommonThemeSupport.themeVariables(palette));
+        Color iconColor = UiStyleSupport.asColor(
+            theme.searchOverlayPrimaryText(),
+            UiStyleSupport.asColor(theme.editorForeground(), Color.TRANSPARENT)
+        );
         for (SVGPath icon : iconNodes) {
             icon.setFill(iconColor);
         }

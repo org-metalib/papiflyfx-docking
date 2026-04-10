@@ -219,6 +219,34 @@ class MediaViewerFxTest {
         });
     }
 
+    @Test
+    void bindThemePropertyPropagatesToEmbedViewer(FxRobot robot) {
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        AtomicReference<Color> darkBackground = new AtomicReference<>();
+
+        robot.interact(() -> {
+            viewer.loadMedia("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+            viewer.bindThemeProperty(themeProperty);
+        });
+        robot.interact(() -> {});
+
+        robot.interact(() -> {
+            EmbedViewer embedViewer = (EmbedViewer) viewer.getChildren().get(0);
+            darkBackground.set(backgroundColor(embedViewer));
+            themeProperty.set(Theme.light());
+        });
+        robot.interact(() -> {});
+
+        robot.interact(() -> {
+            EmbedViewer embedViewer = (EmbedViewer) viewer.getChildren().get(0);
+            Color lightBackground = backgroundColor(embedViewer);
+            assertNotNull(darkBackground.get());
+            assertNotNull(lightBackground);
+            assertNotEquals(darkBackground.get(), lightBackground);
+            assertEquals(Theme.light().background(), lightBackground);
+        });
+    }
+
     private static <T> T findDescendant(Node root, Class<T> type) {
         if (type.isInstance(root)) return type.cast(root);
         if (root instanceof Parent parent) {

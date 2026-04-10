@@ -16,6 +16,7 @@ import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.media.controls.TransportBar;
 import org.metalib.papifly.fx.media.player.MediaPlayerService;
 import org.metalib.papifly.fx.media.theme.MediaThemeMapper;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 public class AudioViewer extends StackPane {
 
@@ -34,7 +35,7 @@ public class AudioViewer extends StackPane {
     public AudioViewer() {
         setAlignment(Pos.BOTTOM_CENTER);
         StackPane.setAlignment(transportBar, Pos.BOTTOM_CENTER);
-        StackPane.setMargin(transportBar, new Insets(0, 8, 8, 8));
+        StackPane.setMargin(transportBar, new Insets(0, UiMetrics.SPACE_2, UiMetrics.SPACE_2, UiMetrics.SPACE_2));
 
         getChildren().addAll(waveformPlaceholder, transportBar);
         transportBar.themeProperty().bind(themeProperty);
