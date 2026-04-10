@@ -1,6 +1,7 @@
 package org.metalib.papifly.fx.settings.secret;
 
 import org.metalib.papifly.fx.settings.api.SecretStore;
+import org.metalib.papifly.fx.settings.internal.AtomicFileWriter;
 import org.metalib.papifly.fx.settings.internal.SettingsJsonCodec;
 
 import javax.crypto.Cipher;
@@ -23,8 +24,12 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class EncryptedFileSecretStore implements SecretStore {
+
+    private static final Logger LOG = Logger.getLogger(EncryptedFileSecretStore.class.getName());
 
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final String KDF = "PBKDF2WithHmacSHA256";
@@ -85,27 +90,44 @@ public class EncryptedFileSecretStore implements SecretStore {
             return new LinkedHashMap<>();
         }
         try {
-            String json = Files.readString(secretsFile, StandardCharsets.UTF_8);
-            Map<String, Object> envelope = codec.fromJson(json);
-            byte[] salt = decode(envelope.get("salt"));
-            byte[] iv = decode(envelope.get("iv"));
-            byte[] encrypted = decode(envelope.get("payload"));
-            byte[] decrypted = decrypt(encrypted, salt, iv);
-            try {
-                String payloadJson = new String(decrypted, StandardCharsets.UTF_8);
-                Map<String, Object> payload = codec.fromJson(payloadJson);
-                Map<String, String> secrets = new LinkedHashMap<>();
-                for (Map.Entry<String, Object> entry : payload.entrySet()) {
-                    if (entry.getValue() != null) {
-                        secrets.put(entry.getKey(), String.valueOf(entry.getValue()));
-                    }
+            return parseSecretsFile(secretsFile);
+        } catch (Exception primary) {
+            LOG.log(Level.WARNING, "Corrupted secrets file " + secretsFile + ", attempting .bak recovery", primary);
+            Path bakFile = secretsFile.resolveSibling(secretsFile.getFileName() + ".bak");
+            if (Files.exists(bakFile)) {
+                try {
+                    Map<String, String> recovered = parseSecretsFile(bakFile);
+                    LOG.info("Recovered secrets from backup " + bakFile);
+                    return recovered;
+                } catch (Exception secondary) {
+                    LOG.log(Level.SEVERE, "Backup file " + bakFile + " is also corrupted, resetting to empty", secondary);
                 }
-                return secrets;
-            } finally {
-                Arrays.fill(decrypted, (byte) 0);
+            } else {
+                LOG.severe("No backup file found at " + bakFile + ", resetting to empty");
             }
-        } catch (IOException | GeneralSecurityException exception) {
-            throw new IllegalStateException("Unable to read encrypted secrets from " + secretsFile, exception);
+            return new LinkedHashMap<>();
+        }
+    }
+
+    private Map<String, String> parseSecretsFile(Path path) throws IOException, GeneralSecurityException {
+        String json = Files.readString(path, StandardCharsets.UTF_8);
+        Map<String, Object> envelope = codec.fromJson(json);
+        byte[] salt = decode(envelope.get("salt"));
+        byte[] iv = decode(envelope.get("iv"));
+        byte[] encrypted = decode(envelope.get("payload"));
+        byte[] decrypted = decrypt(encrypted, salt, iv);
+        try {
+            String payloadJson = new String(decrypted, StandardCharsets.UTF_8);
+            Map<String, Object> payload = codec.fromJson(payloadJson);
+            Map<String, String> secrets = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : payload.entrySet()) {
+                if (entry.getValue() != null) {
+                    secrets.put(entry.getKey(), String.valueOf(entry.getValue()));
+                }
+            }
+            return secrets;
+        } finally {
+            Arrays.fill(decrypted, (byte) 0);
         }
     }
 
@@ -125,11 +147,7 @@ public class EncryptedFileSecretStore implements SecretStore {
                 envelope.put("salt", Base64.getEncoder().encodeToString(salt));
                 envelope.put("iv", Base64.getEncoder().encodeToString(iv));
                 envelope.put("payload", Base64.getEncoder().encodeToString(encrypted));
-                Path parent = secretsFile.getParent();
-                if (parent != null) {
-                    Files.createDirectories(parent);
-                }
-                Files.writeString(secretsFile, codec.toJson(envelope), StandardCharsets.UTF_8);
+                AtomicFileWriter.writeAtomically(secretsFile, codec.toJson(envelope));
             } finally {
                 Arrays.fill(encrypted, (byte) 0);
             }

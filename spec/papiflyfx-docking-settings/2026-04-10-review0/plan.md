@@ -18,11 +18,11 @@
 - [x] A.3: Centralize validation aggregation and replace ad-hoc dirty tracking with observable/property-backed state.
 
 ## Phase 3: Security & Storage Hardening
-- [ ] D.1: Redesign `SecurityCategory` to never reload stored secret values.
-- [ ] D.2: Implement lifecycle actions (rotate/delete) for secrets.
-- [ ] D.3: Implement atomic save behavior for JSON settings (atomic swap).
-- [ ] D.4: Define and document corruption recovery strategy.
-- [ ] D.5: Revisit encrypted-file fallback threat model and document constraints.
+- [x] D.1: Redesign `SecurityCategory` to never reload stored secret values.
+- [x] D.2: Implement lifecycle actions (rotate/delete) for secrets.
+- [x] D.3: Implement atomic save behavior for JSON settings (atomic swap).
+- [x] D.4: Define and document corruption recovery strategy.
+- [x] D.5: Revisit encrypted-file fallback threat model and document constraints.
 
 ## Phase 4: State & Styling Cleanup
 - [x] E.1: Remove periodic timer loops for UI refresh (event-driven dirty/valid state).

@@ -1,20 +1,29 @@
 # Progress: PapiflyFX Settings Refactor (review0)
 
-Current Milestone: **Phase 2: Composable UI Refactor**
+Current Milestone: **Phase 3: Security & Storage Hardening**
 
 - **Projected End Date:** 2026-04-17
-- **Current Velocity:** Phases 1+2 completed in single session
-- **Status:** [IN_PROGRESS — Phases 1+2 complete, awaiting review gates]
+- **Current Velocity:** Phases 1–3 completed in single session
+- **Status:** [IN_PROGRESS — Phases 1–3 complete, awaiting review gates]
 
 ## Completion Summary
-- **Overall Completion:** ~50%
+- **Overall Completion:** ~70%
 - **Phase 1 (Runtime & Scope Safety):** 100%
 - **Phase 2 (Composable UI Refactor):** 100%
-- **Phase 3 (Security & Storage Hardening):** 0%
+- **Phase 3 (Security & Storage Hardening):** 100%
 - **Phase 4 (State & Styling Cleanup):** 50% (E.1 timer removal done; E.2 CSS tokens pending)
 - **Phase 5 (Documentation Sync):** 0%
 
-## Recent Accomplishments
+## Phase 3 Accomplishments
+- [2026-04-10] **D.1:** Redesigned `SecurityCategory` to never reload stored secret values. Uses `hasSecret()` to show "Set"/"Not Set" status. Replaced `SecretSettingControl` with a plain `PasswordField` for entering new values only.
+- [2026-04-10] **D.2:** Implemented lifecycle actions: "Save Secret" (replace/rotate) and "Clear Secret" (delete). UI operates on key aliases, not stored values. Category now exposes `dirtyProperty()` for deterministic toolbar binding.
+- [2026-04-10] **D.1 (DefinitionFormBinder):** Updated `loadControl()` for SECRET types to set controls to empty string instead of loading stored values. Updated `saveControl()` to skip empty SECRET fields (no-change semantics).
+- [2026-04-10] **D.3:** Implemented `AtomicFileWriter` utility — writes to `.tmp` then atomically renames to target. Creates `.bak` of existing file before overwrite. Used by `JsonSettingsStorage.writeScope()` and `EncryptedFileSecretStore.saveSecrets()`.
+- [2026-04-10] **D.4:** Implemented corruption recovery in `JsonSettingsStorage.readScope()` and `EncryptedFileSecretStore.loadSecrets()`. On parse failure, attempts `.bak` recovery. If both fail, resets to empty defaults. All recovery steps logged via `java.util.logging`.
+- [2026-04-10] **D.5:** Created `validation.md` documenting: secret non-re-exposure invariant, atomic persistence guarantees, corruption recovery strategy, and encrypted-file fallback threat model with machine-metadata key derivation risks and recommendations.
+- [2026-04-10] Added tests: `AtomicFileWriterTest` (3 tests), corruption recovery tests for `JsonSettingsStorageTest` (3 new) and `EncryptedFileSecretStoreTest` (3 new). All 17 settings module tests pass.
+
+## Recent Accomplishments (Phase 1+2)
 - [2026-04-10] Initialized `plan.md` and `progress.md` based on the unified total review plan.
 - [2026-04-10] Status of the refactor plan updated to `accepted`.
 - [2026-04-10] **B.1:** Refactored `SettingsStateAdapter` — replaced hidden default runtime with static `RuntimeHolder` pattern. No-arg ctor now fails if host has not called `setSharedRuntime()`.
@@ -37,12 +46,14 @@ Current Milestone: **Phase 2: Composable UI Refactor**
 - [2026-04-10] All 8 settings module tests, 12 samples smoke tests, and full compile pass (headless).
 
 ## Upcoming Tasks
-- Phase 1+2 review gates: @core-architect, @auth-specialist, @ui-ux-designer, @qa-engineer, @spec-steward
-- Phase 3: Security & Storage Hardening
-- MCP Servers and Keyboard Shortcuts categories have CUSTOM-type definitions requiring manual UI — candidates for Phase 3 or later composability improvements.
+- Phase 3 review gates: @auth-specialist (security audit), @ops-engineer (atomic file handling), @qa-engineer (failure scenario tests), @spec-steward (validation.md review)
+- Phase 4: E.2 — Replace inline styles with `-pf-ui-*` tokens and shared CSS classes
+- Phase 5: Documentation sync
+- MCP Servers and Keyboard Shortcuts categories have CUSTOM-type definitions requiring manual UI — candidates for later composability improvements.
 
 ## Blockers & Risks
 - **Risk:** Runtime bootstrap changes might break login or sample integration if not carefully implemented.
-- **Mitigation:** ✅ Verified — `SamplesRuntimeSupport` registers the shared runtime before any consumer, and all integration tests pass.
+- **Mitigation:** Verified — `SamplesRuntimeSupport` registers the shared runtime before any consumer, and all integration tests pass.
 - **Residual risk:** Third-party modules that discover `SettingsServicesProvider` or `SettingsStateAdapter` via ServiceLoader without calling `setSharedRuntime()` first will get a clear `IllegalStateException` (fail-closed by design).
-- **Residual risk:** Categories not yet migrated to `dirtyProperty()` (Security, Profiles, Auth, MCP, Shortcuts) rely on `isDirty()` polled only at action points. This is acceptable but means their dirty indicator may lag until the next user interaction.
+- **Residual risk:** Categories not yet migrated to `dirtyProperty()` (Profiles, Auth, MCP, Shortcuts) rely on `isDirty()` polled only at action points. SecurityCategory is now migrated.
+- **Residual risk:** PBKDF2 iteration count (65,536) is below OWASP 2023 recommendation (600k+). Documented in `validation.md` as future work.

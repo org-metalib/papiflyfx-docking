@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.metalib.papifly.fx.settings.api.SettingScope;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -41,6 +43,52 @@ class JsonSettingsStorageTest {
         storage.reload();
 
         assertFalse(storage.getBoolean(SettingScope.SESSION, "panel.open", false));
+    }
+
+    @Test
+    void createsBackupFileOnSave() throws Exception {
+        Path appDir = tempDir.resolve("app");
+        JsonSettingsStorage storage = new JsonSettingsStorage(appDir);
+        storage.putString(SettingScope.APPLICATION, "key", "first");
+        storage.save();
+
+        storage.putString(SettingScope.APPLICATION, "key", "second");
+        storage.save();
+
+        Path bakFile = appDir.resolve("settings.json.bak");
+        assertTrue(Files.exists(bakFile), "Backup file should exist after second save");
+        String bakContent = Files.readString(bakFile, StandardCharsets.UTF_8);
+        assertTrue(bakContent.contains("first"), "Backup should contain old value");
+    }
+
+    @Test
+    void recoversFromCorruptedFileUsingBackup() throws Exception {
+        Path appDir = tempDir.resolve("app");
+        JsonSettingsStorage storage = new JsonSettingsStorage(appDir);
+        storage.putString(SettingScope.APPLICATION, "theme", "dark");
+        storage.save();
+
+        // Save again to create a .bak with "dark"
+        storage.putString(SettingScope.APPLICATION, "theme", "light");
+        storage.save();
+
+        // Corrupt the primary file
+        Files.writeString(appDir.resolve("settings.json"), "NOT VALID JSON {{{{", StandardCharsets.UTF_8);
+
+        // Reload — should recover from backup
+        JsonSettingsStorage recovered = new JsonSettingsStorage(appDir);
+        assertEquals("dark", recovered.getString(SettingScope.APPLICATION, "theme", "default"));
+    }
+
+    @Test
+    void resetsToDefaultsWhenBothPrimaryAndBackupCorrupted() throws Exception {
+        Path appDir = tempDir.resolve("app");
+        Files.createDirectories(appDir);
+        Files.writeString(appDir.resolve("settings.json"), "CORRUPT", StandardCharsets.UTF_8);
+        Files.writeString(appDir.resolve("settings.json.bak"), "ALSO CORRUPT", StandardCharsets.UTF_8);
+
+        JsonSettingsStorage storage = new JsonSettingsStorage(appDir);
+        assertEquals("fallback", storage.getString(SettingScope.APPLICATION, "missing", "fallback"));
     }
 
     @Test

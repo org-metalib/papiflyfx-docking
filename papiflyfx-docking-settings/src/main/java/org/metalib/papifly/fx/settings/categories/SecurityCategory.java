@@ -1,39 +1,49 @@
 package org.metalib.papifly.fx.settings.categories;
 
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.ReadOnlyBooleanWrapper;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import org.metalib.papifly.fx.settings.api.SecretStore;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
 import org.metalib.papifly.fx.settings.api.SettingScope;
-import org.metalib.papifly.fx.settings.api.SecretStore;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.secret.EncryptedFileSecretStore;
-import org.metalib.papifly.fx.settings.ui.controls.SecretSettingControl;
 
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Secret administration category.
+ *
+ * <p>This category never reloads stored secret values into the UI.
+ * It shows whether each key is "Set" or "Not Set" and provides
+ * lifecycle actions: <b>Replace</b> (set a new value) and <b>Clear</b>
+ * (delete the stored value).
+ */
 public class SecurityCategory implements SettingsCategory {
-
-    private static final SettingDefinition<String> SECRET_DEFINITION = SettingDefinition
-        .of("security.secret", "Secret Value", org.metalib.papifly.fx.settings.api.SettingType.SECRET, "")
-        .withDescription("Store or update a secret value for the selected key.");
 
     private BorderPane pane;
     private ListView<String> keysView;
     private TextField keyField;
-    private SecretSettingControl secretControl;
+    private PasswordField newValueField;
+    private Label statusLabel;
     private Label backendLabel;
     private Label warningLabel;
-    private boolean dirty;
+    private Button replaceButton;
+    private Button clearButton;
+    private Button newButton;
+    private final ReadOnlyBooleanWrapper dirty = new ReadOnlyBooleanWrapper(false);
 
     @Override
     public String id() {
@@ -61,43 +71,54 @@ public class SecurityCategory implements SettingsCategory {
     }
 
     @Override
+    public ReadOnlyBooleanProperty dirtyProperty() {
+        return dirty.getReadOnlyProperty();
+    }
+
+    @Override
     public Node buildSettingsPane(SettingsContext context) {
         if (pane == null) {
             keysView = new ListView<>();
             keyField = new TextField();
             keyField.setPromptText("secret:key:name");
-            secretControl = new SecretSettingControl(SECRET_DEFINITION);
+            newValueField = new PasswordField();
+            newValueField.setPromptText("Enter new secret value");
+            statusLabel = new Label();
             backendLabel = new Label();
             warningLabel = new Label();
             warningLabel.setStyle("-fx-text-fill: #b07000;");
             warningLabel.setWrapText(true);
 
-            keyField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
-            secretControl.setOnChange(() -> dirty = true);
-            keysView.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> loadSelection(context, newValue));
+            keyField.textProperty().addListener((obs, oldValue, newValue) -> dirty.set(true));
+            newValueField.textProperty().addListener((obs, oldValue, newValue) -> dirty.set(true));
+            keysView.getSelectionModel().selectedItemProperty().addListener(
+                (obs, oldValue, newValue) -> showKeyStatus(context, newValue));
 
-            Button newButton = new Button("New");
+            newButton = new Button("New");
             newButton.setOnAction(event -> {
                 keysView.getSelectionModel().clearSelection();
                 keyField.clear();
-                secretControl.setValue("");
-                dirty = false;
+                newValueField.clear();
+                statusLabel.setText("");
+                dirty.set(false);
             });
 
-            Button saveButton = new Button("Save Secret");
-            saveButton.setOnAction(event -> {
+            replaceButton = new Button("Save Secret");
+            replaceButton.setOnAction(event -> {
                 String key = keyField.getText() == null ? "" : keyField.getText().trim();
-                if (key.isEmpty()) {
+                String value = newValueField.getText();
+                if (key.isEmpty() || value == null || value.isEmpty()) {
                     return;
                 }
-                context.secretStore().setSecret(key, secretControl.getValue());
+                context.secretStore().setSecret(key, value);
+                newValueField.clear();
                 refreshKeys(context);
                 keysView.getSelectionModel().select(key);
-                dirty = false;
+                dirty.set(false);
             });
 
-            Button deleteButton = new Button("Delete Secret");
-            deleteButton.setOnAction(event -> {
+            clearButton = new Button("Clear Secret");
+            clearButton.setOnAction(event -> {
                 String key = keyField.getText() == null ? "" : keyField.getText().trim();
                 if (key.isEmpty()) {
                     return;
@@ -105,14 +126,15 @@ public class SecurityCategory implements SettingsCategory {
                 context.secretStore().clearSecret(key);
                 refreshKeys(context);
                 keyField.clear();
-                secretControl.setValue("");
-                dirty = false;
+                newValueField.clear();
+                statusLabel.setText("");
+                dirty.set(false);
             });
 
-            HBox buttons = new HBox(8, newButton, saveButton, deleteButton);
-            VBox form = new VBox(12, backendLabel, warningLabel, keyField, secretControl, buttons);
+            HBox buttons = new HBox(8, newButton, replaceButton, clearButton);
+            VBox form = new VBox(12, backendLabel, warningLabel, keyField, statusLabel, newValueField, buttons);
             form.setPadding(new Insets(0, 0, 0, 12));
-            VBox.setVgrow(secretControl, Priority.NEVER);
+            VBox.setVgrow(newValueField, Priority.NEVER);
 
             pane = new BorderPane();
             pane.setLeft(keysView);
@@ -126,31 +148,34 @@ public class SecurityCategory implements SettingsCategory {
             ? "Secrets are stored in the encrypted-file backend. OS keychain integration is not active."
             : "");
         refreshKeys(context);
-        dirty = false;
+        dirty.set(false);
         return pane;
     }
 
     @Override
     public void apply(SettingsContext context) {
         String key = keyField.getText() == null ? "" : keyField.getText().trim();
-        if (!key.isEmpty()) {
-            context.secretStore().setSecret(key, secretControl.getValue());
+        String value = newValueField.getText();
+        if (!key.isEmpty() && value != null && !value.isEmpty()) {
+            context.secretStore().setSecret(key, value);
+            newValueField.clear();
         }
         refreshKeys(context);
-        dirty = false;
+        dirty.set(false);
     }
 
     @Override
     public void reset(SettingsContext context) {
-        String selected = keysView == null ? null : keysView.getSelectionModel().getSelectedItem();
         refreshKeys(context);
-        loadSelection(context, selected);
-        dirty = false;
+        String selected = keysView == null ? null : keysView.getSelectionModel().getSelectedItem();
+        showKeyStatus(context, selected);
+        newValueField.clear();
+        dirty.set(false);
     }
 
     @Override
     public boolean isDirty() {
-        return dirty;
+        return dirty.get();
     }
 
     private void refreshKeys(SettingsContext context) {
@@ -158,12 +183,21 @@ public class SecurityCategory implements SettingsCategory {
         keysView.getItems().setAll(keys);
     }
 
-    private void loadSelection(SettingsContext context, String key) {
+    /**
+     * Shows whether the selected key has a stored value, without revealing it.
+     */
+    private void showKeyStatus(SettingsContext context, String key) {
         if (key == null || key.isBlank()) {
+            statusLabel.setText("");
             return;
         }
         keyField.setText(key);
-        secretControl.setValue(context.secretStore().getSecret(key).orElse(""));
-        dirty = false;
+        newValueField.clear();
+        boolean hasValue = context.secretStore().hasSecret(key);
+        statusLabel.setText(hasValue ? "Status: Set" : "Status: Not Set");
+        statusLabel.setStyle(hasValue
+            ? "-fx-text-fill: #308030; -fx-font-weight: bold;"
+            : "-fx-text-fill: #808080;");
+        dirty.set(false);
     }
 }

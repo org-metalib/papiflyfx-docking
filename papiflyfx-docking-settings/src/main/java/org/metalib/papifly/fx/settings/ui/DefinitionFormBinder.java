@@ -137,9 +137,9 @@ public final class DefinitionFormBinder {
         String key = definition.key();
 
         if (definition.secret() || definition.type() == SettingType.SECRET) {
-            ((SettingControl<String>) control).setValue(
-                secretStore.getSecret(key).orElse((String) definition.defaultValue())
-            );
+            // Never reload stored secret values into UI controls.
+            // Show empty field; the user must enter a new value to replace.
+            ((SettingControl<String>) control).setValue("");
             return;
         }
 
@@ -190,7 +190,12 @@ public final class DefinitionFormBinder {
         Object value = control.getValue();
 
         if (definition.secret() || definition.type() == SettingType.SECRET) {
-            secretStore.setSecret(key, value == null ? "" : String.valueOf(value));
+            // Only update the secret if the user entered a new non-empty value.
+            // An empty field means "no change", not "clear the secret".
+            String secretValue = value == null ? "" : String.valueOf(value);
+            if (!secretValue.isEmpty()) {
+                secretStore.setSecret(key, secretValue);
+            }
             return;
         }
 
