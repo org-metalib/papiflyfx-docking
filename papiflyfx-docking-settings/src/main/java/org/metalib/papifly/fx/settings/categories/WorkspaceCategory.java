@@ -1,14 +1,13 @@
 package org.metalib.papifly.fx.settings.categories;
 
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.scene.Node;
-import javafx.scene.layout.VBox;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
 import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingType;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
-import org.metalib.papifly.fx.settings.ui.controls.BooleanSettingControl;
-import org.metalib.papifly.fx.settings.ui.controls.EnumSettingControl;
+import org.metalib.papifly.fx.settings.ui.DefinitionFormBinder;
 
 import java.util.List;
 
@@ -33,11 +32,7 @@ public class WorkspaceCategory implements SettingsCategory {
         .withScope(SettingScope.WORKSPACE)
         .withDescription("Selects the preferred workspace layout preset.");
 
-    private BooleanSettingControl restoreControl;
-    private BooleanSettingControl animationControl;
-    private EnumSettingControl<LayoutPreset> presetControl;
-    private VBox pane;
-    private boolean dirty;
+    private DefinitionFormBinder binder;
 
     @Override
     public String id() {
@@ -61,44 +56,31 @@ public class WorkspaceCategory implements SettingsCategory {
 
     @Override
     public Node buildSettingsPane(SettingsContext context) {
-        if (pane == null) {
-            pane = new VBox(12);
-            restoreControl = new BooleanSettingControl(RESTORE_DEFINITION);
-            animationControl = new BooleanSettingControl(ANIMATION_DEFINITION);
-            presetControl = new EnumSettingControl<>(PRESET_DEFINITION);
-            restoreControl.setOnChange(this::markDirty);
-            animationControl.setOnChange(this::markDirty);
-            presetControl.setOnChange(this::markDirty);
-            pane.getChildren().addAll(restoreControl, animationControl, presetControl);
+        if (binder == null) {
+            binder = new DefinitionFormBinder(definitions());
         }
-        reset(context);
-        return pane;
+        binder.load(context);
+        return binder.pane();
     }
 
     @Override
     public void apply(SettingsContext context) {
-        context.storage().putBoolean(SettingScope.WORKSPACE, RESTORE_DEFINITION.key(), restoreControl.getValue());
-        context.storage().putBoolean(SettingScope.WORKSPACE, ANIMATION_DEFINITION.key(), animationControl.getValue());
-        context.storage().putString(SettingScope.WORKSPACE, PRESET_DEFINITION.key(), presetControl.getValue().name().toLowerCase());
+        binder.save(context);
         context.storage().save();
-        dirty = false;
     }
 
     @Override
     public void reset(SettingsContext context) {
-        restoreControl.setValue(context.storage().getBoolean(SettingScope.WORKSPACE, RESTORE_DEFINITION.key(), RESTORE_DEFINITION.defaultValue()));
-        animationControl.setValue(context.storage().getBoolean(SettingScope.WORKSPACE, ANIMATION_DEFINITION.key(), ANIMATION_DEFINITION.defaultValue()));
-        String preset = context.storage().getString(SettingScope.WORKSPACE, PRESET_DEFINITION.key(), PRESET_DEFINITION.defaultValue().name().toLowerCase());
-        presetControl.setValue("document".equalsIgnoreCase(preset) ? LayoutPreset.DOCUMENT : "review".equalsIgnoreCase(preset) ? LayoutPreset.REVIEW : LayoutPreset.IDE);
-        dirty = false;
+        binder.load(context);
     }
 
     @Override
     public boolean isDirty() {
-        return dirty;
+        return binder != null && binder.isDirty();
     }
 
-    private void markDirty() {
-        dirty = true;
+    @Override
+    public ReadOnlyBooleanProperty dirtyProperty() {
+        return binder == null ? null : binder.dirtyProperty();
     }
 }

@@ -1,7 +1,7 @@
 # Implementation Plan: PapiflyFX Settings Refactor (review0)
 
 - **Lead Agent:** `@ops-engineer`
-- **Reference:** [refactor-plan-gemini-total.md](refactor-plan-gemini-total.md)
+- **Reference:** [refactor-plan-gemini-total.md](/corefactor-plan-gemini-total.md)
 - **Status:** in-progress
 
 ## Phase 1: Runtime & Scope Safety
@@ -13,9 +13,9 @@
 - [x] C.3: Ensure the UI toolbar only presents valid scope options for the active category.
 
 ## Phase 2: Composable UI Refactor
-- [ ] A.1: Introduce a shared form binder around existing `SettingControl` implementations.
-- [ ] A.2: Refactor built-in categories (Appearance, Network, AI Models, MCP Servers) to use `SettingControlFactory` and declarative definitions.
-- [ ] A.3: Centralize validation aggregation and replace ad-hoc dirty tracking with observable/property-backed state.
+- [x] A.1: Introduce a shared form binder around existing `SettingControl` implementations.
+- [x] A.2: Refactor built-in categories (Appearance, Network, AI Models, Workspace) to use `SettingControlFactory` and declarative definitions.
+- [x] A.3: Centralize validation aggregation and replace ad-hoc dirty tracking with observable/property-backed state.
 
 ## Phase 3: Security & Storage Hardening
 - [ ] D.1: Redesign `SecurityCategory` to never reload stored secret values.
@@ -25,7 +25,7 @@
 - [ ] D.5: Revisit encrypted-file fallback threat model and document constraints.
 
 ## Phase 4: State & Styling Cleanup
-- [ ] E.1: Remove periodic timer loops for UI refresh (event-driven dirty/valid state).
+- [x] E.1: Remove periodic timer loops for UI refresh (event-driven dirty/valid state).
 - [ ] E.2: Replace inline styles with `-pf-ui-*` tokens and shared CSS classes.
 
 ## Phase 5: Documentation Sync

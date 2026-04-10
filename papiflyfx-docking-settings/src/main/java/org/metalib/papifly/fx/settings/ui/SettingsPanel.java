@@ -1,7 +1,6 @@
 package org.metalib.papifly.fx.settings.ui;
 
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -9,7 +8,6 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.util.Duration;
 import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.settings.api.SettingScope;
@@ -38,10 +36,11 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
     private final SettingsToolbar toolbar;
     private final Map<String, SettingsCategory> categoriesById = new LinkedHashMap<>();
     private final Map<String, Node> paneCache = new LinkedHashMap<>();
-    private final Timeline refreshTimer;
     private final ChangeListener<Theme> themeListener;
+    private final ChangeListener<Boolean> dirtyBindingListener = (obs, oldValue, newValue) -> refreshToolbarState();
 
     private SettingsCategory activeCategory;
+    private ReadOnlyBooleanProperty activeDirtyProperty;
     private String initialCategoryId;
 
     public SettingsPanel(SettingsRuntime runtime) {
@@ -82,10 +81,6 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
         applyTheme(runtime.themeProperty().get());
 
         loadCategories();
-
-        refreshTimer = new Timeline(new KeyFrame(Duration.millis(150), event -> refreshToolbarState()));
-        refreshTimer.setCycleCount(Timeline.INDEFINITE);
-        refreshTimer.play();
     }
 
     public void applyActiveCategory() {
@@ -123,7 +118,7 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
     @Override
     public void dispose() {
         runtime.themeProperty().removeListener(themeListener);
-        refreshTimer.stop();
+        unbindDirtyProperty();
         runtime.storage().save();
     }
 
@@ -162,6 +157,7 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
     }
 
     private void showCategory(SettingsCategory category) {
+        unbindDirtyProperty();
         if (category == null) {
             contentArea.getChildren().clear();
             activeCategory = null;
@@ -172,7 +168,23 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
         toolbar.setSupportedScopes(category.supportedScopes());
         Node pane = paneCache.computeIfAbsent(category.id(), ignored -> buildPane(category));
         contentArea.getChildren().setAll(pane);
+        bindDirtyProperty(category);
         refreshToolbarState();
+    }
+
+    private void bindDirtyProperty(SettingsCategoryUI category) {
+        ReadOnlyBooleanProperty dp = category.dirtyProperty();
+        if (dp != null) {
+            activeDirtyProperty = dp;
+            dp.addListener(dirtyBindingListener);
+        }
+    }
+
+    private void unbindDirtyProperty() {
+        if (activeDirtyProperty != null) {
+            activeDirtyProperty.removeListener(dirtyBindingListener);
+            activeDirtyProperty = null;
+        }
     }
 
     private void onScopeChanged(SettingScope scope) {
