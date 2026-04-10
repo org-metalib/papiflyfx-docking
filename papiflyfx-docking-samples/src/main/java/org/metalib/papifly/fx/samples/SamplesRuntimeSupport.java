@@ -8,6 +8,8 @@ import org.metalib.papifly.fx.login.idapi.providers.GenericOidcProvider;
 import org.metalib.papifly.fx.login.idapi.providers.GitHubProvider;
 import org.metalib.papifly.fx.login.idapi.providers.GoogleProvider;
 import org.metalib.papifly.fx.login.runtime.LoginRuntime;
+import org.metalib.papifly.fx.settings.docking.SettingsStateAdapter;
+import org.metalib.papifly.fx.settings.runtime.DefaultSettingsServicesProvider;
 import org.metalib.papifly.fx.settings.runtime.SettingsRuntime;
 
 import java.util.Objects;
@@ -23,6 +25,8 @@ public final class SamplesRuntimeSupport {
 
     public static synchronized void initialize(ObjectProperty<Theme> themeProperty) {
         SettingsRuntime resolvedSettingsRuntime = settingsRuntime(themeProperty);
+        SettingsStateAdapter.setSharedRuntime(resolvedSettingsRuntime);
+        DefaultSettingsServicesProvider.setSharedRuntime(resolvedSettingsRuntime);
         loginRuntime = LoginRuntime.of(
             new DefaultAuthSessionBroker(
                 LOGIN_PROVIDER_REGISTRY,

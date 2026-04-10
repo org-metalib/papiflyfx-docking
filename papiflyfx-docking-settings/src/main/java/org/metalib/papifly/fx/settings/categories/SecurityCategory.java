@@ -11,6 +11,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
+import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SecretStore;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
@@ -18,6 +19,7 @@ import org.metalib.papifly.fx.settings.secret.EncryptedFileSecretStore;
 import org.metalib.papifly.fx.settings.ui.controls.SecretSettingControl;
 
 import java.util.List;
+import java.util.Set;
 
 public class SecurityCategory implements SettingsCategory {
 
@@ -51,6 +53,11 @@ public class SecurityCategory implements SettingsCategory {
     @Override
     public List<SettingDefinition<?>> definitions() {
         return List.of();
+    }
+
+    @Override
+    public Set<SettingScope> supportedScopes() {
+        return Set.of(SettingScope.APPLICATION);
     }
 
     @Override

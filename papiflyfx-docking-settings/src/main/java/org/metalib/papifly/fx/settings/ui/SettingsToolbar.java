@@ -15,7 +15,9 @@ import org.metalib.papifly.fx.settings.api.SettingsAction;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.api.ValidationResult;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
@@ -28,6 +30,7 @@ public class SettingsToolbar extends BorderPane {
     private final ComboBox<SettingScope> scopeSelector;
     private final HBox actionBox;
     private final ObjectProperty<SettingScope> activeScope = new SimpleObjectProperty<>(SettingScope.APPLICATION);
+    private boolean updatingScopes;
 
     public SettingsToolbar() {
         this.applyButton = new Button("Apply");
@@ -67,6 +70,36 @@ public class SettingsToolbar extends BorderPane {
 
     public SettingScope getActiveScope() {
         return activeScope.get();
+    }
+
+    /**
+     * Updates the scope selector to only show scopes supported by the active category.
+     * If the currently selected scope is not in the new set, resets to the first available scope.
+     */
+    public void setSupportedScopes(Set<SettingScope> scopes) {
+        if (updatingScopes) {
+            return;
+        }
+        updatingScopes = true;
+        try {
+            List<SettingScope> filtered = new ArrayList<>();
+            for (SettingScope scope : List.of(SettingScope.APPLICATION, SettingScope.WORKSPACE, SettingScope.SESSION)) {
+                if (scopes.contains(scope)) {
+                    filtered.add(scope);
+                }
+            }
+            if (filtered.isEmpty()) {
+                filtered.add(SettingScope.APPLICATION);
+            }
+            SettingScope current = activeScope.get();
+            scopeSelector.getItems().setAll(filtered);
+            if (!filtered.contains(current)) {
+                scopeSelector.setValue(filtered.getFirst());
+            }
+            scopeSelector.setDisable(filtered.size() <= 1);
+        } finally {
+            updatingScopes = false;
+        }
     }
 
     public void setDirty(boolean dirty) {

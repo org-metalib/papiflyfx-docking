@@ -169,6 +169,7 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
             return;
         }
         activeCategory = category;
+        toolbar.setSupportedScopes(category.supportedScopes());
         Node pane = paneCache.computeIfAbsent(category.id(), ignored -> buildPane(category));
         contentArea.getChildren().setAll(pane);
         refreshToolbarState();

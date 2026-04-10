@@ -15,6 +15,7 @@ import org.metalib.papifly.fx.settings.internal.SettingsJsonCodec;
 import org.metalib.papifly.fx.settings.persist.JsonSettingsStorage;
 
 import java.util.Map;
+import java.util.Set;
 
 public class ProfilesCategory implements SettingsCategory {
 
@@ -35,6 +36,11 @@ public class ProfilesCategory implements SettingsCategory {
     @Override
     public int order() {
         return 70;
+    }
+
+    @Override
+    public Set<SettingScope> supportedScopes() {
+        return Set.of(SettingScope.APPLICATION, SettingScope.WORKSPACE);
     }
 
     @Override
