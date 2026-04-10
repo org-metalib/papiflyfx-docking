@@ -41,13 +41,15 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 - **Focus Area**: `org.metalib.papifly.fx.login`.
 
 ### 5. UI/UX Designer (@ui-ux-designer)
-- **Primary Domain**: `papiflyfx-docking-api` (Theme API), CSS in `code`, `tree`, `github`.
+- **Primary Domain**: `papiflyfx-docking-api` (Theme API and shared UI primitives), CSS in `code`, `tree`, `github`.
 - **Responsibilities**:
   - Defines and leads the visual identity and user experience across all modules.
   - Sets standards for theme definitions, color palettes, and CSS styling.
+  - Maintains and extends the shared `org.metalib.papifly.fx.ui` package (`UiMetrics`, `UiStyleSupport`, `UiCommonStyles`, `UiChip`, `UiChipToggle`, `UiChipLabel`, `UiStatusSlot`, `UiPillButton`) and `ui-common.css`.
+  - Ensures all new UI chrome, overlays, and controls use `-pf-ui-*` CSS tokens from the shared token vocabulary.
   - Optimizes layout consistency, spacing, and ergonomic UI flows.
   - Reviews and audits UI implementations for accessibility and polish.
-- **Focus Area**: CSS stylesheets, `Theme` implementations, and UI component layout code.
+- **Focus Area**: CSS stylesheets, `Theme` implementations, `org.metalib.papifly.fx.ui` package in `papiflyfx-docking-api`, and UI component layout code.
 
 ### 6. QA & Test Engineer (@qa-engineer)
 - **Primary Domain**: Test strategy, test infrastructure, coverage analysis, regression suites.
@@ -71,7 +73,7 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 
 ## Agent Operating Model
 
-- Use `spec/agents/README.md` as the shared operating protocol for task routing, handoffs, review gates, and the definition of done.
+- Use `spec/agents/README.md` as the shared operating protocol for task routing, handoffs, review gates, and the definition of done. Supplementary resources in the same directory: `spec/agents/playbook.md` (day-to-day workflow), `spec/agents/prompts.md` (ready-to-paste session starters), and `spec/agents/cheatsheet.md` (quick routing reference).
 - Assign exactly one lead agent per task. Supporting agents may advise or review, but ownership stays with the lead until handoff.
 - Route work by primary domain first:
   - Docking core, layout model, serialization, shared API/SPIs: `@core-architect`
@@ -110,7 +112,7 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 ## Project Structure & Module Organization
 - Root Maven aggregator: `pom.xml` defines the multi-module build and shared dependency/plugin management.
 - Shared contract modules:
-  - `papiflyfx-docking-api/` - public docking/content/theme API.
+  - `papiflyfx-docking-api/` - public docking/content/theme API and shared UI primitives (`org.metalib.papifly.fx.ui`: `UiMetrics`, `UiStyleSupport`, `UiCommonStyles`, `UiChip`, `UiChipToggle`, `UiChipLabel`, `UiStatusSlot`, `UiPillButton`, `ui-common.css`, `-pf-ui-*` CSS tokens).
   - `papiflyfx-docking-settings-api/` - public settings and secret-management SPI.
   - `papiflyfx-docking-login-idapi/` - identity-provider SPI and built-in providers.
   - `papiflyfx-docking-login-session-api/` - auth session lifecycle and storage SPI.
@@ -126,7 +128,7 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
   - `papiflyfx-docking-github/` - GitHub toolbar integration.
 - Runnable demos live in `papiflyfx-docking-samples/`.
 - Tests live under `src/test/java` per module. Active suites currently exist in `code`, `docks`, `github`, `hugo`, `login-idapi`, `login`, `media`, `samples`, `settings`, and `tree`.
-- Architecture and design references live under `spec/` plus module-level `README.md` files.
+- Architecture and design references live under `spec/` plus module-level `README.md` files. Notable sub-directories: `spec/papiflyfx-docking-code-lang-plugin/` (completed language-plugin SPI), `spec/papiflyfx-docking-langchain/` (LangChain4j integration research), `spec/ui-standards/` (UI standardization rollout).
 - Agent coordination references live under `spec/agents/`.
 
 ## Build, Test, and Development Commands
@@ -148,7 +150,7 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 - Packages use `org.metalib.papifly.fx.*`; classes are `PascalCase`, methods/fields `camelCase`.
 - Favor descriptive suffixes already used in the codebase such as `*Manager`, `*Controller`, `*Factory`, `*StateAdapter`, and `*Renderer`.
 - Keep new public APIs and SPIs documented with Javadoc.
-- UI is programmatic JavaFX. No FXML is used. Most modules avoid CSS entirely, but `code`, `tree`, and `github` ship scoped stylesheets for overlays/theming, so follow the local module pattern instead of introducing global styling.
+- UI is programmatic JavaFX. No FXML is used. `papiflyfx-docking-api` ships shared `ui-common.css` with the `-pf-ui-*` CSS token vocabulary; `code`, `tree`, and `github` additionally ship scoped module-local stylesheets for overlays/theming. Follow the local module pattern instead of introducing new global styling.
 
 ## SOLID Principles
 - Single Responsibility: keep each module, class, and UI component focused on one concern. Follow the existing split between docking core, settings/runtime services, login/auth flows, and feature content modules.
@@ -163,6 +165,7 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 - For session restore, create a `ContentStateRegistry`, register adapters manually or use `ContentStateRegistry.fromServiceLoader()`, then call `dockManager.setContentStateRegistry(...)` before restoring layouts/sessions.
 - Restorable content should provide both a `ContentFactory` and a `ContentStateAdapter`, and the created `DockLeaf` must carry the matching `contentFactoryId`.
 - Theme-aware content generally exposes `bindThemeProperty(...)`; wire it from the owning `DockManager` theme property.
+- To add a new language to the code editor, implement `LanguageSupportProvider` (in `org.metalib.papifly.fx.code.language`) and register it via `ServiceLoader` in `META-INF/services`. `LexerRegistry` and `FoldProviderRegistry` no longer exist — use `LanguageSupportRegistry.bootstrap()` or `refreshServiceProviders()` for runtime hot-load. Built-in languages (`java`, `json`, `javascript`, `markdown`, `plain-text`) are shipped by `BuiltInLanguageSupportProvider`.
 
 ## Maven Module Guidelines
 - Keep modules self-contained with explicit boundaries and dependency flow managed through Maven.
