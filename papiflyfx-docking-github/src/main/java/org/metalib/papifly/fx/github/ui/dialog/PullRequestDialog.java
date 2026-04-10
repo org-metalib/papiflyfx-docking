@@ -11,6 +11,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.github.model.PullRequestDraft;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 public class PullRequestDialog extends Dialog<PullRequestDraft> {
 
@@ -33,9 +34,9 @@ public class PullRequestDialog extends Dialog<PullRequestDraft> {
         openBrowser.setSelected(true);
 
         GridPane grid = new GridPane();
-        grid.setHgap(8);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(12));
+        grid.setHgap(UiMetrics.SPACE_2);
+        grid.setVgap(UiMetrics.SPACE_2);
+        grid.setPadding(new Insets(UiMetrics.SPACE_3));
         grid.addRow(0, new Label("Title"), titleField);
         grid.addRow(1, new Label("Head"), headField);
         grid.addRow(2, new Label("Base"), baseField);

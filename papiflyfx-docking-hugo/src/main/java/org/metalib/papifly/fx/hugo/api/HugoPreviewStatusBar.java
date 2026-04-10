@@ -10,105 +10,43 @@ import javafx.scene.layout.BorderWidths;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.hugo.process.HugoServerProcessManager;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
+import org.metalib.papifly.fx.ui.UiMetrics;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
+import org.metalib.papifly.fx.ui.UiStatusSlot;
 
-public final class HugoPreviewStatusBar extends HBox {
-
-    private static final String STATE_STOPPED_STYLE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #273a5b, #1f2d47);
-        -fx-text-fill: #dde7ff;
-        -fx-font-size: 11px;
-        -fx-font-weight: 700;
-        -fx-padding: 3 10 3 10;
-        -fx-background-radius: 100;
-        -fx-border-radius: 100;
-        -fx-border-color: #3c5786;
-        """);
-    private static final String STATE_STARTING_STYLE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #6f5a1f, #564317);
-        -fx-text-fill: #fff6d7;
-        -fx-font-size: 11px;
-        -fx-font-weight: 700;
-        -fx-padding: 3 10 3 10;
-        -fx-background-radius: 100;
-        -fx-border-radius: 100;
-        -fx-border-color: #93752a;
-        """);
-    private static final String STATE_RUNNING_STYLE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #2f7a53, #225a3d);
-        -fx-text-fill: #ecfff4;
-        -fx-font-size: 11px;
-        -fx-font-weight: 700;
-        -fx-padding: 3 10 3 10;
-        -fx-background-radius: 100;
-        -fx-border-radius: 100;
-        -fx-border-color: #47a473;
-        """);
-    private static final String STATE_ERROR_STYLE = compact("""
-        -fx-background-color: linear-gradient(to bottom, #8e3f4c, #6d2c38);
-        -fx-text-fill: #fff1f3;
-        -fx-font-size: 11px;
-        -fx-font-weight: 700;
-        -fx-padding: 3 10 3 10;
-        -fx-background-radius: 100;
-        -fx-border-radius: 100;
-        -fx-border-color: #bf5f71;
-        """);
+public final class HugoPreviewStatusBar extends UiStatusSlot {
 
     private final Label stateLabel = new Label("Stopped");
     private final Label messageLabel = new Label();
+    private HugoServerProcessManager.State currentState = HugoServerProcessManager.State.STOPPED;
+    private int currentPort;
+    private Theme currentTheme = Theme.dark();
 
     public HugoPreviewStatusBar() {
         setId("hugo-preview-status");
         stateLabel.setId("hugo-preview-status-state");
         messageLabel.setId("hugo-preview-status-message");
-        setSpacing(12);
-        setPadding(new Insets(6, 10, 6, 10));
+        setSpacing(UiMetrics.SPACE_3);
+        setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_3, UiMetrics.SPACE_1, UiMetrics.SPACE_3));
         setAlignment(Pos.CENTER_LEFT);
 
-        stateLabel.setMinWidth(120);
+        stateLabel.setMinWidth(UiMetrics.SPACE_5 * 6.0);
         stateLabel.setAlignment(Pos.CENTER);
-        stateLabel.setStyle(STATE_STOPPED_STYLE);
-        messageLabel.setStyle(compact("""
-            -fx-text-fill: #b6c4de;
-            -fx-font-size: 11px;
-            """));
         messageLabel.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(messageLabel, Priority.ALWAYS);
         getChildren().setAll(stateLabel, messageLabel);
 
         applyVisualStyle();
+        applyStateStyle();
     }
 
     public void setServerState(HugoServerProcessManager.State state, int port) {
-        if (state == null) {
-            stateLabel.setText("Unknown");
-            stateLabel.setStyle(STATE_STOPPED_STYLE);
-            return;
-        }
-        if (state == HugoServerProcessManager.State.RUNNING && port > 0) {
-            stateLabel.setText("Running on " + port);
-            stateLabel.setStyle(STATE_RUNNING_STYLE);
-            return;
-        }
-        switch (state) {
-            case STOPPED -> {
-                stateLabel.setText("Stopped");
-                stateLabel.setStyle(STATE_STOPPED_STYLE);
-            }
-            case STARTING -> {
-                stateLabel.setText("Starting");
-                stateLabel.setStyle(STATE_STARTING_STYLE);
-            }
-            case RUNNING -> {
-                stateLabel.setText("Running");
-                stateLabel.setStyle(STATE_RUNNING_STYLE);
-            }
-            case ERROR -> {
-                stateLabel.setText("Error");
-                stateLabel.setStyle(STATE_ERROR_STYLE);
-            }
-        }
+        currentState = state == null ? HugoServerProcessManager.State.STOPPED : state;
+        currentPort = port;
+        applyStateStyle();
     }
 
     public void setMessage(String message) {
@@ -124,15 +62,121 @@ public final class HugoPreviewStatusBar extends HBox {
     }
 
     public void applyVisualStyle() {
+        Color background = UiCommonThemeSupport.headerBackground(currentTheme);
+        Color border = UiCommonThemeSupport.border(currentTheme);
+        Color text = UiCommonThemeSupport.textPrimary(currentTheme);
         setStyle(compact("""
-            -fx-background-color: linear-gradient(to bottom, #0e1627, #0a1120);
-            """));
+            -fx-background-color: linear-gradient(to bottom, %s, %s);
+            """.formatted(
+            UiStyleSupport.paintToCss(background, "transparent"),
+            UiStyleSupport.paintToCss(background.darker(), "transparent")
+        )));
         setBorder(new Border(new BorderStroke(
-            Color.web("#1f2f49"),
+            border,
             BorderStrokeStyle.SOLID,
             javafx.scene.layout.CornerRadii.EMPTY,
             new BorderWidths(1, 0, 0, 0)
         )));
+        messageLabel.setTextFill(text);
+    }
+
+    public void applyTheme(Theme theme) {
+        currentTheme = UiCommonThemeSupport.resolvedTheme(theme);
+        applyVisualStyle();
+        applyStateStyle();
+        javafx.scene.text.Font font = currentTheme.contentFont();
+        if (font != null) {
+            stateLabel.setFont(font);
+            messageLabel.setFont(font);
+        }
+    }
+
+    private void applyStateStyle() {
+        Color background = UiCommonThemeSupport.background(currentTheme);
+        Color panel = UiCommonThemeSupport.headerBackgroundActive(currentTheme);
+        Color accent = UiCommonThemeSupport.accent(currentTheme);
+        Color border = UiCommonThemeSupport.border(currentTheme);
+        Color pressed = UiCommonThemeSupport.pressed(currentTheme);
+        Color danger = UiCommonThemeSupport.danger(currentTheme);
+        Color textPrimary = UiCommonThemeSupport.textPrimary(currentTheme);
+        Color textActive = UiCommonThemeSupport.textActive(currentTheme);
+
+        Color stateBackground;
+        Color stateBorder;
+        Color stateText;
+
+        if (currentState == HugoServerProcessManager.State.RUNNING && currentPort > 0) {
+            stateLabel.setText("Running on " + currentPort);
+            stateBackground = accent;
+            stateBorder = accent;
+            stateText = textActive;
+        } else {
+            switch (currentState) {
+                case STARTING -> {
+                    stateLabel.setText("Starting");
+                    stateBackground = alpha(accent, 0.16);
+                    stateBorder = accent;
+                    stateText = textPrimary;
+                }
+                case RUNNING -> {
+                    stateLabel.setText("Running");
+                    stateBackground = accent;
+                    stateBorder = accent;
+                    stateText = textActive;
+                }
+                case ERROR -> {
+                    stateLabel.setText("Error");
+                    stateBackground = blend(pressed, danger, 0.55);
+                    stateBorder = danger;
+                    stateText = textActive;
+                }
+                case STOPPED -> {
+                    stateLabel.setText("Stopped");
+                    stateBackground = blend(panel, background, 0.26);
+                    stateBorder = alpha(border, 0.85);
+                    stateText = textPrimary;
+                }
+                default -> {
+                    stateLabel.setText("Unknown");
+                    stateBackground = blend(panel, background, 0.26);
+                    stateBorder = alpha(border, 0.85);
+                    stateText = textPrimary;
+                }
+            }
+        }
+
+        stateLabel.setStyle(compact("""
+            -fx-background-color: linear-gradient(to bottom, %s, %s);
+            -fx-text-fill: %s;
+            -fx-padding: %.1f %.1f %.1f %.1f;
+            -fx-background-radius: %.1f;
+            -fx-border-radius: %.1f;
+            -fx-border-color: %s;
+            -fx-opacity: 1.0;
+            """.formatted(
+            UiStyleSupport.paintToCss(stateBackground, "transparent"),
+            UiStyleSupport.paintToCss(stateBackground.darker(), "transparent"),
+            UiStyleSupport.paintToCss(stateText, "transparent"),
+            UiMetrics.SPACE_1,
+            UiMetrics.SPACE_3,
+            UiMetrics.SPACE_1,
+            UiMetrics.SPACE_3,
+            UiMetrics.RADIUS_PILL,
+            UiMetrics.RADIUS_PILL,
+            UiStyleSupport.paintToCss(stateBorder, "transparent")
+        )));
+    }
+
+    private static Color blend(Color base, Color mix, double weight) {
+        return base.interpolate(mix, clamp(weight));
+    }
+
+    private static Color alpha(Color color, double opacity) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), clamp(opacity));
+    }
+
+    private static double clamp(double value) {
+        return Math.max(0.0, Math.min(1.0, value));
     }
 
     private static String compact(String style) {

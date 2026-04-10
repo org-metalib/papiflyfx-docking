@@ -1,6 +1,6 @@
 # papiflyfx-docking-code
 
-A dockable JavaFX code editor content type for the PapiflyFX docking framework. Pure programmatic JavaFX — no FXML or CSS dependencies.
+A dockable JavaFX code editor content type for the PapiflyFX docking framework. The editor is built with programmatic JavaFX and uses scoped overlay CSS layered on the shared UI standards in `papiflyfx-docking-api`.
 
 ## Features
 
@@ -9,6 +9,7 @@ A dockable JavaFX code editor content type for the PapiflyFX docking framework. 
 - Incremental syntax highlighting for Java, JSON, JavaScript, Markdown, and plain text
 - Line number gutter with marker lane (errors, warnings, breakpoints, bookmarks)
 - Find/replace overlay with regex support and go-to-line navigation
+- Shared popup/chip styling for search and go-to-line overlays
 - Full docking integration via `ContentFactory` and `ContentStateAdapter`
 - Runtime theme switching through composition with docking `Theme`
 
@@ -65,6 +66,16 @@ editor.bindThemeProperty(dockManager.themeProperty());
 
 Theme changes propagate automatically to the viewport, gutter, and search overlay.
 
+## UI Standards
+
+The code module follows the shared UI standardization model introduced in `papiflyfx-docking-api`.
+
+- `Theme` remains the only runtime theme source.
+- Search and go-to-line overlays load `ui-common.css` through `UiStyleSupport`.
+- Shared metrics come from `UiMetrics`, including the 4px grid and compact control heights.
+- Search toggles use the shared `UiChipToggle` base styling.
+- Overlay surfaces consume the shared `-pf-ui-*` CSS variable set instead of a separate module-only token vocabulary.
+
 ## Session Persistence Flow
 
 1. **Save**: `DockManager.captureSession()` calls `CodeEditorStateAdapter.saveState()` on each editor leaf, producing a `LeafContentData` with cursor, scroll, language, and file path.
@@ -112,14 +123,13 @@ Measured on macOS (Apple Silicon), headless mode, 100k-line synthetic Java file:
 
 ```bash
 # Regular tests (excludes benchmarks)
-mvn -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test
+./mvnw -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test
 
 # Benchmarks only
-mvn -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dgroups=benchmark -Dsurefire.excludedGroups= test
+./mvnw -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dgroups=benchmark -Dsurefire.excludedGroups= test
 ```
 
 ## Further Reading
 
-- [Specification](../spec/papiflyfx-docking-code/spec.md)
-- [Implementation Plan](../spec/papiflyfx-docking-code/implementation.md)
-- [Progress Report](../spec/papiflyfx-docking-code/PROGRESS.md)
+- [UI Standards Research](../spec/ui-standards/research.md)
+- [UI Standards Plan](../spec/ui-standards/plan.md)

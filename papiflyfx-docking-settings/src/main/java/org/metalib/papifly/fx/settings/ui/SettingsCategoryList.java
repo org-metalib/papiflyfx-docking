@@ -12,6 +12,8 @@ import javafx.scene.control.ListView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
+import org.metalib.papifly.fx.settings.api.SettingsCategoryDefinitions;
+import org.metalib.papifly.fx.settings.api.SettingsCategoryMetadata;
 
 import java.util.List;
 
@@ -33,9 +35,9 @@ public class SettingsCategoryList extends ListView<SettingsCategory> {
                     setText(null);
                     return;
                 }
-                Label label = new Label(item.displayName());
+                Label label = new Label(displayName(item));
                 HBox row = new HBox(8);
-                Node icon = item.icon();
+                Node icon = icon(item);
                 if (icon != null) {
                     row.getChildren().add(icon);
                 }
@@ -58,9 +60,9 @@ public class SettingsCategoryList extends ListView<SettingsCategory> {
             if (normalized.isEmpty()) {
                 return true;
             }
-            return category.displayName().toLowerCase().contains(normalized)
-                || category.id().toLowerCase().contains(normalized)
-                || category.definitions().stream().anyMatch(definition ->
+            return displayName(category).toLowerCase().contains(normalized)
+                || id(category).toLowerCase().contains(normalized)
+                || definitions(category).stream().anyMatch(definition ->
                     definition.label().toLowerCase().contains(normalized)
                         || definition.description().toLowerCase().contains(normalized)
                         || definition.key().toLowerCase().contains(normalized)
@@ -86,6 +88,22 @@ public class SettingsCategoryList extends ListView<SettingsCategory> {
     }
 
     public List<String> visibleCategoryIds() {
-        return filteredCategories.stream().map(SettingsCategory::id).toList();
+        return filteredCategories.stream().map(this::id).toList();
+    }
+
+    private String id(SettingsCategoryMetadata category) {
+        return category.id();
+    }
+
+    private String displayName(SettingsCategoryMetadata category) {
+        return category.displayName();
+    }
+
+    private Node icon(SettingsCategoryMetadata category) {
+        return category.icon();
+    }
+
+    private List<org.metalib.papifly.fx.settings.api.SettingDefinition<?>> definitions(SettingsCategoryDefinitions category) {
+        return category.definitions();
     }
 }

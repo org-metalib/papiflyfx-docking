@@ -37,7 +37,7 @@ public class SettingsPanelSample implements SampleScene {
         dockManager.setOwnerStage(ownerStage);
 
         ContentStateRegistry registry = new ContentStateRegistry();
-        registry.register(new SettingsStateAdapter());
+        registry.register(new SettingsStateAdapter(runtime));
         dockManager.setContentStateRegistry(registry);
         dockManager.setContentFactory(new SettingsContentFactory(runtime));
 

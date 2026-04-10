@@ -6,6 +6,7 @@ import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.input.MouseEvent;
 import org.metalib.papifly.fx.docks.core.DockElement;
+import org.metalib.papifly.fx.docks.core.DockElementVisitor;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockSplitGroup;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
@@ -236,7 +237,18 @@ public class DragManager {
 
         // Handle same-group tab reorder specially
         if (currentDrag.isSameGroupReorder()) {
-            reorderTabInGroup(source, (DockTabGroup) target);
+            target.accept(new DockElementVisitor<>() {
+                @Override
+                public Void visitTabGroup(DockTabGroup tabGroup) {
+                    reorderTabInGroup(source, tabGroup);
+                    return null;
+                }
+
+                @Override
+                public Void visitSplitGroup(DockSplitGroup splitGroup) {
+                    return null;
+                }
+            });
             return;
         }
 
@@ -284,16 +296,24 @@ public class DragManager {
     }
 
     private void dropAsTab(DockLeaf source, DockElement target) {
-        if (target instanceof DockTabGroup tabGroup) {
-            // Insert at specific index if dropping on tab bar
-            int insertIndex = currentDrag.getTabInsertIndex();
-            if (insertIndex >= 0 && currentDrag.getDropZone() == DropZone.TAB_BAR) {
-                int clampedIndex = Math.min(Math.max(0, insertIndex), tabGroup.getTabs().size());
-                tabGroup.addLeaf(clampedIndex, source);
-            } else {
-                tabGroup.addLeaf(source);
+        target.accept(new DockElementVisitor<>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                int insertIndex = currentDrag.getTabInsertIndex();
+                if (insertIndex >= 0 && currentDrag.getDropZone() == DropZone.TAB_BAR) {
+                    int clampedIndex = Math.min(Math.max(0, insertIndex), tabGroup.getTabs().size());
+                    tabGroup.addLeaf(clampedIndex, source);
+                } else {
+                    tabGroup.addLeaf(source);
+                }
+                return null;
             }
-        }
+
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitGroup) {
+                return null;
+            }
+        });
     }
 
     private void dropAsSplit(DockLeaf source, DockElement target, Orientation orientation, boolean sourceFirst) {
@@ -303,20 +323,29 @@ public class DragManager {
         // IMPORTANT: First replace target with newSplit in the parent hierarchy
         // This must be done BEFORE adding children to newSplit, otherwise
         // setParent calls get corrupted when replaceChild sets old child's parent to null
-        if (parent instanceof DockSplitGroup parentSplit) {
-            // Detach target from parent first
-            if (parentSplit.getFirst() == target) {
-                parentSplit.setFirst(null);
-            } else {
-                parentSplit.setSecond(null);
-            }
-            // Insert newSplit in place of target
-            if (parentSplit.getFirst() == null && parentSplit.getSecond() != null) {
-                parentSplit.setFirst(newSplit);
-            } else if (parentSplit.getSecond() == null) {
-                parentSplit.setSecond(newSplit);
-            }
-        } else if (parent == null) {
+        if (parent != null) {
+            parent.accept(new DockElementVisitor<>() {
+                @Override
+                public Void visitTabGroup(DockTabGroup tabGroup) {
+                    return null;
+                }
+
+                @Override
+                public Void visitSplitGroup(DockSplitGroup parentSplit) {
+                    if (parentSplit.getFirst() == target) {
+                        parentSplit.setFirst(null);
+                    } else {
+                        parentSplit.setSecond(null);
+                    }
+                    if (parentSplit.getFirst() == null && parentSplit.getSecond() != null) {
+                        parentSplit.setFirst(newSplit);
+                    } else if (parentSplit.getSecond() == null) {
+                        parentSplit.setSecond(newSplit);
+                    }
+                    return null;
+                }
+            });
+        } else {
             // Target was root - will set newSplit as root after adding children
         }
 
@@ -353,63 +382,106 @@ public class DragManager {
     }
 
     private void cleanupRecursive(DockElement element, DockElement parent) {
-        if (element instanceof DockSplitGroup split) {
-            // Clean children first
-            if (split.getFirst() != null) {
-                cleanupRecursive(split.getFirst(), split);
-            }
-            if (split.getSecond() != null) {
-                cleanupRecursive(split.getSecond(), split);
+        element.accept(new DockElementVisitor<>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                if (tabGroup.getTabs().isEmpty()) {
+                    removeElement(tabGroup, parent);
+                }
+                return null;
             }
 
-            // Check if split has only one child
-            boolean firstEmpty = split.getFirst() == null;
-            boolean secondEmpty = split.getSecond() == null;
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitGroup) {
+                if (splitGroup.getFirst() != null) {
+                    cleanupRecursive(splitGroup.getFirst(), splitGroup);
+                }
+                if (splitGroup.getSecond() != null) {
+                    cleanupRecursive(splitGroup.getSecond(), splitGroup);
+                }
 
-            if (firstEmpty && secondEmpty) {
-                // Both empty - remove split
-                removeElement(split, parent);
-            } else if (firstEmpty || secondEmpty) {
-                // One empty - replace with remaining child
-                DockElement remaining = firstEmpty ? split.getSecond() : split.getFirst();
-                replaceElement(split, remaining, parent);
+                boolean firstEmpty = splitGroup.getFirst() == null;
+                boolean secondEmpty = splitGroup.getSecond() == null;
+
+                if (firstEmpty && secondEmpty) {
+                    removeElement(splitGroup, parent);
+                } else if (firstEmpty || secondEmpty) {
+                    DockElement remaining = firstEmpty ? splitGroup.getSecond() : splitGroup.getFirst();
+                    replaceElement(splitGroup, remaining, parent);
+                }
+                return null;
             }
-        } else if (element instanceof DockTabGroup tabGroup) {
-            if (tabGroup.getTabs().isEmpty()) {
-                removeElement(tabGroup, parent);
-            }
-        }
+        });
     }
 
     private void removeElement(DockElement element, DockElement parent) {
-        if (parent instanceof DockSplitGroup split) {
-            if (split.getFirst() == element) {
-                split.setFirst(null);
-            } else if (split.getSecond() == element) {
-                split.setSecond(null);
-            }
-        } else if (parent == null) {
+        if (parent == null) {
             rootUpdater.accept(null);
+        } else {
+            parent.accept(new DockElementVisitor<>() {
+                @Override
+                public Void visitTabGroup(DockTabGroup tabGroup) {
+                    return null;
+                }
+
+                @Override
+                public Void visitSplitGroup(DockSplitGroup split) {
+                    if (split.getFirst() == element) {
+                        split.setFirst(null);
+                    } else if (split.getSecond() == element) {
+                        split.setSecond(null);
+                    }
+                    return null;
+                }
+            });
         }
 
-        if (element instanceof DockSplitGroup splitElement) {
-            detachChild(splitElement, splitElement.getFirst());
-            detachChild(splitElement, splitElement.getSecond());
-            splitElement.dispose();
-        } else if (element instanceof DockTabGroup tabGroup) {
-            tabGroup.dispose();
-        }
+        element.accept(new DockElementVisitor<>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                tabGroup.dispose();
+                return null;
+            }
+
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitElement) {
+                detachChild(splitElement, splitElement.getFirst());
+                detachChild(splitElement, splitElement.getSecond());
+                splitElement.dispose();
+                return null;
+            }
+        });
     }
 
     private void replaceElement(DockElement oldElement, DockElement newElement, DockElement parent) {
-        if (oldElement instanceof DockSplitGroup splitElement) {
-            detachChild(splitElement, newElement);
-            splitElement.dispose();
-        }
-        if (parent instanceof DockSplitGroup split) {
-            split.replaceChild(oldElement, newElement);
-        } else if (parent == null) {
+        oldElement.accept(new DockElementVisitor<>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                return null;
+            }
+
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitElement) {
+                detachChild(splitElement, newElement);
+                splitElement.dispose();
+                return null;
+            }
+        });
+        if (parent == null) {
             rootUpdater.accept(newElement);
+        } else {
+            parent.accept(new DockElementVisitor<>() {
+                @Override
+                public Void visitTabGroup(DockTabGroup tabGroup) {
+                    return null;
+                }
+
+                @Override
+                public Void visitSplitGroup(DockSplitGroup split) {
+                    split.replaceChild(oldElement, newElement);
+                    return null;
+                }
+            });
         }
     }
 

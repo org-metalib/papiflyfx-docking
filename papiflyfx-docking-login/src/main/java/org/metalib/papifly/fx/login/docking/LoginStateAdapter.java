@@ -3,13 +3,28 @@ package org.metalib.papifly.fx.login.docking;
 import javafx.scene.Node;
 import org.metalib.papifly.fx.docking.api.ContentStateAdapter;
 import org.metalib.papifly.fx.docking.api.LeafContentData;
+import org.metalib.papifly.fx.login.runtime.LoginRuntime;
 import org.metalib.papifly.fx.login.ui.LoginDockPane;
 
 import java.util.Map;
+import java.util.Objects;
 
 public class LoginStateAdapter implements ContentStateAdapter {
 
     public static final int VERSION = 1;
+    private final LoginFactory factory;
+
+    public LoginStateAdapter() {
+        this(new LoginFactory());
+    }
+
+    public LoginStateAdapter(LoginRuntime runtime) {
+        this(new LoginFactory(runtime));
+    }
+
+    public LoginStateAdapter(LoginFactory factory) {
+        this.factory = Objects.requireNonNull(factory, "factory");
+    }
 
     @Override
     public String getTypeKey() {
@@ -31,6 +46,6 @@ public class LoginStateAdapter implements ContentStateAdapter {
 
     @Override
     public Node restore(LeafContentData content) {
-        return new LoginFactory().create(LoginFactory.FACTORY_ID);
+        return factory.create(LoginFactory.FACTORY_ID);
     }
 }

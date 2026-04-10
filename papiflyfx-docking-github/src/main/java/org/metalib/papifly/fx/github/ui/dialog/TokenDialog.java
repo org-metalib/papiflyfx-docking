@@ -8,6 +8,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.layout.VBox;
 import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 public class TokenDialog extends Dialog<String> {
 
@@ -25,8 +26,8 @@ public class TokenDialog extends Dialog<String> {
         PasswordField tokenField = new PasswordField();
         tokenField.setPromptText("ghp_...");
 
-        VBox content = new VBox(8, new Label("Personal access token"), tokenField);
-        content.setPadding(new Insets(12));
+        VBox content = new VBox(UiMetrics.SPACE_2, new Label("Personal access token"), tokenField);
+        content.setPadding(new Insets(UiMetrics.SPACE_3));
         getDialogPane().setContent(content);
 
         GitHubDialogStyler.apply(this, theme);

@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.code.theme;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
 
 /**
  * Maps a docking {@link Theme} to a {@link CodeEditorTheme} by composition.
@@ -31,55 +32,76 @@ public final class CodeEditorThemeMapper {
             return CodeEditorTheme.dark();
         }
 
-        boolean dark = isDark(theme.background());
+        Theme resolved = UiCommonThemeSupport.resolvedTheme(theme);
+        boolean dark = isDark(resolved.background());
         CodeEditorTheme base = dark ? CodeEditorTheme.dark() : CodeEditorTheme.light();
-
-        Paint accent = theme.accentColor();
-        Paint bg = theme.background();
+        Color background = UiCommonThemeSupport.background(resolved);
+        Color headerBackground = UiCommonThemeSupport.headerBackground(resolved);
+        Color accent = UiCommonThemeSupport.accent(resolved);
+        Color headerBackgroundActive = UiCommonThemeSupport.headerBackgroundActive(resolved);
+        Color textPrimary = UiCommonThemeSupport.textPrimary(resolved);
+        Color textActive = UiCommonThemeSupport.textActive(resolved);
+        Color border = UiCommonThemeSupport.border(resolved);
+        Color hover = UiCommonThemeSupport.hover(resolved);
+        Color pressed = UiCommonThemeSupport.pressed(resolved);
+        Color selection = alpha(accent, dark ? 0.24 : 0.18);
+        Color lineNumber = blend(textPrimary, background, dark ? 0.42 : 0.56);
+        Color currentLine = blend(background, headerBackgroundActive, dark ? 0.52 : 0.36);
+        Color searchHighlight = alpha(accent, dark ? 0.18 : 0.12);
+        Color scrollbarTrack = alpha(border, dark ? 0.22 : 0.12);
+        Color scrollbarThumb = alpha(textPrimary, dark ? 0.32 : 0.24);
+        Color scrollbarThumbHover = alpha(textPrimary, dark ? 0.46 : 0.36);
+        Color scrollbarThumbActive = alpha(textPrimary, dark ? 0.58 : 0.48);
+        Color overlayBackground = blend(headerBackground, background, dark ? 0.62 : 0.48);
+        Color overlayControlBackground = blend(headerBackgroundActive, background, dark ? 0.24 : 0.08);
+        Color overlayControlBorder = alpha(border, dark ? 0.88 : 0.72);
+        Color overlaySecondaryText = blend(textPrimary, background, dark ? 0.36 : 0.48);
+        Color gutterBackground = blend(background, headerBackground, dark ? 0.16 : 0.10);
+        Color shadow = UiCommonThemeSupport.shadowColor(resolved, 0.25, 0.18);
 
         return new CodeEditorTheme(
-            bg,
-            base.editorForeground(),
+            background,
+            textPrimary,
             base.keywordColor(),
             base.stringColor(),
             base.commentColor(),
             base.numberColor(),
-            base.caretColor(),
-            base.selectionColor(),
-            base.lineNumberColor(),
-            base.lineNumberActiveColor(),
+            textActive,
+            selection,
+            lineNumber,
+            textPrimary,
             base.booleanColor(),
             base.nullLiteralColor(),
             base.headlineColor(),
             base.listItemColor(),
             base.codeBlockColor(),
-            base.currentLineColor(),
-            base.searchHighlightColor(),
-            base.searchCurrentColor(),
-            bg,                                 // gutterBackground follows editor bg
+            currentLine,
+            searchHighlight,
+            accent,
+            gutterBackground,
             base.markerErrorColor(),
             base.markerWarningColor(),
             base.markerInfoColor(),
             base.markerBreakpointColor(),
-            accent,                             // markerBookmarkColor from accent
-            base.scrollbarTrackColor(),
-            base.scrollbarThumbColor(),
-            base.scrollbarThumbHoverColor(),
-            base.scrollbarThumbActiveColor(),
-            base.searchOverlayBackground(),
-            accent,                             // searchOverlayAccentBorder from accent
-            base.searchOverlayControlBackground(),
-            base.searchOverlayControlBorder(),
-            base.searchOverlayPrimaryText(),
-            base.searchOverlaySecondaryText(),
-            base.searchOverlayPanelBorder(),
-            base.searchOverlayControlHoverBackground(),
-            base.searchOverlayControlActiveBackground(),
-            accent,                             // searchOverlayControlFocusedBorder from accent
-            base.searchOverlayControlDisabledText(),
+            accent,
+            scrollbarTrack,
+            scrollbarThumb,
+            scrollbarThumbHover,
+            scrollbarThumbActive,
+            overlayBackground,
+            accent,
+            overlayControlBackground,
+            overlayControlBorder,
+            textPrimary,
+            overlaySecondaryText,
+            border,
+            hover,
+            pressed,
+            accent,
+            overlaySecondaryText,
             base.searchOverlayNoResultsBorder(),
-            base.searchOverlayShadowColor(),
-            accent,                             // searchOverlayIntegratedToggleActive from accent
+            shadow,
+            accent,
             base.searchOverlayErrorBackground()
         );
     }
@@ -95,5 +117,24 @@ public final class CodeEditorThemeMapper {
             return c.getBrightness() < DARK_THRESHOLD;
         }
         return true;
+    }
+
+    private static Color asColor(Paint paint, Color fallback) {
+        if (paint instanceof Color color) {
+            return color;
+        }
+        return fallback;
+    }
+
+    private static Color blend(Color base, Color mix, double weight) {
+        return base.interpolate(mix, clamp(weight));
+    }
+
+    private static Color alpha(Color color, double opacity) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), clamp(opacity));
+    }
+
+    private static double clamp(double value) {
+        return Math.max(0.0, Math.min(1.0, value));
     }
 }

@@ -7,8 +7,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.docking.api.LeafContentData;
@@ -32,16 +30,6 @@ class LoginRuntimeFxTest {
         this.stage = stage;
         stage.setScene(new Scene(new StackPane(), 800, 600));
         stage.show();
-    }
-
-    @BeforeEach
-    void resetRuntime() {
-        runFx(LoginRuntime::resetForTests);
-    }
-
-    @AfterEach
-    void clearRuntime() {
-        runFx(LoginRuntime::resetForTests);
     }
 
     @Test

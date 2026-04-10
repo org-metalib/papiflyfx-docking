@@ -19,6 +19,11 @@ public record SplitData(
     LayoutNode second
 ) implements LayoutNode {
 
+    @Override
+    public <T> T accept(LayoutNodeVisitor<T> visitor) {
+        return visitor.visitSplit(this);
+    }
+
     /**
      * Creates a horizontal split with default divider position.
      *

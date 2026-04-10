@@ -81,7 +81,7 @@
 }
 
 .pf-github-dialog-button-danger {
-    -fx-background-color: rgba(209, 105, 105, 0.16);
+    -fx-background-color: -pf-ui-danger-subtle;
     -fx-border-color: -pf-github-danger;
 }
 

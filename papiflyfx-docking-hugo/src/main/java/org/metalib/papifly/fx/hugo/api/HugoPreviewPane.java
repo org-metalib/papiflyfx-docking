@@ -19,6 +19,8 @@ import org.metalib.papifly.fx.hugo.process.HugoServerOptions;
 import org.metalib.papifly.fx.hugo.process.HugoServerProcessManager;
 import org.metalib.papifly.fx.hugo.web.UrlPolicy;
 import org.metalib.papifly.fx.hugo.web.WebViewNavigator;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.awt.Desktop;
 import java.net.URI;
@@ -374,12 +376,16 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
     }
 
     private void applyPreviewChrome() {
-        setStyle("-fx-background-color: #0b1324;");
-        contentStack.setStyle("-fx-background-color: #0b1324;");
-        toolbar.applyVisualStyle();
-        statusBar.applyVisualStyle();
-        placeholderLabel.setFont(Font.font("System", 13));
-        placeholderLabel.setTextFill(Color.web("#94a7c5"));
+        Theme activeTheme = themeProperty.get() == null ? Theme.dark() : themeProperty.get();
+        Theme fallback = UiCommonThemeSupport.fallbackTheme(activeTheme);
+        String background = UiStyleSupport.paintToCss(activeTheme.background(),
+            UiStyleSupport.paintToCss(fallback.background(), "transparent"));
+        setStyle("-fx-background-color: " + background + ";");
+        contentStack.setStyle("-fx-background-color: " + background + ";");
+        toolbar.applyTheme(activeTheme);
+        statusBar.applyTheme(activeTheme);
+        placeholderLabel.setFont(activeTheme.contentFont() == null ? fallback.contentFont() : activeTheme.contentFont());
+        placeholderLabel.setTextFill(UiCommonThemeSupport.textPrimary(activeTheme));
         webEngine.setUserStyleSheetLocation(null);
     }
 
@@ -390,6 +396,7 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
 
     private void syncThemeBinding(Theme theme) {
         themeProperty.set(theme == null ? Theme.dark() : theme);
+        applyPreviewChrome();
     }
 
     private void hidePlaceholder() {

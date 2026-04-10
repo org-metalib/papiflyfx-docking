@@ -35,6 +35,7 @@ import javafx.util.Duration;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.media.player.MediaPlayerService;
 import org.metalib.papifly.fx.media.theme.MediaThemeMapper;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 public class TransportBar extends HBox {
 
@@ -49,7 +50,7 @@ public class TransportBar extends HBox {
         ERROR
     }
 
-    private static final double ICON_SIZE = 16.0;
+    private static final double ICON_SIZE = UiMetrics.SPACE_4;
     private static final double AUTO_HIDE_SECS = 3.0;
     private static final long LIVE_SCRUB_INTERVAL_NANOS = 40_000_000L;
     private static final double LIVE_SCRUB_DELTA_SECONDS = 0.04;
@@ -90,21 +91,21 @@ public class TransportBar extends HBox {
     public TransportBar(MediaPlayerService service) {
         this.service = service;
         setAlignment(Pos.CENTER_LEFT);
-        setPadding(new Insets(6, 10, 6, 10));
-        setSpacing(8.0);
+        setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_3, UiMetrics.SPACE_1, UiMetrics.SPACE_3));
+        setSpacing(UiMetrics.SPACE_2);
         setFillHeight(false);
         setMinHeight(Region.USE_PREF_SIZE);
         setMaxHeight(Region.USE_PREF_SIZE);
         setPickOnBounds(false);
         setOpacity(1.0);
 
-        seekBar.setMinWidth(100.0);
-        timeLabel.setMinWidth(96.0);
-        volSlider.setMaxWidth(80.0);
+        seekBar.setMinWidth(UiMetrics.SPACE_6 * 4.0);
+        timeLabel.setMinWidth(UiMetrics.SPACE_6 * 4.0);
+        volSlider.setMaxWidth(UiMetrics.SPACE_5 * 4.0);
 
         stateLabel.setVisible(false);
         stateLabel.setManaged(false);
-        stateLabel.setMinWidth(76.0);
+        stateLabel.setMinWidth(UiMetrics.SPACE_5 * 4.0);
 
         HBox.setHgrow(seekBar, Priority.ALWAYS);
         volSlider.valueProperty().bindBidirectional(service.volumeProperty());
@@ -165,7 +166,7 @@ public class TransportBar extends HBox {
     public void applyTheme(Theme theme) {
         Color bg = MediaThemeMapper.toColor(MediaThemeMapper.controlBackground(theme));
         Color fg = MediaThemeMapper.toColor(MediaThemeMapper.controlForeground(theme));
-        double radius = Math.max(8.0, theme.cornerRadius() + 6.0);
+        double radius = Math.max(UiMetrics.RADIUS_MD, theme.cornerRadius() + UiMetrics.SPACE_1);
 
         setBackground(new Background(new BackgroundFill(
             Color.color(bg.getRed(), bg.getGreen(), bg.getBlue(), 0.72),
@@ -180,7 +181,7 @@ public class TransportBar extends HBox {
             new BorderWidths(1.0)
         )));
 
-        setEffect(new DropShadow(12.0, Color.color(0.0, 0.0, 0.0, 0.35)));
+        setEffect(new DropShadow(UiMetrics.SPACE_3, Color.color(0.0, 0.0, 0.0, 0.35)));
 
         timeLabel.setFont(theme.contentFont());
         timeLabel.setTextFill(fg);

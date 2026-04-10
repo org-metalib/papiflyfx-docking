@@ -1,16 +1,20 @@
 package org.metalib.papifly.fx.media.api;
 
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Scene;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.Region;
 import javafx.scene.media.MediaView;
+import javafx.scene.paint.Color;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.media.viewer.EmbedViewer;
 import org.metalib.papifly.fx.media.viewer.ImageViewer;
 import org.metalib.papifly.fx.media.viewer.VideoViewer;
@@ -187,6 +191,62 @@ class MediaViewerFxTest {
         }
     }
 
+    @Test
+    void bindThemePropertyPropagatesToActiveViewer(FxRobot robot) {
+        String url = getClass().getResource("/sample-media/sample.png").toExternalForm();
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        AtomicReference<Color> darkBackground = new AtomicReference<>();
+
+        robot.interact(() -> {
+            viewer.loadMedia(url);
+            viewer.bindThemeProperty(themeProperty);
+        });
+        robot.interact(() -> {});
+
+        robot.interact(() -> {
+            ImageViewer imageViewer = (ImageViewer) viewer.getChildren().get(0);
+            darkBackground.set(backgroundColor(imageViewer));
+            themeProperty.set(Theme.light());
+        });
+        robot.interact(() -> {});
+
+        robot.interact(() -> {
+            ImageViewer imageViewer = (ImageViewer) viewer.getChildren().get(0);
+            Color lightBackground = backgroundColor(imageViewer);
+            assertNotNull(darkBackground.get());
+            assertNotNull(lightBackground);
+            assertNotEquals(darkBackground.get(), lightBackground);
+        });
+    }
+
+    @Test
+    void bindThemePropertyPropagatesToEmbedViewer(FxRobot robot) {
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        AtomicReference<Color> darkBackground = new AtomicReference<>();
+
+        robot.interact(() -> {
+            viewer.loadMedia("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+            viewer.bindThemeProperty(themeProperty);
+        });
+        robot.interact(() -> {});
+
+        robot.interact(() -> {
+            EmbedViewer embedViewer = (EmbedViewer) viewer.getChildren().get(0);
+            darkBackground.set(backgroundColor(embedViewer));
+            themeProperty.set(Theme.light());
+        });
+        robot.interact(() -> {});
+
+        robot.interact(() -> {
+            EmbedViewer embedViewer = (EmbedViewer) viewer.getChildren().get(0);
+            Color lightBackground = backgroundColor(embedViewer);
+            assertNotNull(darkBackground.get());
+            assertNotNull(lightBackground);
+            assertNotEquals(darkBackground.get(), lightBackground);
+            assertEquals(Theme.light().background(), lightBackground);
+        });
+    }
+
     private static <T> T findDescendant(Node root, Class<T> type) {
         if (type.isInstance(root)) return type.cast(root);
         if (root instanceof Parent parent) {
@@ -194,6 +254,16 @@ class MediaViewerFxTest {
                 T found = findDescendant(child, type);
                 if (found != null) return found;
             }
+        }
+        return null;
+    }
+
+    private static Color backgroundColor(Region region) {
+        if (region.getBackground() == null || region.getBackground().getFills().isEmpty()) {
+            return null;
+        }
+        if (region.getBackground().getFills().getFirst().getFill() instanceof Color color) {
+            return color;
         }
         return null;
     }

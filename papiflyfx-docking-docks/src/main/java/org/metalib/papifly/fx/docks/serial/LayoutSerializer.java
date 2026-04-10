@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.docks.serial;
 
 import javafx.geometry.Orientation;
 import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
+import org.metalib.papifly.fx.docks.layout.data.LayoutNodeVisitor;
 import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.SplitData;
@@ -12,6 +13,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Serializes and deserializes layout definitions to/from Map structures.
@@ -39,10 +41,34 @@ public class LayoutSerializer {
     private static final String TYPE_SPLIT = "split";
     private static final String TYPE_TAB_GROUP = "tabGroup";
 
+    private final LayoutNodeVisitor<Map<String, Object>> serializerVisitor = new LayoutNodeVisitor<>() {
+        @Override
+        public Map<String, Object> visitLeaf(LeafData leaf) {
+            return serializeLeaf(leaf);
+        }
+
+        @Override
+        public Map<String, Object> visitSplit(SplitData split) {
+            return serializeSplit(split);
+        }
+
+        @Override
+        public Map<String, Object> visitTabGroup(TabGroupData tabGroup) {
+            return serializeTabGroup(tabGroup);
+        }
+    };
+
+    private final Map<String, Function<Map<String, Object>, LayoutNode>> deserializers;
+
     /**
      * Creates a layout serializer.
      */
     public LayoutSerializer() {
+        this.deserializers = Map.of(
+            TYPE_LEAF, this::deserializeLeaf,
+            TYPE_SPLIT, this::deserializeSplit,
+            TYPE_TAB_GROUP, this::deserializeTabGroup
+        );
     }
 
     /**
@@ -55,12 +81,7 @@ public class LayoutSerializer {
         if (node == null) {
             return null;
         }
-
-        return switch (node) {
-            case LeafData leaf -> serializeLeaf(leaf);
-            case SplitData split -> serializeSplit(split);
-            case TabGroupData tabGroup -> serializeTabGroup(tabGroup);
-        };
+        return node.accept(serializerVisitor);
     }
 
     private Map<String, Object> serializeLeaf(LeafData leaf) {
@@ -131,17 +152,14 @@ public class LayoutSerializer {
         }
 
         String type = (String) map.get(TYPE_KEY);
-
         if (type == null) {
             throw new IllegalArgumentException("Missing type");
         }
-
-        return switch (type) {
-            case TYPE_LEAF -> deserializeLeaf(map);
-            case TYPE_SPLIT -> deserializeSplit(map);
-            case TYPE_TAB_GROUP -> deserializeTabGroup(map);
-            default -> throw new IllegalArgumentException("Unknown type: " + type);
-        };
+        Function<Map<String, Object>, LayoutNode> deserializer = deserializers.get(type);
+        if (deserializer == null) {
+            throw new IllegalArgumentException("Unknown type: " + type);
+        }
+        return deserializer.apply(map);
     }
 
     private LeafData deserializeLeaf(Map<String, Object> map) {

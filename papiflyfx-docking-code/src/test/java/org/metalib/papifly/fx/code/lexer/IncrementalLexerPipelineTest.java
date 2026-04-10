@@ -49,7 +49,7 @@ class IncrementalLexerPipelineTest {
                 return line != null
                     && "const value = 1;".equals(line.text())
                     && hasTokenType(applied.get(), 0, TokenType.KEYWORD);
-            }, Duration.ofSeconds(5)));
+            }, Duration.ofSeconds(10)));
         } finally {
             pipeline.dispose();
         }

@@ -12,6 +12,7 @@ import org.metalib.papifly.fx.code.folding.VisibleLineMap;
 import org.metalib.papifly.fx.code.render.GlyphCache;
 import org.metalib.papifly.fx.code.render.WrapMap;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.function.IntConsumer;
 
@@ -23,9 +24,10 @@ import java.util.function.IntConsumer;
  */
 public class GutterView extends Region {
 
-    private static final double MARKER_LANE_WIDTH = 12;
-    private static final double FOLD_LANE_WIDTH = 12;
-    private static final double LINE_NUMBER_RIGHT_PADDING = 8;
+    private static final double MARKER_LANE_WIDTH = UiMetrics.SPACE_3;
+    private static final double FOLD_LANE_WIDTH = UiMetrics.SPACE_3;
+    private static final double LINE_NUMBER_RIGHT_PADDING = UiMetrics.SPACE_2;
+    private static final double GLYPH_HALF_STEP = UiMetrics.SPACE_1 * 0.5;
 
     private final Canvas canvas;
     private final GlyphCache glyphCache;
@@ -273,7 +275,7 @@ public class GutterView extends Region {
             MarkerType type = markerModel.getHighestPriorityType(line);
             if (type != null) {
                 gc.setFill(markerColor(type));
-                double markerSize = Math.min(lineHeight - 4, MARKER_LANE_WIDTH - 4);
+                double markerSize = Math.min(lineHeight - UiMetrics.SPACE_1, MARKER_LANE_WIDTH - UiMetrics.SPACE_1);
                 double markerX = (MARKER_LANE_WIDTH - markerSize) / 2;
                 double markerY = y + (lineHeight - markerSize) / 2;
                 gc.fillOval(markerX, markerY, markerSize, markerSize);
@@ -307,16 +309,16 @@ public class GutterView extends Region {
         if (foldMap.isCollapsedHeader(line)) {
             // Chevron Right
             gc.strokePolyline(
-                new double[]{x + 1.0, x + 5.0, x + 1.0},
-                new double[]{centerY - 4.0, centerY, centerY + 4.0},
+                new double[]{x + GLYPH_HALF_STEP, x + UiMetrics.SPACE_1 + GLYPH_HALF_STEP, x + GLYPH_HALF_STEP},
+                new double[]{centerY - UiMetrics.SPACE_1, centerY, centerY + UiMetrics.SPACE_1},
                 3
             );
             return;
         }
         // Chevron Down
         gc.strokePolyline(
-            new double[]{x, x + 4.0, x + 8.0},
-            new double[]{centerY - 2.0, centerY + 2.0, centerY - 2.0},
+            new double[]{x, x + UiMetrics.SPACE_1, x + UiMetrics.SPACE_2},
+            new double[]{centerY - GLYPH_HALF_STEP, centerY + GLYPH_HALF_STEP, centerY - GLYPH_HALF_STEP},
             3
         );
     }

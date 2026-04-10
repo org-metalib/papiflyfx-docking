@@ -7,20 +7,21 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
-import javafx.scene.effect.DropShadow;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
 import javafx.scene.shape.SVGPath;
 import org.metalib.papifly.fx.code.search.SearchIcons;
 import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
+import org.metalib.papifly.fx.ui.UiCommonPalette;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
+import org.metalib.papifly.fx.ui.UiMetrics;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.net.URL;
-import java.util.Locale;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
@@ -31,6 +32,9 @@ public class GoToLineController extends VBox {
 
     private static final String STYLESHEET_NAME = "go-to-line-overlay.css";
     private static final PseudoClass INVALID_PSEUDO_CLASS = PseudoClass.getPseudoClass("invalid");
+    private static final double OVERLAY_MIN_WIDTH = UiMetrics.SPACE_6 * 11.0;
+    private static final double OVERLAY_PREF_WIDTH = UiMetrics.SPACE_6 * 13.0;
+    private static final double OVERLAY_MAX_WIDTH = UiMetrics.SPACE_6 * 15.0;
 
     private CodeEditorTheme theme = CodeEditorTheme.dark();
     private final TextField lineField;
@@ -44,52 +48,53 @@ public class GoToLineController extends VBox {
      * Creates go-to-line overlay controller.
      */
     public GoToLineController() {
-        getStyleClass().add("pf-goto-overlay");
-        setPadding(new Insets(4, 6, 4, 6));
-        setSpacing(4);
-        setMinWidth(260);
-        setPrefWidth(300);
-        setMaxWidth(360);
+        getStyleClass().addAll("pf-goto-overlay", "pf-ui-popup-surface");
+        setPadding(new Insets(UiMetrics.SPACE_1, UiMetrics.SPACE_2, UiMetrics.SPACE_1, UiMetrics.SPACE_2));
+        setSpacing(UiMetrics.SPACE_1);
+        setMinWidth(OVERLAY_MIN_WIDTH);
+        setPrefWidth(OVERLAY_PREF_WIDTH);
+        setMaxWidth(OVERLAY_MAX_WIDTH);
         setMaxHeight(Region.USE_PREF_SIZE);
         setManaged(false);
         setVisible(false);
+        UiStyleSupport.ensureCommonStylesheetLoaded(this);
         ensureStylesheetLoaded();
 
         Label titleLabel = new Label("Go to line");
         titleLabel.getStyleClass().add("pf-goto-title");
 
         Button closeButton = new Button();
-        closeButton.getStyleClass().add("pf-goto-icon-button");
+        closeButton.getStyleClass().addAll("pf-goto-icon-button", "pf-ui-icon-button");
         closeButton.setGraphic(createIcon(SearchIcons.CLOSE, 10));
         closeButton.setOnAction(e -> close());
 
-        HBox titleRow = new HBox(4, titleLabel, new Region(), closeButton);
+        HBox titleRow = new HBox(UiMetrics.SPACE_1, titleLabel, new Region(), closeButton);
         titleRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(titleRow.getChildren().get(1), Priority.ALWAYS);
 
         rangeLabel = new Label();
-        rangeLabel.getStyleClass().add("pf-goto-range");
+        rangeLabel.getStyleClass().addAll("pf-goto-range", "pf-ui-result-label");
 
         lineField = new TextField();
-        lineField.getStyleClass().add("pf-goto-field");
+        lineField.getStyleClass().addAll("pf-goto-field", "pf-ui-compact-field");
         lineField.setPromptText("Line number");
-        lineField.setPrefHeight(24);
-        lineField.setMinHeight(24);
-        lineField.setMaxHeight(24);
+        lineField.setPrefHeight(UiMetrics.CONTROL_HEIGHT_COMPACT);
+        lineField.setMinHeight(UiMetrics.CONTROL_HEIGHT_COMPACT);
+        lineField.setMaxHeight(UiMetrics.CONTROL_HEIGHT_COMPACT);
         lineField.setTextFormatter(new TextFormatter<>(lineNumberFilter()));
         HBox.setHgrow(lineField, Priority.ALWAYS);
 
         confirmButton = new Button("Go");
-        confirmButton.getStyleClass().add("pf-goto-action-button");
+        confirmButton.getStyleClass().addAll("pf-goto-action-button", "pf-ui-compact-action-button");
         confirmButton.setDisable(true);
         confirmButton.setOnAction(e -> submit());
 
         Button cancelButton = new Button("Cancel");
-        cancelButton.getStyleClass().add("pf-goto-action-button");
-        cancelButton.getStyleClass().add("pf-goto-action-secondary");
+        cancelButton.getStyleClass().addAll("pf-goto-action-button", "pf-ui-compact-action-button");
+        cancelButton.getStyleClass().addAll("pf-goto-action-secondary", "pf-ui-compact-action-button-secondary");
         cancelButton.setOnAction(e -> close());
 
-        HBox actionRow = new HBox(4, lineField, confirmButton, cancelButton);
+        HBox actionRow = new HBox(UiMetrics.SPACE_1, lineField, confirmButton, cancelButton);
         actionRow.setAlignment(Pos.CENTER_LEFT);
 
         getChildren().addAll(titleRow, rangeLabel, actionRow);
@@ -247,62 +252,45 @@ public class GoToLineController extends VBox {
 
     private SVGPath createIcon(String svgPath, double size) {
         SVGPath icon = SearchIcons.createIcon(svgPath, size);
-        icon.getStyleClass().add("pf-goto-icon");
-        Color iconColor = asColor(theme.searchOverlayPrimaryText(), Color.web("#d4d4d4"));
+        icon.getStyleClass().addAll("pf-goto-icon", "pf-ui-icon");
+        Color iconColor = UiStyleSupport.asColor(
+            theme.searchOverlayPrimaryText(),
+            UiStyleSupport.asColor(theme.editorForeground(), Color.TRANSPARENT)
+        );
         icon.setFill(iconColor);
         return icon;
     }
 
     private void applyThemeColors() {
-        setStyle("""
-            -pf-goto-bg: %s;
-            -pf-goto-panel-border: %s;
-            -pf-goto-text: %s;
-            -pf-goto-muted-text: %s;
-            -pf-goto-control-bg: %s;
-            -pf-goto-control-border: %s;
-            -pf-goto-control-hover-bg: %s;
-            -pf-goto-control-focused-border: %s;
-            -pf-goto-control-disabled-text: %s;
-            -pf-goto-invalid-border: %s;
-            -pf-goto-shadow: %s;
-            """.formatted(
-            paintToCss(theme.searchOverlayBackground(), "#252526"),
-            paintToCss(theme.searchOverlayPanelBorder(), "#3f3f46"),
-            paintToCss(theme.searchOverlayPrimaryText(), "#d4d4d4"),
-            paintToCss(theme.searchOverlaySecondaryText(), "#858585"),
-            paintToCss(theme.searchOverlayControlBackground(), "#3c3c3c"),
-            paintToCss(theme.searchOverlayControlBorder(), "#555555"),
-            paintToCss(theme.searchOverlayControlHoverBackground(), "#4a4a4a"),
-            paintToCss(theme.searchOverlayControlFocusedBorder(), "#007acc"),
-            paintToCss(theme.searchOverlayControlDisabledText(), "#7a7a7a"),
-            paintToCss(theme.searchOverlayNoResultsBorder(), "#d16969"),
-            paintToCss(theme.searchOverlayShadowColor(), "rgba(0, 0, 0, 0.25)")
-        ));
-        Color shadowColor = asColor(theme.searchOverlayShadowColor(), Color.color(0, 0, 0, 0.25));
-        setEffect(new DropShadow(10, shadowColor));
-        Color iconColor = asColor(theme.searchOverlayPrimaryText(), Color.web("#d4d4d4"));
+        boolean dark = UiCommonThemeSupport.isDark(theme.editorBackground());
+        UiCommonPalette palette = new UiCommonPalette(
+            theme.searchOverlayBackground(),
+            theme.searchOverlayPanelBorder(),
+            theme.searchOverlayPrimaryText(),
+            theme.searchOverlaySecondaryText(),
+            theme.searchOverlayControlDisabledText(),
+            theme.searchOverlayControlBackground(),
+            theme.searchOverlayControlHoverBackground(),
+            theme.searchOverlayControlActiveBackground(),
+            theme.searchOverlayControlFocusedBorder(),
+            theme.searchOverlayAccentBorder(),
+            UiCommonThemeSupport.semanticColor(dark, UiCommonThemeSupport.SemanticTone.SUCCESS),
+            UiCommonThemeSupport.semanticColor(dark, UiCommonThemeSupport.SemanticTone.WARNING),
+            theme.searchOverlayNoResultsBorder(),
+            theme.searchOverlayAccentBorder(),
+            theme.searchOverlayShadowColor()
+        );
+        setStyle(UiStyleSupport.metricVariables()
+            + UiStyleSupport.fontVariables(null)
+            + UiCommonThemeSupport.themeVariables(palette));
+        Color iconColor = UiStyleSupport.asColor(
+            theme.searchOverlayPrimaryText(),
+            UiStyleSupport.asColor(theme.editorForeground(), Color.TRANSPARENT)
+        );
         lookupAll(".pf-goto-icon").forEach(node -> {
             if (node instanceof SVGPath icon) {
                 icon.setFill(iconColor);
             }
         });
-    }
-
-    private static Color asColor(Paint paint, Color fallback) {
-        if (paint instanceof Color color) {
-            return color;
-        }
-        return fallback;
-    }
-
-    private static String paintToCss(Paint paint, String fallback) {
-        if (paint instanceof Color color) {
-            int red = (int) Math.round(color.getRed() * 255.0);
-            int green = (int) Math.round(color.getGreen() * 255.0);
-            int blue = (int) Math.round(color.getBlue() * 255.0);
-            return String.format(Locale.ROOT, "rgba(%d, %d, %d, %.3f)", red, green, blue, color.getOpacity());
-        }
-        return fallback;
     }
 }

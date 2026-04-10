@@ -14,9 +14,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import org.metalib.papifly.fx.login.api.AuthSessionAdmin;
 import org.metalib.papifly.fx.login.api.AuthSessionBroker;
 import org.metalib.papifly.fx.login.config.LoginProviderSettings;
-import org.metalib.papifly.fx.login.core.DefaultAuthSessionBroker;
 import org.metalib.papifly.fx.login.idapi.UserPrincipal;
 import org.metalib.papifly.fx.login.idapi.providers.GenericOidcProvider;
 import org.metalib.papifly.fx.login.idapi.providers.GitHubProvider;
@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 public class AuthenticationCategory implements SettingsCategory {
 
@@ -48,6 +49,8 @@ public class AuthenticationCategory implements SettingsCategory {
     private static final String GOOGLE_PROVIDER = GoogleProvider.PROVIDER_ID;
     private static final String GITHUB_PROVIDER = GitHubProvider.PROVIDER_ID;
     private static final String TOKEN_PREFIX = "login:oauth:refresh:";
+
+    private final Supplier<AuthSessionBroker> brokerSupplier;
 
     private static final SettingDefinition<Boolean> GENERIC_ENABLED = SettingDefinition
         .of("login.provider.generic.enabled", "Generic OIDC Enabled", SettingType.BOOLEAN, true)
@@ -114,6 +117,18 @@ public class AuthenticationCategory implements SettingsCategory {
     private Label activeExpiryLabel;
     private ListView<String> tokenList;
     private boolean dirty;
+
+    public AuthenticationCategory() {
+        this(LoginRuntime.createDefault());
+    }
+
+    AuthenticationCategory(LoginRuntime runtime) {
+        this(runtime::broker);
+    }
+
+    AuthenticationCategory(Supplier<AuthSessionBroker> brokerSupplier) {
+        this.brokerSupplier = brokerSupplier;
+    }
 
     @Override
     public String id() {
@@ -199,7 +214,7 @@ public class AuthenticationCategory implements SettingsCategory {
                 }
             });
 
-            AuthSessionBroker broker = LoginRuntime.broker();
+            AuthSessionBroker broker = broker();
             broker.authStateProperty().addListener((obs, oldValue, newValue) -> refreshSessionSummary());
             broker.sessionProperty().addListener((obs, oldValue, newValue) -> refreshSessionSummary());
 
@@ -311,7 +326,7 @@ public class AuthenticationCategory implements SettingsCategory {
     }
 
     private CompletableFuture<ValidationResult> testConnection(SettingsContext context) {
-        AuthSession session = LoginRuntime.broker().activeSession().orElse(null);
+        AuthSession session = broker().activeSession().orElse(null);
         if (session == null) {
             return CompletableFuture.completedFuture(ValidationResult.warning("No active session."));
         }
@@ -323,7 +338,7 @@ public class AuthenticationCategory implements SettingsCategory {
     }
 
     private CompletableFuture<ValidationResult> refreshSession(SettingsContext context) {
-        return LoginRuntime.broker().refresh(true).handle((session, error) -> {
+        return broker().refresh(true).handle((session, error) -> {
             refreshSessionSummaryLater();
             if (error != null) {
                 return ValidationResult.error(error.getMessage());
@@ -333,7 +348,7 @@ public class AuthenticationCategory implements SettingsCategory {
     }
 
     private CompletableFuture<ValidationResult> logout(SettingsContext context) {
-        return LoginRuntime.broker().logout(false).handle((ignored, error) -> {
+        return broker().logout(false).handle((ignored, error) -> {
             refreshSessionSummaryLater();
             if (error != null) {
                 return ValidationResult.error(error.getMessage());
@@ -371,10 +386,14 @@ public class AuthenticationCategory implements SettingsCategory {
             parseScopes(sessionScopesField.getText().isBlank() ? defaultScopes(providerId) : sessionScopesField.getText())
         );
 
-        AuthSessionBroker broker = LoginRuntime.broker();
-        if (broker instanceof DefaultAuthSessionBroker defaultBroker) {
-            defaultBroker.upsertSession(session);
+        AuthSessionAdmin admin = sessionAdmin();
+        if (admin == null) {
+            return CompletableFuture.completedFuture(ValidationResult.warning(
+                "The active authentication runtime does not support managed session drafts."
+            ));
         }
+        admin.upsertSession(session);
+        AuthSessionBroker broker = broker();
         broker.setActiveSession(providerId, subject);
 
         refreshSessionSummary();
@@ -389,8 +408,9 @@ public class AuthenticationCategory implements SettingsCategory {
         }
         context.secretStore().clearSecret(key);
         SessionKey sessionKey = sessionKey(key);
-        if (sessionKey != null && LoginRuntime.broker() instanceof DefaultAuthSessionBroker defaultBroker) {
-            defaultBroker.removeSession(sessionKey.providerId(), sessionKey.subject());
+        AuthSessionAdmin admin = sessionAdmin();
+        if (sessionKey != null && admin != null) {
+            admin.removeSession(sessionKey.providerId(), sessionKey.subject());
         }
         refreshTokenList(context);
         refreshSessionSummary();
@@ -406,7 +426,7 @@ public class AuthenticationCategory implements SettingsCategory {
     }
 
     private void refreshSessionSummary() {
-        AuthSessionBroker broker = LoginRuntime.broker();
+        AuthSessionBroker broker = broker();
         authStateLabel.setText(String.valueOf(broker.authStateProperty().get()));
         AuthSession session = broker.activeSession().orElse(null);
         if (session == null) {
@@ -521,6 +541,15 @@ public class AuthenticationCategory implements SettingsCategory {
 
     private String value(String text) {
         return text == null ? "" : text.trim();
+    }
+
+    private AuthSessionBroker broker() {
+        return brokerSupplier.get();
+    }
+
+    private AuthSessionAdmin sessionAdmin() {
+        AuthSessionBroker broker = broker();
+        return broker instanceof AuthSessionAdmin admin ? admin : null;
     }
 
     private void storeSecret(SettingsContext context, String providerId, String secret) {

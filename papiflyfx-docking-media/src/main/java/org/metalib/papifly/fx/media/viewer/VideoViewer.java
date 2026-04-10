@@ -26,6 +26,7 @@ import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.media.controls.TransportBar;
 import org.metalib.papifly.fx.media.player.MediaPlayerService;
 import org.metalib.papifly.fx.media.theme.MediaThemeMapper;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 public class VideoViewer extends StackPane {
 
@@ -67,7 +68,7 @@ public class VideoViewer extends StackPane {
         controlsOverlay.setMaxHeight(Region.USE_PREF_SIZE);
         controlsOverlay.getChildren().add(transportBar);
         StackPane.setAlignment(controlsOverlay, Pos.BOTTOM_CENTER);
-        StackPane.setMargin(controlsOverlay, new Insets(0, 8, 8, 8));
+        StackPane.setMargin(controlsOverlay, new Insets(0, UiMetrics.SPACE_2, UiMetrics.SPACE_2, UiMetrics.SPACE_2));
 
         centerAffordance.setManaged(false);
         centerAffordance.setPickOnBounds(false);

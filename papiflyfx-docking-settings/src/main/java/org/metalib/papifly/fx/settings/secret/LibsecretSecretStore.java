@@ -71,6 +71,11 @@ public class LibsecretSecretStore implements SecretStore {
         return keys;
     }
 
+    @Override
+    public String backendName() {
+        return "libsecret";
+    }
+
     private boolean isLinux() {
         String os = System.getProperty("os.name", "").toLowerCase();
         return os.contains("linux");

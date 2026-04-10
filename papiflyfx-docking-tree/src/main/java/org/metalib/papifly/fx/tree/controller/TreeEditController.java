@@ -6,6 +6,7 @@ import javafx.scene.input.KeyCode;
 import org.metalib.papifly.fx.tree.api.TreeItem;
 import org.metalib.papifly.fx.tree.model.FlattenedRow;
 import org.metalib.papifly.fx.tree.render.TreeViewport;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -82,11 +83,11 @@ public final class TreeEditController<T> {
         double x = (editingDepth * viewport.getTheme().indentWidth())
             + viewport.getTheme().indentWidth()
             + viewport.getTheme().iconSize()
-            + 6.0
+            + UiMetrics.SPACE_2
             - viewport.getHorizontalScrollOffset();
         double y = rowBounds.getMinY() + 1.0;
-        double width = Math.max(80.0, rowBounds.getWidth() - x - 6.0);
-        double height = Math.max(18.0, rowBounds.getHeight() - 2.0);
+        double width = Math.max(UiMetrics.SPACE_5 * 4.0, rowBounds.getWidth() - x - UiMetrics.SPACE_2);
+        double height = Math.max(UiMetrics.SPACE_4, rowBounds.getHeight() - (UiMetrics.SPACE_1 * 0.5));
         editor.resizeRelocate(Math.max(0.0, x), y, width, height);
     }
 

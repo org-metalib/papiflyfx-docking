@@ -13,7 +13,6 @@ public class SettingsContentFactory implements ContentFactory {
 
     public SettingsContentFactory(SettingsRuntime runtime) {
         this.runtime = runtime;
-        SettingsRuntime.setDefault(runtime);
     }
 
     @Override

@@ -8,6 +8,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.VBox;
 import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 public class CommitDialog extends Dialog<String> {
 
@@ -25,8 +26,8 @@ public class CommitDialog extends Dialog<String> {
         messageArea.setPromptText("Commit message");
         messageArea.setPrefRowCount(4);
 
-        VBox content = new VBox(8, new Label("Message"), messageArea);
-        content.setPadding(new Insets(12));
+        VBox content = new VBox(UiMetrics.SPACE_2, new Label("Message"), messageArea);
+        content.setPadding(new Insets(UiMetrics.SPACE_3));
         getDialogPane().setContent(content);
 
         GitHubDialogStyler.apply(this, theme);

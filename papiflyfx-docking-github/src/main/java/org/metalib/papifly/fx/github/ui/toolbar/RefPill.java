@@ -8,10 +8,11 @@ import javafx.scene.layout.HBox;
 import javafx.scene.shape.Circle;
 import org.metalib.papifly.fx.github.model.CurrentRefState;
 import org.metalib.papifly.fx.github.model.GitRefKind;
+import org.metalib.papifly.fx.ui.UiPillButton;
 
 import java.util.List;
 
-public class RefPill extends Button {
+public class RefPill extends UiPillButton {
 
     private static final List<String> DOT_VARIANTS = List.of(
         "pf-github-ref-dot-clean",
@@ -32,6 +33,7 @@ public class RefPill extends Button {
     private final Label chevronLabel;
 
     public RefPill() {
+        super();
         setId("github-ref-pill");
         getStyleClass().add("pf-github-ref-pill");
         setMnemonicParsing(false);

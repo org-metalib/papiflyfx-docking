@@ -15,7 +15,6 @@ import org.metalib.papifly.fx.settings.api.SecretStore;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.secret.EncryptedFileSecretStore;
-import org.metalib.papifly.fx.settings.secret.SecretStoreFactory;
 import org.metalib.papifly.fx.settings.ui.controls.SecretSettingControl;
 
 import java.util.List;
@@ -114,7 +113,7 @@ public class SecurityCategory implements SettingsCategory {
             keysView.setPrefWidth(220);
         }
         SecretStore secretStore = context.secretStore();
-        backendLabel.setText("Secret backend: " + SecretStoreFactory.backendName(secretStore));
+        backendLabel.setText("Secret backend: " + secretStore.backendName());
         boolean usingFallback = secretStore instanceof EncryptedFileSecretStore;
         warningLabel.setText(usingFallback
             ? "Secrets are stored in the encrypted-file backend. OS keychain integration is not active."

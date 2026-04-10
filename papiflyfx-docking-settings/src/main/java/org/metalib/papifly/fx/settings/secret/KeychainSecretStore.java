@@ -96,6 +96,11 @@ public class KeychainSecretStore implements SecretStore {
         return keys;
     }
 
+    @Override
+    public String backendName() {
+        return "macOS Keychain";
+    }
+
     private boolean isMacOs() {
         String name = System.getProperty("os.name", "").toLowerCase();
         return name.contains("mac");

@@ -11,16 +11,6 @@
     <description>Canvas-based virtualized tree component for PapiflyFX docking.</description>
     <artifactId>papiflyfx-docking-tree</artifactId>
 
-    <properties>
-        <testfx.headless>true</testfx.headless>
-        <testfx.robot>glass</testfx.robot>
-        <testfx.platform>Desktop</testfx.platform>
-        <monocle.platform>Headless</monocle.platform>
-        <prism.order>sw</prism.order>
-        <prism.text>t2k</prism.text>
-        <java.awt.headless>false</java.awt.headless>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.metalib.papifly.docking</groupId>
@@ -125,7 +115,6 @@
                 <monocle.platform>Headless</monocle.platform>
                 <prism.order>sw</prism.order>
                 <prism.text>t2k</prism.text>
-                <java.awt.headless>true</java.awt.headless>
             </properties>
         </profile>
     </profiles>

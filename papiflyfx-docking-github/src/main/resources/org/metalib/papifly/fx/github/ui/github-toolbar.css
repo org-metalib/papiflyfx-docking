@@ -10,35 +10,30 @@
 }
 
 .pf-github-brand-badge {
-    -fx-padding: 4 10 4 10;
-    -fx-background-color: rgba(0, 122, 204, 0.12);
-    -fx-border-color: rgba(0, 122, 204, 0.40);
+    -fx-padding: 4 12 4 12;
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-border-color: -pf-ui-accent;
     -fx-border-width: 1;
-    -fx-border-radius: 999;
-    -fx-background-radius: 999;
+    -fx-border-radius: 999px;
+    -fx-background-radius: 999px;
     -fx-text-fill: -pf-github-link;
     -fx-font-weight: bold;
 }
 
 .pf-github-repo-pill,
 .pf-github-ref-pill {
-    -fx-padding: 0 14 0 14;
-    -fx-background-color: -pf-github-group-bg;
-    -fx-border-color: -pf-github-group-border;
-    -fx-border-width: 1;
-    -fx-border-radius: 999;
-    -fx-background-radius: 999;
+    -fx-padding: 0 16 0 16;
     -fx-text-fill: -pf-github-text;
 }
 
 .pf-github-repo-pill:hover,
 .pf-github-ref-pill:hover {
-    -fx-background-color: -pf-github-control-hover-bg;
+    -fx-background-color: -pf-ui-surface-control-hover;
 }
 
 .pf-github-repo-pill:armed,
 .pf-github-ref-pill:armed {
-    -fx-background-color: -pf-github-control-pressed-bg;
+    -fx-background-color: -pf-ui-surface-control-pressed;
 }
 
 .pf-github-repo-pill:focused,
@@ -74,11 +69,11 @@
 
 .pf-github-ref-kind,
 .pf-github-ref-popup-kind {
-    -fx-min-width: 18;
+    -fx-min-width: 20;
     -fx-alignment: center;
-    -fx-padding: 1 4 1 4;
+    -fx-padding: 0 4 0 4;
     -fx-background-color: -pf-github-control-bg;
-    -fx-background-radius: 999;
+    -fx-background-radius: 999px;
     -fx-text-fill: -pf-github-text;
     -fx-font-size: 10px;
     -fx-font-weight: bold;
@@ -86,26 +81,26 @@
 
 .pf-github-ref-kind-local,
 .pf-github-ref-popup-kind-local {
-    -fx-background-color: rgba(0, 122, 204, 0.16);
+    -fx-background-color: -pf-ui-accent-subtle;
 }
 
 .pf-github-ref-kind-remote,
 .pf-github-ref-popup-kind-remote {
-    -fx-background-color: rgba(120, 120, 120, 0.16);
+    -fx-background-color: -pf-ui-surface-control;
 }
 
 .pf-github-ref-kind-tag,
 .pf-github-ref-popup-kind-tag {
-    -fx-background-color: rgba(198, 154, 49, 0.16);
+    -fx-background-color: -pf-ui-warning-subtle;
 }
 
 .pf-github-ref-kind-detached,
 .pf-github-ref-popup-kind-detached {
-    -fx-background-color: rgba(209, 105, 105, 0.18);
+    -fx-background-color: -pf-ui-danger-subtle;
 }
 
 .pf-github-ref-popup-kind-action {
-    -fx-background-color: rgba(0, 122, 204, 0.10);
+    -fx-background-color: -pf-ui-accent-subtle;
 }
 
 .pf-github-ref-text {
@@ -117,41 +112,11 @@
 }
 
 .pf-github-chip-strip {
-    -fx-spacing: 6;
+    -fx-spacing: 8;
 }
 
 .pf-github-chip {
-    -fx-padding: 3 10 3 10;
-    -fx-background-color: -pf-github-control-bg;
-    -fx-border-color: -pf-github-control-border;
-    -fx-border-width: 1;
-    -fx-border-radius: 999;
-    -fx-background-radius: 999;
     -fx-font-size: 11px;
-}
-
-.pf-github-chip-accent {
-    -fx-background-color: rgba(0, 122, 204, 0.14);
-    -fx-border-color: -pf-github-accent;
-}
-
-.pf-github-chip-success {
-    -fx-background-color: rgba(71, 164, 115, 0.14);
-    -fx-border-color: -pf-github-success;
-}
-
-.pf-github-chip-warning {
-    -fx-background-color: rgba(198, 154, 49, 0.14);
-    -fx-border-color: -pf-github-warning;
-}
-
-.pf-github-chip-danger {
-    -fx-background-color: rgba(209, 105, 105, 0.18);
-    -fx-border-color: -pf-github-danger;
-}
-
-.pf-github-chip-muted {
-    -fx-text-fill: -pf-github-muted-text;
 }
 
 .pf-github-action-bar {
@@ -162,23 +127,23 @@
 .pf-github-action-button,
 .pf-github-overflow-button {
     -fx-padding: 0 12 0 12;
-    -fx-background-color: -pf-github-control-bg;
-    -fx-border-color: -pf-github-control-border;
+    -fx-background-color: -pf-ui-surface-control;
+    -fx-border-color: -pf-ui-border-default;
     -fx-border-width: 1;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
     -fx-text-fill: -pf-github-text;
 }
 
 .pf-github-action-button:hover,
 .pf-github-overflow-button:hover {
-    -fx-background-color: -pf-github-control-hover-bg;
+    -fx-background-color: -pf-ui-surface-control-hover;
 }
 
 .pf-github-action-button:armed,
 .pf-github-overflow-button:showing,
 .pf-github-overflow-button:armed {
-    -fx-background-color: -pf-github-control-pressed-bg;
+    -fx-background-color: -pf-ui-surface-control-pressed;
 }
 
 .pf-github-action-button:disabled,
@@ -188,9 +153,7 @@
 }
 
 .pf-github-status-slot {
-    -fx-spacing: 8;
-    -fx-alignment: center-left;
-    -fx-padding: 0 0 0 6;
+    -fx-padding: 0 0 0 8;
 }
 
 .pf-github-busy-indicator {
@@ -202,33 +165,16 @@
 }
 
 .pf-github-error-label {
-    -fx-padding: 3 10 3 10;
-    -fx-background-color: -pf-github-error-bg;
-    -fx-border-color: -pf-github-danger;
-    -fx-border-width: 1;
-    -fx-border-radius: 999;
-    -fx-background-radius: 999;
     -fx-text-fill: -pf-github-text;
 }
 
 .pf-github-ref-popup,
 .pf-github-ref-submenu-list {
-    -fx-background-color: -pf-github-group-bg;
-    -fx-border-color: -pf-github-group-border;
-    -fx-border-width: 1;
-    -fx-border-radius: 14;
-    -fx-background-radius: 14;
-    -fx-padding: 10;
+    -fx-padding: 12;
     -fx-spacing: 8;
-    -fx-effect: dropshadow(three-pass-box, -pf-github-shadow, 18, 0.18, 0, 8);
 }
 
 .pf-github-ref-popup-search {
-    -fx-background-color: -pf-github-control-bg;
-    -fx-border-color: -pf-github-control-border;
-    -fx-border-width: 1;
-    -fx-border-radius: 10;
-    -fx-background-radius: 10;
     -fx-text-fill: -pf-github-text;
     -fx-prompt-text-fill: -pf-github-muted-text;
 }
@@ -254,14 +200,14 @@
 
 .pf-github-ref-popup-list .list-cell:selected,
 .pf-github-ref-submenu-list .list-cell:selected {
-    -fx-background-color: rgba(0, 122, 204, 0.12);
-    -fx-background-radius: 10;
+    -fx-background-color: -pf-ui-surface-selected;
+    -fx-background-radius: 8px;
 }
 
 .pf-github-ref-popup-list .list-cell:hover,
 .pf-github-ref-submenu-list .list-cell:hover {
-    -fx-background-color: rgba(0, 122, 204, 0.08);
-    -fx-background-radius: 10;
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-background-radius: 8px;
 }
 
 .pf-github-ref-popup-header-cell {
@@ -275,9 +221,9 @@
 }
 
 .pf-github-ref-popup-entry {
-    -fx-spacing: 10;
+    -fx-spacing: 12;
     -fx-alignment: center-left;
-    -fx-padding: 8 10 8 10;
+    -fx-padding: 8 12 8 12;
 }
 
 .pf-github-ref-popup-entry-disabled {
@@ -301,7 +247,7 @@
     -fx-max-width: 8;
     -fx-max-height: 8;
     -fx-background-color: -pf-github-accent;
-    -fx-background-radius: 999;
+    -fx-background-radius: 999px;
 }
 
 .pf-github-ref-popup-chevron {
@@ -314,14 +260,14 @@
     -fx-border-color: -pf-github-group-border;
     -fx-border-radius: 12;
     -fx-border-width: 1;
-    -fx-padding: 6;
-    -fx-effect: dropshadow(three-pass-box, -pf-github-shadow, 18, 0.18, 0, 8);
+    -fx-padding: 8;
+    -fx-effect: dropshadow(three-pass-box, -pf-github-shadow, 20, 0.18, 0, 8);
 }
 
 .pf-github-overflow-menu .menu-item {
     -fx-background-color: transparent;
     -fx-background-radius: 8;
-    -fx-padding: 8 10 8 10;
+    -fx-padding: 8 12 8 12;
 }
 
 .pf-github-overflow-menu .menu-item > .label {

@@ -5,6 +5,7 @@ import javafx.scene.Parent;
 import javafx.scene.layout.Pane;
 import org.metalib.papifly.fx.tree.api.TreeItem;
 import org.metalib.papifly.fx.tree.api.TreeNodeInfoProvider;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -55,7 +56,10 @@ public final class TreeInlineInfoHost<T> {
                 layer.getChildren().add(node);
             }
             node.setManaged(false);
-            double x = Math.max(0.0, (row.depth() * indentWidth) + indentWidth + iconSize + 6.0 - horizontalScrollOffset);
+            double x = Math.max(
+                0.0,
+                (row.depth() * indentWidth) + indentWidth + iconSize + UiMetrics.SPACE_2 - horizontalScrollOffset
+            );
             double nodeWidth = Math.max(0.0, width - x);
             node.resizeRelocate(x, row.y(), nodeWidth, Math.max(0.0, row.height()));
             if (node instanceof Parent parent) {

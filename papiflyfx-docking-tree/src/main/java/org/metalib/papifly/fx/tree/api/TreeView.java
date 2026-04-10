@@ -33,6 +33,7 @@ import org.metalib.papifly.fx.tree.theme.TreeViewTheme;
 import org.metalib.papifly.fx.tree.theme.TreeViewThemeMapper;
 import org.metalib.papifly.fx.tree.util.TreeStateCodec;
 import org.metalib.papifly.fx.tree.util.TreeViewStateData;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -118,8 +119,8 @@ public class TreeView<T> extends StackPane implements DisposableContent {
         editController.setCommitHandler(this::onEditCommit);
         inlineInfoHost.layer().setClip(inlineInfoClip);
         StackPane.setAlignment(searchOverlay, Pos.TOP_RIGHT);
-        StackPane.setMargin(searchOverlay, new Insets(8.0));
-        searchOverlay.maxWidthProperty().bind(Bindings.max(0.0, widthProperty().subtract(16.0)));
+        StackPane.setMargin(searchOverlay, new Insets(UiMetrics.SPACE_2));
+        searchOverlay.maxWidthProperty().bind(Bindings.max(0.0, widthProperty().subtract(UiMetrics.SPACE_4)));
         getChildren().addAll(viewport, inlineInfoHost.layer(), dragDropController.overlayCanvas(), editController.editorNode(), searchOverlay);
 
         configureSearchOverlay();

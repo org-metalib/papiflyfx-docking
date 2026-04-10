@@ -16,6 +16,7 @@ A GitHub workflow toolbar for PapiflyFX docking applications.
 - Toolbar mounting wrapper for top/bottom host placement
 - Settings panel integration via `GitHubCategory`
 - Theme support with light/dark mode mapping
+- Shared pills, chips, popup surfaces, and status-slot primitives from `papiflyfx-docking-api`
 
 ## Maven dependency
 
@@ -55,6 +56,16 @@ GitHubToolbar toolbar = new GitHubToolbar(context);
 ```
 
 In remote-only mode, local git actions are disabled and PR/auth actions remain available.
+
+## Theme And UI Standards
+
+The GitHub toolbar keeps its Git-specific behavior local while using the shared UI primitives introduced by the UI standardization rollout.
+
+- `GitHubToolbar.bindThemeProperty(...)` keeps `Theme` as the only runtime theme input.
+- Repository and ref triggers use the shared `UiPillButton` base.
+- Brand, secondary, and error chips use shared chip variants from `UiChipLabel` and `UiChipVariant`.
+- Inline status content uses `UiStatusSlot`.
+- Ref popups and dialogs consume the shared popup-surface tokens and 4px spacing grid before layering GitHub-specific semantics on top.
 
 ## Module architecture
 

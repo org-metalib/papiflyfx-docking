@@ -1,6 +1,6 @@
 package org.metalib.papifly.fx.docks.core;
 
-import javafx.scene.control.Label;
+import javafx.scene.Group;
 import org.junit.jupiter.api.Test;
 import org.metalib.papifly.fx.docking.api.DisposableContent;
 
@@ -11,7 +11,7 @@ class DockLeafTest {
 
     @Test
     void disposeCallsDisposableContent() {
-        var disposable = new DisposableLabel();
+        var disposable = new DisposableGroup();
         DockLeaf leaf = new DockLeaf();
         leaf.content(disposable);
 
@@ -24,7 +24,7 @@ class DockLeafTest {
     @Test
     void disposeHandlesNonDisposableContent() {
         DockLeaf leaf = new DockLeaf();
-        leaf.content(new Label("plain"));
+        leaf.content(new Group());
         leaf.dispose();
         assertNull(leaf.getContent());
     }
@@ -36,7 +36,7 @@ class DockLeafTest {
         assertNull(leaf.getContent());
     }
 
-    private static class DisposableLabel extends Label implements DisposableContent {
+    private static class DisposableGroup extends Group implements DisposableContent {
         boolean disposed;
 
         @Override

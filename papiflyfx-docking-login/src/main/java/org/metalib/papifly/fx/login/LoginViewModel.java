@@ -14,6 +14,7 @@ import org.metalib.papifly.fx.login.session.AuthSession;
 import org.metalib.papifly.fx.login.session.AuthState;
 
 import java.util.List;
+import java.util.concurrent.CompletionException;
 
 public class LoginViewModel {
 
@@ -65,7 +66,7 @@ public class LoginViewModel {
         broker.signIn(providerId).whenComplete((session, error) -> {
             busy.set(false);
             if (error != null) {
-                errorMessage.set(error.getMessage());
+                errorMessage.set(describeError(error));
             }
         });
     }
@@ -76,7 +77,7 @@ public class LoginViewModel {
         broker.signInWithDeviceFlow(providerId).whenComplete((session, error) -> {
             busy.set(false);
             if (error != null) {
-                errorMessage.set(error.getMessage());
+                errorMessage.set(describeError(error));
             }
         });
     }
@@ -86,7 +87,7 @@ public class LoginViewModel {
         broker.refresh(true).whenComplete((session, error) -> {
             busy.set(false);
             if (error != null) {
-                errorMessage.set(error.getMessage());
+                errorMessage.set(describeError(error));
             }
         });
     }
@@ -120,5 +121,18 @@ public class LoginViewModel {
             String name = p.displayName() != null ? p.displayName() : p.subject();
             statusMessage.set("Signed in as " + name);
         }
+    }
+
+    private String describeError(Throwable error) {
+        Throwable current = error;
+        while (current instanceof CompletionException && current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        if (message != null && !message.isBlank()) {
+            return message;
+        }
+        String simpleName = current.getClass().getSimpleName();
+        return simpleName == null || simpleName.isBlank() ? "Authentication failed." : simpleName;
     }
 }

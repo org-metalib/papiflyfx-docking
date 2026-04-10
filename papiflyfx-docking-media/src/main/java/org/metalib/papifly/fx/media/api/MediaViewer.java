@@ -88,6 +88,12 @@ public class MediaViewer extends StackPane implements DisposableContent {
     }
 
     public void bindThemeProperty(ObjectProperty<Theme> external) {
+        if (themeProperty.isBound()) {
+            themeProperty.unbind();
+        }
+        if (external == null) {
+            return;
+        }
         themeProperty.bind(external);
     }
 

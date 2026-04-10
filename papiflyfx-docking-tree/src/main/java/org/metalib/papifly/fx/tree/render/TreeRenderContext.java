@@ -7,6 +7,7 @@ import org.metalib.papifly.fx.tree.api.TreeItem;
 import org.metalib.papifly.fx.tree.model.TreeSelectionModel;
 import org.metalib.papifly.fx.tree.theme.TreeViewTheme;
 import org.metalib.papifly.fx.tree.util.GlyphCache;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 import java.util.List;
 import java.util.function.Function;
@@ -37,11 +38,11 @@ public record TreeRenderContext<T>(
     Function<T, Image> iconResolver,
     TreeCellRenderer<T> cellRenderer
 ) {
-    private static final double INFO_TOGGLE_MARGIN = 4.0;
-    private static final double INFO_TOGGLE_SIZE = 12.0;
+    private static final double INFO_TOGGLE_MARGIN = UiMetrics.SPACE_1;
+    private static final double INFO_TOGGLE_SIZE = UiMetrics.SPACE_3;
 
     public double textOriginX(TreeRenderRow<T> row) {
-        return row.depth() * indentWidth + indentWidth + iconSize + 6.0 - horizontalScrollOffset;
+        return row.depth() * indentWidth + indentWidth + iconSize + UiMetrics.SPACE_2 - horizontalScrollOffset;
     }
 
     public double disclosureOriginX(TreeRenderRow<T> row) {

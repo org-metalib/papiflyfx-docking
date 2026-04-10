@@ -25,4 +25,8 @@ public interface SecretStore {
     default boolean hasSecret(String key) {
         return getSecret(key).isPresent();
     }
+
+    default String backendName() {
+        return getClass().getSimpleName();
+    }
 }

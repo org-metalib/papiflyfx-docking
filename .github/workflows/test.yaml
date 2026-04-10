@@ -30,4 +30,4 @@ jobs:
           cache: 'maven'
       - name: run `mvn package` (headless)
         run: |
-          ./mvnw -B -Dtestfx.headless=true package
+          ./mvnw -B -U --errors -Dsurefire.useFile=false -Djava.awt.headless=true -Dtestfx.headless=true package

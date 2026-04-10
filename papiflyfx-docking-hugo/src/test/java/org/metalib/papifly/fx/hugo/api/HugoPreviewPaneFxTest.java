@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.web.WebView;
@@ -17,6 +18,7 @@ import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.hugo.FxTestUtil;
 import org.metalib.papifly.fx.hugo.process.HugoCliProbe;
 import org.metalib.papifly.fx.hugo.process.HugoServerProcessManager;
+import org.metalib.papifly.fx.ui.UiMetrics;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
@@ -105,17 +107,26 @@ class HugoPreviewPaneFxTest {
         ObjectProperty<Theme> theme = new SimpleObjectProperty<>(Theme.dark());
         FxTestUtil.runFx(() -> pane.bindThemeProperty(theme));
 
+        String initialPaneStyle = FxTestUtil.callFx(pane::getStyle);
         String initialToolbarStyle = FxTestUtil.callFx(() -> ((Region) pane.lookup("#hugo-preview-toolbar")).getStyle());
+        String initialStartStyle = FxTestUtil.callFx(() -> ((Button) pane.lookup("#hugo-preview-start")).getStyle());
+        String initialStatusStyle = FxTestUtil.callFx(() -> ((Label) pane.lookup("#hugo-preview-status-state")).getStyle());
         String initialUserStyleSheet = FxTestUtil.callFx(() -> ((WebView) pane.lookup("#hugo-preview-webview"))
             .getEngine().getUserStyleSheetLocation());
         FxTestUtil.runFx(() -> theme.set(Theme.light()));
         FxTestUtil.waitForFx();
 
+        String updatedPaneStyle = FxTestUtil.callFx(pane::getStyle);
         String updatedToolbarStyle = FxTestUtil.callFx(() -> ((Region) pane.lookup("#hugo-preview-toolbar")).getStyle());
+        String updatedStartStyle = FxTestUtil.callFx(() -> ((Button) pane.lookup("#hugo-preview-start")).getStyle());
+        String updatedStatusStyle = FxTestUtil.callFx(() -> ((Label) pane.lookup("#hugo-preview-status-state")).getStyle());
         String updatedUserStyleSheet = FxTestUtil.callFx(() -> ((WebView) pane.lookup("#hugo-preview-webview"))
             .getEngine().getUserStyleSheetLocation());
 
-        assertEquals(initialToolbarStyle, updatedToolbarStyle);
+        assertFalse(initialPaneStyle.equals(updatedPaneStyle));
+        assertFalse(initialToolbarStyle.equals(updatedToolbarStyle));
+        assertFalse(initialStartStyle.equals(updatedStartStyle));
+        assertFalse(initialStatusStyle.equals(updatedStatusStyle));
         assertEquals(initialUserStyleSheet, updatedUserStyleSheet);
         assertEquals(null, updatedUserStyleSheet);
 
@@ -123,6 +134,29 @@ class HugoPreviewPaneFxTest {
             pane.unbindThemeProperty();
             pane.dispose();
         });
+    }
+
+    @Test
+    void toolbarAndStatusUseSharedDensityMetrics(@TempDir Path tempDir) throws Exception {
+        HugoPreviewPane pane = createPane(tempDir, 20135, false);
+        FxTestUtil.runFx(() -> {
+            root.getChildren().setAll(pane);
+            root.applyCss();
+            root.layout();
+        });
+
+        HBox toolbar = FxTestUtil.callFx(() -> (HBox) pane.lookup("#hugo-preview-toolbar"));
+        HBox statusBar = FxTestUtil.callFx(() -> (HBox) pane.lookup("#hugo-preview-status"));
+
+        assertEquals(UiMetrics.SPACE_2, FxTestUtil.callFx(toolbar::getSpacing), 0.01);
+        assertEquals(UiMetrics.SPACE_2, FxTestUtil.callFx(() -> toolbar.getPadding().getTop()), 0.01);
+        assertEquals(UiMetrics.SPACE_3, FxTestUtil.callFx(() -> toolbar.getPadding().getRight()), 0.01);
+        assertEquals(UiMetrics.TOOLBAR_HEIGHT, FxTestUtil.callFx(toolbar::getMinHeight), 0.01);
+        assertEquals(UiMetrics.SPACE_3, FxTestUtil.callFx(statusBar::getSpacing), 0.01);
+        assertEquals(UiMetrics.SPACE_1, FxTestUtil.callFx(() -> statusBar.getPadding().getTop()), 0.01);
+        assertEquals(UiMetrics.SPACE_3, FxTestUtil.callFx(() -> statusBar.getPadding().getRight()), 0.01);
+
+        FxTestUtil.runFx(pane::dispose);
     }
 
     @Test

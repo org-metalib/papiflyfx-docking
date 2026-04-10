@@ -10,21 +10,24 @@ import org.metalib.papifly.fx.login.idapi.providers.GoogleProvider;
 import org.metalib.papifly.fx.login.runtime.LoginRuntime;
 import org.metalib.papifly.fx.settings.runtime.SettingsRuntime;
 
+import java.util.Objects;
+
 public final class SamplesRuntimeSupport {
 
     private static final ProviderRegistry LOGIN_PROVIDER_REGISTRY = createProviderRegistry();
     private static SettingsRuntime settingsRuntime;
+    private static LoginRuntime loginRuntime;
 
     private SamplesRuntimeSupport() {
     }
 
     public static synchronized void initialize(ObjectProperty<Theme> themeProperty) {
-        settingsRuntime = SettingsRuntime.createDefault(themeProperty);
-        LoginRuntime.configure(
+        SettingsRuntime resolvedSettingsRuntime = settingsRuntime(themeProperty);
+        loginRuntime = LoginRuntime.of(
             new DefaultAuthSessionBroker(
                 LOGIN_PROVIDER_REGISTRY,
-                settingsRuntime.storage(),
-                settingsRuntime.secretStore()
+                resolvedSettingsRuntime.storage(),
+                resolvedSettingsRuntime.secretStore()
             ),
             LOGIN_PROVIDER_REGISTRY
         );
@@ -37,8 +40,24 @@ public final class SamplesRuntimeSupport {
         return settingsRuntime;
     }
 
+    public static synchronized LoginRuntime loginRuntime(ObjectProperty<Theme> themeProperty) {
+        if (loginRuntime == null) {
+            initialize(themeProperty);
+        }
+        return loginRuntime;
+    }
+
+    public static synchronized void setLoginRuntime(LoginRuntime runtime) {
+        loginRuntime = Objects.requireNonNull(runtime, "runtime");
+    }
+
+    public static synchronized void resetForTests() {
+        settingsRuntime = null;
+        loginRuntime = null;
+    }
+
     public static ProviderRegistry loginProviderRegistry() {
-        return LoginRuntime.providerRegistry();
+        return LOGIN_PROVIDER_REGISTRY;
     }
 
     private static ProviderRegistry createProviderRegistry() {

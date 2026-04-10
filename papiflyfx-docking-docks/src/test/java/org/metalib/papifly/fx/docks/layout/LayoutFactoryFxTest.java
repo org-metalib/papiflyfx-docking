@@ -1,6 +1,7 @@
 package org.metalib.papifly.fx.docks.layout;
 
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
@@ -14,8 +15,6 @@ import org.metalib.papifly.fx.docks.core.DockTabGroup;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
-
-import javafx.scene.Node;
 
 import java.util.Map;
 
@@ -200,5 +199,25 @@ class LayoutFactoryFxTest {
         assertInstanceOf(Label.class, leaf.getContent());
         String text = ((Label) leaf.getContent()).getText();
         assertTrue(text.contains("Missing content"), "Placeholder label should indicate missing content");
+    }
+
+    @Test
+    void build_leaf_usesCustomPlaceholderFactoryWhenContentMissing() {
+        var themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        LayoutFactory factory = new LayoutFactory(
+            themeProperty,
+            null,
+            (data, contentData) -> new Label("custom:" + data.id())
+        );
+
+        LeafData leafData = LeafData.of("leaf-custom", "Leaf Custom", null);
+
+        DockElement element = factory.build(leafData);
+        assertInstanceOf(DockTabGroup.class, element);
+
+        DockTabGroup group = (DockTabGroup) element;
+        var leaf = group.getTabs().getFirst();
+        assertInstanceOf(Label.class, leaf.getContent());
+        assertEquals("custom:leaf-custom", ((Label) leaf.getContent()).getText());
     }
 }

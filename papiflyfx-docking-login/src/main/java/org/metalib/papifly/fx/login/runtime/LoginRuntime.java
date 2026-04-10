@@ -1,71 +1,63 @@
 package org.metalib.papifly.fx.login.runtime;
 
 import org.metalib.papifly.fx.login.api.AuthSessionBroker;
-import org.metalib.papifly.fx.login.core.DefaultAuthSessionBroker;
 import org.metalib.papifly.fx.login.idapi.ProviderRegistry;
-import org.metalib.papifly.fx.settings.api.SettingsServicesProvider;
 
 import java.util.Objects;
-import java.util.Optional;
-import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 public final class LoginRuntime {
 
-    private static final AtomicReference<AuthSessionBroker> DEFAULT_BROKER = new AtomicReference<>();
-    private static final AtomicReference<ProviderRegistry> DEFAULT_PROVIDER_REGISTRY = new AtomicReference<>();
+    private final AuthSessionBrokerFactory brokerFactory;
+    private final Supplier<ProviderRegistry> providerRegistrySupplier;
+    private final AtomicReference<AuthSessionBroker> broker = new AtomicReference<>();
+    private final AtomicReference<ProviderRegistry> providerRegistry = new AtomicReference<>();
 
-    private LoginRuntime() {
+    public LoginRuntime(AuthSessionBrokerFactory brokerFactory, Supplier<ProviderRegistry> providerRegistrySupplier) {
+        this.brokerFactory = Objects.requireNonNull(brokerFactory, "brokerFactory");
+        this.providerRegistrySupplier = Objects.requireNonNull(providerRegistrySupplier, "providerRegistrySupplier");
     }
 
-    public static AuthSessionBroker broker() {
-        AuthSessionBroker broker = DEFAULT_BROKER.get();
-        if (broker != null) {
-            return broker;
+    public static LoginRuntime createDefault() {
+        return new LoginRuntime(new DefaultAuthSessionBrokerFactory(), LoginRuntime::discoverProviders);
+    }
+
+    public static LoginRuntime of(AuthSessionBroker broker, ProviderRegistry registry) {
+        Objects.requireNonNull(broker, "broker");
+        Objects.requireNonNull(registry, "registry");
+        return new LoginRuntime(ignored -> broker, () -> registry);
+    }
+
+    public AuthSessionBroker broker() {
+        AuthSessionBroker existing = broker.get();
+        if (existing != null) {
+            return existing;
         }
 
-        AuthSessionBroker created = createDefaultBroker(providerRegistry());
-        if (DEFAULT_BROKER.compareAndSet(null, created)) {
+        AuthSessionBroker created = brokerFactory.create(providerRegistry());
+        if (broker.compareAndSet(null, created)) {
             return created;
         }
-        return DEFAULT_BROKER.get();
+        return broker.get();
     }
 
-    public static ProviderRegistry providerRegistry() {
-        ProviderRegistry registry = DEFAULT_PROVIDER_REGISTRY.get();
-        if (registry != null) {
-            return registry;
+    public ProviderRegistry providerRegistry() {
+        ProviderRegistry existing = providerRegistry.get();
+        if (existing != null) {
+            return existing;
         }
 
-        ProviderRegistry created = new ProviderRegistry();
-        created.discoverProviders();
-        if (DEFAULT_PROVIDER_REGISTRY.compareAndSet(null, created)) {
+        ProviderRegistry created = providerRegistrySupplier.get();
+        if (providerRegistry.compareAndSet(null, created)) {
             return created;
         }
-        return DEFAULT_PROVIDER_REGISTRY.get();
+        return providerRegistry.get();
     }
 
-    public static void configure(AuthSessionBroker broker, ProviderRegistry registry) {
-        DEFAULT_PROVIDER_REGISTRY.set(Objects.requireNonNull(registry, "registry"));
-        DEFAULT_BROKER.set(Objects.requireNonNull(broker, "broker"));
-    }
-
-    public static void setBroker(AuthSessionBroker broker) {
-        DEFAULT_BROKER.set(Objects.requireNonNull(broker, "broker"));
-    }
-
-    static void resetForTests() {
-        DEFAULT_BROKER.set(null);
-        DEFAULT_PROVIDER_REGISTRY.set(null);
-    }
-
-    private static AuthSessionBroker createDefaultBroker(ProviderRegistry registry) {
-        Optional<SettingsServicesProvider> settingsProvider = ServiceLoader.load(SettingsServicesProvider.class)
-            .findFirst();
-        if (settingsProvider.isPresent()) {
-            SettingsServicesProvider provider = settingsProvider.get();
-            return new DefaultAuthSessionBroker(registry, provider.storage(), provider.secretStore());
-        }
-        return new DefaultAuthSessionBroker();
+    private static ProviderRegistry discoverProviders() {
+        ProviderRegistry registry = new ProviderRegistry();
+        registry.discoverProviders();
+        return registry;
     }
 }

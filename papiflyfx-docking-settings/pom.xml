@@ -18,7 +18,6 @@
         <monocle.platform>Headless</monocle.platform>
         <prism.order>sw</prism.order>
         <prism.text>t2k</prism.text>
-        <java.awt.headless>false</java.awt.headless>
     </properties>
 
     <dependencies>

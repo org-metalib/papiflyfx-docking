@@ -2,13 +2,14 @@ package org.metalib.papifly.fx.code.render;
 
 import javafx.scene.canvas.GraphicsContext;
 import org.metalib.papifly.fx.code.command.CaretRange;
+import org.metalib.papifly.fx.ui.UiMetrics;
 
 /**
  * Paints primary and multi-caret insertion carets.
  */
 final class CaretPass implements RenderPass {
 
-    private static final double CARET_WIDTH = 2.0;
+    private static final double CARET_WIDTH = UiMetrics.SPACE_1 * 0.5;
 
     @Override
     public void renderFull(RenderContext context) {

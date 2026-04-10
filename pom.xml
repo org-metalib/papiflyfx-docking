@@ -27,9 +27,18 @@
     </modules>
 
     <properties>
+        <!-- Default to headless for reliable CI/sandbox runs; override with -Dtestfx.headless=false. -->
+        <java.awt.headless>true</java.awt.headless>
+        <testfx.headless>true</testfx.headless>
+        <testfx.robot>glass</testfx.robot>
+        <testfx.platform>Desktop</testfx.platform>
+        <monocle.platform>Headless</monocle.platform>
+        <prism.order>sw</prism.order>
+        <prism.text>t2k</prism.text>
+
         <maven.version.required>3.9</maven.version.required>
         <maven.version>3.9.12</maven.version>
-        <javafx.version>23.0.1</javafx.version>
+        <javafx.version>25.0.2</javafx.version>
         <javafx.platform>mac</javafx.platform>
         <maven.compiler.release>25</maven.compiler.release>
         <maven.compiler.source>25</maven.compiler.source>

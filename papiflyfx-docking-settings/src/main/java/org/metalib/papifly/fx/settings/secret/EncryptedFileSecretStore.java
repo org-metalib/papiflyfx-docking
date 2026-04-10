@@ -75,6 +75,11 @@ public class EncryptedFileSecretStore implements SecretStore {
         return new LinkedHashSet<>(loadSecrets().keySet());
     }
 
+    @Override
+    public String backendName() {
+        return "Encrypted File";
+    }
+
     private Map<String, String> loadSecrets() {
         if (!Files.exists(secretsFile)) {
             return new LinkedHashMap<>();

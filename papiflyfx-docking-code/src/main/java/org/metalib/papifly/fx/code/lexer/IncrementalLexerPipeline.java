@@ -237,6 +237,12 @@ public class IncrementalLexerPipeline implements AutoCloseable {
             baseline = request.forceFullRelex() ? TokenMap.empty() : tokenMap;
         }
 
+        // Clear any stale interrupt flag left by cancel(true) targeting a prior
+        // scheduled task.  Without this, the interrupt can leak into a newer
+        // request that was picked up by the same single-thread executor, causing
+        // a spurious CancellationException that silently drops the request.
+        Thread.interrupted();
+
         // Resolve lazy text snapshot (deferred from change events)
         String textSnapshot = request.textSnapshot();
         if (textSnapshot == null) {

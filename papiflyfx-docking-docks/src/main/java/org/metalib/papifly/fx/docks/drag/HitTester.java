@@ -5,6 +5,7 @@ import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.layout.Region;
 import org.metalib.papifly.fx.docks.core.DockElement;
+import org.metalib.papifly.fx.docks.core.DockElementVisitor;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockSplitGroup;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
@@ -64,54 +65,55 @@ public class HitTester {
             return HitTestResult.none();
         }
 
-        // For split groups, recurse into children
-        if (element instanceof DockSplitGroup split) {
-            HitTestResult firstResult = hitTestRecursive(split.getFirst(), sceneX, sceneY, source);
-            if (firstResult.isHit()) {
-                return firstResult;
-            }
+        return element.accept(new DockElementVisitor<>() {
+            @Override
+            public HitTestResult visitTabGroup(DockTabGroup tabGroup) {
+                Region tabNode = tabGroup.getNode();
+                Bounds tabBounds = tabNode.localToScene(tabNode.getBoundsInLocal());
+                Region tabBar = tabGroup.getTabBar();
+                Bounds tabBarBounds = tabBar.localToScene(tabBar.getBoundsInLocal());
 
-            HitTestResult secondResult = hitTestRecursive(split.getSecond(), sceneX, sceneY, source);
-            if (secondResult.isHit()) {
-                return secondResult;
-            }
-        }
+                if (tabBarBounds.contains(sceneX, sceneY)) {
+                    TabInsertInfo insertInfo = calculateTabInsertInfo(tabGroup, sceneX);
+                    return new HitTestResult(
+                        tabGroup,
+                        DropZone.TAB_BAR,
+                        tabBarBounds,
+                        tabBounds,
+                        insertInfo.index,
+                        insertInfo.insertX
+                    );
+                }
 
-        // For tab groups, check tab bar first, then content area
-        if (element instanceof DockTabGroup tabGroup) {
-            Region tabNode = tabGroup.getNode();
-            Bounds tabBounds = tabNode.localToScene(tabNode.getBoundsInLocal());
-            Region tabBar = tabGroup.getTabBar();
-            Bounds tabBarBounds = tabBar.localToScene(tabBar.getBoundsInLocal());
-
-            // Check if over tab bar - this is a tab insertion zone
-            if (tabBarBounds.contains(sceneX, sceneY)) {
-                TabInsertInfo insertInfo = calculateTabInsertInfo(tabGroup, sceneX);
-                return new HitTestResult(
-                    tabGroup,
-                    DropZone.TAB_BAR,
-                    tabBarBounds, // Zone bounds = tab bar
-                    tabBounds,    // Target bounds = full tab group
-                    insertInfo.index,
-                    insertInfo.insertX
+                double tabBarHeight = tabBar.getHeight();
+                Bounds contentBounds = new BoundingBox(
+                    tabBounds.getMinX(),
+                    tabBounds.getMinY() + tabBarHeight,
+                    tabBounds.getWidth(),
+                    tabBounds.getHeight() - tabBarHeight
                 );
+
+                if (contentBounds.contains(sceneX, sceneY)) {
+                    return calculateDropZone(tabGroup, contentBounds, sceneX, sceneY);
+                }
+                return HitTestResult.none();
             }
 
-            // Check content area
-            double tabBarHeight = tabBar.getHeight();
-            Bounds contentBounds = new BoundingBox(
-                tabBounds.getMinX(),
-                tabBounds.getMinY() + tabBarHeight,
-                tabBounds.getWidth(),
-                tabBounds.getHeight() - tabBarHeight
-            );
+            @Override
+            public HitTestResult visitSplitGroup(DockSplitGroup splitGroup) {
+                HitTestResult firstResult = hitTestRecursive(splitGroup.getFirst(), sceneX, sceneY, source);
+                if (firstResult.isHit()) {
+                    return firstResult;
+                }
 
-            if (contentBounds.contains(sceneX, sceneY)) {
-                return calculateDropZone(tabGroup, contentBounds, sceneX, sceneY);
+                HitTestResult secondResult = hitTestRecursive(splitGroup.getSecond(), sceneX, sceneY, source);
+                if (secondResult.isHit()) {
+                    return secondResult;
+                }
+
+                return HitTestResult.none();
             }
-        }
-
-        return HitTestResult.none();
+        });
     }
 
     /**

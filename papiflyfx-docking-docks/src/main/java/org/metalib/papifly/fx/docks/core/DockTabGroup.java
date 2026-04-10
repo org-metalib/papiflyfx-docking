@@ -654,6 +654,11 @@ public class DockTabGroup implements DockElement {
     }
 
     @Override
+    public <T> T accept(DockElementVisitor<T> visitor) {
+        return visitor.visitTabGroup(this);
+    }
+
+    @Override
     public void dispose() {
         themeProperty.removeListener(themeListener);
         tabs.removeListener(tabsListener);
