@@ -23,13 +23,14 @@ public abstract class SettingControl<T> extends VBox {
         this.descriptionLabel = new Label(definition.description());
         this.validationLabel = new Label();
 
-        titleLabel.setStyle("-fx-font-weight: bold;");
+        getStyleClass().add("pf-settings-control");
+        titleLabel.getStyleClass().add("pf-settings-control-title");
+        descriptionLabel.getStyleClass().add("pf-settings-control-description");
         descriptionLabel.setWrapText(true);
         descriptionLabel.setManaged(!definition.description().isBlank());
         descriptionLabel.setVisible(!definition.description().isBlank());
         validationLabel.setManaged(false);
         validationLabel.setVisible(false);
-        validationLabel.setStyle("-fx-text-fill: #c05050;");
 
         getChildren().addAll(titleLabel, descriptionLabel, validationLabel);
         setFillWidth(true);
@@ -47,13 +48,15 @@ public abstract class SettingControl<T> extends VBox {
             validationLabel.setText("");
             validationLabel.setManaged(false);
             validationLabel.setVisible(false);
+            validationLabel.getStyleClass().removeAll("pf-settings-control-validation-error", "pf-settings-control-validation-warning");
         } else {
             validationLabel.setText(validationResult.message());
             validationLabel.setManaged(true);
             validationLabel.setVisible(true);
-            validationLabel.setStyle(validationResult.level() == ValidationResult.Level.ERROR
-                ? "-fx-text-fill: #c05050;"
-                : "-fx-text-fill: #b07000;");
+            validationLabel.getStyleClass().removeAll("pf-settings-control-validation-error", "pf-settings-control-validation-warning");
+            validationLabel.getStyleClass().add(validationResult.level() == ValidationResult.Level.ERROR
+                ? "pf-settings-control-validation-error"
+                : "pf-settings-control-validation-warning");
         }
         if (changeListener != null) {
             changeListener.run();

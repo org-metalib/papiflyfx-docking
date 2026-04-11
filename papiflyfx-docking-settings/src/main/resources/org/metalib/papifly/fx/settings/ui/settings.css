@@ -1,0 +1,90 @@
+.pf-settings-panel {
+    -fx-background-color: -pf-ui-surface-panel;
+}
+
+.pf-settings-category-list {
+    -fx-control-inner-background: -pf-ui-surface-panel-subtle;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 0 1 0 0;
+}
+
+.pf-settings-category-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -pf-ui-text-primary;
+    -fx-padding: 0;
+}
+
+.pf-settings-category-list .list-cell:selected {
+    -fx-background-color: -pf-ui-surface-selected;
+}
+
+.pf-settings-category-list .list-cell:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-settings-content-area {
+    -fx-background-color: -pf-ui-surface-panel;
+    -fx-padding: 12;
+}
+
+.pf-settings-content-scroll {
+    -fx-background: -pf-ui-surface-panel;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 0 0 1 0;
+}
+
+.pf-settings-search-bar {
+    -fx-background-color: -pf-ui-surface-panel-subtle;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 8;
+}
+
+.pf-settings-search-field {
+    -fx-highlight-fill: -pf-ui-accent;
+}
+
+.pf-settings-toolbar {
+    -fx-background-color: -pf-ui-surface-panel-subtle;
+    -fx-padding: 8;
+}
+
+.pf-settings-dirty-label {
+    -fx-text-fill: -pf-ui-warning;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.pf-settings-status-label {
+    -fx-text-fill: -pf-ui-success;
+    -fx-font-size: 11px;
+}
+
+.pf-settings-scope-label {
+    -fx-text-fill: -pf-ui-text-muted;
+    -fx-font-size: 11px;
+}
+
+.pf-settings-control {
+    -fx-spacing: 4;
+}
+
+.pf-settings-control-title {
+    -fx-font-weight: bold;
+    -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-settings-control-description {
+    -fx-text-fill: -pf-ui-text-muted;
+    -fx-font-size: 11px;
+}
+
+.pf-settings-control-validation-error {
+    -fx-text-fill: -pf-ui-danger;
+    -fx-font-size: 11px;
+}
+
+.pf-settings-control-validation-warning {
+    -fx-text-fill: -pf-ui-warning;
+    -fx-font-size: 11px;
+}

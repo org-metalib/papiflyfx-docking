@@ -4,17 +4,26 @@ Current Milestone: **Phase 3: Security & Storage Hardening**
 
 - **Projected End Date:** 2026-04-17
 - **Current Velocity:** Phases 1–3 completed in single session
-- **Status:** [IN_PROGRESS — Phases 1–3 complete, awaiting review gates]
+- **Status:** [COMPLETED]
 
 ## Completion Summary
-- **Overall Completion:** ~70%
+- **Overall Completion:** 100%
 - **Phase 1 (Runtime & Scope Safety):** 100%
 - **Phase 2 (Composable UI Refactor):** 100%
 - **Phase 3 (Security & Storage Hardening):** 100%
-- **Phase 4 (State & Styling Cleanup):** 50% (E.1 timer removal done; E.2 CSS tokens pending)
-- **Phase 5 (Documentation Sync):** 0%
+- **Phase 4 (State & Styling Cleanup):** 100%
+- **Phase 5 (Documentation Sync):** 100%
 
-## Phase 3 Accomplishments
+## Phase 5 Accomplishments
+- [2026-04-10] **F.1:** Updated `papiflyfx-docking-settings/README.md` with new architectural features (composability, event-driven logic, tokenized styling, shared runtime ownership).
+- [2026-04-10] **F.2:** Updated root `README.md` module summary to reflect the modernized settings module.
+- [2026-04-10] **F.3:** Synchronized `plan.md` and `progress.md` to reflect 100% completion.
+- [2026-04-10] **F.4:** Verified Javadoc across `SettingsRuntime`, `SettingsCategory`, and `DefinitionFormBinder`.
+
+## Phase 4 Accomplishments
+- [2026-04-10] **E.1:** Eliminated 150ms periodic `Timeline` loop from `SettingsPanel`. Dirty/valid states are now propagated via property bindings from `DefinitionFormBinder` through `SettingsCategoryUI` to `SettingsToolbar`.
+- [2026-04-10] **E.2:** Implemented `settings.css` using the `-pf-ui-*` token vocabulary. Replaced all inline JavaFX `setStyle()` calls in `SettingsPanel`, `SettingsSearchBar`, `SettingsToolbar`, and `SettingControl` with CSS classes.
+- [2026-04-10] **E.3:** Verified that theme switching (Light/Dark) applies instantaneously via CSS token projection from the shared `Theme` property.
 - [2026-04-10] **D.1:** Redesigned `SecurityCategory` to never reload stored secret values. Uses `hasSecret()` to show "Set"/"Not Set" status. Replaced `SecretSettingControl` with a plain `PasswordField` for entering new values only.
 - [2026-04-10] **D.2:** Implemented lifecycle actions: "Save Secret" (replace/rotate) and "Clear Secret" (delete). UI operates on key aliases, not stored values. Category now exposes `dirtyProperty()` for deterministic toolbar binding.
 - [2026-04-10] **D.1 (DefinitionFormBinder):** Updated `loadControl()` for SECRET types to set controls to empty string instead of loading stored values. Updated `saveControl()` to skip empty SECRET fields (no-change semantics).

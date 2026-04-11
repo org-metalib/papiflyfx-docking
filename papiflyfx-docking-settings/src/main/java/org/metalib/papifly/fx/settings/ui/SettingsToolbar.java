@@ -49,11 +49,18 @@ public class SettingsToolbar extends BorderPane {
         left.setAlignment(Pos.CENTER_LEFT);
         right.setAlignment(Pos.CENTER_RIGHT);
 
-        setPadding(new Insets(8));
+        getStyleClass().add("pf-settings-toolbar");
         setLeft(left);
         setRight(right);
-        dirtyLabel.setStyle("-fx-text-fill: #c08000;");
-        statusLabel.setStyle("-fx-text-fill: #6a8f4e;");
+        dirtyLabel.getStyleClass().add("pf-settings-dirty-label");
+        statusLabel.getStyleClass().add("pf-settings-status-label");
+
+        // Labels in the right box also need styling
+        for (javafx.scene.Node node : right.getChildren()) {
+            if (node instanceof Label label && "Scope".equals(label.getText())) {
+                label.getStyleClass().add("pf-settings-scope-label");
+            }
+        }
     }
 
     public void onApply(Runnable action) {

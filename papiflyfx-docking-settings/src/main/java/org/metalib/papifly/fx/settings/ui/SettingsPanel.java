@@ -2,7 +2,6 @@ package org.metalib.papifly.fx.settings.ui;
 
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.value.ChangeListener;
-import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.BorderPane;
@@ -12,13 +11,14 @@ import org.metalib.papifly.fx.docking.api.DisposableContent;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
-import org.metalib.papifly.fx.settings.api.SettingsCategoryDefinitions;
 import org.metalib.papifly.fx.settings.api.SettingsCategoryMetadata;
 import org.metalib.papifly.fx.settings.api.SettingsCategoryUI;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.api.SettingsContributor;
 import org.metalib.papifly.fx.settings.runtime.SettingsRuntime;
+import org.metalib.papifly.fx.ui.UiCommonStyles;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.ServiceLoader;
 
 public class SettingsPanel extends BorderPane implements DisposableContent {
+
+    public static final String SETTINGS_STYLESHEET = "/org/metalib/papifly/fx/settings/ui/settings.css";
 
     private final SettingsRuntime runtime;
     private final SettingsSearchBar searchBar;
@@ -50,13 +52,24 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
     public SettingsPanel(SettingsRuntime runtime, String initialCategoryId) {
         this.runtime = runtime;
         this.initialCategoryId = initialCategoryId;
+
+        UiCommonStyles.ensureLoaded(this);
+        URL settingsUrl = getClass().getResource(SETTINGS_STYLESHEET);
+        if (settingsUrl != null) {
+            getStylesheets().add(settingsUrl.toExternalForm());
+        }
+        getStyleClass().add("pf-settings-panel");
+
         this.searchBar = new SettingsSearchBar();
         this.categoryList = new SettingsCategoryList();
         this.contentArea = new VBox();
         this.contentScroll = new ScrollPane(contentArea);
         this.toolbar = new SettingsToolbar();
 
-        contentArea.setPadding(new Insets(12));
+        categoryList.getStyleClass().add("pf-settings-category-list");
+        contentArea.getStyleClass().add("pf-settings-content-area");
+        contentScroll.getStyleClass().add("pf-settings-content-scroll");
+
         VBox.setVgrow(contentScroll, Priority.ALWAYS);
         contentScroll.setFitToWidth(true);
         contentScroll.setFitToHeight(true);
@@ -76,9 +89,10 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
         toolbar.onReset(this::resetActiveCategory);
         toolbar.activeScopeProperty().addListener((obs, oldValue, newValue) -> onScopeChanged(newValue));
 
-        themeListener = (obs, oldTheme, newTheme) -> applyTheme(newTheme);
+        themeListener = (obs, oldTheme, newTheme) -> {
+            // CSS handles theme switching automatically via tokens
+        };
         runtime.themeProperty().addListener(themeListener);
-        applyTheme(runtime.themeProperty().get());
 
         loadCategories();
     }
@@ -210,19 +224,5 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
 
     private boolean isDirty(SettingsCategoryUI category) {
         return category.isDirty();
-    }
-
-    private void applyTheme(Theme theme) {
-        String background = ThemeStyleSupport.toCss(theme.background());
-        String headerBackground = ThemeStyleSupport.toCss(theme.headerBackground());
-        String border = ThemeStyleSupport.toCss(theme.borderColor());
-        String accent = ThemeStyleSupport.toCss(theme.accentColor());
-        setStyle("-fx-background-color: " + background + ";");
-        categoryList.setStyle("-fx-control-inner-background: " + headerBackground + "; -fx-border-color: " + border + ";");
-        contentArea.setStyle("-fx-background-color: " + background + ";");
-        contentScroll.setStyle("-fx-background: " + background + "; -fx-border-color: " + border + ";");
-        searchBar.setStyle("-fx-background-color: " + headerBackground + "; -fx-border-color: " + border + ";");
-        searchBar.getSearchField().setStyle("-fx-highlight-fill: " + accent + ";");
-        toolbar.setStyle("-fx-background-color: " + headerBackground + "; -fx-border-color: " + border + ";");
     }
 }

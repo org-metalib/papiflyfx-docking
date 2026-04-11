@@ -2,7 +2,7 @@
 
 - **Lead Agent:** `@ops-engineer`
 - **Reference:** [refactor-plan-gemini-total.md](/corefactor-plan-gemini-total.md)
-- **Status:** in-progress
+- **Status:** completed
 
 ## Phase 1: Runtime & Scope Safety
 - [x] B.1: Refactor `SettingsStateAdapter` to remove hidden default runtime creation.
@@ -26,8 +26,8 @@
 
 ## Phase 4: State & Styling Cleanup
 - [x] E.1: Remove periodic timer loops for UI refresh (event-driven dirty/valid state).
-- [ ] E.2: Replace inline styles with `-pf-ui-*` tokens and shared CSS classes.
+- [x] E.2: Replace inline styles with `-pf-ui-*` tokens and shared CSS classes.
 
 ## Phase 5: Documentation Sync
-- [ ] F.1: Overhaul root `README.md`, module `README.md`, and existing `plan.md`/`progress.md` (if any) to reflect the new reality.
-- [ ] F.2: Maintain `validation.md` logging residual risks.
+- [x] F.1: Overhaul root `README.md`, module `README.md`, and existing `plan.md`/`progress.md` (if any) to reflect the new reality.
+- [x] F.2: Maintain `validation.md` logging residual risks.

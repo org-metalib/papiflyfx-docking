@@ -9,9 +9,10 @@ public class SettingsSearchBar extends HBox {
     private final TextField searchField;
 
     public SettingsSearchBar() {
+        getStyleClass().add("pf-settings-search-bar");
         this.searchField = new TextField();
+        this.searchField.getStyleClass().add("pf-settings-search-field");
         this.searchField.setPromptText("Search settings...");
-        setPadding(new Insets(8));
         getChildren().add(searchField);
     }
 
