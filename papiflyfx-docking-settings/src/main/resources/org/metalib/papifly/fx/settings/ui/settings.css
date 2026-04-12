@@ -14,12 +14,38 @@
     -fx-padding: 0;
 }
 
+.pf-settings-category-list .list-cell .pf-settings-category-row {
+    -fx-alignment: center-left;
+}
+
+.pf-settings-category-list .list-cell .pf-settings-category-label {
+    -fx-text-fill: -pf-ui-text-primary;
+}
+
 .pf-settings-category-list .list-cell:selected {
+    -fx-background-color: -pf-ui-surface-selected-inactive;
+}
+
+.pf-settings-category-list:focused .list-cell:selected {
     -fx-background-color: -pf-ui-surface-selected;
 }
 
 .pf-settings-category-list .list-cell:hover {
     -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-settings-category-list .list-cell:selected:hover {
+    -fx-background-color: -pf-ui-surface-selected-inactive;
+}
+
+.pf-settings-category-list:focused .list-cell:selected:hover {
+    -fx-background-color: -pf-ui-surface-selected;
+}
+
+.pf-settings-category-list .list-cell:hover .pf-settings-category-label,
+.pf-settings-category-list .list-cell:selected .pf-settings-category-label,
+.pf-settings-category-list:focused .list-cell:selected .pf-settings-category-label {
+    -fx-text-fill: -pf-ui-text-primary;
 }
 
 .pf-settings-content-area {

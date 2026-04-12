@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.settings.ui.controls;
 
 import javafx.scene.control.TextField;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 
 public class StringSettingControl extends SettingControl<String> {
 
@@ -9,7 +10,7 @@ public class StringSettingControl extends SettingControl<String> {
 
     public StringSettingControl(SettingDefinition<String> definition) {
         super(definition);
-        this.textField = new TextField();
+        this.textField = SettingsUiStyles.applyCompactField(new TextField());
         this.textField.textProperty().addListener((obs, oldValue, newValue) -> onValueChanged());
         setEditor(textField);
     }

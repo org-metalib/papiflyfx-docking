@@ -11,6 +11,7 @@ import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingType;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,7 +53,7 @@ public class KeyboardShortcutsCategory implements SettingsCategory {
     public Node buildSettingsPane(SettingsContext context) {
         if (pane == null) {
             conflictLabel = new Label();
-            conflictLabel.setStyle("-fx-text-fill: #b07000;");
+            conflictLabel.getStyleClass().add("pf-settings-control-validation-warning");
             GridPane grid = new GridPane();
             grid.setVgap(8);
             grid.setHgap(12);
@@ -94,7 +95,7 @@ public class KeyboardShortcutsCategory implements SettingsCategory {
 
     private void addShortcutRow(GridPane grid, int row, String actionId, String labelText) {
         Label label = new Label(labelText);
-        TextField field = new TextField();
+        TextField field = SettingsUiStyles.applyCompactField(new TextField());
         field.textProperty().addListener((obs, oldValue, newValue) -> {
             dirty = true;
             updateConflicts();

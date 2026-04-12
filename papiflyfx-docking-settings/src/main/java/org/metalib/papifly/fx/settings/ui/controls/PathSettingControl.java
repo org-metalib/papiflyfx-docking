@@ -4,6 +4,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 
 public class PathSettingControl extends SettingControl<String> {
 
@@ -11,7 +12,7 @@ public class PathSettingControl extends SettingControl<String> {
 
     public PathSettingControl(SettingDefinition<String> definition) {
         super(definition);
-        this.textField = new TextField();
+        this.textField = SettingsUiStyles.applyCompactField(new TextField());
         this.textField.textProperty().addListener((obs, oldValue, newValue) -> onValueChanged());
         Button clearButton = new Button("Clear");
         clearButton.setOnAction(event -> setValue(""));

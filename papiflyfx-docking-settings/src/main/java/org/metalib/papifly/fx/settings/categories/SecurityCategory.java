@@ -19,6 +19,7 @@ import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.secret.EncryptedFileSecretStore;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 
 import java.util.List;
 import java.util.Set;
@@ -79,14 +80,15 @@ public class SecurityCategory implements SettingsCategory {
     public Node buildSettingsPane(SettingsContext context) {
         if (pane == null) {
             keysView = new ListView<>();
-            keyField = new TextField();
+            keyField = SettingsUiStyles.applyCompactField(new TextField());
             keyField.setPromptText("secret:key:name");
-            newValueField = new PasswordField();
+            newValueField = SettingsUiStyles.applyCompactField(new PasswordField());
             newValueField.setPromptText("Enter new secret value");
             statusLabel = new Label();
             backendLabel = new Label();
+            backendLabel.getStyleClass().add("pf-settings-control-description");
             warningLabel = new Label();
-            warningLabel.setStyle("-fx-text-fill: #b07000;");
+            warningLabel.getStyleClass().add("pf-settings-control-validation-warning");
             warningLabel.setWrapText(true);
 
             keyField.textProperty().addListener((obs, oldValue, newValue) -> dirty.set(true));
@@ -189,15 +191,15 @@ public class SecurityCategory implements SettingsCategory {
     private void showKeyStatus(SettingsContext context, String key) {
         if (key == null || key.isBlank()) {
             statusLabel.setText("");
+            statusLabel.getStyleClass().removeAll("pf-settings-status-label", "pf-settings-control-description");
             return;
         }
         keyField.setText(key);
         newValueField.clear();
         boolean hasValue = context.secretStore().hasSecret(key);
         statusLabel.setText(hasValue ? "Status: Set" : "Status: Not Set");
-        statusLabel.setStyle(hasValue
-            ? "-fx-text-fill: #308030; -fx-font-weight: bold;"
-            : "-fx-text-fill: #808080;");
+        statusLabel.getStyleClass().removeAll("pf-settings-status-label", "pf-settings-control-description");
+        statusLabel.getStyleClass().add(hasValue ? "pf-settings-status-label" : "pf-settings-control-description");
         dirty.set(false);
     }
 }

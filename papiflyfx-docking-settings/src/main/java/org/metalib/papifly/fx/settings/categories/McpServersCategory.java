@@ -17,6 +17,7 @@ import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingType;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -62,11 +63,11 @@ public class McpServersCategory implements SettingsCategory {
     public Node buildSettingsPane(SettingsContext context) {
         if (pane == null) {
             serverList = new ListView<>();
-            nameField = new TextField();
-            transportField = new TextField();
-            endpointField = new TextField();
+            nameField = SettingsUiStyles.applyCompactField(new TextField());
+            transportField = SettingsUiStyles.applyCompactField(new TextField());
+            endpointField = SettingsUiStyles.applyCompactField(new TextField());
             trustedField = new CheckBox("Trusted");
-            authTokenField = new PasswordField();
+            authTokenField = SettingsUiStyles.applyCompactField(new PasswordField());
 
             nameField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
             transportField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
@@ -196,7 +197,7 @@ public class McpServersCategory implements SettingsCategory {
 
     private VBox field(String labelText, Node field) {
         Label label = new Label(labelText);
-        label.setStyle("-fx-font-weight: bold;");
+        label.getStyleClass().add("pf-settings-control-title");
         return new VBox(4, label, field);
     }
 

@@ -2,7 +2,7 @@
 
 **Priority:** P1
 **Lead Agent:** @ops-engineer
-**Status:** Review Follow-up Complete
+**Status:** Dark-Mode Follow-up Complete
 
 ## Phase Tracking
 
@@ -59,3 +59,28 @@
 | Compile (settings + samples) | PASS | 2026-04-12 |
 | Headless tests (settings) | PASS — 17/17 | 2026-04-12 |
 | Headless tests (samples) | PASS | 2026-04-12 |
+
+## Dark-Mode Follow-up
+
+**Date:** 2026-04-12
+
+### Finding 1 (Medium) — Inactive settings-group readability in dark mode: FIXED
+- `SettingsCategoryList` now tags the rendered row and visible category `Label` with explicit settings style classes instead of relying on `ListCell` text styling.
+- `settings.css` now applies token-driven label text and background treatment for default, hover, selected, and selected-but-unfocused states using `-pf-ui-surface-selected` and `-pf-ui-surface-selected-inactive`.
+- Selected category rows keep their explicit token background on hover instead of falling back to the generic hover surface.
+
+### Finding 2 (Medium) — Dark-mode settings inputs still using default Modena chrome: FIXED
+- Added `SettingsUiStyles.applyCompactField(...)` so settings text/password editors consistently attach the shared `pf-ui-compact-field` class.
+- Wired the shared field class into `SettingsSearchBar`, the generic `StringSettingControl`, `NumberSettingControl`, `PathSettingControl`, and `SecretSettingControl`, plus the custom text/password inputs in `KeyboardShortcutsCategory`, `McpServersCategory`, and `SecurityCategory`.
+- Replaced remaining settings-form inline label/status warning colors in the touched categories with existing token-driven settings CSS classes.
+
+### Regression Coverage
+- `SettingsPanelFxTest.selectedCategoryUsesExplicitInactiveTokensWhenListLosesFocus()` verifies the selected category keeps the dark-theme primary text and swaps between active/inactive selection tokens when focus moves between the list and search field.
+- `SettingsPanelFxTest.settingsEditorsReuseSharedCompactFieldStyleClass()` audits the touched settings controls/categories and fails if a text/password editor drops the shared `pf-ui-compact-field` styling path.
+
+### Validation
+
+| Check | Result | Date |
+|-------|--------|------|
+| `./mvnw -pl papiflyfx-docking-settings -am compile` | PASS | 2026-04-12 |
+| `./mvnw -pl papiflyfx-docking-settings -am -Dtestfx.headless=true test` | PASS — settings `19/19`, upstream docks `55/55` | 2026-04-12 |
