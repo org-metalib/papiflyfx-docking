@@ -5,14 +5,18 @@ import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.ColorPicker;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.TextInputControl;
+import javafx.scene.layout.Border;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -159,6 +163,41 @@ class SettingsPanelFxTest {
         assertTrue(audit.missing().isEmpty(), () -> "Inputs missing compact field styling: " + audit.missing());
     }
 
+    @Test
+    void colorPickerPopupUsesTokenDrivenDarkThemeSurface() {
+        Theme theme = Theme.dark();
+        Color expectedBackground = UiCommonThemeSupport.headerBackground(theme);
+        Color expectedBorder = UiCommonThemeSupport.border(theme);
+        Color expectedAccent = UiCommonThemeSupport.accent(theme);
+
+        runFx(() -> {
+            shownPanel.selectCategory("appearance");
+            shownPanel.applyCss();
+            shownPanel.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        ColorPicker colorPicker = appearanceColorPicker();
+        assertTrue(callFx(() -> colorPicker.getStyleClass().contains(SettingsUiStyles.COMPACT_FIELD)));
+        assertTrue(callFx(() -> colorPicker.getStyleClass().contains(SettingsUiStyles.COMBO_BOX)));
+
+        runFx(() -> {
+            colorPicker.show();
+            shownPanel.applyCss();
+            shownPanel.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        Region palette = colorPalettePopup();
+        Hyperlink customColorLink = popupHyperlink(palette);
+        assertColorEquals(expectedBackground, callFx(() -> backgroundColor(palette)));
+        assertColorEquals(expectedBorder, callFx(() -> borderColor(palette)));
+        assertColorEquals(expectedAccent, callFx(() -> requireColor(customColorLink.getTextFill())));
+
+        runFx(colorPicker::hide);
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
     private void runFx(Runnable action) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         Platform.runLater(() -> {
@@ -190,6 +229,17 @@ class SettingsPanelFxTest {
         return list;
     }
 
+    private ColorPicker appearanceColorPicker() {
+        return callFx(() -> {
+            shownPanel.selectCategory("appearance");
+            shownPanel.applyCss();
+            shownPanel.layout();
+            return collectNodes(shownPanel, ColorPicker.class).stream()
+                .findFirst()
+                .orElseThrow();
+        });
+    }
+
     private ListCell<?> selectedCategoryCell() {
         return callFx(() -> {
             shownPanel.applyCss();
@@ -205,6 +255,26 @@ class SettingsPanelFxTest {
                 .findFirst()
                 .orElseThrow();
         });
+    }
+
+    private Region colorPalettePopup() {
+        return callFx(() -> Window.getWindows().stream()
+            .filter(Window::isShowing)
+            .filter(window -> window != shownPanel.getScene().getWindow())
+            .map(Window::getScene)
+            .filter(scene -> scene != null)
+            .map(Scene::getRoot)
+            .map(root -> findNodeWithStyleClass(root, "color-palette"))
+            .filter(Region.class::isInstance)
+            .map(Region.class::cast)
+            .findFirst()
+            .orElseThrow());
+    }
+
+    private Hyperlink popupHyperlink(Region palette) {
+        return callFx(() -> collectNodes(palette, Hyperlink.class).stream()
+            .findFirst()
+            .orElseThrow());
     }
 
     private Label selectedCategoryLabel(ListCell<?> cell) {
@@ -233,6 +303,21 @@ class SettingsPanelFxTest {
         }
     }
 
+    private Node findNodeWithStyleClass(Node node, String styleClass) {
+        if (node.getStyleClass().contains(styleClass)) {
+            return node;
+        }
+        if (node instanceof Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                Node match = findNodeWithStyleClass(child, styleClass);
+                if (match != null) {
+                    return match;
+                }
+            }
+        }
+        return null;
+    }
+
     private String describeField(TextInputControl field) {
         String prompt = field.getPromptText();
         if (prompt != null && !prompt.isBlank()) {
@@ -247,6 +332,15 @@ class SettingsPanelFxTest {
         assertFalse(background.getFills().isEmpty());
         assertTrue(background.getFills().getFirst().getFill() instanceof Color);
         return (Color) background.getFills().getFirst().getFill();
+    }
+
+    private static Color borderColor(Region region) {
+        Border border = region.getBorder();
+        assertNotNull(border);
+        assertFalse(border.getStrokes().isEmpty());
+        Paint stroke = border.getStrokes().getFirst().getTopStroke();
+        assertTrue(stroke instanceof Color);
+        return (Color) stroke;
     }
 
     private static Color requireColor(Paint paint) {

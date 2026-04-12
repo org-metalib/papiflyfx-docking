@@ -64,23 +64,48 @@
 
 **Date:** 2026-04-12
 
-### Finding 1 (Medium) — Inactive settings-group readability in dark mode: FIXED
-- `SettingsCategoryList` now tags the rendered row and visible category `Label` with explicit settings style classes instead of relying on `ListCell` text styling.
-- `settings.css` now applies token-driven label text and background treatment for default, hover, selected, and selected-but-unfocused states using `-pf-ui-surface-selected` and `-pf-ui-surface-selected-inactive`.
-- Selected category rows keep their explicit token background on hover instead of falling back to the generic hover surface.
+### Finding 1 (Medium) — Dark-mode text/password inputs still using default chrome: FIXED
+- Extended `SettingsUiStyles` with a shared field/dropdown/textarea/checkbox/list/button styling surface and reused the existing `pf-ui-compact-field` / `pf-ui-field` family instead of adding per-control dark overrides.
+- Applied shared field chrome to the remaining text/password editors in `AuthenticationCategory`, `SecurityCategory`, `GitHubCategory`, `EditorCategory`, `HugoCategory`, and `ProfilesCategory`, aligning them with the preference search field for background, border, prompt text, text fill, and focus-ring behavior.
 
-### Finding 2 (Medium) — Dark-mode settings inputs still using default Modena chrome: FIXED
-- Added `SettingsUiStyles.applyCompactField(...)` so settings text/password editors consistently attach the shared `pf-ui-compact-field` class.
-- Wired the shared field class into `SettingsSearchBar`, the generic `StringSettingControl`, `NumberSettingControl`, `PathSettingControl`, and `SecretSettingControl`, plus the custom text/password inputs in `KeyboardShortcutsCategory`, `McpServersCategory`, and `SecurityCategory`.
-- Replaced remaining settings-form inline label/status warning colors in the touched categories with existing token-driven settings CSS classes.
+### Finding 2 (Medium) — Dark-mode dropdowns still falling back to Modena rendering: FIXED
+- Added token-driven combo-box rules in `settings.css` for the closed control, arrow-button region, text fill, prompt text, focus ring, and popup cells.
+- Reused the shared field treatment by tagging selectors in `SettingsToolbar`, `EnumSettingControl`, and category-specific combo boxes such as `AuthenticationCategory` with the compact field path plus a shared settings combo-box class.
+
+### Finding 3 (Medium) — Dark-mode textareas do not match shared settings field chrome: FIXED
+- Added shared textarea styling in `settings.css` for both the outer `TextArea` chrome and its inner `.content` region using existing `-pf-ui-*` tokens.
+- Wired multiline editors such as `ProfilesCategory` to the shared textarea style so the dark-theme background, border, text, prompt text, selection, and focus treatment now match the rest of the settings input family without changing sizing behavior.
+
+### Finding 4 (Medium) — Dark-mode checkboxes still use raw Modena visuals: FIXED
+- Added token-driven checkbox styling in `settings.css` covering label text, box chrome, hover, focus, selected, disabled, and checkmark states.
+- Applied the shared checkbox class to `BooleanSettingControl` and the category-specific toggles in `AuthenticationCategory`, `GitHubCategory`, `EditorCategory`, `HugoCategory`, and `McpServersCategory`.
+
+### Finding 5 (Medium) — Dark-mode listboxes/list views still have readability gaps: FIXED
+- Added shared settings list styling in `settings.css` for list background, border, hover, selected, and selected-but-unfocused states using the existing token vocabulary.
+- Applied the shared list treatment to `SettingsCategoryList`, `SecurityCategory`, `McpServersCategory`, and the token/session list in `AuthenticationCategory` so dark-mode list surfaces no longer fall back to raw Modena chrome.
+
+### Finding 6 (Medium) — Dark-mode settings buttons still use default button chrome: FIXED
+- Reused the shared compact action button primitives instead of adding a parallel settings-button implementation.
+- Converted raw settings buttons in `ProfilesCategory`, `SecurityCategory`, `McpServersCategory`, `PathSettingControl`, `SecretSettingControl`, and supporting toolbar/category actions to the shared compact action treatment so default, hover, focused, pressed, and disabled states remain token-driven in both light and dark themes.
+
+### Color Popup Follow-up — Dark-mode color picker popup still using default palette chrome: FIXED
+- `ColorSettingControl` now applies the same shared compact field treatment to `ColorPicker` that the other settings selectors use, keeping the closed control aligned with the shared settings field family.
+- `settings.css` now adds token-driven styling for the color picker label/arrow region plus the `.color-palette` popup surface, separator, link text, hover square, and color swatch border so the appearance-category color popup remains readable in dark mode without introducing hardcoded dark-only values.
 
 ### Regression Coverage
-- `SettingsPanelFxTest.selectedCategoryUsesExplicitInactiveTokensWhenListLosesFocus()` verifies the selected category keeps the dark-theme primary text and swaps between active/inactive selection tokens when focus moves between the list and search field.
-- `SettingsPanelFxTest.settingsEditorsReuseSharedCompactFieldStyleClass()` audits the touched settings controls/categories and fails if a text/password editor drops the shared `pf-ui-compact-field` styling path.
+- `SettingsPanelFxTest.selectedCategoryUsesExplicitInactiveTokensWhenListLosesFocus()` remains in place to guard inactive dark-theme selection behavior for the category list.
+- `SettingsPanelFxTest.settingsEditorsReuseSharedCompactFieldStyleClass()` continues to protect the generic settings editor path from dropping shared field chrome.
+- `SettingsPanelFxTest.colorPickerPopupUsesTokenDrivenDarkThemeSurface()` opens the appearance color picker popup in dark mode and verifies the popup surface, border, and action link resolve to the expected token-driven theme colors.
+- Added `SettingsDemoStyleIntegrationTest` in `papiflyfx-docking-samples` to load the actual demo settings panel in dark mode and audit the required categories for shared styling on text/password fields, combo boxes, text areas, checkboxes, list views, and buttons.
+- `SettingsDemoStyleIntegrationTest` now also audits the appearance-category `ColorPicker` controls for the shared compact field styling path.
 
 ### Validation
 
 | Check | Result | Date |
 |-------|--------|------|
-| `./mvnw -pl papiflyfx-docking-settings -am compile` | PASS | 2026-04-12 |
-| `./mvnw -pl papiflyfx-docking-settings -am -Dtestfx.headless=true test` | PASS — settings `19/19`, upstream docks `55/55` | 2026-04-12 |
+| `./mvnw -pl papiflyfx-docking-settings,papiflyfx-docking-login,papiflyfx-docking-github,papiflyfx-docking-code,papiflyfx-docking-hugo,papiflyfx-docking-samples -am compile` | PASS | 2026-04-12 |
+| `./mvnw -pl papiflyfx-docking-samples -am -Dtest=SettingsDemoStyleIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` | PASS | 2026-04-12 |
+| `./mvnw -pl papiflyfx-docking-settings,papiflyfx-docking-login,papiflyfx-docking-github,papiflyfx-docking-code,papiflyfx-docking-hugo,papiflyfx-docking-samples -am -Dtestfx.headless=true test` | PASS | 2026-04-12 |
+| `./mvnw -pl papiflyfx-docking-settings,papiflyfx-docking-samples -am compile` | PASS | 2026-04-12 |
+| `./mvnw -pl papiflyfx-docking-settings,papiflyfx-docking-samples -am -Dtest=SettingsPanelFxTest,SettingsDemoStyleIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` | PASS | 2026-04-12 |
+| `./mvnw -pl papiflyfx-docking-settings,papiflyfx-docking-samples -am -Dtestfx.headless=true test` | FAIL — pre-existing `papiflyfx-docking-media` Surefire fork crash stops the reactor before downstream modules | 2026-04-12 |

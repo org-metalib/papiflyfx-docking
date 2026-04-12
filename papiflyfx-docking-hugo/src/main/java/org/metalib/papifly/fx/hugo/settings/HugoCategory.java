@@ -63,10 +63,10 @@ public class HugoCategory implements SettingsCategory {
     @Override
     public Node buildSettingsPane(SettingsContext context) {
         if (pane == null) {
-            binaryField = new TextField();
-            portField = new TextField();
-            bindAddressField = new TextField();
-            buildDraftsBox = new CheckBox("Include drafts");
+            binaryField = compactField(new TextField());
+            portField = compactField(new TextField());
+            bindAddressField = compactField(new TextField());
+            buildDraftsBox = settingsCheckBox(new CheckBox("Include drafts"));
 
             binaryField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
             portField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
@@ -112,8 +112,18 @@ public class HugoCategory implements SettingsCategory {
 
     private VBox field(String labelText, TextField field) {
         Label label = new Label(labelText);
-        label.setStyle("-fx-font-weight: bold;");
+        label.getStyleClass().add("pf-settings-control-title");
         return new VBox(UiMetrics.SPACE_1, label, field);
+    }
+
+    private static <T extends TextField> T compactField(T field) {
+        field.getStyleClass().add("pf-ui-compact-field");
+        return field;
+    }
+
+    private static <T extends CheckBox> T settingsCheckBox(T checkBox) {
+        checkBox.getStyleClass().add("pf-settings-check-box");
+        return checkBox;
     }
 
     private int parse(String value, int defaultValue) {

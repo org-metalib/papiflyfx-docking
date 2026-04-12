@@ -23,7 +23,8 @@ public class SettingsCategoryList extends ListView<SettingsCategory> {
     private final FilteredList<SettingsCategory> filteredCategories = new FilteredList<>(categories, item -> true);
 
     public SettingsCategoryList() {
-        getStyleClass().add("pf-settings-category-list");
+        SettingsUiStyles.applyList(this);
+        SettingsUiStyles.apply(this, "pf-settings-category-list");
         setItems(filteredCategories);
         setPrefWidth(220);
         setMinWidth(180);

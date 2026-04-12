@@ -79,7 +79,7 @@ public class SecurityCategory implements SettingsCategory {
     @Override
     public Node buildSettingsPane(SettingsContext context) {
         if (pane == null) {
-            keysView = new ListView<>();
+            keysView = SettingsUiStyles.applyList(new ListView<>());
             keyField = SettingsUiStyles.applyCompactField(new TextField());
             keyField.setPromptText("secret:key:name");
             newValueField = SettingsUiStyles.applyCompactField(new PasswordField());
@@ -96,7 +96,7 @@ public class SecurityCategory implements SettingsCategory {
             keysView.getSelectionModel().selectedItemProperty().addListener(
                 (obs, oldValue, newValue) -> showKeyStatus(context, newValue));
 
-            newButton = new Button("New");
+            newButton = SettingsUiStyles.applySecondaryActionButton(new Button("New"));
             newButton.setOnAction(event -> {
                 keysView.getSelectionModel().clearSelection();
                 keyField.clear();
@@ -105,7 +105,7 @@ public class SecurityCategory implements SettingsCategory {
                 dirty.set(false);
             });
 
-            replaceButton = new Button("Save Secret");
+            replaceButton = SettingsUiStyles.applyActionButton(new Button("Save Secret"));
             replaceButton.setOnAction(event -> {
                 String key = keyField.getText() == null ? "" : keyField.getText().trim();
                 String value = newValueField.getText();
@@ -119,7 +119,7 @@ public class SecurityCategory implements SettingsCategory {
                 dirty.set(false);
             });
 
-            clearButton = new Button("Clear Secret");
+            clearButton = SettingsUiStyles.applySecondaryActionButton(new Button("Clear Secret"));
             clearButton.setOnAction(event -> {
                 String key = keyField.getText() == null ? "" : keyField.getText().trim();
                 if (key.isEmpty()) {

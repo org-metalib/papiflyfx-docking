@@ -62,11 +62,11 @@ public class McpServersCategory implements SettingsCategory {
     @Override
     public Node buildSettingsPane(SettingsContext context) {
         if (pane == null) {
-            serverList = new ListView<>();
+            serverList = SettingsUiStyles.applyList(new ListView<>());
             nameField = SettingsUiStyles.applyCompactField(new TextField());
             transportField = SettingsUiStyles.applyCompactField(new TextField());
             endpointField = SettingsUiStyles.applyCompactField(new TextField());
-            trustedField = new CheckBox("Trusted");
+            trustedField = SettingsUiStyles.applyCheckBox(new CheckBox("Trusted"));
             authTokenField = SettingsUiStyles.applyCompactField(new PasswordField());
 
             nameField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
@@ -76,7 +76,7 @@ public class McpServersCategory implements SettingsCategory {
             authTokenField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
             serverList.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> loadServer(context, newValue));
 
-            Button newButton = new Button("New");
+            Button newButton = SettingsUiStyles.applySecondaryActionButton(new Button("New"));
             newButton.setOnAction(event -> {
                 serverList.getSelectionModel().clearSelection();
                 nameField.clear();
@@ -87,10 +87,10 @@ public class McpServersCategory implements SettingsCategory {
                 dirty = false;
             });
 
-            Button saveButton = new Button("Save");
+            Button saveButton = SettingsUiStyles.applyActionButton(new Button("Save"));
             saveButton.setOnAction(event -> saveServer(context));
 
-            Button deleteButton = new Button("Delete");
+            Button deleteButton = SettingsUiStyles.applySecondaryActionButton(new Button("Delete"));
             deleteButton.setOnAction(event -> deleteServer(context));
 
             VBox form = new VBox(

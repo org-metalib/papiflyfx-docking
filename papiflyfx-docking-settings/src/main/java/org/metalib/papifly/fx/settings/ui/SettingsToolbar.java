@@ -45,6 +45,7 @@ public class SettingsToolbar extends BorderPane {
         scopeSelector.getItems().addAll(SettingScope.APPLICATION, SettingScope.WORKSPACE, SettingScope.SESSION);
         scopeSelector.valueProperty().bindBidirectional(activeScope);
         scopeSelector.setValue(SettingScope.APPLICATION);
+        SettingsUiStyles.applyCompactField(scopeSelector);
 
         UiStatusSlot statusSlot = new UiStatusSlot(dirtyLabel, statusLabel);
         HBox left = new HBox(8, applyButton, resetButton, statusSlot);

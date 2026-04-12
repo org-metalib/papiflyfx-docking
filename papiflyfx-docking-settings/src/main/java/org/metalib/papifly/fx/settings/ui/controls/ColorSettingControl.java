@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.settings.ui.controls;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.paint.Color;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 
 public class ColorSettingControl extends SettingControl<String> {
 
@@ -10,7 +11,7 @@ public class ColorSettingControl extends SettingControl<String> {
 
     public ColorSettingControl(SettingDefinition<String> definition) {
         super(definition);
-        this.colorPicker = new ColorPicker();
+        this.colorPicker = SettingsUiStyles.applyCompactField(new ColorPicker());
         this.colorPicker.valueProperty().addListener((obs, oldValue, newValue) -> onValueChanged());
         setEditor(colorPicker);
     }

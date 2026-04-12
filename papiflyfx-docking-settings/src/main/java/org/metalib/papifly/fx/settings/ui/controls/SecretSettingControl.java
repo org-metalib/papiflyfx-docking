@@ -19,8 +19,8 @@ public class SecretSettingControl extends SettingControl<String> {
         super(definition);
         this.passwordField = SettingsUiStyles.applyCompactField(new PasswordField());
         this.plainTextField = SettingsUiStyles.applyCompactField(new TextField());
-        this.revealButton = new Button("Reveal");
-        this.clearButton = new Button("Clear");
+        this.revealButton = SettingsUiStyles.applySecondaryActionButton(new Button("Reveal"));
+        this.clearButton = SettingsUiStyles.applySecondaryActionButton(new Button("Clear"));
 
         plainTextField.setManaged(false);
         plainTextField.setVisible(false);

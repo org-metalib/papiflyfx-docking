@@ -14,7 +14,7 @@ public class PathSettingControl extends SettingControl<String> {
         super(definition);
         this.textField = SettingsUiStyles.applyCompactField(new TextField());
         this.textField.textProperty().addListener((obs, oldValue, newValue) -> onValueChanged());
-        Button clearButton = new Button("Clear");
+        Button clearButton = SettingsUiStyles.applySecondaryActionButton(new Button("Clear"));
         clearButton.setOnAction(event -> setValue(""));
         HBox row = new HBox(8, textField, clearButton);
         setEditor(row);
