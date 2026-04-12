@@ -1,6 +1,7 @@
 package org.metalib.papifly.fx.settings.ui;
 
 import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.scene.paint.Color;
 import javafx.beans.value.ChangeListener;
 import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
@@ -160,7 +161,7 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
             UiCommonThemeSupport.warning(resolved),
             UiCommonThemeSupport.danger(resolved),
             UiCommonThemeSupport.dropHint(resolved),
-            UiCommonThemeSupport.alpha(javafx.scene.paint.Color.BLACK, 0.25)
+            UiCommonThemeSupport.alpha(Color.BLACK, 0.25)
         );
     }
 

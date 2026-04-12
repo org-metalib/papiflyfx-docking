@@ -278,8 +278,9 @@ public class SamplesApp extends Application {
         titleLabel.setStyle("-fx-text-fill: " + textPrimaryCss + "; -fx-font-size: 14px; -fx-font-weight: bold;");
         authHint.setStyle("-fx-text-fill: " + textMutedCss + "; -fx-font-size: 12px;");
         authSettingsButton.setStyle("-fx-background-color: " + controlBgCss + "; -fx-text-fill: " + textPrimaryCss + ";");
-        loginDemoButton.setStyle("-fx-background-color: " + accentCss + "; -fx-text-fill: " + textPrimaryCss + ";");
-        themeToggle.setStyle("-fx-background-color: " + accentCss + "; -fx-text-fill: " + textPrimaryCss + ";");
+        String textOnAccentCss = UiCommonThemeSupport.isDark(accent) ? "white" : "black";
+        loginDemoButton.setStyle("-fx-background-color: " + accentCss + "; -fx-text-fill: " + textOnAccentCss + ";");
+        themeToggle.setStyle("-fx-background-color: " + accentCss + "; -fx-text-fill: " + textOnAccentCss + ";");
         contentArea.setStyle("-fx-background-color: " + canvasBgCss + ";");
         if (placeholderLabel != null) {
             placeholderLabel.setStyle("-fx-text-fill: " + textMutedCss + "; -fx-font-size: 14px;");
