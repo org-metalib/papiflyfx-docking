@@ -11,7 +11,7 @@ public class SettingsSearchBar extends HBox {
     public SettingsSearchBar() {
         getStyleClass().add("pf-settings-search-bar");
         this.searchField = new TextField();
-        this.searchField.getStyleClass().add("pf-settings-search-field");
+        this.searchField.getStyleClass().addAll("pf-settings-search-field", "pf-ui-compact-field");
         this.searchField.setPromptText("Search settings...");
         getChildren().add(searchField);
     }

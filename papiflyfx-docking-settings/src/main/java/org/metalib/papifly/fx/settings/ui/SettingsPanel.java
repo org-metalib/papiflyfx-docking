@@ -16,7 +16,10 @@ import org.metalib.papifly.fx.settings.api.SettingsCategoryUI;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.api.SettingsContributor;
 import org.metalib.papifly.fx.settings.runtime.SettingsRuntime;
+import org.metalib.papifly.fx.ui.UiCommonPalette;
 import org.metalib.papifly.fx.ui.UiCommonStyles;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -89,10 +92,9 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
         toolbar.onReset(this::resetActiveCategory);
         toolbar.activeScopeProperty().addListener((obs, oldValue, newValue) -> onScopeChanged(newValue));
 
-        themeListener = (obs, oldTheme, newTheme) -> {
-            // CSS handles theme switching automatically via tokens
-        };
+        themeListener = (obs, oldTheme, newTheme) -> applyThemeTokens(newTheme);
         runtime.themeProperty().addListener(themeListener);
+        applyThemeTokens(runtime.themeProperty().get());
 
         loadCategories();
     }
@@ -134,6 +136,32 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
         runtime.themeProperty().removeListener(themeListener);
         unbindDirtyProperty();
         runtime.storage().save();
+    }
+
+    private void applyThemeTokens(Theme theme) {
+        UiCommonPalette palette = buildPalette(theme);
+        setStyle(UiCommonThemeSupport.themeVariables(palette) + UiStyleSupport.metricVariables());
+    }
+
+    private static UiCommonPalette buildPalette(Theme theme) {
+        Theme resolved = UiCommonThemeSupport.resolvedTheme(theme);
+        return new UiCommonPalette(
+            UiCommonThemeSupport.headerBackground(resolved),
+            UiCommonThemeSupport.border(resolved),
+            UiCommonThemeSupport.textPrimary(resolved),
+            UiCommonThemeSupport.alpha(UiCommonThemeSupport.textPrimary(resolved), 0.66),
+            UiCommonThemeSupport.alpha(UiCommonThemeSupport.textPrimary(resolved), 0.50),
+            UiCommonThemeSupport.border(resolved),
+            UiCommonThemeSupport.hover(resolved),
+            UiCommonThemeSupport.pressed(resolved),
+            UiCommonThemeSupport.accent(resolved),
+            UiCommonThemeSupport.accent(resolved),
+            UiCommonThemeSupport.success(resolved),
+            UiCommonThemeSupport.warning(resolved),
+            UiCommonThemeSupport.danger(resolved),
+            UiCommonThemeSupport.dropHint(resolved),
+            UiCommonThemeSupport.alpha(javafx.scene.paint.Color.BLACK, 0.25)
+        );
     }
 
     private void loadCategories() {

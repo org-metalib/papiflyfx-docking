@@ -14,6 +14,8 @@ import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingsAction;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.api.ValidationResult;
+import org.metalib.papifly.fx.ui.UiPillButton;
+import org.metalib.papifly.fx.ui.UiStatusSlot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,8 +35,8 @@ public class SettingsToolbar extends BorderPane {
     private boolean updatingScopes;
 
     public SettingsToolbar() {
-        this.applyButton = new Button("Apply");
-        this.resetButton = new Button("Reset");
+        this.applyButton = new UiPillButton("Apply");
+        this.resetButton = new UiPillButton("Reset");
         this.dirtyLabel = new Label();
         this.statusLabel = new Label();
         this.scopeSelector = new ComboBox<>();
@@ -44,8 +46,11 @@ public class SettingsToolbar extends BorderPane {
         scopeSelector.valueProperty().bindBidirectional(activeScope);
         scopeSelector.setValue(SettingScope.APPLICATION);
 
-        HBox left = new HBox(8, applyButton, resetButton, dirtyLabel, statusLabel);
-        HBox right = new HBox(8, new Label("Scope"), scopeSelector, actionBox);
+        UiStatusSlot statusSlot = new UiStatusSlot(dirtyLabel, statusLabel);
+        HBox left = new HBox(8, applyButton, resetButton, statusSlot);
+        Label scopeLabel = new Label("Scope");
+        scopeLabel.getStyleClass().add("pf-settings-scope-label");
+        HBox right = new HBox(8, scopeLabel, scopeSelector, actionBox);
         left.setAlignment(Pos.CENTER_LEFT);
         right.setAlignment(Pos.CENTER_RIGHT);
 
@@ -54,13 +59,6 @@ public class SettingsToolbar extends BorderPane {
         setRight(right);
         dirtyLabel.getStyleClass().add("pf-settings-dirty-label");
         statusLabel.getStyleClass().add("pf-settings-status-label");
-
-        // Labels in the right box also need styling
-        for (javafx.scene.Node node : right.getChildren()) {
-            if (node instanceof Label label && "Scope".equals(label.getText())) {
-                label.getStyleClass().add("pf-settings-scope-label");
-            }
-        }
     }
 
     public void onApply(Runnable action) {
@@ -116,7 +114,7 @@ public class SettingsToolbar extends BorderPane {
     public void setActions(List<SettingsAction> actions, Supplier<SettingsContext> contextSupplier) {
         actionBox.getChildren().clear();
         for (SettingsAction action : actions) {
-            Button button = new Button(action.label());
+            UiPillButton button = new UiPillButton(action.label());
             button.setOnAction(event -> runAction(action, contextSupplier.get()));
             actionBox.getChildren().add(button);
         }
