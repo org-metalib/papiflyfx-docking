@@ -39,6 +39,12 @@ class VideoViewerOverlayFxTest {
     @Start
     void start(Stage stage) {
         this.stage = stage;
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+            // Suppress known JavaFX/Monocle headless rendering BufferOverflowException
+            if (!(e instanceof java.nio.BufferOverflowException)) {
+                e.printStackTrace();
+            }
+        });
         viewer = new VideoViewer();
         viewer.themeProperty().set(Theme.dark());
         String url = getClass().getResource("/sample-media/sample.mp4").toExternalForm();
