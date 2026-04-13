@@ -2,21 +2,27 @@
 
 **Priority:** P1
 **Lead Agent:** @ops-engineer
-**Status:** PR #10 Review Remediation Complete
+**Status:** PR #10 Review Remediation Complete (incl. multi-reviewer follow-up 2026-04-13)
 
-## 2026-04-13 Review Remediation Validation
+## 2026-04-13 Multi-Reviewer Follow-up Validation
 
-### Automated Checks
+### Context
+The multi-reviewer pass found that `SettingsCategoryList` still carried the generic `pf-settings-list` class, causing `SettingsPanelFxTest.categoryListUsesDedicatedSelectorOnly()` to fail. The validation record was stale as it did not reflect this regression.
+
+### Fix Applied
+Removed `"pf-settings-list"` from the `SettingsUiStyles.apply(...)` call in `SettingsCategoryList` constructor (line 26). The control is now styled only by `pf-settings-category-list`.
+
+### Automated Checks (rerun 2026-04-13)
 
 | Check | Result |
 |-------|--------|
-| `./mvnw -pl papiflyfx-docking-settings -am compile` | PASS |
-| `./mvnw -pl papiflyfx-docking-settings -am -Dtest=EncryptedFileSecretStoreTest,AtomicFileWriterTest,SettingsPanelFxTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` | PASS |
-| `./mvnw -pl papiflyfx-docking-settings -am -Dtestfx.headless=true test` | PASS |
+| `./mvnw -pl papiflyfx-docking-settings -am compile` | PASS — 5/5 modules |
+| `./mvnw -pl papiflyfx-docking-settings -am -Dtest=EncryptedFileSecretStoreTest,AtomicFileWriterTest,SettingsPanelFxTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` | PASS — 21/21 tests |
+| `./mvnw -pl papiflyfx-docking-settings -am -Dtestfx.headless=true test` | PASS — 28/28 tests |
 
 ### Manual Verification
 
-- Not run in this remediation pass.
+- Not run in this follow-up pass.
 - Interactive visual review and session round-trip checks from the original demo follow-up remain a reviewer/manual pass item.
 
 ### Residual Risks
@@ -25,15 +31,16 @@
 |------|----------|-------|
 | Secret-store logging is intentionally noisy on tamper/decrypt failure | Low | Expected for a fail-closed path; the regression tests confirm no on-disk rewrite happens before the exception escapes |
 | Headless tests cover scope normalization and palette wiring but not interactive visual polish | Low | `@ui-ux-designer` review is still the right place for final visual confirmation |
-| The broader task pack still carries historical validation from the earlier demo-theme work | Low | The new commands above are the authoritative validation for the 2026-04-13 PR #10 remediation |
+| Category-list dark-mode styling now relies solely on `.pf-settings-category-list` rules in `settings.css` | Low | The dedicated selector already covers background, border, selection, hover, and inactive states — no generic fallback needed |
 
 ### Reviewer Status
 
 | Reviewer | Focus | Status |
 |----------|-------|--------|
 | `@auth-specialist` | Fail-closed decrypt/auth behavior and on-disk preservation | Ready for review |
-| `@qa-engineer` | Regression coverage and headless validation | Ready for review |
+| `@qa-engineer` | Regression coverage and headless validation (updated with follow-up rerun) | Ready for review |
 | `@ui-ux-designer` | `surfaceControl` palette mapping and category-list selector isolation | Ready for review |
+| `@spec-steward` | `progress.md` / `validation.md` accuracy after follow-up | Ready for review |
 
 ## Automated Checks
 

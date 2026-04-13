@@ -2,7 +2,7 @@
 
 **Priority:** P1
 **Lead Agent:** @ops-engineer
-**Status:** PR #10 Review Remediation Complete
+**Status:** PR #10 Review Remediation Complete (incl. multi-reviewer follow-up 2026-04-13)
 
 ## PR #10 Review Remediation
 
@@ -49,6 +49,23 @@
 | Full build | Not run (media fork issue pre-existing) | — |
 | Manual visual verification | Pending reviewer | — |
 | Session restore round-trip | Pending reviewer | — |
+
+## Multi-Reviewer Follow-up (2026-04-13)
+
+### Finding 1 (P1) — Category-list still carried generic `pf-settings-list` class: FIXED
+- `SettingsCategoryList` constructor was passing both `"pf-settings-category-list"` and `"pf-settings-list"` to `SettingsUiStyles.apply(...)`. Removed `"pf-settings-list"` so the control is styled only by its dedicated selector.
+- `SettingsPanelFxTest.categoryListUsesDedicatedSelectorOnly()` now passes (was failing before the fix).
+
+### Finding 2 (P1) — Stale validation record: FIXED
+- Reran all three validation commands after the code fix. Updated `validation.md` with actual 2026-04-13 rerun results.
+
+### Validation
+
+| Check | Result | Date |
+|-------|--------|------|
+| `./mvnw -pl papiflyfx-docking-settings -am compile` | PASS — 5/5 modules | 2026-04-13 |
+| `./mvnw -pl papiflyfx-docking-settings -am -Dtest=EncryptedFileSecretStoreTest,AtomicFileWriterTest,SettingsPanelFxTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` | PASS — 21/21 | 2026-04-13 |
+| `./mvnw -pl papiflyfx-docking-settings -am -Dtestfx.headless=true test` | PASS — 28/28 | 2026-04-13 |
 
 ## Notes
 
