@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.settings.categories;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.scene.Node;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.docking.api.ThemeColors;
 import org.metalib.papifly.fx.docking.api.ThemeDimensions;
@@ -12,6 +13,7 @@ import org.metalib.papifly.fx.settings.api.SettingType;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.ui.DefinitionFormBinder;
+import org.metalib.papifly.fx.settings.ui.controls.SettingControl;
 
 import java.util.List;
 
@@ -47,6 +49,8 @@ public class AppearanceCategory implements SettingsCategory {
         .withDescription("Border color override.");
 
     private DefinitionFormBinder binder;
+    private boolean backgroundStoredOverride;
+    private boolean borderStoredOverride;
 
     @Override
     public String id() {
@@ -81,6 +85,7 @@ public class AppearanceCategory implements SettingsCategory {
             binder = new DefinitionFormBinder(definitions());
         }
         binder.load(context);
+        applyModeAwareDefaults(context);
         return binder.pane();
     }
 
@@ -94,6 +99,7 @@ public class AppearanceCategory implements SettingsCategory {
     @Override
     public void reset(SettingsContext context) {
         binder.load(context);
+        applyModeAwareDefaults(context);
     }
 
     @Override
@@ -107,14 +113,22 @@ public class AppearanceCategory implements SettingsCategory {
     }
 
     private Theme buildTheme() {
-        ThemeMode mode = binder.<ThemeMode>control(THEME_DEFINITION.key()).getValue();
+        ThemeMode mode = themeMode();
         int fontSize = binder.<Integer>control(FONT_SIZE_DEFINITION.key()).getValue().intValue();
         Density density = binder.<Density>control(DENSITY_DEFINITION.key()).getValue();
         String accent = binder.<String>control(ACCENT_DEFINITION.key()).getValue();
-        String background = binder.<String>control(BACKGROUND_DEFINITION.key()).getValue();
-        String border = binder.<String>control(BORDER_DEFINITION.key()).getValue();
+        String background = resolvedColorValue(
+            BACKGROUND_DEFINITION,
+            asColor(themeBase(mode).background()),
+            backgroundStoredOverride
+        );
+        String border = resolvedColorValue(
+            BORDER_DEFINITION,
+            asColor(themeBase(mode).borderColor()),
+            borderStoredOverride
+        );
 
-        Theme base = mode == ThemeMode.LIGHT ? Theme.light() : Theme.dark();
+        Theme base = themeBase(mode);
         double densityScale = density == Density.COMPACT ? 0.9 : 1.0;
         return Theme.of(
             new ThemeColors(
@@ -145,5 +159,56 @@ public class AppearanceCategory implements SettingsCategory {
                 base.dimensions().minimizedBarHeight() * densityScale
             )
         );
+    }
+
+    private void applyModeAwareDefaults(SettingsContext context) {
+        Theme base = themeBase(themeMode());
+        backgroundStoredOverride = hasStoredOverride(context, BACKGROUND_DEFINITION);
+        borderStoredOverride = hasStoredOverride(context, BORDER_DEFINITION);
+        applyFallback(BACKGROUND_DEFINITION, asColor(base.background()), backgroundStoredOverride);
+        applyFallback(BORDER_DEFINITION, asColor(base.borderColor()), borderStoredOverride);
+        binder.clearDirty();
+    }
+
+    private ThemeMode themeMode() {
+        return binder.<ThemeMode>control(THEME_DEFINITION.key()).getValue();
+    }
+
+    private Theme themeBase(ThemeMode mode) {
+        return mode == ThemeMode.LIGHT ? Theme.light() : Theme.dark();
+    }
+
+    private void applyFallback(SettingDefinition<String> definition, Color fallback, boolean storedOverride) {
+        SettingControl<String> control = binder.control(definition.key());
+        control.setValue(resolvedColorValue(definition, fallback, storedOverride));
+    }
+
+    private String resolvedColorValue(SettingDefinition<String> definition, Color fallback, boolean storedOverride) {
+        String value = binder.<String>control(definition.key()).getValue();
+        if (value == null || value.isBlank()) {
+            return toHex(fallback);
+        }
+        if (!storedOverride && definition.defaultValue().equalsIgnoreCase(value)) {
+            return toHex(fallback);
+        }
+        return value;
+    }
+
+    private String toHex(Color color) {
+        int red = (int) Math.round(color.getRed() * 255.0);
+        int green = (int) Math.round(color.getGreen() * 255.0);
+        int blue = (int) Math.round(color.getBlue() * 255.0);
+        return String.format("#%02x%02x%02x", red, green, blue);
+    }
+
+    private Color asColor(Paint paint) {
+        return paint instanceof Color color ? color : Color.BLACK;
+    }
+
+    private boolean hasStoredOverride(SettingsContext context, SettingDefinition<String> definition) {
+        return context.storage().getRaw(definition.scope(), definition.key())
+            .map(String::trim)
+            .filter(value -> !value.isEmpty())
+            .isPresent();
     }
 }

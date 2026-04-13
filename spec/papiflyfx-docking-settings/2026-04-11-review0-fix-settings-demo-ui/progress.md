@@ -2,7 +2,25 @@
 
 **Priority:** P1
 **Lead Agent:** @ops-engineer
-**Status:** Dark-Mode Follow-up Complete
+**Status:** PR #10 Review Remediation Complete
+
+## PR #10 Review Remediation
+
+**Date:** 2026-04-13
+
+### Accepted Items
+- **Item 1 (P1):** `EncryptedFileSecretStore` now distinguishes malformed/corrupted envelopes from decrypt/authentication failures. Malformed primary content can still recover from `.bak`, but unrecoverable decrypt/tamper failures now throw `IllegalStateException` instead of resetting to an empty store. Regression tests now cover malformed fallback, tampered-envelope failure, and the "later write must not erase secrets after failed decrypt" path.
+- **Item 2 (P2):** `AtomicFileWriter` now catches `AtomicMoveNotSupportedException`, retries with `REPLACE_EXISTING`, and guarantees `*.tmp` cleanup on failure paths. `AtomicFileWriterTest` now exercises the fallback move path and temp-file cleanup after a forced rename failure.
+- **Item 3 (P2):** `AppearanceCategory` now restores mode-aware light/dark defaults for `appearance.background` and `appearance.border` when those keys are unset, both after `binder.load(context)` and during `buildTheme()`. `SettingsPanelFxTest` now proves light-mode defaults survive load, reset, and apply.
+- **Item 4 (P2):** `SettingsPanel` now suppresses scope-change re-entrancy while `showCategory(...)` normalizes supported scopes, clears cached panes only after normalization, and keeps dirty-property binding one-in/one-out. `SettingsPanelFxTest` now covers category switches with incompatible scope sets and asserts dirty-listener ownership stays stable.
+- **Item 5 (P2):** `SettingsPanel.buildPalette(...)` now maps `surfaceControl` to `UiCommonThemeSupport.background(resolved)` instead of the border token. `SettingsPanelFxTest` now verifies the shared search-field surface resolves to a real surface color, not the border color.
+- **Item 6 (P3):** `SettingsCategoryList` no longer applies the generic `pf-settings-list` chrome path. The regression suite now asserts the category list keeps only its dedicated `pf-settings-category-list` styling path.
+- **Item 7 (P3):** Fixed the broken samples-doc reference inside this task pack by redirecting the stale `papiflyfx-docking-samples/README.md` references to `spec/papiflyfx-docking-samples/README.md`.
+
+### Reviewer Handoff Status
+- `@auth-specialist`: ready to review the fail-closed secret-store behavior and the undecryptable/tampered regression coverage in `EncryptedFileSecretStoreTest`.
+- `@qa-engineer`: ready to review the new regression coverage in `EncryptedFileSecretStoreTest`, `AtomicFileWriterTest`, and `SettingsPanelFxTest`, plus the green targeted and module-wide headless runs.
+- `@ui-ux-designer`: ready to review the `surfaceControl` palette correction and the category-list selector isolation in `SettingsPanel` / `SettingsCategoryList`.
 
 ## Phase Tracking
 

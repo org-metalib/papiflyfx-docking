@@ -2,7 +2,38 @@
 
 **Priority:** P1
 **Lead Agent:** @ops-engineer
-**Status:** Not Started
+**Status:** PR #10 Review Remediation Complete
+
+## 2026-04-13 Review Remediation Validation
+
+### Automated Checks
+
+| Check | Result |
+|-------|--------|
+| `./mvnw -pl papiflyfx-docking-settings -am compile` | PASS |
+| `./mvnw -pl papiflyfx-docking-settings -am -Dtest=EncryptedFileSecretStoreTest,AtomicFileWriterTest,SettingsPanelFxTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` | PASS |
+| `./mvnw -pl papiflyfx-docking-settings -am -Dtestfx.headless=true test` | PASS |
+
+### Manual Verification
+
+- Not run in this remediation pass.
+- Interactive visual review and session round-trip checks from the original demo follow-up remain a reviewer/manual pass item.
+
+### Residual Risks
+
+| Risk | Severity | Notes |
+|------|----------|-------|
+| Secret-store logging is intentionally noisy on tamper/decrypt failure | Low | Expected for a fail-closed path; the regression tests confirm no on-disk rewrite happens before the exception escapes |
+| Headless tests cover scope normalization and palette wiring but not interactive visual polish | Low | `@ui-ux-designer` review is still the right place for final visual confirmation |
+| The broader task pack still carries historical validation from the earlier demo-theme work | Low | The new commands above are the authoritative validation for the 2026-04-13 PR #10 remediation |
+
+### Reviewer Status
+
+| Reviewer | Focus | Status |
+|----------|-------|--------|
+| `@auth-specialist` | Fail-closed decrypt/auth behavior and on-disk preservation | Ready for review |
+| `@qa-engineer` | Regression coverage and headless validation | Ready for review |
+| `@ui-ux-designer` | `surfaceControl` palette mapping and category-list selector isolation | Ready for review |
 
 ## Automated Checks
 

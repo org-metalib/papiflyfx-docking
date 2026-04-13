@@ -42,20 +42,27 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
     private final SettingsToolbar toolbar;
     private final Map<String, SettingsCategory> categoriesById = new LinkedHashMap<>();
     private final Map<String, Node> paneCache = new LinkedHashMap<>();
+    private final List<SettingsCategory> providedCategories;
     private final ChangeListener<Theme> themeListener;
     private final ChangeListener<Boolean> dirtyBindingListener = (obs, oldValue, newValue) -> refreshToolbarState();
 
     private SettingsCategory activeCategory;
     private ReadOnlyBooleanProperty activeDirtyProperty;
     private String initialCategoryId;
+    private boolean suppressScopeRefresh;
 
     public SettingsPanel(SettingsRuntime runtime) {
-        this(runtime, null);
+        this(runtime, null, null);
     }
 
     public SettingsPanel(SettingsRuntime runtime, String initialCategoryId) {
+        this(runtime, initialCategoryId, null);
+    }
+
+    SettingsPanel(SettingsRuntime runtime, String initialCategoryId, List<SettingsCategory> providedCategories) {
         this.runtime = runtime;
         this.initialCategoryId = initialCategoryId;
+        this.providedCategories = providedCategories == null ? null : List.copyOf(providedCategories);
 
         UiCommonStyles.ensureLoaded(this);
         URL settingsUrl = getClass().getResource(SETTINGS_STYLESHEET);
@@ -70,7 +77,6 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
         this.contentScroll = new ScrollPane(contentArea);
         this.toolbar = new SettingsToolbar();
 
-        categoryList.getStyleClass().add("pf-settings-category-list");
         contentArea.getStyleClass().add("pf-settings-content-area");
         contentScroll.getStyleClass().add("pf-settings-content-scroll");
 
@@ -132,6 +138,14 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
         return categoryList.visibleCategoryIds();
     }
 
+    SettingsToolbar toolbar() {
+        return toolbar;
+    }
+
+    VBox contentArea() {
+        return contentArea;
+    }
+
     @Override
     public void dispose() {
         runtime.themeProperty().removeListener(themeListener);
@@ -152,7 +166,7 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
             UiCommonThemeSupport.textPrimary(resolved),
             UiCommonThemeSupport.alpha(UiCommonThemeSupport.textPrimary(resolved), 0.66),
             UiCommonThemeSupport.alpha(UiCommonThemeSupport.textPrimary(resolved), 0.50),
-            UiCommonThemeSupport.border(resolved),
+            UiCommonThemeSupport.background(resolved),
             UiCommonThemeSupport.hover(resolved),
             UiCommonThemeSupport.pressed(resolved),
             UiCommonThemeSupport.accent(resolved),
@@ -166,12 +180,7 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
     }
 
     private void loadCategories() {
-        Map<String, SettingsCategory> loaded = new LinkedHashMap<>();
-        ServiceLoader.load(SettingsCategory.class).forEach(category -> loaded.put(category.id(), category));
-        ServiceLoader.load(SettingsContributor.class).forEach(contributor ->
-            contributor.getCategories().forEach(category -> loaded.put(category.id(), category))
-        );
-        List<SettingsCategory> categories = new ArrayList<>(loaded.values());
+        List<SettingsCategory> categories = discoverCategories();
         categories.sort(Comparator.comparingInt(SettingsCategoryMetadata::order).thenComparing(SettingsCategoryMetadata::displayName));
         categoriesById.clear();
         for (SettingsCategory category : categories) {
@@ -184,6 +193,18 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
         } else if (!categories.isEmpty()) {
             categoryList.getSelectionModel().select(categories.getFirst());
         }
+    }
+
+    private List<SettingsCategory> discoverCategories() {
+        if (providedCategories != null) {
+            return new ArrayList<>(providedCategories);
+        }
+        Map<String, SettingsCategory> loaded = new LinkedHashMap<>();
+        ServiceLoader.load(SettingsCategory.class).forEach(category -> loaded.put(category.id(), category));
+        ServiceLoader.load(SettingsContributor.class).forEach(contributor ->
+            contributor.getCategories().forEach(category -> loaded.put(category.id(), category))
+        );
+        return new ArrayList<>(loaded.values());
     }
 
     private void ensureSelectedCategoryVisible() {
@@ -200,19 +221,22 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
     }
 
     private void showCategory(SettingsCategory category) {
-        unbindDirtyProperty();
         if (category == null) {
+            unbindDirtyProperty();
             contentArea.getChildren().clear();
             activeCategory = null;
             refreshToolbarState();
             return;
         }
+        SettingScope previousScope = toolbar.getActiveScope();
+        normalizeSupportedScopes(category);
+
+        unbindDirtyProperty();
         activeCategory = category;
-        toolbar.setSupportedScopes(category.supportedScopes());
-        Node pane = paneCache.computeIfAbsent(category.id(), ignored -> buildPane(category));
-        contentArea.getChildren().setAll(pane);
-        bindDirtyProperty(category);
-        refreshToolbarState();
+        if (toolbar.getActiveScope() != previousScope) {
+            paneCache.clear();
+        }
+        displayActiveCategory(category);
     }
 
     private void bindDirtyProperty(SettingsCategoryUI category) {
@@ -231,9 +255,14 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
     }
 
     private void onScopeChanged(SettingScope scope) {
+        if (suppressScopeRefresh) {
+            return;
+        }
         paneCache.clear();
         if (activeCategory != null) {
-            showCategory(activeCategory);
+            unbindDirtyProperty();
+            displayActiveCategory(activeCategory);
+            return;
         }
         refreshToolbarState();
     }
@@ -245,6 +274,22 @@ public class SettingsPanel extends BorderPane implements DisposableContent {
     private void refreshToolbarState() {
         toolbar.setDirty(activeCategory != null && isDirty(activeCategory));
         toolbar.setActions(activeCategory == null ? List.of() : activeCategory.actions(), this::currentContext);
+    }
+
+    private void normalizeSupportedScopes(SettingsCategory category) {
+        suppressScopeRefresh = true;
+        try {
+            toolbar.setSupportedScopes(category.supportedScopes());
+        } finally {
+            suppressScopeRefresh = false;
+        }
+    }
+
+    private void displayActiveCategory(SettingsCategory category) {
+        Node pane = paneCache.computeIfAbsent(category.id(), ignored -> buildPane(category));
+        contentArea.getChildren().setAll(pane);
+        bindDirtyProperty(category);
+        refreshToolbarState();
     }
 
     private Node buildPane(SettingsCategoryUI category) {

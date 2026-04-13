@@ -20,6 +20,6 @@ The settings refactor introduced `settings.css` rules that depend on `-pf-ui-*` 
 - `spec/agents/prompts.md`
 - `spec/agents/README.md`
 - `papiflyfx-docking-settings/README.md`
-- `papiflyfx-docking-samples/README.md`
+- `spec/papiflyfx-docking-samples/README.md`
 
 If you need closure after validation, use the `@spec-steward` closure template from `spec/agents/prompts.md` with the same task context.

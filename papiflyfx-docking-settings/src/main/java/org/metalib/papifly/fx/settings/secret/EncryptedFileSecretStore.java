@@ -89,36 +89,50 @@ public class EncryptedFileSecretStore implements SecretStore {
         if (!Files.exists(secretsFile)) {
             return new LinkedHashMap<>();
         }
+        Path bakFile = backupFile();
+        SecretFileReadFailure primaryFailure;
         try {
             return parseSecretsFile(secretsFile);
-        } catch (Exception primary) {
-            LOG.log(Level.WARNING, "Corrupted secrets file " + secretsFile + ", attempting .bak recovery", primary);
-            Path bakFile = secretsFile.resolveSibling(secretsFile.getFileName() + ".bak");
-            if (Files.exists(bakFile)) {
-                try {
-                    Map<String, String> recovered = parseSecretsFile(bakFile);
-                    LOG.info("Recovered secrets from backup " + bakFile);
-                    return recovered;
-                } catch (Exception secondary) {
-                    LOG.log(Level.SEVERE, "Backup file " + bakFile + " is also corrupted, resetting to empty", secondary);
-                }
-            } else {
-                LOG.severe("No backup file found at " + bakFile + ", resetting to empty");
-            }
-            return new LinkedHashMap<>();
+        } catch (SecretFileReadFailure failure) {
+            primaryFailure = failure;
+            logRecoveryAttempt(secretsFile, bakFile, failure);
         }
+
+        if (Files.exists(bakFile)) {
+            try {
+                Map<String, String> recovered = parseSecretsFile(bakFile);
+                LOG.info("Recovered secrets from backup " + bakFile);
+                return recovered;
+            } catch (SecretFileReadFailure backupFailure) {
+                if (primaryFailure.unrecoverable() || backupFailure.unrecoverable()) {
+                    throw unrecoverableLoadFailure(primaryFailure, backupFailure);
+                }
+                LOG.log(Level.WARNING, "Backup file " + bakFile + " is also malformed, resetting to empty",
+                    backupFailure.getCause());
+            }
+        } else if (primaryFailure.unrecoverable()) {
+            throw unrecoverableLoadFailure(primaryFailure, null);
+        } else {
+            LOG.warning("No backup file found at " + bakFile + ", resetting to empty");
+        }
+        return new LinkedHashMap<>();
     }
 
-    private Map<String, String> parseSecretsFile(Path path) throws IOException, GeneralSecurityException {
-        String json = Files.readString(path, StandardCharsets.UTF_8);
-        Map<String, Object> envelope = codec.fromJson(json);
-        byte[] salt = decode(envelope.get("salt"));
-        byte[] iv = decode(envelope.get("iv"));
-        byte[] encrypted = decode(envelope.get("payload"));
-        byte[] decrypted = decrypt(encrypted, salt, iv);
+    private Map<String, String> parseSecretsFile(Path path) throws SecretFileReadFailure {
+        String json;
         try {
-            String payloadJson = new String(decrypted, StandardCharsets.UTF_8);
-            Map<String, Object> payload = codec.fromJson(payloadJson);
+            json = Files.readString(path, StandardCharsets.UTF_8);
+        } catch (IOException exception) {
+            throw new SecretFileReadFailure(path, SecretFileFailureKind.MALFORMED, exception);
+        }
+
+        Map<String, Object> envelope = parseJson(path, json);
+        byte[] salt = decode(path, envelope, "salt");
+        byte[] iv = decode(path, envelope, "iv");
+        byte[] encrypted = decode(path, envelope, "payload");
+        byte[] decrypted = decrypt(path, encrypted, salt, iv);
+        try {
+            Map<String, Object> payload = parseJson(path, new String(decrypted, StandardCharsets.UTF_8));
             Map<String, String> secrets = new LinkedHashMap<>();
             for (Map.Entry<String, Object> entry : payload.entrySet()) {
                 if (entry.getValue() != null) {
@@ -170,6 +184,14 @@ public class EncryptedFileSecretStore implements SecretStore {
         return cipher.doFinal(encrypted);
     }
 
+    private byte[] decrypt(Path path, byte[] encrypted, byte[] salt, byte[] iv) throws SecretFileReadFailure {
+        try {
+            return decrypt(encrypted, salt, iv);
+        } catch (GeneralSecurityException exception) {
+            throw new SecretFileReadFailure(path, SecretFileFailureKind.UNDECRYPTABLE, exception);
+        }
+    }
+
     private SecretKey deriveKey(byte[] salt) throws GeneralSecurityException {
         char[] seed = machineSeed().toCharArray();
         try {
@@ -205,7 +227,83 @@ public class EncryptedFileSecretStore implements SecretStore {
         }
     }
 
-    private byte[] decode(Object value) {
-        return Base64.getDecoder().decode(String.valueOf(value));
+    private Map<String, Object> parseJson(Path path, String json) throws SecretFileReadFailure {
+        try {
+            return codec.fromJson(json);
+        } catch (RuntimeException exception) {
+            throw new SecretFileReadFailure(path, SecretFileFailureKind.MALFORMED, exception);
+        }
+    }
+
+    private byte[] decode(Path path, Map<String, Object> envelope, String key) throws SecretFileReadFailure {
+        Object value = envelope.get(key);
+        if (value == null) {
+            throw new SecretFileReadFailure(path, SecretFileFailureKind.MALFORMED,
+                new IllegalStateException("Missing envelope field '" + key + "'"));
+        }
+        try {
+            return Base64.getDecoder().decode(String.valueOf(value));
+        } catch (IllegalArgumentException exception) {
+            throw new SecretFileReadFailure(path, SecretFileFailureKind.MALFORMED, exception);
+        }
+    }
+
+    private Path backupFile() {
+        return secretsFile.resolveSibling(secretsFile.getFileName() + ".bak");
+    }
+
+    private void logRecoveryAttempt(Path path, Path backupFile, SecretFileReadFailure failure) {
+        Level level = failure.unrecoverable() ? Level.SEVERE : Level.WARNING;
+        String detail = failure.unrecoverable()
+            ? "Unable to decrypt/authenticate secrets file "
+            : "Malformed secrets file ";
+        LOG.log(level, detail + path + ", attempting .bak recovery from " + backupFile, failure.getCause());
+    }
+
+    private IllegalStateException unrecoverableLoadFailure(
+        SecretFileReadFailure primaryFailure,
+        SecretFileReadFailure backupFailure
+    ) {
+        SecretFileReadFailure lead = primaryFailure != null && primaryFailure.unrecoverable()
+            ? primaryFailure
+            : backupFailure;
+        IllegalStateException exception = new IllegalStateException(
+            "Unable to load encrypted secrets from " + secretsFile
+                + "; the persisted secret store could not be decrypted or authenticated",
+            lead == null ? null : lead.getCause()
+        );
+        addSuppressedCause(exception, primaryFailure, lead);
+        addSuppressedCause(exception, backupFailure, lead);
+        return exception;
+    }
+
+    private void addSuppressedCause(
+        IllegalStateException target,
+        SecretFileReadFailure failure,
+        SecretFileReadFailure lead
+    ) {
+        if (failure == null || failure == lead || failure.getCause() == null) {
+            return;
+        }
+        target.addSuppressed(failure.getCause());
+    }
+
+    private enum SecretFileFailureKind {
+        MALFORMED,
+        UNDECRYPTABLE
+    }
+
+    private static final class SecretFileReadFailure extends Exception {
+
+        private final SecretFileFailureKind kind;
+
+        private SecretFileReadFailure(Path path, SecretFileFailureKind kind, Throwable cause) {
+            super(cause);
+            this.kind = kind;
+        }
+
+        private boolean unrecoverable() {
+            return kind == SecretFileFailureKind.UNDECRYPTABLE;
+        }
     }
 }

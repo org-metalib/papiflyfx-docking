@@ -2,6 +2,8 @@ package org.metalib.papifly.fx.settings.ui;
 
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.application.Platform;
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -24,12 +26,15 @@ import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
 import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingType;
+import org.metalib.papifly.fx.settings.api.SettingsCategory;
+import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.categories.KeyboardShortcutsCategory;
 import org.metalib.papifly.fx.settings.categories.McpServersCategory;
 import org.metalib.papifly.fx.settings.categories.SecurityCategory;
 import org.metalib.papifly.fx.settings.persist.JsonSettingsStorage;
 import org.metalib.papifly.fx.settings.runtime.SettingsRuntime;
 import org.metalib.papifly.fx.settings.secret.InMemorySecretStore;
+import org.metalib.papifly.fx.settings.ui.controls.SettingControl;
 import org.metalib.papifly.fx.settings.ui.controls.NumberSettingControl;
 import org.metalib.papifly.fx.settings.ui.controls.PathSettingControl;
 import org.metalib.papifly.fx.settings.ui.controls.SecretSettingControl;
@@ -42,6 +47,7 @@ import org.testfx.util.WaitForAsyncUtils;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -98,6 +104,39 @@ class SettingsPanelFxTest {
     }
 
     @Test
+    void lightModeAppearanceDefaultsSurviveLoadResetAndApplyWhenOverridesAreUnset() {
+        SettingsRuntime lightRuntime = newRuntime("appearance");
+        lightRuntime.storage().putString(SettingScope.APPLICATION, "appearance.theme", "light");
+        lightRuntime.storage().putString(SettingScope.APPLICATION, "appearance.background", null);
+        lightRuntime.storage().putString(SettingScope.APPLICATION, "appearance.border", null);
+
+        SettingsPanel panel = callFx(() -> new SettingsPanel(lightRuntime));
+        runFx(() -> panel.selectCategory("appearance"));
+
+        ColorPicker backgroundPicker = colorPickerFor(panel, "appearance.background");
+        ColorPicker borderPicker = colorPickerFor(panel, "appearance.border");
+        Theme expectedTheme = Theme.light();
+
+        assertColorEquals(UiCommonThemeSupport.background(expectedTheme), callFx(backgroundPicker::getValue));
+        assertColorEquals(UiCommonThemeSupport.border(expectedTheme), callFx(borderPicker::getValue));
+
+        runFx(() -> {
+            backgroundPicker.setValue(Color.BLACK);
+            borderPicker.setValue(Color.BLACK);
+            panel.resetActiveCategory();
+        });
+
+        assertColorEquals(UiCommonThemeSupport.background(expectedTheme), callFx(backgroundPicker::getValue));
+        assertColorEquals(UiCommonThemeSupport.border(expectedTheme), callFx(borderPicker::getValue));
+
+        runFx(panel::applyActiveCategory);
+
+        Theme appliedTheme = callFx(() -> lightRuntime.themeProperty().get());
+        assertColorEquals(UiCommonThemeSupport.background(expectedTheme), UiCommonThemeSupport.background(appliedTheme));
+        assertColorEquals(UiCommonThemeSupport.border(expectedTheme), UiCommonThemeSupport.border(appliedTheme));
+    }
+
+    @Test
     void selectedCategoryUsesExplicitInactiveTokensWhenListLosesFocus() {
         SettingsCategoryList list = callFx(this::categoryList);
         Theme theme = Theme.dark();
@@ -132,6 +171,46 @@ class SettingsPanelFxTest {
         Label inactiveLabel = selectedCategoryLabel(inactiveCell);
         assertColorEquals(expectedText, callFx(() -> requireColor(inactiveLabel.getTextFill())));
         assertColorEquals(expectedInactiveBackground, callFx(() -> backgroundColor(inactiveCell)));
+    }
+
+    @Test
+    void switchingCategoriesWithDifferentScopesNormalizesOnceWithoutDuplicateDirtyBindings() {
+        CountingBooleanProperty workspaceDirty = new CountingBooleanProperty();
+        CountingBooleanProperty applicationDirty = new CountingBooleanProperty();
+        TestCategory workspaceCategory = new TestCategory(
+            "workspace-test",
+            "Workspace Test",
+            10,
+            Set.of(SettingScope.APPLICATION, SettingScope.WORKSPACE),
+            workspaceDirty
+        );
+        TestCategory applicationCategory = new TestCategory(
+            "application-test",
+            "Application Test",
+            20,
+            Set.of(SettingScope.APPLICATION),
+            applicationDirty
+        );
+        SettingsPanel panel = callFx(() -> new SettingsPanel(
+            newRuntime("scopes"),
+            "workspace-test",
+            List.of(workspaceCategory, applicationCategory)
+        ));
+
+        runFx(() -> panel.toolbar().activeScopeProperty().set(SettingScope.WORKSPACE));
+        assertEquals(2, workspaceCategory.buildCount(), "Scope switch should rebuild the active category once");
+        assertEquals(1, workspaceDirty.activeListenerCount(), "Active category should keep a single dirty listener");
+
+        runFx(() -> panel.selectCategory("application-test"));
+
+        assertEquals("application-test", callFx(panel::getActiveCategoryId));
+        assertEquals(SettingScope.APPLICATION, callFx(() -> panel.toolbar().getActiveScope()));
+        assertEquals(1, applicationCategory.buildCount(),
+            "Category switch should render the application-only category exactly once");
+        assertEquals(0, workspaceDirty.activeListenerCount(),
+            "Previous category listener should be removed during the switch");
+        assertEquals(1, applicationDirty.activeListenerCount(),
+            "New category listener should be attached exactly once");
     }
 
     @Test
@@ -198,6 +277,31 @@ class SettingsPanelFxTest {
         WaitForAsyncUtils.waitForFxEvents();
     }
 
+    @Test
+    void searchFieldUsesSurfaceColorInsteadOfBorderColor() {
+        Theme theme = Theme.dark();
+
+        runFx(() -> {
+            shownPanel.applyCss();
+            shownPanel.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        Region searchField = callFx(() -> shownPanel.searchBar().getSearchField());
+        Color actual = callFx(() -> backgroundColor(searchField));
+
+        assertColorEquals(UiCommonThemeSupport.background(theme), actual);
+        assertColorNotEquals(UiCommonThemeSupport.border(theme), actual);
+    }
+
+    @Test
+    void categoryListUsesDedicatedSelectorOnly() {
+        SettingsCategoryList list = callFx(this::categoryList);
+
+        assertTrue(callFx(() -> list.getStyleClass().contains("pf-settings-category-list")));
+        assertFalse(callFx(() -> list.getStyleClass().contains(SettingsUiStyles.LIST)));
+    }
+
     private void runFx(Runnable action) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         Platform.runLater(() -> {
@@ -229,6 +333,16 @@ class SettingsPanelFxTest {
         return list;
     }
 
+    private SettingsRuntime newRuntime(String prefix) {
+        return new SettingsRuntime(
+            tempDir.resolve(prefix + "-app"),
+            tempDir.resolve(prefix + "-workspace"),
+            new JsonSettingsStorage(tempDir.resolve(prefix + "-app"), tempDir.resolve(prefix + "-workspace")),
+            new InMemorySecretStore(),
+            new SimpleObjectProperty<>(Theme.dark())
+        );
+    }
+
     private ColorPicker appearanceColorPicker() {
         return callFx(() -> {
             shownPanel.selectCategory("appearance");
@@ -238,6 +352,19 @@ class SettingsPanelFxTest {
                 .findFirst()
                 .orElseThrow();
         });
+    }
+
+    private ColorPicker colorPickerFor(SettingsPanel panel, String key) {
+        runFx(() -> {
+            panel.selectCategory("appearance");
+            panel.applyCss();
+            panel.layout();
+        });
+        return callFx(() -> collectNodes(panel.contentArea(), SettingControl.class).stream()
+            .filter(control -> key.equals(control.definition().key()))
+            .map(control -> collectNodes(control, ColorPicker.class).stream().findFirst().orElseThrow())
+            .findFirst()
+            .orElseThrow());
     }
 
     private ListCell<?> selectedCategoryCell() {
@@ -355,6 +482,107 @@ class SettingsPanelFxTest {
         assertEquals(expected.getOpacity(), actual.getOpacity(), 0.01);
     }
 
+    private static void assertColorNotEquals(Color unexpected, Color actual) {
+        boolean same = Math.abs(unexpected.getRed() - actual.getRed()) < 0.01
+            && Math.abs(unexpected.getGreen() - actual.getGreen()) < 0.01
+            && Math.abs(unexpected.getBlue() - actual.getBlue()) < 0.01
+            && Math.abs(unexpected.getOpacity() - actual.getOpacity()) < 0.01;
+        assertFalse(same, () -> "Did not expect color " + unexpected + " but found " + actual);
+    }
+
     private record CompactFieldAudit(int fieldCount, List<String> missing) {
+    }
+
+    private static final class CountingBooleanProperty extends SimpleBooleanProperty {
+
+        private int activeListenerCount;
+
+        @Override
+        public void addListener(javafx.beans.value.ChangeListener<? super Boolean> listener) {
+            super.addListener(listener);
+            activeListenerCount++;
+        }
+
+        @Override
+        public void removeListener(javafx.beans.value.ChangeListener<? super Boolean> listener) {
+            super.removeListener(listener);
+            activeListenerCount--;
+        }
+
+        private int activeListenerCount() {
+            return activeListenerCount;
+        }
+    }
+
+    private static final class TestCategory implements SettingsCategory {
+
+        private final String id;
+        private final String displayName;
+        private final int order;
+        private final Set<SettingScope> supportedScopes;
+        private final CountingBooleanProperty dirtyProperty;
+        private int buildCount;
+
+        private TestCategory(
+            String id,
+            String displayName,
+            int order,
+            Set<SettingScope> supportedScopes,
+            CountingBooleanProperty dirtyProperty
+        ) {
+            this.id = id;
+            this.displayName = displayName;
+            this.order = order;
+            this.supportedScopes = supportedScopes;
+            this.dirtyProperty = dirtyProperty;
+        }
+
+        @Override
+        public String id() {
+            return id;
+        }
+
+        @Override
+        public String displayName() {
+            return displayName;
+        }
+
+        @Override
+        public int order() {
+            return order;
+        }
+
+        @Override
+        public Set<SettingScope> supportedScopes() {
+            return supportedScopes;
+        }
+
+        @Override
+        public Node buildSettingsPane(SettingsContext context) {
+            buildCount++;
+            return new Label(displayName + ':' + context.activeScope().name());
+        }
+
+        @Override
+        public void apply(SettingsContext context) {
+        }
+
+        @Override
+        public void reset(SettingsContext context) {
+        }
+
+        @Override
+        public boolean isDirty() {
+            return dirtyProperty.get();
+        }
+
+        @Override
+        public ReadOnlyBooleanProperty dirtyProperty() {
+            return dirtyProperty;
+        }
+
+        private int buildCount() {
+            return buildCount;
+        }
     }
 }

@@ -1,7 +1,7 @@
 # Implementation Plan: PapiflyFX Settings Refactor (review0)
 
 - **Lead Agent:** `@ops-engineer`
-- **Reference:** [refactor-plan-gemini-total.md](/corefactor-plan-gemini-total.md)
+- **Reference:** [refactor-plan-gemini-total.md](/refactor-plan-gemini-total.md)
 - **Status:** completed
 
 ## Phase 1: Runtime & Scope Safety

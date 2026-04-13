@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.settings.internal;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -34,6 +35,10 @@ public final class AtomicFileWriter {
      * @throws IOException if the write or rename fails
      */
     public static void writeAtomically(Path target, String content) throws IOException {
+        writeAtomically(target, content, AtomicFileWriter::moveFile);
+    }
+
+    static void writeAtomically(Path target, String content, MoveOperation moveOperation) throws IOException {
         Path parent = target.getParent();
         if (parent != null) {
             Files.createDirectories(parent);
@@ -52,11 +57,50 @@ public final class AtomicFileWriter {
             }
         }
 
-        // Write to temp file
-        Files.writeString(tmpFile, content, StandardCharsets.UTF_8);
+        IOException failure = null;
+        try {
+            Files.writeString(tmpFile, content, StandardCharsets.UTF_8);
+            moveIntoPlace(tmpFile, target, moveOperation);
+        } catch (IOException exception) {
+            failure = exception;
+            throw exception;
+        } finally {
+            cleanupTempFile(tmpFile, failure);
+        }
+    }
 
-        // Atomic rename
-        Files.move(tmpFile, target,
-            StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+    private static void moveIntoPlace(Path tmpFile, Path target, MoveOperation moveOperation) throws IOException {
+        try {
+            moveOperation.move(tmpFile, target, true);
+        } catch (AtomicMoveNotSupportedException exception) {
+            LOG.log(Level.WARNING, "Atomic move is not supported for " + target + ", retrying with REPLACE_EXISTING",
+                exception);
+            moveOperation.move(tmpFile, target, false);
+        }
+    }
+
+    private static void moveFile(Path source, Path target, boolean atomic) throws IOException {
+        if (atomic) {
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            return;
+        }
+        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    private static void cleanupTempFile(Path tmpFile, IOException failure) throws IOException {
+        try {
+            Files.deleteIfExists(tmpFile);
+        } catch (IOException cleanupFailure) {
+            if (failure != null) {
+                failure.addSuppressed(cleanupFailure);
+                return;
+            }
+            throw cleanupFailure;
+        }
+    }
+
+    @FunctionalInterface
+    interface MoveOperation {
+        void move(Path source, Path target, boolean atomic) throws IOException;
     }
 }
