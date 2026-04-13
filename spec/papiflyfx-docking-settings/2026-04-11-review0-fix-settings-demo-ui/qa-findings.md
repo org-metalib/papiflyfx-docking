@@ -103,3 +103,41 @@ Validation Performed: Headless test runs for settings (17/17) and samples (12/12
 Open Risks / Follow-ups: (1) No theme-toggle test for SettingsPanel — recommend adding before next settings change (2) Manual visual verification pending
 Required Reviewer: N/A — validation complete
 ```
+
+## Dark-Mode Settings Follow-up Addendum
+
+**Reviewer:** @qa-engineer
+**Date:** 2026-04-12
+**Status:** Approve with low residual risk
+
+### 1. Remaining regression coverage gaps
+
+1. **ColorPicker custom-color dialog is still untested (Low).**
+   `SettingsPanelFxTest.colorPickerPopupUsesTokenDrivenDarkThemeSurface()` verifies the closed control plus the `.color-palette` popup surface, border, and action link, but it does not follow the `Custom Color...` path into JavaFX's deeper custom-color dialog. The dark-mode popup surface requested in this follow-up is covered; the secondary dialog path still needs manual verification.
+2. **Demo-style coverage is wiring-focused, not full computed-skin coverage (Low).**
+   `SettingsDemoStyleIntegrationTest` correctly audits the real demo categories for the shared style-class path across text/password fields, combo boxes, text areas, check boxes, list views, buttons, and appearance color pickers. It does not assert resolved background/text/border colors for every one of those control families, so a future selector drift inside `settings.css` could still require visual review even when style classes remain attached.
+3. **Cross-theme toggle coverage remains outside this narrow follow-up (Low).**
+   Both focused regression tests execute in `Theme.dark()` only. That is sufficient for the dark-mode/settings-style finding set under review here, but it still leaves broader light-mode/theme-toggle regression coverage to the existing future-work bucket.
+
+### 2. The narrowest relevant automated checks
+
+| Check | Command | Result |
+|---|---|---|
+| Touched-module compile | `./mvnw -pl papiflyfx-docking-settings,papiflyfx-docking-login,papiflyfx-docking-github,papiflyfx-docking-code,papiflyfx-docking-hugo,papiflyfx-docking-samples -am compile` | PASS |
+| Focused dark-mode regression tests | `./mvnw -pl papiflyfx-docking-settings,papiflyfx-docking-samples -am -Dtest=SettingsPanelFxTest,SettingsDemoStyleIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` | PASS — `SettingsPanelFxTest` 5/5, `SettingsDemoStyleIntegrationTest` 1/1 |
+
+**Additional scoped confirmation:** `./mvnw -pl papiflyfx-docking-settings,papiflyfx-docking-login,papiflyfx-docking-github,papiflyfx-docking-code,papiflyfx-docking-hugo,papiflyfx-docking-samples -am -Dtestfx.headless=true test` also passed in the current repo state. The previously logged broader reactor failure in `papiflyfx-docking-media` did **not** reproduce here, so I did not find an out-of-scope reactor blocker to attribute separately.
+
+### 3. Manual verification still needed
+
+1. Open the samples app in dark mode and inspect the appearance-category `ColorPicker` end to end: closed control, palette popup, and the `Custom Color...` dialog path.
+2. In the settings panel, move focus away from the selected category row and confirm the inactive-selected text remains readable on the target platform theme/rendering stack.
+3. If release sign-off requires dual-theme confidence rather than dark-mode-only closure, do one interactive light/dark toggle pass through the settings demo shell.
+
+### 4. Residual risk if merged as-is
+
+**Low.** The shared class-wiring path is covered in the actual demo settings panel, the dark-mode color-picker popup surface is covered in `SettingsPanelFxTest`, the touched modules compile cleanly, and the scoped headless reactor now passes. The remaining risk is limited to visual subtleties that are awkward to assert headlessly, primarily the deeper custom-color dialog path and general cross-theme inspection outside this dark-mode-focused follow-up.
+
+### 5. Whether this follow-up closes the dark-mode/settings-style findings
+
+**Yes.** For the findings tracked in the dark-mode follow-up, this implementation closes the token-driven styling gaps for the remaining settings controls and adds the expected narrow regression coverage for both the shared style-class path and the dark-mode popup surface path. The open items above are follow-on hardening opportunities, not blockers for closing the dark-mode/settings-style finding set.
