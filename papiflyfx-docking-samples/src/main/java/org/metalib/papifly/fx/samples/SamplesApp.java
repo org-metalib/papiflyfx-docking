@@ -11,7 +11,6 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.Labeled;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -31,6 +30,8 @@ import org.metalib.papifly.fx.tree.api.TreeItem;
 import org.metalib.papifly.fx.tree.api.TreeView;
 import org.metalib.papifly.fx.tree.render.TreeRenderContext;
 import org.metalib.papifly.fx.tree.theme.TreeViewTheme;
+import org.metalib.papifly.fx.tree.theme.TreeViewThemeMapper;
+import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -47,33 +48,19 @@ import java.util.Set;
 public class SamplesApp extends Application {
 
     private final ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
-    private static final TreeViewTheme NAVIGATION_THEME = new TreeViewTheme(
-        Color.web("#252526"),
-        Color.web("#252526"),
-        Color.web("#252526"),
-        Color.web("#094771"),
-        Color.web("#3a3d41"),
-        Color.web("#007acc"),
-        Color.web("#2a2d2e"),
-        Color.web("#cccccc"),
-        Color.web("#ffffff"),
-        Color.web("#6f6f6f"),
-        Color.web("#3f3f46"),
-        Color.rgb(255, 255, 255, 0.08),
-        Color.rgb(255, 255, 255, 0.32),
-        Color.rgb(255, 255, 255, 0.46),
-        Color.rgb(255, 255, 255, 0.58),
-        Font.font("System", 13),
-        24.0,
-        16.0,
-        0.0
-    );
     private Stage primaryStage;
+    private HBox topBar;
     private final StackPane contentArea = new StackPane();
     private final Map<String, TreeItem<NavigationEntry>> sampleItemsByTitle = new LinkedHashMap<>();
     private TreeView<NavigationEntry> sampleTree;
     private TreeItem<NavigationEntry> selectedSampleItem;
     private boolean syncingNavigationSelection;
+    private Label titleLabel;
+    private Label authHint;
+    private Button authSettingsButton;
+    private Button loginDemoButton;
+    private ToggleButton themeToggle;
+    private Label placeholderLabel;
 
     /**
      * Creates the samples application.
@@ -88,13 +75,16 @@ public class SamplesApp extends Application {
         SamplesRuntimeSupport.initialize(themeProperty);
 
         sampleTree = buildSampleTree();
-        HBox topBar = buildTopBar();
+        topBar = buildTopBar();
         buildContentArea();
 
         BorderPane root = new BorderPane();
         root.setTop(topBar);
         root.setLeft(sampleTree);
         root.setCenter(contentArea);
+
+        themeProperty.addListener((obs, oldTheme, newTheme) -> applyTheme(newTheme));
+        applyTheme(themeProperty.get());
 
         stage.setTitle("PapiflyFX Docking Samples");
         stage.setScene(new Scene(root, 1200, 800));
@@ -103,22 +93,19 @@ public class SamplesApp extends Application {
     }
 
     private HBox buildTopBar() {
-        Label titleLabel = new Label("PapiflyFX Docking Samples");
-        titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+        titleLabel = new Label("PapiflyFX Docking Samples");
+        titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
-        Label authHint = new Label("Configure auth providers in Auth Settings, then try a sign-in sample.");
-        authHint.setStyle("-fx-text-fill: #bbbbbb; -fx-font-size: 12px;");
+        authHint = new Label("Configure auth providers in Auth Settings, then try a sign-in sample.");
+        authHint.setStyle("-fx-font-size: 12px;");
 
-        Button authSettingsButton = new Button("Auth Settings");
-        styleTopBarButton(authSettingsButton, "#5b6470");
+        authSettingsButton = new Button("Auth Settings");
         authSettingsButton.setOnAction(event -> openSample("Settings Panel"));
 
-        Button loginDemoButton = new Button("Login Demo");
-        styleTopBarButton(loginDemoButton, "#0e639c");
+        loginDemoButton = new Button("Login Demo");
         loginDemoButton.setOnAction(event -> openSample("Sign in with Google"));
 
-        ToggleButton themeToggle = new ToggleButton("Light Mode");
-        styleTopBarButton(themeToggle, "#0e639c");
+        themeToggle = new ToggleButton("Light Mode");
         themeToggle.setSelected(false);
         themeToggle.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
             themeProperty.set(isSelected ? Theme.light() : Theme.dark());
@@ -128,18 +115,17 @@ public class SamplesApp extends Application {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox topBar = new HBox(8, titleLabel, authHint, spacer, authSettingsButton, loginDemoButton, themeToggle);
-        topBar.setAlignment(Pos.CENTER_LEFT);
-        topBar.setPadding(new Insets(8, 12, 8, 12));
-        topBar.setStyle("-fx-background-color: #3c3c3c;");
-        return topBar;
+        HBox bar = new HBox(8, titleLabel, authHint, spacer, authSettingsButton, loginDemoButton, themeToggle);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setPadding(new Insets(8, 12, 8, 12));
+        return bar;
     }
 
     private TreeView<NavigationEntry> buildSampleTree() {
         TreeView<NavigationEntry> treeView = new TreeView<>();
         treeView.setShowRoot(false);
         treeView.setRoot(buildNavigationRoot());
-        treeView.setTreeViewTheme(NAVIGATION_THEME);
+        treeView.setTreeViewTheme(TreeViewThemeMapper.map(themeProperty.get()));
         treeView.setCellRenderer(this::renderNavigationCell);
         treeView.setNavigationSelectablePredicate(item -> item != null && item.getValue() != null && !item.getValue().isCategory());
         treeView.setPrefWidth(190);
@@ -214,10 +200,10 @@ public class SamplesApp extends Application {
         double textY = state.y() + ((state.height() - context.glyphCache().getLineHeight()) * 0.5) + context.baseline();
         double baseX = Math.max(0.0, state.x() - context.iconSize() - context.indentWidth());
         if (entry.isCategory()) {
-            graphics.setFill(Color.web("#1e1e1e"));
+            graphics.setFill(context.theme().background());
             graphics.fillRect(0.0, state.y(), context.effectiveTextWidth(), state.height());
             graphics.setFont(Font.font(context.theme().font().getFamily(), FontWeight.BOLD, context.theme().font().getSize()));
-            graphics.setFill(Color.web("#888888"));
+            graphics.setFill(context.theme().connectingLineColor());
             graphics.fillText(entry.label(), baseX + 2.0, textY);
             graphics.setFont(context.theme().font());
             return;
@@ -228,12 +214,11 @@ public class SamplesApp extends Application {
     }
 
     private void buildContentArea() {
-        Label placeholder = new Label("Select a sample from the navigation panel, or use Auth Settings and Login Demo to open a sign-in sample.");
-        placeholder.setStyle("-fx-text-fill: #888888; -fx-font-size: 14px;");
-        placeholder.setWrapText(true);
-        placeholder.setMaxWidth(420);
-        contentArea.getChildren().add(placeholder);
-        contentArea.setStyle("-fx-background-color: #1e1e1e;");
+        placeholderLabel = new Label("Select a sample from the navigation panel, or use Auth Settings and Login Demo to open a sign-in sample.");
+        placeholderLabel.setStyle("-fx-font-size: 14px;");
+        placeholderLabel.setWrapText(true);
+        placeholderLabel.setMaxWidth(420);
+        contentArea.getChildren().add(placeholderLabel);
     }
 
     private void openSample(String sampleTitle) {
@@ -273,8 +258,36 @@ public class SamplesApp extends Application {
         contentArea.getChildren().setAll(content);
     }
 
-    private void styleTopBarButton(Labeled button, String backgroundColor) {
-        button.setStyle("-fx-background-color: " + backgroundColor + "; -fx-text-fill: white;");
+    private void applyTheme(Theme theme) {
+        Theme resolved = UiCommonThemeSupport.resolvedTheme(theme);
+        Color headerBg = UiCommonThemeSupport.headerBackground(resolved);
+        Color canvasBg = UiCommonThemeSupport.background(resolved);
+        Color textPrimary = UiCommonThemeSupport.textPrimary(resolved);
+        Color textMuted = UiCommonThemeSupport.alpha(textPrimary, 0.66);
+        Color accent = UiCommonThemeSupport.accent(resolved);
+        Color controlBg = UiCommonThemeSupport.border(resolved);
+
+        String headerBgCss = UiCommonThemeSupport.paintToCss(headerBg, "transparent");
+        String canvasBgCss = UiCommonThemeSupport.paintToCss(canvasBg, "transparent");
+        String textPrimaryCss = UiCommonThemeSupport.paintToCss(textPrimary, "transparent");
+        String textMutedCss = UiCommonThemeSupport.paintToCss(textMuted, "transparent");
+        String accentCss = UiCommonThemeSupport.paintToCss(accent, "transparent");
+        String controlBgCss = UiCommonThemeSupport.paintToCss(controlBg, "transparent");
+
+        topBar.setStyle("-fx-background-color: " + headerBgCss + ";");
+        titleLabel.setStyle("-fx-text-fill: " + textPrimaryCss + "; -fx-font-size: 14px; -fx-font-weight: bold;");
+        authHint.setStyle("-fx-text-fill: " + textMutedCss + "; -fx-font-size: 12px;");
+        authSettingsButton.setStyle("-fx-background-color: " + controlBgCss + "; -fx-text-fill: " + textPrimaryCss + ";");
+        String textOnAccentCss = UiCommonThemeSupport.isDark(accent) ? "white" : "black";
+        loginDemoButton.setStyle("-fx-background-color: " + accentCss + "; -fx-text-fill: " + textOnAccentCss + ";");
+        themeToggle.setStyle("-fx-background-color: " + accentCss + "; -fx-text-fill: " + textOnAccentCss + ";");
+        contentArea.setStyle("-fx-background-color: " + canvasBgCss + ";");
+        if (placeholderLabel != null) {
+            placeholderLabel.setStyle("-fx-text-fill: " + textMutedCss + "; -fx-font-size: 14px;");
+        }
+
+        TreeViewTheme navTheme = TreeViewThemeMapper.map(resolved);
+        sampleTree.setTreeViewTheme(navTheme);
     }
 
     private void disposeContentArea() {

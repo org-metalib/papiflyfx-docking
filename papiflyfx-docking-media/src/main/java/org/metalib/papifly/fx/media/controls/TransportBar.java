@@ -486,6 +486,22 @@ public class TransportBar extends HBox {
         repaintIcons();
     }
 
+    // Test hook for overlay-state assertions without relying on a live media backend.
+    public void setPlaybackStateForTesting(PlaybackState state) {
+        String label = switch (state) {
+            case READY -> "Ready";
+            case PAUSED -> "Paused";
+            case STOPPED -> "Stopped";
+            case STALLED -> "Buffering";
+            case ENDED -> "Ended";
+            case ERROR -> "Error";
+            default -> "";
+        };
+        setPlaybackState(state, label);
+        setInteractionEnabled(state != PlaybackState.ERROR);
+        showNow();
+    }
+
     private void setInteractionEnabled(boolean enabled) {
         playBtn.setDisable(!enabled);
         stopBtn.setDisable(!enabled);

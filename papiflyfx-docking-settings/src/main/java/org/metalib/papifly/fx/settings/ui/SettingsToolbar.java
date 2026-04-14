@@ -14,8 +14,12 @@ import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingsAction;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.api.ValidationResult;
+import org.metalib.papifly.fx.ui.UiPillButton;
+import org.metalib.papifly.fx.ui.UiStatusSlot;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
@@ -28,10 +32,11 @@ public class SettingsToolbar extends BorderPane {
     private final ComboBox<SettingScope> scopeSelector;
     private final HBox actionBox;
     private final ObjectProperty<SettingScope> activeScope = new SimpleObjectProperty<>(SettingScope.APPLICATION);
+    private boolean updatingScopes;
 
     public SettingsToolbar() {
-        this.applyButton = new Button("Apply");
-        this.resetButton = new Button("Reset");
+        this.applyButton = new UiPillButton("Apply");
+        this.resetButton = new UiPillButton("Reset");
         this.dirtyLabel = new Label();
         this.statusLabel = new Label();
         this.scopeSelector = new ComboBox<>();
@@ -40,17 +45,21 @@ public class SettingsToolbar extends BorderPane {
         scopeSelector.getItems().addAll(SettingScope.APPLICATION, SettingScope.WORKSPACE, SettingScope.SESSION);
         scopeSelector.valueProperty().bindBidirectional(activeScope);
         scopeSelector.setValue(SettingScope.APPLICATION);
+        SettingsUiStyles.applyCompactField(scopeSelector);
 
-        HBox left = new HBox(8, applyButton, resetButton, dirtyLabel, statusLabel);
-        HBox right = new HBox(8, new Label("Scope"), scopeSelector, actionBox);
+        UiStatusSlot statusSlot = new UiStatusSlot(dirtyLabel, statusLabel);
+        HBox left = new HBox(8, applyButton, resetButton, statusSlot);
+        Label scopeLabel = new Label("Scope");
+        scopeLabel.getStyleClass().add("pf-settings-scope-label");
+        HBox right = new HBox(8, scopeLabel, scopeSelector, actionBox);
         left.setAlignment(Pos.CENTER_LEFT);
         right.setAlignment(Pos.CENTER_RIGHT);
 
-        setPadding(new Insets(8));
+        getStyleClass().add("pf-settings-toolbar");
         setLeft(left);
         setRight(right);
-        dirtyLabel.setStyle("-fx-text-fill: #c08000;");
-        statusLabel.setStyle("-fx-text-fill: #6a8f4e;");
+        dirtyLabel.getStyleClass().add("pf-settings-dirty-label");
+        statusLabel.getStyleClass().add("pf-settings-status-label");
     }
 
     public void onApply(Runnable action) {
@@ -69,6 +78,36 @@ public class SettingsToolbar extends BorderPane {
         return activeScope.get();
     }
 
+    /**
+     * Updates the scope selector to only show scopes supported by the active category.
+     * If the currently selected scope is not in the new set, resets to the first available scope.
+     */
+    public void setSupportedScopes(Set<SettingScope> scopes) {
+        if (updatingScopes) {
+            return;
+        }
+        updatingScopes = true;
+        try {
+            List<SettingScope> filtered = new ArrayList<>();
+            for (SettingScope scope : List.of(SettingScope.APPLICATION, SettingScope.WORKSPACE, SettingScope.SESSION)) {
+                if (scopes.contains(scope)) {
+                    filtered.add(scope);
+                }
+            }
+            if (filtered.isEmpty()) {
+                filtered.add(SettingScope.APPLICATION);
+            }
+            SettingScope current = activeScope.get();
+            scopeSelector.getItems().setAll(filtered);
+            if (!filtered.contains(current)) {
+                scopeSelector.setValue(filtered.getFirst());
+            }
+            scopeSelector.setDisable(filtered.size() <= 1);
+        } finally {
+            updatingScopes = false;
+        }
+    }
+
     public void setDirty(boolean dirty) {
         dirtyLabel.setText(dirty ? "Modified" : "");
     }
@@ -76,7 +115,7 @@ public class SettingsToolbar extends BorderPane {
     public void setActions(List<SettingsAction> actions, Supplier<SettingsContext> contextSupplier) {
         actionBox.getChildren().clear();
         for (SettingsAction action : actions) {
-            Button button = new Button(action.label());
+            UiPillButton button = new UiPillButton(action.label());
             button.setOnAction(event -> runAction(action, contextSupplier.get()));
             actionBox.getChildren().add(button);
         }

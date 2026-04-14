@@ -388,4 +388,12 @@ public class VideoViewer extends StackPane {
     MediaPlayer playerForTesting() {
         return playerService.playerProperty().get();
     }
+
+    Bounds mediaBoundsForTesting() {
+        return mediaBoundsInViewer();
+    }
+
+    void setPlaybackStateForTesting(TransportBar.PlaybackState state) {
+        transportBar.setPlaybackStateForTesting(state);
+    }
 }

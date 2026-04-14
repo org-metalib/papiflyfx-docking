@@ -23,6 +23,7 @@ public class SettingsCategoryList extends ListView<SettingsCategory> {
     private final FilteredList<SettingsCategory> filteredCategories = new FilteredList<>(categories, item -> true);
 
     public SettingsCategoryList() {
+        SettingsUiStyles.apply(this, "pf-settings-category-list");
         setItems(filteredCategories);
         setPrefWidth(220);
         setMinWidth(180);
@@ -35,8 +36,8 @@ public class SettingsCategoryList extends ListView<SettingsCategory> {
                     setText(null);
                     return;
                 }
-                Label label = new Label(displayName(item));
-                HBox row = new HBox(8);
+                Label label = SettingsUiStyles.apply(new Label(displayName(item)), SettingsUiStyles.CATEGORY_LABEL);
+                HBox row = SettingsUiStyles.apply(new HBox(8), SettingsUiStyles.CATEGORY_ROW);
                 Node icon = icon(item);
                 if (icon != null) {
                     row.getChildren().add(icon);

@@ -176,32 +176,32 @@ public class AuthenticationCategory implements SettingsCategory {
     @Override
     public Node buildSettingsPane(SettingsContext context) {
         if (pane == null) {
-            genericEnabledBox = new CheckBox("Enable Generic OIDC");
-            genericDiscoveryField = new TextField();
-            genericClientIdField = new TextField();
-            genericClientSecretField = new PasswordField();
-            genericScopesField = new TextField();
-            googleEnabledBox = new CheckBox("Enable Google");
-            googleClientIdField = new TextField();
-            googleClientSecretField = new PasswordField();
-            googleScopesField = new TextField();
-            googleWorkspaceDomainField = new TextField();
-            githubEnabledBox = new CheckBox("Enable GitHub");
-            githubClientIdField = new TextField();
-            githubClientSecretField = new PasswordField();
-            githubScopesField = new TextField();
-            githubEnterpriseUrlField = new TextField();
-            providerSelector = new ComboBox<>();
-            subjectField = new TextField();
-            displayNameField = new TextField();
-            emailField = new TextField();
-            sessionScopesField = new TextField();
+            genericEnabledBox = settingsCheckBox(new CheckBox("Enable Generic OIDC"));
+            genericDiscoveryField = compactField(new TextField());
+            genericClientIdField = compactField(new TextField());
+            genericClientSecretField = compactField(new PasswordField());
+            genericScopesField = compactField(new TextField());
+            googleEnabledBox = settingsCheckBox(new CheckBox("Enable Google"));
+            googleClientIdField = compactField(new TextField());
+            googleClientSecretField = compactField(new PasswordField());
+            googleScopesField = compactField(new TextField());
+            googleWorkspaceDomainField = compactField(new TextField());
+            githubEnabledBox = settingsCheckBox(new CheckBox("Enable GitHub"));
+            githubClientIdField = compactField(new TextField());
+            githubClientSecretField = compactField(new PasswordField());
+            githubScopesField = compactField(new TextField());
+            githubEnterpriseUrlField = compactField(new TextField());
+            providerSelector = compactField(new ComboBox<>());
+            subjectField = compactField(new TextField());
+            displayNameField = compactField(new TextField());
+            emailField = compactField(new TextField());
+            sessionScopesField = compactField(new TextField());
             authStateLabel = new Label();
             activeUserLabel = new Label();
             activeProviderLabel = new Label();
             activeScopesLabel = new Label();
             activeExpiryLabel = new Label();
-            tokenList = new ListView<>();
+            tokenList = settingsList(new ListView<>());
 
             providerSelector.getItems().setAll(GENERIC_PROVIDER, GOOGLE_PROVIDER, GITHUB_PROVIDER);
             providerSelector.setValue(GITHUB_PROVIDER);
@@ -218,7 +218,7 @@ public class AuthenticationCategory implements SettingsCategory {
             broker.authStateProperty().addListener((obs, oldValue, newValue) -> refreshSessionSummary());
             broker.sessionProperty().addListener((obs, oldValue, newValue) -> refreshSessionSummary());
 
-            Button revokeTokenButton = new Button("Revoke Selected Token");
+            Button revokeTokenButton = secondaryActionButton("Revoke Selected Token");
             revokeTokenButton.setOnAction(event -> revokeSelectedToken(context));
 
             VBox providers = section(
@@ -584,7 +584,7 @@ public class AuthenticationCategory implements SettingsCategory {
 
     private VBox section(String title, Node... content) {
         Label label = new Label(title);
-        label.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        label.getStyleClass().add("pf-settings-section-title");
         VBox box = new VBox(10, label);
         box.getChildren().addAll(content);
         return box;
@@ -592,16 +592,43 @@ public class AuthenticationCategory implements SettingsCategory {
 
     private VBox field(String labelText, Node fieldNode) {
         Label label = new Label(labelText);
-        label.setStyle("-fx-font-weight: bold;");
+        label.getStyleClass().add("pf-settings-control-title");
         return new VBox(4, label, fieldNode);
     }
 
     private HBox summaryRow(String labelText, Label valueLabel) {
         Label label = new Label(labelText);
         label.setMinWidth(80);
+        label.getStyleClass().add("pf-settings-scope-label");
         HBox row = new HBox(8, label, valueLabel);
         HBox.setHgrow(valueLabel, Priority.ALWAYS);
         return row;
+    }
+
+    private static Button secondaryActionButton(String text) {
+        Button button = new Button(text);
+        button.getStyleClass().addAll("pf-ui-compact-action-button", "pf-ui-compact-action-button-secondary");
+        return button;
+    }
+
+    private static <T extends TextField> T compactField(T field) {
+        field.getStyleClass().add("pf-ui-compact-field");
+        return field;
+    }
+
+    private static <T extends ComboBox<String>> T compactField(T comboBox) {
+        comboBox.getStyleClass().addAll("pf-ui-compact-field", "pf-settings-combo-box");
+        return comboBox;
+    }
+
+    private static <T extends CheckBox> T settingsCheckBox(T checkBox) {
+        checkBox.getStyleClass().add("pf-settings-check-box");
+        return checkBox;
+    }
+
+    private static <T extends ListView<String>> T settingsList(T listView) {
+        listView.getStyleClass().add("pf-settings-list");
+        return listView;
     }
 
     private record SessionKey(String providerId, String subject) {

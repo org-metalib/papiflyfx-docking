@@ -13,8 +13,10 @@ import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
 import org.metalib.papifly.fx.settings.internal.SettingsJsonCodec;
 import org.metalib.papifly.fx.settings.persist.JsonSettingsStorage;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 
 import java.util.Map;
+import java.util.Set;
 
 public class ProfilesCategory implements SettingsCategory {
 
@@ -38,23 +40,29 @@ public class ProfilesCategory implements SettingsCategory {
     }
 
     @Override
+    public Set<SettingScope> supportedScopes() {
+        return Set.of(SettingScope.APPLICATION, SettingScope.WORKSPACE);
+    }
+
+    @Override
     public Node buildSettingsPane(SettingsContext context) {
         if (payloadArea == null) {
-            payloadArea = new TextArea();
+            payloadArea = SettingsUiStyles.applyTextArea(new TextArea());
             payloadArea.setPrefRowCount(18);
             statusLabel = new Label();
             statusLabel.setWrapText(true);
+            statusLabel.getStyleClass().add("pf-settings-control-description");
 
-            Button exportApplication = new Button("Export Application");
+            Button exportApplication = SettingsUiStyles.applySecondaryActionButton(new Button("Export Application"));
             exportApplication.setOnAction(event -> exportScope(context, SettingScope.APPLICATION));
 
-            Button exportWorkspace = new Button("Export Workspace");
+            Button exportWorkspace = SettingsUiStyles.applySecondaryActionButton(new Button("Export Workspace"));
             exportWorkspace.setOnAction(event -> exportScope(context, SettingScope.WORKSPACE));
 
-            Button importApplication = new Button("Import Application");
+            Button importApplication = SettingsUiStyles.applyActionButton(new Button("Import Application"));
             importApplication.setOnAction(event -> importScope(context, SettingScope.APPLICATION));
 
-            Button importWorkspace = new Button("Import Workspace");
+            Button importWorkspace = SettingsUiStyles.applyActionButton(new Button("Import Workspace"));
             importWorkspace.setOnAction(event -> importScope(context, SettingScope.WORKSPACE));
 
             HBox buttons = new HBox(8, exportApplication, exportWorkspace, importApplication, importWorkspace);

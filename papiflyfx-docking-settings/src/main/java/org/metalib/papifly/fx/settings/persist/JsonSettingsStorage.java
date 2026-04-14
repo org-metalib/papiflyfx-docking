@@ -3,12 +3,15 @@ package org.metalib.papifly.fx.settings.persist;
 import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingsMigrator;
 import org.metalib.papifly.fx.settings.api.SettingsStorage;
+import org.metalib.papifly.fx.settings.internal.AtomicFileWriter;
 import org.metalib.papifly.fx.settings.internal.SettingsJsonCodec;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -17,6 +20,8 @@ import java.util.Optional;
 import java.util.TreeMap;
 
 public class JsonSettingsStorage implements SettingsStorage {
+
+    private static final Logger LOG = Logger.getLogger(JsonSettingsStorage.class.getName());
 
     public static final int CURRENT_VERSION = 1;
 
@@ -193,19 +198,36 @@ public class JsonSettingsStorage implements SettingsStorage {
             return new LinkedHashMap<>();
         }
         try {
-            String json = Files.readString(path, StandardCharsets.UTF_8);
-            Map<String, Object> fileData = codec.fromJson(json);
-            int version = 1;
-            Object versionValue = fileData.remove(VERSION_KEY);
-            if (versionValue instanceof Number number) {
-                version = number.intValue();
-            } else if (versionValue != null) {
-                version = Integer.parseInt(String.valueOf(versionValue));
+            return parseSettingsFile(path);
+        } catch (Exception primary) {
+            LOG.log(Level.WARNING, "Corrupted settings file " + path + ", attempting .bak recovery", primary);
+            Path bakFile = path.resolveSibling(path.getFileName() + ".bak");
+            if (Files.exists(bakFile)) {
+                try {
+                    Map<String, Object> recovered = parseSettingsFile(bakFile);
+                    LOG.info("Recovered settings from backup " + bakFile);
+                    return recovered;
+                } catch (Exception secondary) {
+                    LOG.log(Level.SEVERE, "Backup file " + bakFile + " is also corrupted, resetting to defaults", secondary);
+                }
+            } else {
+                LOG.severe("No backup file found at " + bakFile + ", resetting to defaults");
             }
-            return migrate(fileData, version);
-        } catch (IOException exception) {
-            throw new IllegalStateException("Unable to read settings from " + path, exception);
+            return new LinkedHashMap<>();
         }
+    }
+
+    private Map<String, Object> parseSettingsFile(Path path) throws IOException {
+        String json = Files.readString(path, StandardCharsets.UTF_8);
+        Map<String, Object> fileData = codec.fromJson(json);
+        int version = 1;
+        Object versionValue = fileData.remove(VERSION_KEY);
+        if (versionValue instanceof Number number) {
+            version = number.intValue();
+        } else if (versionValue != null) {
+            version = Integer.parseInt(String.valueOf(versionValue));
+        }
+        return migrate(fileData, version);
     }
 
     private Map<String, Object> migrate(Map<String, Object> data, int version) {
@@ -235,11 +257,7 @@ public class JsonSettingsStorage implements SettingsStorage {
         payload.put(VERSION_KEY, currentVersion);
         payload.putAll(data);
         try {
-            Path parent = path.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-            Files.writeString(path, codec.toJson(payload), StandardCharsets.UTF_8);
+            AtomicFileWriter.writeAtomically(path, codec.toJson(payload));
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to write settings to " + path, exception);
         }

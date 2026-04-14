@@ -4,6 +4,7 @@ import javafx.scene.control.TextField;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
 import org.metalib.papifly.fx.settings.api.SettingType;
 import org.metalib.papifly.fx.settings.api.ValidationResult;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 
 @SuppressWarnings("unchecked")
 public class NumberSettingControl<T extends Number> extends SettingControl<T> {
@@ -12,7 +13,7 @@ public class NumberSettingControl<T extends Number> extends SettingControl<T> {
 
     public NumberSettingControl(SettingDefinition<T> definition) {
         super(definition);
-        this.textField = new TextField();
+        this.textField = SettingsUiStyles.applyCompactField(new TextField());
         this.textField.textProperty().addListener((obs, oldValue, newValue) -> onValueChanged());
         setEditor(textField);
     }

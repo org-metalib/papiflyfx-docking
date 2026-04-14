@@ -17,6 +17,7 @@ import org.metalib.papifly.fx.settings.api.SettingScope;
 import org.metalib.papifly.fx.settings.api.SettingType;
 import org.metalib.papifly.fx.settings.api.SettingsCategory;
 import org.metalib.papifly.fx.settings.api.SettingsContext;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,12 +62,12 @@ public class McpServersCategory implements SettingsCategory {
     @Override
     public Node buildSettingsPane(SettingsContext context) {
         if (pane == null) {
-            serverList = new ListView<>();
-            nameField = new TextField();
-            transportField = new TextField();
-            endpointField = new TextField();
-            trustedField = new CheckBox("Trusted");
-            authTokenField = new PasswordField();
+            serverList = SettingsUiStyles.applyList(new ListView<>());
+            nameField = SettingsUiStyles.applyCompactField(new TextField());
+            transportField = SettingsUiStyles.applyCompactField(new TextField());
+            endpointField = SettingsUiStyles.applyCompactField(new TextField());
+            trustedField = SettingsUiStyles.applyCheckBox(new CheckBox("Trusted"));
+            authTokenField = SettingsUiStyles.applyCompactField(new PasswordField());
 
             nameField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
             transportField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
@@ -75,7 +76,7 @@ public class McpServersCategory implements SettingsCategory {
             authTokenField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
             serverList.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> loadServer(context, newValue));
 
-            Button newButton = new Button("New");
+            Button newButton = SettingsUiStyles.applySecondaryActionButton(new Button("New"));
             newButton.setOnAction(event -> {
                 serverList.getSelectionModel().clearSelection();
                 nameField.clear();
@@ -86,10 +87,10 @@ public class McpServersCategory implements SettingsCategory {
                 dirty = false;
             });
 
-            Button saveButton = new Button("Save");
+            Button saveButton = SettingsUiStyles.applyActionButton(new Button("Save"));
             saveButton.setOnAction(event -> saveServer(context));
 
-            Button deleteButton = new Button("Delete");
+            Button deleteButton = SettingsUiStyles.applySecondaryActionButton(new Button("Delete"));
             deleteButton.setOnAction(event -> deleteServer(context));
 
             VBox form = new VBox(
@@ -196,7 +197,7 @@ public class McpServersCategory implements SettingsCategory {
 
     private VBox field(String labelText, Node field) {
         Label label = new Label(labelText);
-        label.setStyle("-fx-font-weight: bold;");
+        label.getStyleClass().add("pf-settings-control-title");
         return new VBox(4, label, field);
     }
 

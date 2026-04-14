@@ -4,12 +4,12 @@ The dockable settings shell for PapiflyFX applications. This module provides the
 
 ## Features
 
-- two-pane settings panel with search, scope switching, and page actions
-- ServiceLoader discovery for built-in and module-contributed settings categories
-- JSON persistence for application, workspace, and session settings
-- secure secret storage with platform-aware backends and encrypted-file fallback
-- built-in settings pages for appearance, workspace, security, profiles, network, AI models, MCP servers, and keyboard shortcuts
-- docking integration through `SettingsContentFactory` and `SettingsStateAdapter`
+- **Composable UI architecture:** simplified category implementation via `DefinitionFormBinder` and typed `SettingDefinition` list.
+- **Event-driven state logic:** removed all polling loops; UI state (dirty/valid/apply) is driven by property bindings.
+- **Tokenized styling:** unified visual identity using `-pf-ui-*` CSS tokens for instant, consistent theme switching.
+- **Secure secret handling:** re-exposure prevention (set-only UI), atomic persistence, and corruption recovery.
+- **Multi-scope support:** native handling of APPLICATION, WORKSPACE, and SESSION scopes with dynamic toolbar updates.
+- **Docking integration:** through `SettingsContentFactory` and `SettingsStateAdapter` with single shared runtime ownership.
 
 ## Maven Dependency
 
@@ -23,7 +23,11 @@ The dockable settings shell for PapiflyFX applications. This module provides the
 
 ## Runtime
 
-Applications normally create one `SettingsRuntime`, bind it to the application theme property, and use `SettingsContentFactory` to expose the settings panel as dockable content.
+The settings system uses a single shared `SettingsRuntime` model. 
+
+1. **Host initialization:** The application host (e.g., `SamplesRuntimeSupport`) must call `SettingsStateAdapter.setSharedRuntime(runtime)` and `DefaultSettingsServicesProvider.setSharedRuntime(runtime)` before any consumers attempt to access settings via ServiceLoader.
+2. **Binding:** The `SettingsPanel` automatically binds to the runtime's theme property and applies styles via `settings.css` using the standard PapiflyFX token vocabulary.
+3. **Composability:** New categories should implement `SettingsCategory` and use `DefinitionFormBinder` to generate their UI from a list of definitions, ensuring consistent layout and automatic dirty/valid state propagation.
 
 ## SPI Boundary
 

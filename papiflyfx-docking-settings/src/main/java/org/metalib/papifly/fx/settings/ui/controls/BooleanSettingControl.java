@@ -9,7 +9,7 @@ public class BooleanSettingControl extends SettingControl<Boolean> {
 
     public BooleanSettingControl(SettingDefinition<Boolean> definition) {
         super(definition);
-        this.checkBox = new CheckBox();
+        this.checkBox = org.metalib.papifly.fx.settings.ui.SettingsUiStyles.applyCheckBox(new CheckBox());
         this.checkBox.selectedProperty().addListener((obs, oldValue, newValue) -> onValueChanged());
         setEditor(checkBox);
     }

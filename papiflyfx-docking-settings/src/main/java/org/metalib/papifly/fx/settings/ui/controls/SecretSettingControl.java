@@ -5,6 +5,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import org.metalib.papifly.fx.settings.api.SettingDefinition;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 
 public class SecretSettingControl extends SettingControl<String> {
 
@@ -16,10 +17,10 @@ public class SecretSettingControl extends SettingControl<String> {
 
     public SecretSettingControl(SettingDefinition<String> definition) {
         super(definition);
-        this.passwordField = new PasswordField();
-        this.plainTextField = new TextField();
-        this.revealButton = new Button("Reveal");
-        this.clearButton = new Button("Clear");
+        this.passwordField = SettingsUiStyles.applyCompactField(new PasswordField());
+        this.plainTextField = SettingsUiStyles.applyCompactField(new TextField());
+        this.revealButton = SettingsUiStyles.applySecondaryActionButton(new Button("Reveal"));
+        this.clearButton = SettingsUiStyles.applySecondaryActionButton(new Button("Clear"));
 
         plainTextField.setManaged(false);
         plainTextField.setVisible(false);

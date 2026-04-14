@@ -134,7 +134,7 @@ papiflyfx-docking/
 | `papiflyfx-docking-api` | Shared docking API plus `Theme`, shared UI metrics, CSS token helpers, and lightweight reusable UI primitives |
 | `papiflyfx-docking-settings-api` | Settings and secret-management SPI |
 | `papiflyfx-docking-docks` | Core docking/layout UI — drag-and-drop, floating windows, minimize/maximize, JSON session persistence |
-| `papiflyfx-docking-settings` | Settings runtime, panels, and persistence |
+| `papiflyfx-docking-settings` | Composable settings runtime, event-driven UI, tokenized styling, and secure secret storage |
 | `papiflyfx-docking-login-idapi` | Identity-provider SPI and built-in provider contracts |
 | `papiflyfx-docking-login-session-api` | Authentication session lifecycle and storage SPI |
 | `papiflyfx-docking-login` | Login runtime and UI integration |
