@@ -23,6 +23,7 @@ import org.metalib.papifly.fx.settings.runtime.DefaultSettingsServicesProvider;
 import org.metalib.papifly.fx.settings.runtime.SettingsRuntime;
 import org.metalib.papifly.fx.settings.secret.InMemorySecretStore;
 import org.metalib.papifly.fx.settings.ui.SettingsPanel;
+import org.metalib.papifly.fx.settings.ui.SettingsUiStyles;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 
@@ -38,6 +39,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
 class SettingsDemoStyleIntegrationTest {
+
+    private static final String CATEGORY_LIST_STYLE = "pf-settings-category-list";
 
     @TempDir
     Path tempDir;
@@ -114,7 +117,10 @@ class SettingsDemoStyleIntegrationTest {
                 ).map(this::describeNode).toList(),
                 textAreas.stream().filter(area -> !area.getStyleClass().contains("pf-settings-text-area")).map(this::describeNode).toList(),
                 checkBoxes.stream().filter(box -> !box.getStyleClass().contains("pf-settings-check-box")).map(this::describeNode).toList(),
-                listViews.stream().filter(list -> !list.getStyleClass().contains("pf-settings-list")).map(this::describeNode).toList(),
+                listViews.stream().filter(list ->
+                    !list.getStyleClass().contains(SettingsUiStyles.LIST)
+                        && !list.getStyleClass().contains(CATEGORY_LIST_STYLE)
+                ).map(this::describeNode).toList(),
                 buttons.stream().filter(button ->
                     !button.getStyleClass().contains("pf-ui-pill")
                         && !button.getStyleClass().contains("pf-ui-compact-action-button")

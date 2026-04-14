@@ -63,8 +63,10 @@ class TreeViewFxTest {
         flushLayout();
         assertFalse(callOnFx(() -> treeView.getViewport().isDirty()));
 
-        runOnFx(() -> treeView.getViewport().markDirty());
-        assertTrue(callOnFx(() -> treeView.getViewport().isDirty()));
+        assertTrue(callOnFx(() -> {
+            treeView.getViewport().markDirty();
+            return treeView.getViewport().isDirty();
+        }));
 
         flushLayout();
         assertFalse(callOnFx(() -> treeView.getViewport().isDirty()));
