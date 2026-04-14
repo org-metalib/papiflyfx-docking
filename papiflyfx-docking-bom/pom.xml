@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.metalib.papifly.docking</groupId>
+        <artifactId>papiflyfx-docking</artifactId>
+        <version>0.0.17-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>papiflyfx-docking-bom</artifactId>
+    <packaging>pom</packaging>
+    <name>papiflyfx-docking-bom</name>
+    <description>PapiflyFX Docking Bill of Materials — import to align all framework dependency versions.</description>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- PapiflyFX framework artifacts -->
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-docks</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-settings-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-settings</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-login-idapi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-login-session-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-login</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-code</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-tree</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-media</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-hugo</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-github</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>
