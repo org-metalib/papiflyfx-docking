@@ -11,6 +11,7 @@
     <url>https://github.com/org-metalib/papiflyfx-docking</url>
 
     <modules>
+        <module>papiflyfx-docking-bom</module>
         <module>papiflyfx-docking-api</module>
         <module>papiflyfx-docking-settings-api</module>
         <module>papiflyfx-docking-settings</module>
@@ -24,6 +25,7 @@
         <module>papiflyfx-docking-login-session-api</module>
         <module>papiflyfx-docking-login</module>
         <module>papiflyfx-docking-samples</module>
+        <module>papiflyfx-docking-archetype</module>
     </modules>
 
     <properties>
