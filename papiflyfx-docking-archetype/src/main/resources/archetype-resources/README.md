@@ -1,8 +1,11 @@
-# ${artifactId}
+#set($h1 = '#')
+#set($h2 = '##')
+#set($h3 = '###')
+${h1} ${artifactId}
 
 A JavaFX desktop application built on the [PapiflyFX Docking](https://github.com/org-metalib/papiflyfx-docking) framework.
 
-## Requirements
+${h2} Requirements
 
 | Tool | Version |
 |------|---------|
@@ -10,21 +13,21 @@ A JavaFX desktop application built on the [PapiflyFX Docking](https://github.com
 | Maven | >= 3.9 (wrapper included) |
 | JavaFX | ${javafxVersion} (managed via Maven) |
 
-## Environment Setup
+${h2} Environment Setup
 
 ```bash
-# Install SDKMAN (if not already installed)
+${h1} Install SDKMAN (if not already installed)
 curl -s "https://get.sdkman.io" | bash
 
-# Install and activate Java ${javaVersion} with JavaFX
+${h1} Install and activate Java ${javaVersion} with JavaFX
 sdk install java 25.0.1.fx-zulu
 sdk use java 25.0.1.fx-zulu
 
-# Verify
+${h1} Verify
 java -version
 ```
 
-## Post-Generation Setup
+${h2} Post-Generation Setup
 
 After generating this project from the archetype, install the Maven wrapper:
 
@@ -32,54 +35,54 @@ After generating this project from the archetype, install the Maven wrapper:
 mvn wrapper:wrapper -Dmaven=${mavenVersion}
 ```
 
-## Build & Run
+${h2} Build & Run
 
 ```bash
-# Compile all modules
+${h1} Compile all modules
 ./mvnw compile
 
-# Full build (compile + test + package)
+${h1} Full build (compile + test + package)
 ./mvnw clean package
 
-# Run the application
+${h1} Run the application
 ./mvnw -pl ${rootArtifactId}-app javafx:run
 ```
 
-## Tests
+${h2} Tests
 
 ```bash
-# Run all tests (headless by default)
+${h1} Run all tests (headless by default)
 ./mvnw test
 
-# Headless UI tests (CI / no display)
+${h1} Headless UI tests (CI / no display)
 ./mvnw -Dtestfx.headless=true test
 
-# Interactive UI tests (requires display)
+${h1} Interactive UI tests (requires display)
 ./mvnw -Dtestfx.headless=false test
 ```
 
-## Project Structure
+${h2} Project Structure
 
 ```
 ${rootArtifactId}/
-├── pom.xml                         # root aggregator POM
-├── .mvn/wrapper/                   # Maven wrapper
-├── ${rootArtifactId}-app/          # main application module
+├── pom.xml                         ${h1} root aggregator POM
+├── .mvn/wrapper/                   ${h1} Maven wrapper
+├── ${rootArtifactId}-app/          ${h1} main application module
 │   ├── pom.xml
 │   └── src/
-│       ├── main/java/              # application source
-│       └── test/java/              # tests
+│       ├── main/java/              ${h1} application source
+│       └── test/java/              ${h1} tests
 ├── .github/
-│   ├── workflows/ci.yml           # CI workflow
-│   └── copilot-instructions.md    # Copilot context
-├── AGENTS.md                       # agent team definition
-├── CLAUDE.md                       # Claude Code instructions
-├── README.md                       # this file
-└── spec/                           # specs and planning docs
+│   ├── workflows/ci.yml           ${h1} CI workflow
+│   └── copilot-instructions.md    ${h1} Copilot context
+├── AGENTS.md                       ${h1} agent team definition
+├── CLAUDE.md                       ${h1} Claude Code instructions
+├── README.md                       ${h1} this file
+└── spec/                           ${h1} specs and planning docs
     └── agents/README.md
 ```
 
-## Adding PapiflyFX Modules
+${h2} Adding PapiflyFX Modules
 
 The PapiflyFX BOM is already imported. Add framework modules without version tags:
 
@@ -91,7 +94,3 @@ The PapiflyFX BOM is already imported. Add framework modules without version tag
 ```
 
 Available modules: `papiflyfx-docking-api`, `papiflyfx-docking-docks`, `papiflyfx-docking-code`, `papiflyfx-docking-tree`, `papiflyfx-docking-media`, `papiflyfx-docking-hugo`, `papiflyfx-docking-github`, `papiflyfx-docking-settings-api`, `papiflyfx-docking-settings`, `papiflyfx-docking-login-idapi`, `papiflyfx-docking-login-session-api`, `papiflyfx-docking-login`.
-
-## License
-
-[Apache License, Version 2.0](LICENSE)

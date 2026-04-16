@@ -115,6 +115,8 @@ papiflyfx-docking/
 ├── papiflyfx-docking-hugo/        # Hugo preview panel
 ├── papiflyfx-docking-github/      # GitHub toolbar/content integration
 ├── papiflyfx-docking-samples/     # demo applications
+├── papiflyfx-docking-bom/         # Bill of Materials for dependency alignment
+├── papiflyfx-docking-archetype/   # Maven archetype for new applications
 └── spec/                          # architecture specs & design docs
     ├── papiflyfx-docking-api/
     ├── papiflyfx-docking-code/
@@ -144,6 +146,58 @@ papiflyfx-docking/
 | `papiflyfx-docking-hugo` | Hugo preview content with theme-aware host chrome and embedded `WebView` rendering |
 | `papiflyfx-docking-github` | GitHub workflow toolbar using shared pills, chips, popup surfaces, and status slots |
 | `papiflyfx-docking-samples` | Demo/sample applications showcasing the framework |
+| `papiflyfx-docking-bom` | Bill of Materials — import to align all framework dependency versions |
+| `papiflyfx-docking-archetype` | Maven archetype for bootstrapping a new PapiflyFX application |
+
+## Using PapiflyFX in Your Project
+
+### BOM (Bill of Materials)
+
+Import the BOM to align all framework dependency versions:
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.metalib.papifly.docking</groupId>
+            <artifactId>papiflyfx-docking-bom</artifactId>
+            <version>0.0.17-SNAPSHOT</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<!-- Then add modules without version tags: -->
+<dependencies>
+    <dependency>
+        <groupId>org.metalib.papifly.docking</groupId>
+        <artifactId>papiflyfx-docking-docks</artifactId>
+    </dependency>
+</dependencies>
+```
+
+### Archetype (Project Generator)
+
+Bootstrap a new PapiflyFX application with a single command:
+
+```bash
+mvn archetype:generate \
+  -DarchetypeGroupId=org.metalib.papifly.docking \
+  -DarchetypeArtifactId=papiflyfx-docking-archetype \
+  -DarchetypeVersion=0.0.17-SNAPSHOT \
+  -DgroupId=com.example \
+  -DartifactId=my-app \
+  -Dversion=0.1.0-SNAPSHOT \
+  -Dpackage=com.example.myapp \
+  -DinteractiveMode=false
+
+cd my-app
+mvn wrapper:wrapper -Dmaven=3.9.12
+./mvnw clean package
+```
+
+The generated project includes a multi-module structure with DockManager starter, headless TestFX tests, CI workflow, and agent documentation. See [`papiflyfx-docking-archetype/README.md`](papiflyfx-docking-archetype/README.md) for details.
 
 ## Documentation
 

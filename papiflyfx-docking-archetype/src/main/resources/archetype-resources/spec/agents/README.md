@@ -1,8 +1,11 @@
-# ${artifactId} Agent Operating Model
+#set($h1 = '#')
+#set($h2 = '##')
+#set($h3 = '###')
+${h1} ${artifactId} Agent Operating Model
 
 This directory defines how the specialized repository agents collaborate. See [`../../AGENTS.md`](../../AGENTS.md) for role definitions.
 
-## Team Topology
+${h2} Team Topology
 
 | Agent | Primary Ownership |
 | --- | --- |
@@ -10,29 +13,29 @@ This directory defines how the specialized repository agents collaborate. See [`
 | `@ops-engineer` | Root `pom.xml`, CI/CD, dependency management |
 | `@spec-steward` | `spec/`, docs, planning, coordination |
 
-## Shared Workflow
+${h2} Shared Workflow
 
 Follow the research -> plan -> implement -> validate pattern for non-trivial work.
 
-### 1. Intake
+${h3} 1. Intake
 - State the goal, identify impacted modules and reviewers.
 
-### 2. Research
+${h3} 2. Research
 - Create `research.md` when the area is unfamiliar or risky.
 
-### 3. Planning
+${h3} 3. Planning
 - Document the approach in `plan.md` with scope, non-goals, and validation strategy.
 
-### 4. Implementation
+${h3} 4. Implementation
 - Keep `progress.md` current as milestones are completed.
 
-### 5. Validation
+${h3} 5. Validation
 - Record checks in `validation.md` or progress log.
 
-### 6. Closure
+${h3} 6. Closure
 - Ensure docs match final implementation.
 
-## Handoff Contract
+${h2} Handoff Contract
 
 ```md
 Lead Agent:
@@ -45,7 +48,7 @@ Open Risks / Follow-ups:
 Required Reviewer:
 ```
 
-## Definition of Done
+${h2} Definition of Done
 
 - Lead agent kept changes within the correct boundary.
 - Required reviewers were consulted.

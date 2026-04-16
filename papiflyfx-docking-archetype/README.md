@@ -111,7 +111,7 @@ sdk use java 25.0.1.fx-zulu
 
 ## Adding Framework Modules
 
-The generated project imports the PapiflyFX BOM. Add any framework module to `my-app-app/pom.xml` without a version tag:
+The generated project imports the PapiflyFX BOM. Add any framework module to `<artifactId>-app/pom.xml` without a version tag:
 
 ```xml
 <dependency>

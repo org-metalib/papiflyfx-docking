@@ -11,4 +11,5 @@ spec/papiflyfx-docking-archetype directory
 review archetype module implementation and the design documents in https://github.com/org-metalib/papiflyfx-docking/tree/archetype
 create a summary document and a prompt to properly execute it in the markdown format.
 
-Check https://github.com/org-metalib/papiflyfx-docking/pull/11 Pull Request as well and handle the comments.
+## Claude
+Process the review comments for https://github.com/org-metalib/papiflyfx-docking/pull/11 Pull Request.

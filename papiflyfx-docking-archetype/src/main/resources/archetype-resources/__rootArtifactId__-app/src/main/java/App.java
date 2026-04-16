@@ -17,7 +17,7 @@ public class App extends Application {
         var tabGroup = dockManager.createTabGroup();
         dockManager.setRoot(tabGroup);
 
-        var scene = new Scene(dockManager.getMainContainer(), 1024, 768);
+        var scene = new Scene(dockManager.getRootPane(), 1024, 768);
         stage.setTitle("${artifactId}");
         stage.setScene(scene);
         stage.show();
