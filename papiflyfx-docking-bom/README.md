@@ -12,7 +12,7 @@ Add the BOM to your project's `<dependencyManagement>` section:
         <dependency>
             <groupId>org.metalib.papifly.docking</groupId>
             <artifactId>papiflyfx-docking-bom</artifactId>
-            <version>0.0.17-SNAPSHOT</version>
+            <version>0.0.18-SNAPSHOT</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>

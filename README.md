@@ -161,7 +161,7 @@ Import the BOM to align all framework dependency versions:
         <dependency>
             <groupId>org.metalib.papifly.docking</groupId>
             <artifactId>papiflyfx-docking-bom</artifactId>
-            <version>0.0.17-SNAPSHOT</version>
+            <version>0.0.18-SNAPSHOT</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>

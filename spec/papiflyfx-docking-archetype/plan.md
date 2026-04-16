@@ -40,7 +40,7 @@ The BOM is a `<packaging>pom</packaging>` module that lives in the framework rep
 
     <groupId>org.metalib.papifly.docking</groupId>
     <artifactId>papiflyfx-docking-bom</artifactId>
-    <version>0.0.17-SNAPSHOT</version>
+    <version>0.0.18-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>papiflyfx-docking-bom</name>
     <description>PapiflyFX Docking Bill of Materials — import to align all framework dependency versions.</description>
@@ -218,7 +218,7 @@ papiflyfx-docking-archetype/
     <parent>
         <groupId>org.metalib.papifly.docking</groupId>
         <artifactId>papiflyfx-docking</artifactId>
-        <version>0.0.17-SNAPSHOT</version>
+        <version>0.0.18-SNAPSHOT</version>
     </parent>
 
     <artifactId>papiflyfx-docking-archetype</artifactId>
