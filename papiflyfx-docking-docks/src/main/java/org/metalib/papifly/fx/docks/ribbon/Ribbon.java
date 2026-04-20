@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
+import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -19,6 +20,8 @@ import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -43,11 +46,16 @@ public class Ribbon extends VBox {
     private final Button minimizeButton = new Button("Collapse");
     private final BorderPane header = new BorderPane();
     private final HBox headerActions = new HBox();
+    private final Comparator<RibbonGroup> reductionComparator =
+        Comparator.comparingInt((RibbonGroup group) -> group.getSpec().reductionPriority())
+            .thenComparingInt(group -> group.getSpec().order())
+            .thenComparing(group -> group.getSpec().id());
 
     private final ListChangeListener<RibbonTabSpec> tabsListener = change -> refreshTabs();
     private final ListChangeListener<PapiflyCommand> quickAccessListener = change -> refreshQuickAccessToolbar();
 
     private RibbonManager manager;
+    private boolean adaptiveLayoutRequested;
 
     /**
      * Creates a ribbon backed by a default {@link RibbonManager}.
@@ -75,6 +83,7 @@ public class Ribbon extends VBox {
         groupScroller.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         groupScroller.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         groupScroller.setPannable(true);
+        groupScroller.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> requestAdaptiveLayout());
 
         tabStrip.selectedTabIdProperty().bindBidirectional(selectedTabId);
 
@@ -96,6 +105,7 @@ public class Ribbon extends VBox {
         theme.addListener((obs, oldTheme, newTheme) -> applyTheme(newTheme));
         minimized.addListener((obs, oldValue, newValue) -> updateMinimizedState());
         selectedTabId.addListener((obs, oldValue, newValue) -> rebuildGroups());
+        widthProperty().addListener((obs, oldWidth, newWidth) -> requestAdaptiveLayout());
 
         setManager(manager);
         applyTheme(theme.get());
@@ -230,17 +240,78 @@ public class Ribbon extends VBox {
             .findFirst()
             .orElse(manager.getTabs().getFirst());
         groupRow.getChildren().setAll(selectedTab.groups().stream()
-            .map(group -> new RibbonGroup(group, manager.getClassLoader()))
+            .map(group -> new RibbonGroup(group, manager.getClassLoader(), theme))
             .toList());
+        requestAdaptiveLayout();
     }
 
     private void updateMinimizedState() {
         groupScroller.setManaged(!isMinimized());
         groupScroller.setVisible(!isMinimized());
         minimizeButton.setText(isMinimized() ? "Expand" : "Collapse");
+        if (!isMinimized()) {
+            requestAdaptiveLayout();
+        }
     }
 
     private void applyTheme(Theme theme) {
         setStyle(RibbonThemeSupport.themeVariables(theme));
+    }
+
+    List<RibbonGroup> getRenderedGroups() {
+        return groupRow.getChildren().stream()
+            .filter(RibbonGroup.class::isInstance)
+            .map(RibbonGroup.class::cast)
+            .toList();
+    }
+
+    private void requestAdaptiveLayout() {
+        if (adaptiveLayoutRequested || isMinimized()) {
+            return;
+        }
+        adaptiveLayoutRequested = true;
+        Platform.runLater(() -> {
+            adaptiveLayoutRequested = false;
+            applyAdaptiveLayout();
+        });
+    }
+
+    private void applyAdaptiveLayout() {
+        List<RibbonGroup> groups = getRenderedGroups();
+        if (groups.isEmpty()) {
+            return;
+        }
+
+        double availableWidth = groupScroller.getViewportBounds().getWidth();
+        if (availableWidth <= 0.0) {
+            availableWidth = groupScroller.getWidth();
+        }
+        if (availableWidth <= 0.0) {
+            return;
+        }
+
+        groups.forEach(group -> group.setSizeMode(RibbonGroupSizeMode.LARGE));
+        double totalWidth = estimatedTotalWidth(groups);
+        if (totalWidth <= availableWidth) {
+            return;
+        }
+
+        for (RibbonGroup group : groups.stream().sorted(reductionComparator).toList()) {
+            while (totalWidth > availableWidth && group.getSizeMode() != RibbonGroupSizeMode.COLLAPSED) {
+                group.setSizeMode(group.getSizeMode().smaller());
+                totalWidth = estimatedTotalWidth(groups);
+            }
+            if (totalWidth <= availableWidth) {
+                break;
+            }
+        }
+    }
+
+    private double estimatedTotalWidth(List<RibbonGroup> groups) {
+        double widths = groups.stream()
+            .mapToDouble(group -> group.estimateWidth(group.getSizeMode()))
+            .sum();
+        double spacing = Math.max(0, groups.size() - 1) * groupRow.getSpacing();
+        return widths + spacing;
     }
 }
