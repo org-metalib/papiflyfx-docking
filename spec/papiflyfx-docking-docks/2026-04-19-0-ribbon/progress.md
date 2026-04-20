@@ -1,7 +1,7 @@
 # Progress — Docking Ribbon Toolbar
 
-**Status:** Phase 3 implemented
-**Current Milestone:** Phase 3 complete in `papiflyfx-docking-docks`
+**Status:** Phase 4 implemented
+**Current Milestone:** Phase 4 complete across `papiflyfx-docking-docks`, `papiflyfx-docking-github`, `papiflyfx-docking-hugo`, and `papiflyfx-docking-samples`
 **Priority:** P2 (Normal)
 **Lead Agent:** @core-architect
 **Required Reviewers:** @ui-ux-designer, @feature-dev, @qa-engineer, @ops-engineer, @spec-steward
@@ -13,7 +13,7 @@
 - Phase 1 — API and contribution model: 100%
 - Phase 2 — Ribbon shell and shared visuals: 100%
 - Phase 3 — Adaptive layout and collapsed groups: 100%
-- Phase 4 — Contextual tabs and module adoption: 0%
+- Phase 4 — Contextual tabs and module adoption: 100%
 - Phase 5 — Persistence, documentation, and validation: 0%
 
 ## Accomplishments
@@ -41,35 +41,39 @@
 - [2026-04-19] Added collapsed-group popup support in `RibbonGroup`, keeping all commands reachable when a group reduces to a single icon button while reusing the shared ribbon stylesheet and theme tokens for popup chrome.
 - [2026-04-19] Refined `ribbon.css` for the new group/control size modes, collapsed-group affordances, and popup surface so spacing and button geometry remain consistent across adaptive states.
 - [2026-04-19] Added `RibbonAdaptiveLayoutFxTest` to cover adaptive shrink behavior and collapsed popup interaction under headless TestFX/Monocle.
+- [2026-04-20] Implemented Phase 4 runtime context hardening in `DockManager`, including root-level context listener re-registration, active dock/content synchronization on mouse/focus interaction, and richer context attributes via `RibbonContextAttributes` (including active content node/state metadata).
+- [2026-04-20] Added GitHub ribbon adoption in `papiflyfx-docking-github` with `GitHubRibbonProvider`, `GitHubRibbonActions`, ServiceLoader registration, command grouping (`Sync`, `Branches`, `Collaborate`, `State`), Octicon icon handles, and command routing tests in `GitHubRibbonProviderTest`.
+- [2026-04-20] Added Hugo ribbon adoption in `papiflyfx-docking-hugo` with `HugoRibbonProvider`, `HugoRibbonActions`, ServiceLoader registration, Hugo command groups (`Development`, `New Content`, `Build`, `Modules`, `Environment`), and contextual `Hugo Editor` tab visibility rules with dedicated provider tests.
+- [2026-04-20] Extended samples coverage with `RibbonShellSampleIntegrationFxTest` to verify ServiceLoader discovery of GitHub/Hugo tabs and contextual Hugo Editor tab transitions between markdown/code docks.
+- [2026-04-20] Added/updated TestFX coverage for contextual tab behavior in `RibbonContextResolutionFxTest`, and aligned Hugo/sample integration tests with runtime visibility semantics and startup state.
 
 ## Next tasks
 
-1. Confirm whether ribbon state extends the existing docking session JSON or uses a parallel persisted payload before persistence work begins.
-2. Inventory reusable GitHub and Hugo actions so provider implementations wrap existing behavior instead of re-implementing it.
-3. Harden active dock/content tracking beyond the current best-effort selection model so contextual tabs follow focus changes across more complex docking arrangements.
-4. Extend headless/TestFX coverage to future persistence hooks and broader contextual-tab workflows.
+1. Start Phase 5 persistence work by deciding whether ribbon shell state extends docking session JSON or remains a parallel payload.
+2. Complete manual GUI validation in the samples app for contextual-tab transitions and adaptive/collapsed ribbon ergonomics.
+3. Expand persistence-focused regression coverage once the Phase 5 storage shape is finalized.
 
 ## Open risks
 
 - The work still crosses API, runtime, feature modules, sample hosting, and docs; uncontrolled scope growth remains the main delivery risk after the Phase 2 shell lands.
 - Session persistence shape still needs early agreement to avoid rewriting serialization work later.
 - A full Microsoft-style ribbon feature set remains too broad for one iteration; the current plan intentionally defers customization UI, rich ScreenTips, and full KeyTips.
-- The current `DockManager` ribbon context is derived from active tab changes and the first available tab fallback, so richer focus tracking remains a follow-up for contextual providers in multi-group layouts.
-- JavaFX popup/layout behavior for collapsed groups still needs a manual GUI pass on the sample app in addition to the new headless coverage.
+- JavaFX popup/layout behavior for contextual/adaptive ribbon transitions still needs a manual GUI pass on the sample app in addition to the current headless coverage.
 
 ## Validation status
 
-- `./mvnw clean compile` passed after implementing Phase 3 adaptive sizing and collapsed-group behavior.
-- `./mvnw -pl papiflyfx-docking-docks -am test` passed, including the new `RibbonAdaptiveLayoutFxTest` coverage for adaptive shrink and collapsed popup interaction.
-- Manual GUI validation was not run in this headless workflow; the ribbon/sample shell remains available for visual verification in the samples app.
+- `./mvnw -pl papiflyfx-docking-docks,papiflyfx-docking-github,papiflyfx-docking-hugo,papiflyfx-docking-samples -am compile` passed.
+- `./mvnw -pl papiflyfx-docking-docks,papiflyfx-docking-github,papiflyfx-docking-hugo -am test` passed.
+- `./mvnw -pl papiflyfx-docking-samples -am -Dtest=RibbonShellSampleIntegrationFxTest -Dsurefire.failIfNoSpecifiedTests=false test` passed.
+- Manual GUI validation was not run in this headless workflow; the ribbon sample remains available for interactive verification.
 
 ## Handoff snapshot
 
 Lead Agent: `@core-architect`
-Task Scope: Implement Phase 3 adaptive sizing, reduction priority handling, and collapsed-group popups
-Impacted Modules: `papiflyfx-docking-docks`, `spec/**`
-Files Changed: `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/Ribbon.java`, `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonControlFactory.java`, `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonGroup.java`, `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonGroupSizeMode.java`, `papiflyfx-docking-docks/src/main/resources/org/metalib/papifly/fx/docks/ribbon/ribbon.css`, `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonAdaptiveLayoutFxTest.java`, `spec/papiflyfx-docking-docks/2026-04-19-0-ribbon/progress.md`
-Key Invariants: no command loss under reduction, SPI-first module contributions, shared `-pf-ui-*` styling, non-breaking docking layout behavior
-Validation Performed: `./mvnw clean compile`; `./mvnw -pl papiflyfx-docking-docks -am test`
-Open Risks / Follow-ups: persistence design is still open and a manual GUI pass is still needed for the new popup ergonomics
+Task Scope: Implement Phase 4 contextual-tab resolution and GitHub/Hugo ribbon adoption
+Impacted Modules: `papiflyfx-docking-api`, `papiflyfx-docking-docks`, `papiflyfx-docking-github`, `papiflyfx-docking-hugo`, `papiflyfx-docking-samples`, `spec/**`
+Files Changed: `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/api/ribbon/RibbonContextAttributes.java`, `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockManager.java`, `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonControlFactory.java`, `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonContextResolutionFxTest.java`, `papiflyfx-docking-github/src/main/java/org/metalib/papifly/fx/github/api/GitHubRibbonActions.java`, `papiflyfx-docking-github/src/main/java/org/metalib/papifly/fx/github/api/GitHubToolbar.java`, `papiflyfx-docking-github/src/main/java/org/metalib/papifly/fx/github/ribbon/GitHubRibbonProvider.java`, `papiflyfx-docking-github/src/main/resources/META-INF/services/org.metalib.papifly.fx.api.ribbon.RibbonProvider`, `papiflyfx-docking-github/src/test/java/org/metalib/papifly/fx/github/ribbon/GitHubRibbonProviderTest.java`, `papiflyfx-docking-hugo/src/main/java/org/metalib/papifly/fx/hugo/api/HugoRibbonActions.java`, `papiflyfx-docking-hugo/src/main/java/org/metalib/papifly/fx/hugo/api/HugoPreviewPane.java`, `papiflyfx-docking-hugo/src/main/java/org/metalib/papifly/fx/hugo/ribbon/HugoRibbonProvider.java`, `papiflyfx-docking-hugo/src/main/resources/META-INF/services/org.metalib.papifly.fx.api.ribbon.RibbonProvider`, `papiflyfx-docking-hugo/src/test/java/org/metalib/papifly/fx/hugo/ribbon/HugoRibbonProviderTest.java`, `papiflyfx-docking-samples/src/test/java/org/metalib/papifly/fx/samples/docks/RibbonShellSampleIntegrationFxTest.java`, `papiflyfx-docking-github/README.md`, `papiflyfx-docking-hugo/README.md`, `spec/papiflyfx-docking-docks/2026-04-19-0-ribbon/progress.md`
+Key Invariants: no direct `docks` runtime coupling from feature modules, command wrappers reusing existing module logic, reactive contextual-tab visibility from active dock/content context
+Validation Performed: `./mvnw -pl papiflyfx-docking-docks,papiflyfx-docking-github,papiflyfx-docking-hugo,papiflyfx-docking-samples -am compile`; `./mvnw -pl papiflyfx-docking-docks,papiflyfx-docking-github,papiflyfx-docking-hugo -am test`; `./mvnw -pl papiflyfx-docking-samples -am -Dtest=RibbonShellSampleIntegrationFxTest -Dsurefire.failIfNoSpecifiedTests=false test`
+Open Risks / Follow-ups: persistence design is still open and manual GUI verification is still pending for contextual/adaptive ribbon ergonomics
 Required Reviewer: `@ui-ux-designer`, `@qa-engineer`, `@ops-engineer`, `@spec-steward`

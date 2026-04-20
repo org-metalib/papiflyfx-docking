@@ -3,13 +3,16 @@ package org.metalib.papifly.fx.docks;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.event.EventHandler;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
+import org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes;
 import org.metalib.papifly.fx.docking.api.ContentFactory;
 import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docking.api.Theme;
@@ -58,7 +61,7 @@ public class DockManager {
     private final DockMinMaxService minMaxService;
     private final DockSessionService sessionService;
     private final ObjectProperty<RibbonContext> ribbonContext;
-    private final Map<DockTabGroup, ChangeListener<Number>> ribbonContextListeners;
+    private final Map<DockTabGroup, RibbonContextListenerHandle> ribbonContextListeners;
 
     private ContentFactory contentFactory;
     private DockTabGroup activeRibbonTabGroup;
@@ -143,6 +146,7 @@ public class DockManager {
     }
 
     private void setupDragHandlers() {
+        rootPane.addEventFilter(MouseEvent.MOUSE_PRESSED, this::updateRibbonContextFromMouseTarget);
         rootPane.addEventFilter(MouseEvent.MOUSE_DRAGGED, event -> {
             if (dragManager.hasDragContext()) {
                 dragManager.onDrag(event);
@@ -154,6 +158,19 @@ public class DockManager {
                 dragManager.endDrag(event);
             }
         });
+    }
+
+    private void updateRibbonContextFromMouseTarget(MouseEvent event) {
+        Object target = event.getTarget();
+        if (!(target instanceof Node node)) {
+            return;
+        }
+        DockTabGroup targetGroup = resolveTabGroupForNode(node);
+        if (targetGroup == null || targetGroup.getActiveTab() == null) {
+            return;
+        }
+        activeRibbonTabGroup = targetGroup;
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -201,6 +218,7 @@ public class DockManager {
         if (element != null) {
             element.setParent(null);
             dockingLayer.getChildren().add(0, element.getNode());
+            registerRibbonContextListeners(element);
         }
         syncRibbonContextFromTree();
     }
@@ -746,7 +764,7 @@ public class DockManager {
         if (tabGroup == null || ribbonContextListeners.containsKey(tabGroup)) {
             return;
         }
-        ChangeListener<Number> listener = (obs, oldValue, newValue) -> {
+        ChangeListener<Number> activeTabListener = (obs, oldValue, newValue) -> {
             if (tabGroup.getActiveTab() != null) {
                 activeRibbonTabGroup = tabGroup;
             } else if (activeRibbonTabGroup == tabGroup) {
@@ -754,27 +772,50 @@ public class DockManager {
             }
             syncRibbonContextFromTree();
         };
-        tabGroup.activeTabIndexProperty().addListener(listener);
-        ribbonContextListeners.put(tabGroup, listener);
+        EventHandler<MouseEvent> mousePressedListener = event -> {
+            if (tabGroup.getActiveTab() != null) {
+                activeRibbonTabGroup = tabGroup;
+            }
+            syncRibbonContextFromTree();
+        };
+        tabGroup.activeTabIndexProperty().addListener(activeTabListener);
+        tabGroup.getNode().addEventFilter(MouseEvent.MOUSE_PRESSED, mousePressedListener);
+        ribbonContextListeners.put(tabGroup, new RibbonContextListenerHandle(activeTabListener, mousePressedListener));
         if (activeRibbonTabGroup == null && tabGroup.getActiveTab() != null) {
             activeRibbonTabGroup = tabGroup;
         }
     }
 
-    private static void detachRibbonContextListener(DockTabGroup tabGroup, ChangeListener<Number> listener) {
-        if (tabGroup != null && listener != null) {
-            tabGroup.activeTabIndexProperty().removeListener(listener);
+    private static void detachRibbonContextListener(DockTabGroup tabGroup, RibbonContextListenerHandle handle) {
+        if (tabGroup == null || handle == null) {
+            return;
+        }
+        if (handle.activeTabListener() != null) {
+            tabGroup.activeTabIndexProperty().removeListener(handle.activeTabListener());
+        }
+        if (handle.mousePressedListener() != null) {
+            tabGroup.getNode().removeEventFilter(MouseEvent.MOUSE_PRESSED, handle.mousePressedListener());
         }
     }
 
     private void syncRibbonContextFromTree() {
+        cleanupStaleRibbonContextListeners();
         ribbonContext.set(buildRibbonContext(resolveActiveRibbonLeaf()));
     }
 
     private DockLeaf resolveActiveRibbonLeaf() {
+        if (!isActiveRibbonTabGroupValid()) {
+            activeRibbonTabGroup = null;
+        }
+
         DockLeaf activeLeaf = activeRibbonTabGroup == null ? null : activeRibbonTabGroup.getActiveTab();
         if (activeLeaf != null) {
             return activeLeaf;
+        }
+        DockTabGroup focusedGroup = resolveFocusedRibbonTabGroup();
+        if (focusedGroup != null && focusedGroup.getActiveTab() != null) {
+            activeRibbonTabGroup = focusedGroup;
+            return focusedGroup.getActiveTab();
         }
         DockElement root = rootElement.get();
         if (root == null) {
@@ -792,8 +833,15 @@ public class DockManager {
 
             @Override
             public DockLeaf visitSplitGroup(DockSplitGroup splitGroup) {
-                DockLeaf first = splitGroup.getFirst().accept(this);
-                return first != null ? first : splitGroup.getSecond().accept(this);
+                DockElement firstChild = splitGroup.getFirst();
+                if (firstChild != null) {
+                    DockLeaf first = firstChild.accept(this);
+                    if (first != null) {
+                        return first;
+                    }
+                }
+                DockElement secondChild = splitGroup.getSecond();
+                return secondChild == null ? null : secondChild.accept(this);
             }
         });
     }
@@ -813,15 +861,193 @@ public class DockManager {
             : leaf.getContentFactoryId();
 
         Map<String, Object> attributes = new LinkedHashMap<>();
-        attributes.put("dockTitle", metadata.title());
-        attributes.put("dockState", metadata.state().name());
-        attributes.put("floating", floatingService.isFloating(leaf));
-        attributes.put("maximized", minMaxService.getMaximizedLeaf() == leaf);
+        attributes.put(RibbonContextAttributes.DOCK_TITLE, metadata.title());
+        attributes.put(RibbonContextAttributes.DOCK_STATE, metadata.state().name());
+        attributes.put(RibbonContextAttributes.FLOATING, floatingService.isFloating(leaf));
+        attributes.put(RibbonContextAttributes.MAXIMIZED, minMaxService.getMaximizedLeaf() == leaf);
         if (leaf.getContentFactoryId() != null) {
-            attributes.put("contentFactoryId", leaf.getContentFactoryId());
+            attributes.put(RibbonContextAttributes.CONTENT_FACTORY_ID, leaf.getContentFactoryId());
+        }
+        if (leaf.getParent() != null) {
+            attributes.put(RibbonContextAttributes.DOCK_GROUP_ID, leaf.getParent().getMetadata().id());
+        }
+        if (contentData != null) {
+            attributes.put(RibbonContextAttributes.CONTENT_VERSION, contentData.version());
+            if (contentData.state() != null && !contentData.state().isEmpty()) {
+                attributes.put(RibbonContextAttributes.CONTENT_STATE, new LinkedHashMap<>(contentData.state()));
+            }
+        }
+        if (leaf.getContent() != null) {
+            attributes.put(RibbonContextAttributes.ACTIVE_CONTENT_NODE, leaf.getContent());
         }
 
         return new RibbonContext(metadata.id(), contentId, contentTypeKey, attributes);
+    }
+
+    private void cleanupStaleRibbonContextListeners() {
+        DockElement root = rootElement.get();
+        ribbonContextListeners.entrySet().removeIf(entry -> {
+            DockTabGroup group = entry.getKey();
+            if (group == null) {
+                return true;
+            }
+            boolean attachedToRoot = isTabGroupInRoot(root, group);
+            boolean floating = isTabGroupFloating(group);
+            if (attachedToRoot || floating) {
+                return false;
+            }
+            detachRibbonContextListener(group, entry.getValue());
+            if (activeRibbonTabGroup == group) {
+                activeRibbonTabGroup = null;
+            }
+            return true;
+        });
+    }
+
+    private DockTabGroup resolveFocusedRibbonTabGroup() {
+        DockTabGroup focused = findGroupForFocusOwner(rootPane.getScene());
+        if (focused != null) {
+            return focused;
+        }
+        org.metalib.papifly.fx.docks.floating.FloatingWindowManager floatingWindowManager = floatingService.getFloatingWindowManager();
+        if (floatingWindowManager == null) {
+            return null;
+        }
+        return floatingWindowManager.getFloatingWindows().stream()
+            .map(org.metalib.papifly.fx.docks.floating.FloatingDockWindow::getStage)
+            .filter(Stage::isFocused)
+            .map(Stage::getScene)
+            .map(this::findGroupForFocusOwner)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private DockTabGroup findGroupForFocusOwner(Scene scene) {
+        if (scene == null) {
+            return null;
+        }
+        Node focusOwner = scene.getFocusOwner();
+        if (focusOwner == null) {
+            return null;
+        }
+        for (DockTabGroup tabGroup : ribbonContextListeners.keySet()) {
+            if (tabGroup != null && isDescendantOf(focusOwner, tabGroup.getNode())) {
+                return tabGroup;
+            }
+        }
+        return null;
+    }
+
+    private DockTabGroup resolveTabGroupForNode(Node node) {
+        if (node == null) {
+            return null;
+        }
+        for (DockTabGroup tabGroup : ribbonContextListeners.keySet()) {
+            if (tabGroup != null && isDescendantOf(node, tabGroup.getNode())) {
+                return tabGroup;
+            }
+        }
+        return null;
+    }
+
+    private boolean isActiveRibbonTabGroupValid() {
+        if (activeRibbonTabGroup == null) {
+            return false;
+        }
+        DockLeaf activeLeaf = activeRibbonTabGroup.getActiveTab();
+        if (activeLeaf == null) {
+            return false;
+        }
+        if (floatingService.isFloating(activeLeaf)) {
+            return true;
+        }
+        return isLeafInRoot(rootElement.get(), activeLeaf);
+    }
+
+    private boolean isTabGroupFloating(DockTabGroup tabGroup) {
+        return tabGroup.getTabs().stream().anyMatch(floatingService::isFloating);
+    }
+
+    private static boolean isDescendantOf(Node node, Node ancestor) {
+        Node current = node;
+        while (current != null) {
+            if (current == ancestor) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
+    private static boolean isTabGroupInRoot(DockElement root, DockTabGroup target) {
+        if (root == null || target == null) {
+            return false;
+        }
+        return root.accept(new DockElementVisitor<>() {
+            @Override
+            public Boolean visitTabGroup(DockTabGroup tabGroup) {
+                return tabGroup == target;
+            }
+
+            @Override
+            public Boolean visitSplitGroup(DockSplitGroup splitGroup) {
+                DockElement first = splitGroup.getFirst();
+                if (first != null && first.accept(this)) {
+                    return true;
+                }
+                DockElement second = splitGroup.getSecond();
+                return second != null && second.accept(this);
+            }
+        });
+    }
+
+    private void registerRibbonContextListeners(DockElement element) {
+        if (element == null) {
+            return;
+        }
+        element.accept(new DockElementVisitor<>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                trackRibbonContext(tabGroup);
+                return null;
+            }
+
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitGroup) {
+                registerRibbonContextListeners(splitGroup.getFirst());
+                registerRibbonContextListeners(splitGroup.getSecond());
+                return null;
+            }
+        });
+    }
+
+    private static boolean isLeafInRoot(DockElement root, DockLeaf target) {
+        if (root == null || target == null) {
+            return false;
+        }
+        return root.accept(new DockElementVisitor<>() {
+            @Override
+            public Boolean visitTabGroup(DockTabGroup tabGroup) {
+                return tabGroup.getTabs().contains(target);
+            }
+
+            @Override
+            public Boolean visitSplitGroup(DockSplitGroup splitGroup) {
+                DockElement first = splitGroup.getFirst();
+                if (first != null && first.accept(this)) {
+                    return true;
+                }
+                DockElement second = splitGroup.getSecond();
+                return second != null && second.accept(this);
+            }
+        });
+    }
+
+    private record RibbonContextListenerHandle(
+        ChangeListener<Number> activeTabListener,
+        EventHandler<MouseEvent> mousePressedListener
+    ) {
     }
 
     /**

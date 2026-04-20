@@ -23,16 +23,23 @@ import org.metalib.papifly.fx.ui.UiCommonThemeSupport;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.awt.Desktop;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class HugoPreviewPane extends BorderPane implements DisposableContent {
+public class HugoPreviewPane extends BorderPane implements DisposableContent, HugoRibbonActions {
 
     private final HugoPreviewConfig config;
     private final HugoCliProbe cliProbe;
@@ -260,6 +267,77 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
         return drafts;
     }
 
+    @Override
+    public boolean isServerRunning() {
+        return processManager.isRunning();
+    }
+
+    @Override
+    public boolean canRunHugoCommands() {
+        return !disposed && cliAvailable && currentSiteRoot != null && Files.isDirectory(currentSiteRoot);
+    }
+
+    @Override
+    public void toggleServer() {
+        if (isServerRunning()) {
+            stopServer();
+        } else {
+            startServerAndLoad(lastRelativePath);
+        }
+    }
+
+    @Override
+    public void newContent(String relativePath) {
+        runHugoCommand(
+            "Creating Hugo content...",
+            List.of("hugo", "new", normalizeNewContentPath(relativePath)),
+            "Hugo content created",
+            true
+        );
+    }
+
+    @Override
+    public void build() {
+        runHugoCommand(
+            "Building Hugo site...",
+            List.of("hugo", "--gc", "--minify"),
+            "Hugo build completed",
+            false
+        );
+    }
+
+    @Override
+    public void mod(String subCommand) {
+        String normalizedSubCommand = (subCommand == null || subCommand.isBlank()) ? "tidy" : subCommand.trim();
+        runHugoCommand(
+            "Running hugo mod " + normalizedSubCommand + "...",
+            List.of("hugo", "mod", normalizedSubCommand),
+            "hugo mod " + normalizedSubCommand + " completed",
+            false
+        );
+    }
+
+    @Override
+    public void env() {
+        runHugoCommand(
+            "Inspecting Hugo environment...",
+            List.of("hugo", "env"),
+            "Hugo environment captured",
+            false
+        );
+    }
+
+    @Override
+    public void frontMatterTemplate() {
+        publishStatusMessage("Front matter template tools are available in the Hugo editor context");
+    }
+
+    @Override
+    public void insertShortcode(String shortcodeName) {
+        String normalized = shortcodeName == null || shortcodeName.isBlank() ? "shortcode" : shortcodeName.trim();
+        publishStatusMessage("Shortcode helper selected: " + normalized);
+    }
+
     public void bindThemeProperty(ObjectProperty<Theme> externalTheme) {
         unbindThemeProperty();
         if (externalTheme == null) {
@@ -408,6 +486,78 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent {
             return "/";
         }
         return path.startsWith("/") ? path : "/" + path;
+    }
+
+    private String normalizeNewContentPath(String relativePath) {
+        String normalized = relativePath == null || relativePath.isBlank()
+            ? "content/posts/ribbon-post.md"
+            : relativePath.trim();
+        normalized = normalized.replace('\\', '/');
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        return normalized;
+    }
+
+    private void runHugoCommand(
+        String busyMessage,
+        List<String> command,
+        String successMessage,
+        boolean reloadPreview
+    ) {
+        if (!canRunHugoCommands()) {
+            publishStatusMessage("Hugo command unavailable: site root or CLI is not ready");
+            return;
+        }
+        List<String> commandLine = List.copyOf(command);
+        Path siteRoot = currentSiteRoot;
+        publishStatusMessage(busyMessage);
+        lifecycleExecutor.submit(() -> {
+            try {
+                ProcessBuilder processBuilder = new ProcessBuilder(commandLine);
+                processBuilder.directory(siteRoot.toFile());
+                processBuilder.redirectErrorStream(true);
+                Process process = processBuilder.start();
+                String output = readOutput(process, 16);
+                boolean finished = process.waitFor(30, TimeUnit.SECONDS);
+                if (!finished) {
+                    process.destroyForcibly();
+                    publishStatusMessage("Hugo command timed out");
+                    return;
+                }
+                if (process.exitValue() != 0) {
+                    String failure = output.isBlank() ? "Exit code " + process.exitValue() : output;
+                    publishStatusMessage("Hugo command failed: " + failure);
+                    return;
+                }
+                if (reloadPreview && processManager.isRunning()) {
+                    runOnFx(() -> navigateTo(lastRelativePath));
+                }
+                String resolvedMessage = output.isBlank() ? successMessage : successMessage + ": " + output;
+                publishStatusMessage(resolvedMessage);
+            } catch (Exception ex) {
+                publishStatusMessage("Hugo command failed: " + ex.getMessage());
+            }
+        });
+    }
+
+    private static String readOutput(Process process, int maxLines) throws IOException {
+        List<String> lines = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(
+            new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null && lines.size() < maxLines) {
+                String trimmed = line.trim();
+                if (!trimmed.isEmpty()) {
+                    lines.add(trimmed);
+                }
+            }
+        }
+        return String.join(" | ", lines);
+    }
+
+    private void publishStatusMessage(String message) {
+        runOnFx(() -> statusBar.setMessage(message));
     }
 
     private void runOnFx(Runnable action) {

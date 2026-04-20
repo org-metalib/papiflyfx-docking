@@ -16,6 +16,7 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
+import javafx.scene.shape.SVGPath;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonControlSpec;
@@ -43,6 +44,7 @@ final class RibbonControlFactory {
     private static final double SMALL_CONTROL_WIDTH = 36.0;
     private static final double COLLAPSED_GROUP_BUTTON_WIDTH = 56.0;
     private static final double CONTROL_GAP = 8.0;
+    private static final String OCTICON_PREFIX = "octicon:";
 
     private RibbonControlFactory() {
     }
@@ -341,6 +343,10 @@ final class RibbonControlFactory {
 
     private static Node loadGraphic(RibbonIconHandle iconHandle, double size, ClassLoader classLoader) {
         String resourcePath = iconHandle.resourcePath();
+        Node octicon = createOcticonGraphic(resourcePath, size);
+        if (octicon != null) {
+            return octicon;
+        }
         if (resourcePath == null || resourcePath.isBlank() || resourcePath.endsWith(".svg")) {
             return null;
         }
@@ -381,6 +387,57 @@ final class RibbonControlFactory {
         String normalizedPath = resourcePath.startsWith("/") ? resourcePath.substring(1) : resourcePath;
         ClassLoader resolvedLoader = classLoader == null ? RibbonControlFactory.class.getClassLoader() : classLoader;
         return resolvedLoader.getResource(normalizedPath);
+    }
+
+    private static Node createOcticonGraphic(String resourcePath, double size) {
+        if (resourcePath == null || !resourcePath.startsWith(OCTICON_PREFIX)) {
+            return null;
+        }
+        String name = resourcePath.substring(OCTICON_PREFIX.length()).trim().toLowerCase(Locale.ROOT);
+        String pathData = octiconPath(name);
+        if (pathData == null) {
+            return null;
+        }
+        SVGPath svgPath = new SVGPath();
+        svgPath.setContent(pathData);
+        svgPath.getStyleClass().add("pf-ribbon-octicon");
+        svgPath.setStyle("-fx-fill: -pf-ui-text-primary;");
+        double scale = size / 16.0;
+        svgPath.setScaleX(scale);
+        svgPath.setScaleY(scale);
+        StackPane wrapper = new StackPane(svgPath);
+        wrapper.getStyleClass().add("pf-ribbon-icon-octicon-wrap");
+        wrapper.setMinSize(size, size);
+        wrapper.setPrefSize(size, size);
+        wrapper.setMaxSize(size, size);
+        return wrapper;
+    }
+
+    private static String octiconPath(String name) {
+        return switch (name) {
+            case "sync" -> "M8,2 A6,6 0 0 1 14,8 L12,6 M14,8 L10,8 M8,14 A6,6 0 0 1 2,8 L4,10 M2,8 L6,8";
+            case "upload" -> "M8,2 L12,6 L10,6 L10,10 L6,10 L6,6 L4,6 Z M3,12 L13,12 L13,14 L3,14 Z";
+            case "download", "repo-pull" -> "M8,14 L12,10 L10,10 L10,6 L6,6 L6,10 L4,10 Z M3,2 L13,2 L13,4 L3,4 Z";
+            case "git-branch" -> "M5,3 A2,2 0 1 0 5,7 A2,2 0 1 0 5,3 Z M11,3 A2,2 0 1 0 11,7 A2,2 0 1 0 11,3 Z M11,9 A2,2 0 1 0 11,13 A2,2 0 1 0 11,9 Z M5,7 L5,11 L9,11 M5,9 C5,7 7,6 9,6";
+            case "git-merge" -> "M5,3 A2,2 0 1 0 5,7 A2,2 0 1 0 5,3 Z M11,3 A2,2 0 1 0 11,7 A2,2 0 1 0 11,3 Z M8,13 A2,2 0 1 0 8,17 A2,2 0 1 0 8,13 Z M5,7 C5,9 7,9 8,11 M11,7 C11,9 9,9 8,11";
+            case "git-pull-request" -> "M5,3 A2,2 0 1 0 5,7 A2,2 0 1 0 5,3 Z M5,7 L5,12 M11,3 A2,2 0 1 0 11,7 A2,2 0 1 0 11,3 Z M5,10 C5,7 8,7 10,7 M10,7 L8,5 M10,7 L8,9";
+            case "issue-opened" -> "M8,2 A6,6 0 1 0 8,14 A6,6 0 1 0 8,2 Z M8,5 L8,9 M8,11 L8,11.2";
+            case "git-commit" -> "M8,2 A6,6 0 1 0 8,14 A6,6 0 1 0 8,2 Z";
+            case "diff" -> "M4,3 A1.5,1.5 0 1 0 4,6 A1.5,1.5 0 1 0 4,3 Z M12,10 A1.5,1.5 0 1 0 12,13 A1.5,1.5 0 1 0 12,10 Z M4,6 L4,12 M4,12 L10.5,12 M12,3 L12,10";
+            case "trash" -> "M5,5 L11,5 L10.5,14 L5.5,14 Z M4,5 L12,5 M6.5,5 L6.5,3 L9.5,3 L9.5,5 M7,7 L7,12 M9,7 L9,12";
+            case "play" -> "M4,3 L13,8 L4,13 Z";
+            case "stop" -> "M4,4 L12,4 L12,12 L4,12 Z";
+            case "file-add" -> "M4,2 L10,2 L13,5 L13,14 L4,14 Z M10,2 L10,5 L13,5 M8.5,8 L8.5,12 M6.5,10 L10.5,10";
+            case "file" -> "M4,2 L10,2 L13,5 L13,14 L4,14 Z M10,2 L10,5 L13,5";
+            case "pencil" -> "M3,12 L4,15 L7,14 L13,8 L10,5 Z M9,6 L12,9";
+            case "package" -> "M3,5 L8,2 L13,5 L13,11 L8,14 L3,11 Z M3,5 L8,8 L13,5 M8,8 L8,14";
+            case "package-dependencies", "archive" -> "M3,4 L13,4 L13,13 L3,13 Z M3,7 L13,7 M6,9 L10,9";
+            case "terminal" -> "M2,3 L14,3 L14,13 L2,13 Z M4,6 L6.5,8 L4,10 M8,10 L11,10";
+            case "code", "code-square" -> "M3,3 L13,3 L13,13 L3,13 Z M7,6 L5,8 L7,10 M9,6 L11,8 L9,10";
+            case "video" -> "M3,4 L11,4 L11,12 L3,12 Z M11,7 L14,5.5 L14,10.5 L11,9 Z M6,6 L9,8 L6,10 Z";
+            case "image" -> "M3,3 L13,3 L13,13 L3,13 Z M5,6 A1.2,1.2 0 1 0 5,8.4 A1.2,1.2 0 1 0 5,6 Z M4,12 L7.5,8.5 L9.5,10.5 L11,9 L12.5,12 Z";
+            default -> null;
+        };
     }
 
     private static String initials(String label) {

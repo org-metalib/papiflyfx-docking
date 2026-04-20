@@ -17,6 +17,7 @@ A GitHub workflow toolbar for PapiflyFX docking applications.
 - Settings panel integration via `GitHubCategory`
 - Theme support with light/dark mode mapping
 - Shared pills, chips, popup surfaces, and status-slot primitives from `papiflyfx-docking-api`
+- Ribbon integration via `RibbonProvider` with GitHub command groups (`Sync`, `Branches`, `Collaborate`, `State`)
 
 ## Maven dependency
 
@@ -76,7 +77,10 @@ papiflyfx-docking-github/
     GitHubToolbarFactory.java     — ContentFactory for docking integration
     GitHubToolbarStateAdapter.java— ContentStateAdapter for session persistence
     GitHubToolbarContribution.java— Mounting helper for top/bottom placement
+    GitHubRibbonActions.java      — Ribbon action bridge implemented by `GitHubToolbar`
     GitHubRepoContext.java        — Repository context (remote URI + optional local path)
+  ribbon/
+    GitHubRibbonProvider.java     — ServiceLoader ribbon contribution
   auth/
     CredentialStore.java          — Pluggable credential SPI
     PatCredentialStore.java       — In-memory PAT store
@@ -117,6 +121,7 @@ dockManager.setContentFactory(new GitHubToolbarFactory(repoContext));
 The module registers via ServiceLoader:
 - `META-INF/services/org.metalib.papifly.fx.docking.api.ContentStateAdapter`
 - `META-INF/services/org.metalib.papifly.fx.settings.api.SettingsCategory`
+- `META-INF/services/org.metalib.papifly.fx.api.ribbon.RibbonProvider`
 
 ## Settings integration
 

@@ -12,6 +12,7 @@ It starts `hugo server`, renders pages inside JavaFX `WebView`, and supports ses
 - External navigation guard (keeps embedded view on local Hugo origin)
 - Docking persistence via `ContentStateAdapter` + `LeafContentData`
 - Theme-aware host chrome for toolbar, status, and placeholder surfaces while leaving page content independent
+- Ribbon integration via `RibbonProvider` with `Hugo` and contextual `Hugo Editor` tabs
 
 ## Requirements
 
@@ -101,6 +102,8 @@ State codec: `HugoPreviewStateCodec`
 | `HugoPreviewStateAdapter` | Save/restore integration for sessions |
 | `HugoServerProcessManager` | Hugo process lifecycle + readiness handling |
 | `HugoCliProbe` | Hugo availability/version probing |
+| `HugoRibbonProvider` | Ribbon command groups and contextual tab contribution |
+| `HugoRibbonActions` | Ribbon action bridge implemented by `HugoPreviewPane` |
 
 ## Run Tests
 
