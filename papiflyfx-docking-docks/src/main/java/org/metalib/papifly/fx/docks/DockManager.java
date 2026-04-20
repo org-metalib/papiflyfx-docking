@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.docks;
 
+import javafx.beans.value.ChangeListener;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Node;
@@ -8,7 +9,9 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.docking.api.ContentFactory;
+import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.docks.core.DockData;
 import org.metalib.papifly.fx.docks.core.DockElement;
@@ -27,6 +30,9 @@ import org.metalib.papifly.fx.docks.render.OverlayCanvas;
 import org.metalib.papifly.fx.docks.serial.DockSessionPersistence;
 
 import java.nio.file.Path;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -51,8 +57,11 @@ public class DockManager {
     private final DockFloatingService floatingService;
     private final DockMinMaxService minMaxService;
     private final DockSessionService sessionService;
+    private final ObjectProperty<RibbonContext> ribbonContext;
+    private final Map<DockTabGroup, ChangeListener<Number>> ribbonContextListeners;
 
     private ContentFactory contentFactory;
+    private DockTabGroup activeRibbonTabGroup;
 
     /**
      * Creates a new DockManager with default dark theme.
@@ -81,6 +90,8 @@ public class DockManager {
         Objects.requireNonNull(services, "services");
 
         this.rootElement = new SimpleObjectProperty<>();
+        this.ribbonContext = new SimpleObjectProperty<>(RibbonContext.empty());
+        this.ribbonContextListeners = new IdentityHashMap<>();
         this.serviceContext = new ServiceContext();
 
         dockingLayer = new StackPane();
@@ -191,6 +202,7 @@ public class DockManager {
             element.setParent(null);
             dockingLayer.getChildren().add(0, element.getNode());
         }
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -213,6 +225,7 @@ public class DockManager {
             public Void visitTabGroup(DockTabGroup tabGroup) {
                 setupTabGroupDragHandlers(tabGroup);
                 setupTabGroupButtonHandlers(tabGroup);
+                trackRibbonContext(tabGroup);
                 for (DockLeaf leaf : tabGroup.getTabs()) {
                     setupLeafCloseHandler(leaf);
                 }
@@ -320,6 +333,24 @@ public class DockManager {
     }
 
     /**
+     * Gets the current ribbon context derived from the active dock/content.
+     *
+     * @return current ribbon context
+     */
+    public RibbonContext getRibbonContext() {
+        return ribbonContext.get();
+    }
+
+    /**
+     * Gets the observable ribbon context property derived from dock activity.
+     *
+     * @return ribbon context property
+     */
+    public ObjectProperty<RibbonContext> ribbonContextProperty() {
+        return ribbonContext;
+    }
+
+    /**
      * Creates a new leaf with the given title and content.
      *
      * @param title leaf title
@@ -361,6 +392,7 @@ public class DockManager {
 
         leaf.dispose();
         floatingService.forgetRestoreHint(leaf.getMetadata().id());
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -372,6 +404,7 @@ public class DockManager {
         DockTabGroup tabGroup = new DockTabGroup(themeProperty());
         setupTabGroupDragHandlers(tabGroup);
         setupTabGroupButtonHandlers(tabGroup);
+        trackRibbonContext(tabGroup);
         return tabGroup;
     }
 
@@ -581,6 +614,7 @@ public class DockManager {
      */
     public void floatLeaf(DockLeaf leaf) {
         floatingService.floatLeaf(leaf);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -592,6 +626,7 @@ public class DockManager {
      */
     public void floatLeaf(DockLeaf leaf, double x, double y) {
         floatingService.floatLeaf(leaf, x, y);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -601,6 +636,7 @@ public class DockManager {
      */
     public void dockLeaf(DockLeaf leaf) {
         floatingService.dockLeaf(leaf);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -610,6 +646,7 @@ public class DockManager {
      */
     public void minimizeLeaf(DockLeaf leaf) {
         minMaxService.minimizeLeaf(leaf);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -619,6 +656,7 @@ public class DockManager {
      */
     public void restoreLeaf(DockLeaf leaf) {
         minMaxService.restoreLeaf(leaf);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -628,6 +666,7 @@ public class DockManager {
      */
     public void restoreLeaf(String leafId) {
         minMaxService.restoreLeaf(leafId);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -638,6 +677,7 @@ public class DockManager {
      */
     public void maximizeLeaf(DockLeaf leaf) {
         minMaxService.maximizeLeaf(leaf);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -645,6 +685,7 @@ public class DockManager {
      */
     public void restoreMaximized() {
         minMaxService.restoreMaximized();
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -685,6 +726,9 @@ public class DockManager {
     public void dispose() {
         mainContainer.getProperties().remove(ROOT_PANE_MANAGER_PROPERTY);
 
+        ribbonContextListeners.forEach(DockManager::detachRibbonContextListener);
+        ribbonContextListeners.clear();
+        activeRibbonTabGroup = null;
         floatingService.dispose();
         minMaxService.dispose();
         themeService.dispose();
@@ -696,6 +740,88 @@ public class DockManager {
         rootElement.set(null);
         dockingLayer.getChildren().clear();
         contentFactory = null;
+    }
+
+    private void trackRibbonContext(DockTabGroup tabGroup) {
+        if (tabGroup == null || ribbonContextListeners.containsKey(tabGroup)) {
+            return;
+        }
+        ChangeListener<Number> listener = (obs, oldValue, newValue) -> {
+            if (tabGroup.getActiveTab() != null) {
+                activeRibbonTabGroup = tabGroup;
+            } else if (activeRibbonTabGroup == tabGroup) {
+                activeRibbonTabGroup = null;
+            }
+            syncRibbonContextFromTree();
+        };
+        tabGroup.activeTabIndexProperty().addListener(listener);
+        ribbonContextListeners.put(tabGroup, listener);
+        if (activeRibbonTabGroup == null && tabGroup.getActiveTab() != null) {
+            activeRibbonTabGroup = tabGroup;
+        }
+    }
+
+    private static void detachRibbonContextListener(DockTabGroup tabGroup, ChangeListener<Number> listener) {
+        if (tabGroup != null && listener != null) {
+            tabGroup.activeTabIndexProperty().removeListener(listener);
+        }
+    }
+
+    private void syncRibbonContextFromTree() {
+        ribbonContext.set(buildRibbonContext(resolveActiveRibbonLeaf()));
+    }
+
+    private DockLeaf resolveActiveRibbonLeaf() {
+        DockLeaf activeLeaf = activeRibbonTabGroup == null ? null : activeRibbonTabGroup.getActiveTab();
+        if (activeLeaf != null) {
+            return activeLeaf;
+        }
+        DockElement root = rootElement.get();
+        if (root == null) {
+            return null;
+        }
+        return root.accept(new DockElementVisitor<>() {
+            @Override
+            public DockLeaf visitTabGroup(DockTabGroup tabGroup) {
+                DockLeaf groupActive = tabGroup.getActiveTab();
+                if (groupActive != null) {
+                    activeRibbonTabGroup = tabGroup;
+                }
+                return groupActive;
+            }
+
+            @Override
+            public DockLeaf visitSplitGroup(DockSplitGroup splitGroup) {
+                DockLeaf first = splitGroup.getFirst().accept(this);
+                return first != null ? first : splitGroup.getSecond().accept(this);
+            }
+        });
+    }
+
+    private RibbonContext buildRibbonContext(DockLeaf leaf) {
+        if (leaf == null) {
+            return RibbonContext.empty();
+        }
+
+        DockData metadata = leaf.getMetadata();
+        LeafContentData contentData = leaf.getContentData();
+        String contentId = contentData != null && contentData.contentId() != null
+            ? contentData.contentId()
+            : metadata.id();
+        String contentTypeKey = contentData != null && contentData.typeKey() != null
+            ? contentData.typeKey()
+            : leaf.getContentFactoryId();
+
+        Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("dockTitle", metadata.title());
+        attributes.put("dockState", metadata.state().name());
+        attributes.put("floating", floatingService.isFloating(leaf));
+        attributes.put("maximized", minMaxService.getMaximizedLeaf() == leaf);
+        if (leaf.getContentFactoryId() != null) {
+            attributes.put("contentFactoryId", leaf.getContentFactoryId());
+        }
+
+        return new RibbonContext(metadata.id(), contentId, contentTypeKey, attributes);
     }
 
     /**

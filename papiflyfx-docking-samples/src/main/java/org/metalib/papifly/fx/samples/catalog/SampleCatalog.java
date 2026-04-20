@@ -10,6 +10,7 @@ import org.metalib.papifly.fx.samples.docks.FloatingSample;
 import org.metalib.papifly.fx.samples.docks.MinimizeSample;
 import org.metalib.papifly.fx.samples.docks.NestedSplitSample;
 import org.metalib.papifly.fx.samples.docks.PersistSample;
+import org.metalib.papifly.fx.samples.docks.RibbonShellSample;
 import org.metalib.papifly.fx.samples.docks.TabGroupSample;
 import org.metalib.papifly.fx.samples.media.HlsStreamSample;
 import org.metalib.papifly.fx.samples.media.ImageViewerSample;
@@ -50,6 +51,7 @@ public final class SampleCatalog {
             new FloatingSample(),
             new MinimizeSample(),
             new PersistSample(),
+            new RibbonShellSample(),
             new MarkdownEditorSample(),
             new JavaEditorSample(),
             new JavaScriptEditorSample(),

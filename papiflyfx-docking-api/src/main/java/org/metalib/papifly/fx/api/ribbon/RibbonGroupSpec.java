@@ -13,6 +13,7 @@ import java.util.Objects;
  * @param label localized group label
  * @param order group ordering within the tab; lower values sort first
  * @param reductionPriority lower-priority groups collapse earlier when space is constrained
+ * @param dialogLauncher optional command rendered as a group launcher affordance
  * @param controls controls contained in the group
  */
 public record RibbonGroupSpec(
@@ -20,6 +21,7 @@ public record RibbonGroupSpec(
     String label,
     int order,
     int reductionPriority,
+    PapiflyCommand dialogLauncher,
     List<RibbonControlSpec> controls
 ) {
 
@@ -30,6 +32,7 @@ public record RibbonGroupSpec(
      * @param label localized group label
      * @param order group ordering within the tab; lower values sort first
      * @param reductionPriority lower-priority groups collapse earlier when space is constrained
+     * @param dialogLauncher optional command rendered as a group launcher affordance
      * @param controls controls contained in the group
      */
     public RibbonGroupSpec {

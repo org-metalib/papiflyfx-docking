@@ -1,0 +1,205 @@
+.pf-ribbon {
+    -fx-background-color: -fx-ribbon-background;
+    -fx-border-color: transparent transparent -pf-ui-border-default transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-spacing: 0;
+}
+
+.pf-ribbon-header {
+    -fx-background-color: -fx-ribbon-background;
+    -fx-border-color: transparent transparent -pf-ui-border-subtle transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 6px 10px 6px 10px;
+    -fx-min-height: -pf-ui-toolbar-height;
+    -fx-pref-height: -pf-ui-toolbar-height;
+    -fx-max-height: -pf-ui-toolbar-height;
+}
+
+.pf-ribbon-header-actions {
+    -fx-spacing: 8px;
+    -fx-alignment: center-right;
+}
+
+.pf-ribbon-collapse-button {
+    -fx-background-color: transparent;
+}
+
+.pf-ribbon-tab-strip {
+    -fx-alignment: center-left;
+    -fx-spacing: 4px;
+    -fx-padding: 0 0 0 12px;
+}
+
+.pf-ribbon-tab {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent transparent transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-padding: 6px 10px 6px 10px;
+    -fx-background-radius: 4px 4px 0 0;
+    -fx-border-radius: 4px 4px 0 0;
+    -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-tab:hover {
+    -fx-background-color: -fx-ribbon-tab-hover;
+}
+
+.pf-ribbon-tab:selected {
+    -fx-background-color: -fx-ribbon-tab-selected;
+    -fx-border-color: transparent transparent -fx-ribbon-accent transparent;
+}
+
+.pf-ribbon-tab-contextual {
+    -fx-background-color: -fx-ribbon-contextual-background;
+}
+
+.pf-ribbon-qat {
+    -fx-alignment: center-left;
+    -fx-spacing: 6px;
+}
+
+.pf-ribbon-qat-button {
+    -fx-min-height: -pf-ui-control-height-compact;
+    -fx-pref-height: -pf-ui-control-height-compact;
+    -fx-max-height: -pf-ui-control-height-compact;
+    -fx-background-color: transparent;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: -pf-ui-text-primary;
+    -fx-padding: 0 8px 0 8px;
+}
+
+.pf-ribbon-qat-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.pf-ribbon-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.pf-ribbon-groups {
+    -fx-alignment: top-left;
+    -fx-padding: 12px 10px 10px 10px;
+}
+
+.pf-ribbon-group {
+    -fx-background-color: -pf-ui-surface-panel;
+    -fx-border-color: -pf-ui-border-subtle;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 10px;
+    -fx-spacing: 8px;
+}
+
+.pf-ribbon-group-controls {
+    -fx-hgap: 8px;
+    -fx-vgap: 8px;
+}
+
+.pf-ribbon-group-footer {
+    -fx-border-color: -pf-ui-border-subtle transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 6px 0 0 0;
+}
+
+.pf-ribbon-group-label {
+    -fx-text-fill: -fx-ribbon-group-label-color;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.pf-ribbon-group-launcher {
+    -fx-min-width: 22px;
+    -fx-pref-width: 22px;
+    -fx-max-width: 22px;
+    -fx-min-height: 18px;
+    -fx-pref-height: 18px;
+    -fx-max-height: 18px;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -pf-ui-text-muted;
+}
+
+.pf-ribbon-group-launcher:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.pf-ribbon-command-button,
+.pf-ribbon-toggle-button,
+.pf-ribbon-split-button,
+.pf-ribbon-menu-button {
+    -fx-min-width: 84px;
+    -fx-pref-width: 92px;
+    -fx-min-height: 76px;
+    -fx-pref-height: 76px;
+    -fx-background-color: transparent;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-text-fill: -pf-ui-text-primary;
+    -fx-padding: 8px;
+    -fx-wrap-text: true;
+    -fx-alignment: center;
+    -fx-content-display: top;
+    -fx-graphic-text-gap: 6px;
+}
+
+.pf-ribbon-command-button:hover,
+.pf-ribbon-toggle-button:hover,
+.pf-ribbon-split-button:hover,
+.pf-ribbon-menu-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-command-button:armed,
+.pf-ribbon-toggle-button:armed,
+.pf-ribbon-split-button:armed,
+.pf-ribbon-menu-button:armed {
+    -fx-background-color: -pf-ui-surface-control-pressed;
+}
+
+.pf-ribbon-toggle-button:selected {
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-border-color: -pf-ui-accent;
+}
+
+.pf-ribbon-command-button:focused,
+.pf-ribbon-toggle-button:focused,
+.pf-ribbon-split-button:focused,
+.pf-ribbon-menu-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ribbon-command-button:disabled,
+.pf-ribbon-toggle-button:disabled,
+.pf-ribbon-split-button:disabled,
+.pf-ribbon-menu-button:disabled {
+    -fx-text-fill: -pf-ui-text-disabled;
+    -fx-opacity: 1.0;
+}
+
+.pf-ribbon-fallback-glyph {
+    -fx-alignment: center;
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-border-color: -pf-ui-accent;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-text-fill: -pf-ui-text-primary;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
