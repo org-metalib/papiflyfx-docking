@@ -16,7 +16,7 @@ Maven archetype that bootstraps a multi-module PapiflyFX docking application wit
 mvn archetype:generate \
   -DarchetypeGroupId=org.metalib.papifly.docking \
   -DarchetypeArtifactId=papiflyfx-docking-archetype \
-  -DarchetypeVersion=0.0.17-SNAPSHOT \
+  -DarchetypeVersion=0.0.19-SNAPSHOT \
   -DgroupId=com.example \
   -DartifactId=my-app \
   -Dversion=0.1.0-SNAPSHOT \
@@ -35,16 +35,16 @@ mvn wrapper:wrapper -Dmaven=3.9.12
 
 ## Archetype Properties
 
-| Property | Default | Description |
-|----------|---------|-------------|
-| `groupId` | *(required)* | Maven group ID for the generated project |
-| `artifactId` | *(required)* | Maven artifact ID (also used as root directory name) |
-| `version` | *(required)* | Initial project version |
-| `package` | *(required)* | Java package for generated source files |
-| `papiflyfxVersion` | `0.0.17-SNAPSHOT` | PapiflyFX framework version (BOM import version) |
-| `javaVersion` | `25` | Java compiler release level |
-| `javafxVersion` | `25.0.2` | JavaFX version for dependency management |
-| `mavenVersion` | `3.9.12` | Maven version for the wrapper properties |
+| Property | Default           | Description |
+|----------|-------------------|-------------|
+| `groupId` | *(required)*      | Maven group ID for the generated project |
+| `artifactId` | *(required)*      | Maven artifact ID (also used as root directory name) |
+| `version` | *(required)*      | Initial project version |
+| `package` | *(required)*      | Java package for generated source files |
+| `papiflyfxVersion` | `0.0.19-SNAPSHOT` | PapiflyFX framework version (BOM import version) |
+| `javaVersion` | `25`              | Java compiler release level |
+| `javafxVersion` | `25.0.2`          | JavaFX version for dependency management |
+| `mavenVersion` | `3.9.12`          | Maven version for the wrapper properties |
 
 ## Generated Project Structure
 

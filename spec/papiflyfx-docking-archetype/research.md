@@ -4,28 +4,28 @@
 
 ## 1. Current Repository Baseline (Source of Truth)
 
-All values extracted from the root `pom.xml` (version `0.0.17-SNAPSHOT`).
+All values extracted from the root `pom.xml` (version `0.0.19-SNAPSHOT`).
 
 ### Coordinates & Versions
 
-| Property | Value |
-|----------|-------|
+| Property | Value                         |
+|----------|-------------------------------|
 | groupId | `org.metalib.papifly.docking` |
-| artifactId | `papiflyfx-docking` |
-| version | `0.0.17-SNAPSHOT` |
-| Java (compiler release) | `25` |
-| JavaFX | `25.0.2` |
-| Maven (wrapper) | `3.9.12` |
-| Maven wrapper version | `3.3.4` |
-| Maven minimum required | `3.9` |
-| JUnit Jupiter | `5.10.2` |
-| TestFX | `4.0.18` |
-| Monocle | `21.0.2` |
-| Surefire | `3.2.5` |
-| javafx-maven-plugin | `0.0.8` |
-| os-maven-plugin | `1.7.1` |
-| maven-enforcer-plugin | `3.6.2` |
-| SDKMAN identifier | `25.0.1.fx-zulu` |
+| artifactId | `papiflyfx-docking`           |
+| version | `0.0.19-SNAPSHOT`             |
+| Java (compiler release) | `25`                          |
+| JavaFX | `25.0.2`                      |
+| Maven (wrapper) | `3.9.12`                      |
+| Maven wrapper version | `3.3.4`                       |
+| Maven minimum required | `3.9`                         |
+| JUnit Jupiter | `5.10.2`                      |
+| TestFX | `4.0.18`                      |
+| Monocle | `21.0.2`                      |
+| Surefire | `3.2.5`                       |
+| javafx-maven-plugin | `0.0.8`                       |
+| os-maven-plugin | `1.7.1`                       |
+| maven-enforcer-plugin | `3.6.2`                       |
+| SDKMAN identifier | `25.0.1.fx-zulu`              |
 
 ### Build Conventions Already In Use
 

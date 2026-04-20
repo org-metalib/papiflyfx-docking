@@ -251,7 +251,7 @@ papiflyfx-docking-archetype/
 
     <requiredProperties>
         <requiredProperty key="papiflyfxVersion">
-            <defaultValue>0.0.17-SNAPSHOT</defaultValue>
+            <defaultValue>0.0.19-SNAPSHOT</defaultValue>
         </requiredProperty>
         <requiredProperty key="javaVersion">
             <defaultValue>25</defaultValue>
@@ -843,12 +843,12 @@ java -version
 mvn archetype:generate \
   -DarchetypeGroupId=org.metalib.papifly.docking \
   -DarchetypeArtifactId=papiflyfx-docking-archetype \
-  -DarchetypeVersion=0.0.17-SNAPSHOT \
+  -DarchetypeVersion=0.0.19-SNAPSHOT \
   -DgroupId=com.example \
   -DartifactId=my-papiflyfx-app \
   -Dversion=0.1.0-SNAPSHOT \
   -Dpackage=com.example.myapp \
-  -DpapiflyfxVersion=0.0.17-SNAPSHOT \
+  -DpapiflyfxVersion=0.0.19-SNAPSHOT \
   -DjavaVersion=25 \
   -DjavafxVersion=25.0.2 \
   -DmavenVersion=3.9.12 \
