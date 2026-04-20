@@ -70,6 +70,18 @@ class RibbonAdaptiveLayoutFxTest {
         assertEquals(1, alphaExecutions.get());
     }
 
+    @Test
+    void groupsReturnToLargeModeWhenWidthExpandsAfterCollapse() {
+        shrinkUntil(() -> group("alpha").getSizeMode() == RibbonGroupSizeMode.COLLAPSED, 560.0, 520.0, 480.0, 440.0, 400.0, 360.0, 320.0, 280.0);
+        assertEquals(RibbonGroupSizeMode.COLLAPSED, group("alpha").getSizeMode());
+
+        resizeTo(1200.0);
+
+        assertEquals(RibbonGroupSizeMode.LARGE, group("alpha").getSizeMode());
+        assertEquals(RibbonGroupSizeMode.LARGE, group("beta").getSizeMode());
+        assertEquals(RibbonGroupSizeMode.LARGE, group("gamma").getSizeMode());
+    }
+
     private void assertPriorityOrder() {
         RibbonGroup alpha = group("alpha");
         RibbonGroup beta = group("beta");

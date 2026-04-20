@@ -7,6 +7,7 @@ import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.MaximizedLeafData;
 import org.metalib.papifly.fx.docks.layout.data.MinimizedLeafData;
+import org.metalib.papifly.fx.docks.layout.data.RibbonSessionData;
 import org.metalib.papifly.fx.docks.layout.data.RestoreHintData;
 
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ public class DockSessionSerializer {
     private static final String FLOATING_KEY = "floating";
     private static final String MINIMIZED_KEY = "minimized";
     private static final String MAXIMIZED_KEY = "maximized";
+    private static final String RIBBON_KEY = "ribbon";
 
     private static final String LEAF_KEY = "leaf";
     private static final String BOUNDS_KEY = "bounds";
@@ -41,6 +43,9 @@ public class DockSessionSerializer {
     private static final String HINT_TAB_INDEX_KEY = "tabIndex";
     private static final String HINT_SPLIT_POSITION_KEY = "splitPosition";
     private static final String HINT_SIBLING_ID_KEY = "siblingId";
+    private static final String RIBBON_MINIMIZED_KEY = "minimized";
+    private static final String RIBBON_SELECTED_TAB_ID_KEY = "selectedTabId";
+    private static final String RIBBON_QUICK_ACCESS_COMMAND_IDS_KEY = "quickAccessCommandIds";
 
     private static final String TYPE_DOCK_SESSION = "dockSession";
 
@@ -103,6 +108,11 @@ public class DockSessionSerializer {
         // Serialize maximized leaf
         if (session.maximized() != null) {
             map.put(MAXIMIZED_KEY, serializeMaximized(session.maximized()));
+        }
+
+        // Serialize optional ribbon state
+        if (session.ribbon() != null) {
+            map.put(RIBBON_KEY, serializeRibbon(session.ribbon()));
         }
 
         return map;
@@ -179,6 +189,18 @@ public class DockSessionSerializer {
         return map;
     }
 
+    private Map<String, Object> serializeRibbon(RibbonSessionData ribbon) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(RIBBON_MINIMIZED_KEY, ribbon.minimized());
+        if (ribbon.selectedTabId() != null) {
+            map.put(RIBBON_SELECTED_TAB_ID_KEY, ribbon.selectedTabId());
+        }
+        if (ribbon.quickAccessCommandIds() != null && !ribbon.quickAccessCommandIds().isEmpty()) {
+            map.put(RIBBON_QUICK_ACCESS_COMMAND_IDS_KEY, ribbon.quickAccessCommandIds());
+        }
+        return map;
+    }
+
     /**
      * Deserializes a Map to a DockSessionData.
      *
@@ -230,7 +252,13 @@ public class DockSessionSerializer {
             maximized = deserializeMaximized(maximizedMap);
         }
 
-        return new DockSessionData(version, layout, floating, minimized, maximized);
+        RibbonSessionData ribbon = null;
+        Object ribbonValue = map.get(RIBBON_KEY);
+        if (ribbonValue instanceof Map<?, ?> ribbonMap) {
+            ribbon = deserializeRibbon((Map<String, Object>) ribbonMap);
+        }
+
+        return new DockSessionData(version, layout, floating, minimized, maximized, ribbon);
     }
 
     @SuppressWarnings("unchecked")
@@ -314,6 +342,25 @@ public class DockSessionSerializer {
         double splitPosition = ((Number) map.getOrDefault(HINT_SPLIT_POSITION_KEY, 0.5)).doubleValue();
         String siblingId = (String) map.get(HINT_SIBLING_ID_KEY);
         return new RestoreHintData(parentId, zone, tabIndex, splitPosition, siblingId);
+    }
+
+    private RibbonSessionData deserializeRibbon(Map<String, Object> map) {
+        if (map == null) {
+            return null;
+        }
+        boolean minimized = Boolean.TRUE.equals(map.get(RIBBON_MINIMIZED_KEY));
+        String selectedTabId = map.get(RIBBON_SELECTED_TAB_ID_KEY) instanceof String value ? value : null;
+
+        List<String> quickAccessCommandIds = new ArrayList<>();
+        Object quickAccessValue = map.get(RIBBON_QUICK_ACCESS_COMMAND_IDS_KEY);
+        if (quickAccessValue instanceof List<?> ids) {
+            ids.stream()
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .forEach(quickAccessCommandIds::add);
+        }
+
+        return new RibbonSessionData(minimized, selectedTabId, quickAccessCommandIds);
     }
 
     /**

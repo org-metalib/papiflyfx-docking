@@ -33,8 +33,11 @@ import org.metalib.papifly.fx.docks.render.OverlayCanvas;
 import org.metalib.papifly.fx.docks.serial.DockSessionPersistence;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -62,6 +65,7 @@ public class DockManager {
     private final DockSessionService sessionService;
     private final ObjectProperty<RibbonContext> ribbonContext;
     private final Map<DockTabGroup, RibbonContextListenerHandle> ribbonContextListeners;
+    private final LinkedHashSet<DockSessionStateContributor> sessionStateContributors;
 
     private ContentFactory contentFactory;
     private DockTabGroup activeRibbonTabGroup;
@@ -95,6 +99,7 @@ public class DockManager {
         this.rootElement = new SimpleObjectProperty<>();
         this.ribbonContext = new SimpleObjectProperty<>(RibbonContext.empty());
         this.ribbonContextListeners = new IdentityHashMap<>();
+        this.sessionStateContributors = new LinkedHashSet<>();
         this.serviceContext = new ServiceContext();
 
         dockingLayer = new StackPane();
@@ -586,6 +591,37 @@ public class DockManager {
     }
 
     /**
+     * Registers a session-state contributor used during capture and restore.
+     *
+     * @param contributor contributor implementation
+     */
+    public void registerSessionStateContributor(DockSessionStateContributor contributor) {
+        if (contributor != null) {
+            sessionStateContributors.add(contributor);
+        }
+    }
+
+    /**
+     * Removes a previously registered session-state contributor.
+     *
+     * @param contributor contributor implementation
+     */
+    public void unregisterSessionStateContributor(DockSessionStateContributor contributor) {
+        if (contributor != null) {
+            sessionStateContributors.remove(contributor);
+        }
+    }
+
+    /**
+     * Returns a snapshot of registered session-state contributors.
+     *
+     * @return registered contributors
+     */
+    public List<DockSessionStateContributor> getSessionStateContributors() {
+        return List.copyOf(sessionStateContributors);
+    }
+
+    /**
      * Sets up drag handlers for a tab group.
      *
      * @param tabGroup tab group to wire with drag handlers
@@ -750,6 +786,7 @@ public class DockManager {
         floatingService.dispose();
         minMaxService.dispose();
         themeService.dispose();
+        sessionStateContributors.clear();
 
         DockElement root = rootElement.get();
         if (root != null) {
@@ -1205,6 +1242,11 @@ public class DockManager {
         @Override
         public StackPane getRootStack() {
             return rootPane;
+        }
+
+        @Override
+        public List<DockSessionStateContributor> getSessionStateContributors() {
+            return new ArrayList<>(sessionStateContributors);
         }
     }
 }

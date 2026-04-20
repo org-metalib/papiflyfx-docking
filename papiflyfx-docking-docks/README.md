@@ -11,6 +11,8 @@ IDE-style docking framework for JavaFX. Build split/tabbed layouts with drag-and
 - Minimized bar for restoring hidden panels
 - Session capture and JSON persistence
 - Content state adapters with versioned leaf content payloads
+- Ribbon shell host (`RibbonDockHost`) with ServiceLoader-driven tabs/groups
+- Ribbon state persistence (minimized state, selected tab, QAT command ids)
 - Programmatic theming (dark/light)
 
 ## Quick Start
@@ -70,6 +72,26 @@ DockManager dockManager = new DockManager();
 dockManager.restoreSessionFromString(json);
 dockManager.loadSessionFromFile(Paths.get("session.json"));
 ```
+
+### Ribbon host persistence
+
+If you mount dock content through `RibbonDockHost`, ribbon shell state is
+captured/restored through the same dock session payload automatically.
+
+```java
+DockManager dockManager = new DockManager();
+RibbonManager ribbonManager = new RibbonManager(); // ServiceLoader providers
+RibbonDockHost host = new RibbonDockHost(dockManager, ribbonManager, new Ribbon());
+
+String json = dockManager.saveSessionToString();
+dockManager.restoreSessionFromString(json);
+```
+
+Persisted ribbon fields:
+
+- `ribbon.minimized`
+- `ribbon.selectedTabId`
+- `ribbon.quickAccessCommandIds`
 
 ### Restoring content with a factory
 

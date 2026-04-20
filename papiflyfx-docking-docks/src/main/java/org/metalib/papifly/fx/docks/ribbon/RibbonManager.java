@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -129,6 +130,47 @@ public class RibbonManager {
     }
 
     /**
+     * Returns whether a tab with the supplied identifier is currently visible.
+     *
+     * @param tabId tab identifier
+     * @return {@code true} when the current tab model contains the identifier
+     */
+    public boolean hasTab(String tabId) {
+        if (tabId == null || tabId.isBlank()) {
+            return false;
+        }
+        return tabs.stream().anyMatch(tab -> tabId.equals(tab.id()));
+    }
+
+    /**
+     * Resolves command identifiers to currently known command instances.
+     *
+     * <p>Missing identifiers are ignored so persisted state remains tolerant of
+     * removed providers or commands.</p>
+     *
+     * @param commandIds command identifiers to resolve
+     * @return resolved commands in input order without duplicates
+     */
+    public List<PapiflyCommand> resolveCommandsById(List<String> commandIds) {
+        if (commandIds == null || commandIds.isEmpty()) {
+            return List.of();
+        }
+        Map<String, PapiflyCommand> commandsById = collectCommandsById();
+        LinkedHashSet<String> emitted = new LinkedHashSet<>();
+        List<PapiflyCommand> resolved = new ArrayList<>();
+        for (String commandId : commandIds) {
+            if (commandId == null || commandId.isBlank()) {
+                continue;
+            }
+            PapiflyCommand command = commandsById.get(commandId);
+            if (command != null && emitted.add(command.id())) {
+                resolved.add(command);
+            }
+        }
+        return resolved;
+    }
+
+    /**
      * Returns the current ribbon context.
      *
      * @return current ribbon context
@@ -202,6 +244,43 @@ public class RibbonManager {
             .map(TabAccumulator::toSpec)
             .sorted(TAB_COMPARATOR)
             .toList();
+    }
+
+    private Map<String, PapiflyCommand> collectCommandsById() {
+        Map<String, PapiflyCommand> commandsById = new LinkedHashMap<>();
+        quickAccessCommands.stream()
+            .filter(Objects::nonNull)
+            .forEach(command -> commandsById.putIfAbsent(command.id(), command));
+        for (RibbonTabSpec tab : tabs) {
+            for (RibbonGroupSpec group : tab.groups()) {
+                if (group.dialogLauncher() != null) {
+                    commandsById.putIfAbsent(group.dialogLauncher().id(), group.dialogLauncher());
+                }
+                group.controls().forEach(control -> collectControlCommands(control, commandsById));
+            }
+        }
+        return commandsById;
+    }
+
+    private static void collectControlCommands(RibbonControlSpec control, Map<String, PapiflyCommand> commandsById) {
+        switch (control) {
+            case org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec button ->
+                commandsById.putIfAbsent(button.command().id(), button.command());
+            case org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec toggle ->
+                commandsById.putIfAbsent(toggle.command().id(), toggle.command());
+            case org.metalib.papifly.fx.api.ribbon.RibbonSplitButtonSpec split -> {
+                commandsById.putIfAbsent(split.primaryCommand().id(), split.primaryCommand());
+                split.secondaryCommands().stream()
+                    .filter(Objects::nonNull)
+                    .forEach(command -> commandsById.putIfAbsent(command.id(), command));
+            }
+            case org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec menu ->
+                menu.items().stream()
+                    .filter(Objects::nonNull)
+                    .forEach(command -> commandsById.putIfAbsent(command.id(), command));
+            default -> {
+            }
+        }
     }
 
     private static List<RibbonProvider> discoverProviders(ClassLoader classLoader) {

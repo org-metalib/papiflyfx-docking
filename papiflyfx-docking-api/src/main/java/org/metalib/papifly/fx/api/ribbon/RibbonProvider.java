@@ -8,7 +8,10 @@ import java.util.List;
  * <p>Hosts discover providers with {@link java.util.ServiceLoader} and merge
  * the returned tab descriptors into the active ribbon model. Contributing
  * modules register provider implementations in
- * {@code META-INF/services/org.metalib.papifly.fx.api.ribbon.RibbonProvider}.</p>
+ * {@code META-INF/services/org.metalib.papifly.fx.api.ribbon.RibbonProvider}.
+ * Keep {@link RibbonTabSpec#id()} and {@link PapiflyCommand#id()} values
+ * stable because hosts may persist selected tabs and Quick Access Toolbar
+ * command sets by identifier.</p>
  */
 public interface RibbonProvider {
 

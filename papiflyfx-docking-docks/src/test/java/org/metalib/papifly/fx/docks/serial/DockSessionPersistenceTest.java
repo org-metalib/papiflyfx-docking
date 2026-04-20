@@ -10,6 +10,7 @@ import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.MaximizedLeafData;
 import org.metalib.papifly.fx.docks.layout.data.MinimizedLeafData;
+import org.metalib.papifly.fx.docks.layout.data.RibbonSessionData;
 import org.metalib.papifly.fx.docks.layout.data.RestoreHintData;
 import org.metalib.papifly.fx.docks.layout.data.SplitData;
 import org.metalib.papifly.fx.docks.layout.data.TabGroupData;
@@ -59,6 +60,18 @@ class DockSessionPersistenceTest {
     @Test
     void testRoundTrip_session() {
         DockSessionData original = buildSession();
+
+        String json = persistence.toJsonString(original);
+        DockSessionData restored = persistence.fromJsonString(json);
+
+        assertEquals(original, restored);
+    }
+
+    @Test
+    void testRoundTrip_sessionWithRibbonState() {
+        DockSessionData original = buildSession().withRibbon(
+            new RibbonSessionData(true, "hugo", List.of("cmd.save", "cmd.preview"))
+        );
 
         String json = persistence.toJsonString(original);
         DockSessionData restored = persistence.fromJsonString(json);

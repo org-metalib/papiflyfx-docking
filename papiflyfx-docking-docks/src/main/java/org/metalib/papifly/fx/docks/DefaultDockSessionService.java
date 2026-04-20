@@ -98,7 +98,8 @@ final class DefaultDockSessionService implements DockSessionService {
             maximizedData = new MaximizedLeafData(leafData, toRestoreHintData(minMaxService.getMaximizeRestoreHint()));
         }
 
-        return DockSessionData.of(layout, floatingList, minimizedList, maximizedData);
+        DockSessionData session = DockSessionData.of(layout, floatingList, minimizedList, maximizedData);
+        return applySessionContributorsOnCapture(session);
     }
 
     @Override
@@ -158,6 +159,8 @@ final class DefaultDockSessionService implements DockSessionService {
                 minMaxService.addMinimizedLeaf(leaf, toRestoreHint(minimizedData.restoreHint()));
             }
         }
+
+        applySessionContributorsOnRestore(session);
     }
 
     @Override
@@ -303,5 +306,36 @@ final class DefaultDockSessionService implements DockSessionService {
             return null;
         }
         return new Rectangle2D(boundsData.x(), boundsData.y(), boundsData.width(), boundsData.height());
+    }
+
+    private DockSessionData applySessionContributorsOnCapture(DockSessionData session) {
+        DockSessionData current = session;
+        for (DockSessionStateContributor contributor : context.getSessionStateContributors()) {
+            if (contributor == null || current == null) {
+                continue;
+            }
+            try {
+                DockSessionData contributed = contributor.captureSessionState(current);
+                if (contributed != null) {
+                    current = contributed;
+                }
+            } catch (RuntimeException exception) {
+                LOG.log(Level.WARNING, "Session contributor capture failed: " + contributor.getClass().getName(), exception);
+            }
+        }
+        return current;
+    }
+
+    private void applySessionContributorsOnRestore(DockSessionData session) {
+        for (DockSessionStateContributor contributor : context.getSessionStateContributors()) {
+            if (contributor == null) {
+                continue;
+            }
+            try {
+                contributor.restoreSessionState(session);
+            } catch (RuntimeException exception) {
+                LOG.log(Level.WARNING, "Session contributor restore failed: " + contributor.getClass().getName(), exception);
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.docks.ribbon;
 
 import javafx.scene.layout.BorderPane;
 import org.metalib.papifly.fx.docks.DockManager;
+import org.metalib.papifly.fx.docks.DockSessionStateContributor;
 
 import java.util.Objects;
 
@@ -13,6 +14,7 @@ public class RibbonDockHost extends BorderPane {
     private final DockManager dockManager;
     private final RibbonManager ribbonManager;
     private final Ribbon ribbon;
+    private final DockSessionStateContributor sessionStateContributor;
 
     /**
      * Creates a host with default ribbon shell/runtime instances.
@@ -34,6 +36,7 @@ public class RibbonDockHost extends BorderPane {
         this.dockManager = Objects.requireNonNull(dockManager, "dockManager");
         this.ribbonManager = Objects.requireNonNull(ribbonManager, "ribbonManager");
         this.ribbon = Objects.requireNonNull(ribbon, "ribbon");
+        this.sessionStateContributor = new RibbonSessionStateContributor(this.ribbon);
 
         getStyleClass().add("pf-ribbon-dock-host");
         setMinSize(0, 0);
@@ -45,6 +48,7 @@ public class RibbonDockHost extends BorderPane {
         if (!this.ribbonManager.contextProperty().isBound()) {
             this.ribbonManager.contextProperty().bind(this.dockManager.ribbonContextProperty());
         }
+        this.dockManager.registerSessionStateContributor(sessionStateContributor);
 
         setTop(this.ribbon);
         setCenter(this.dockManager.getRootPane());
@@ -75,5 +79,12 @@ public class RibbonDockHost extends BorderPane {
      */
     public Ribbon getRibbon() {
         return ribbon;
+    }
+
+    /**
+     * Unregisters host-specific bindings and session contributors.
+     */
+    public void dispose() {
+        dockManager.unregisterSessionStateContributor(sessionStateContributor);
     }
 }

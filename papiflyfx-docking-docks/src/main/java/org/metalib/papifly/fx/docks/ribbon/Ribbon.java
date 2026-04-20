@@ -18,6 +18,7 @@ import javafx.scene.layout.VBox;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.docks.layout.data.RibbonSessionData;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.util.Comparator;
@@ -204,6 +205,43 @@ public class Ribbon extends VBox {
         quickAccessToolbar.setClassLoader(this.manager.getClassLoader());
         refreshQuickAccessToolbar();
         refreshTabs();
+    }
+
+    /**
+     * Captures ribbon-only session state.
+     *
+     * @return ribbon session payload
+     */
+    public RibbonSessionData captureSessionState() {
+        List<String> quickAccessCommandIds = manager == null
+            ? List.of()
+            : manager.getQuickAccessCommands().stream()
+                .filter(Objects::nonNull)
+                .map(PapiflyCommand::id)
+                .distinct()
+                .toList();
+        return new RibbonSessionData(isMinimized(), getSelectedTabId(), quickAccessCommandIds);
+    }
+
+    /**
+     * Restores ribbon-only session state. Missing tabs or commands are ignored
+     * so persisted state remains tolerant of unavailable providers.
+     *
+     * @param state ribbon session payload
+     */
+    public void restoreSessionState(RibbonSessionData state) {
+        if (state == null || manager == null) {
+            return;
+        }
+        manager.getQuickAccessCommands().setAll(manager.resolveCommandsById(state.quickAccessCommandIds()));
+        if (state.selectedTabId() != null && manager.hasTab(state.selectedTabId())) {
+            setSelectedTabId(state.selectedTabId());
+        } else if (!manager.getTabs().isEmpty()) {
+            setSelectedTabId(manager.getTabs().getFirst().id());
+        } else {
+            setSelectedTabId(null);
+        }
+        setMinimized(state.minimized());
     }
 
     private void refreshQuickAccessToolbar() {

@@ -1,6 +1,6 @@
 # papiflyfx-docking
 
-A multi-module Java/JavaFX framework for IDE-style docking layouts — drag-and-drop panels, floating windows, minimize/maximize, tab groups, and JSON session persistence.
+A multi-module Java/JavaFX framework for IDE-style docking layouts and command ribbons — drag-and-drop panels, floating windows, minimize/maximize, tab groups, and JSON session persistence.
 
 ## Overview
 
@@ -133,9 +133,9 @@ papiflyfx-docking/
 
 | Module | Description |
 |--------|-------------|
-| `papiflyfx-docking-api` | Shared docking API plus `Theme`, shared UI metrics, CSS token helpers, and lightweight reusable UI primitives |
+| `papiflyfx-docking-api` | Shared docking API plus `Theme`, shared UI metrics, CSS token helpers, lightweight reusable UI primitives, and ribbon contribution SPI (`org.metalib.papifly.fx.api.ribbon`) |
 | `papiflyfx-docking-settings-api` | Settings and secret-management SPI |
-| `papiflyfx-docking-docks` | Core docking/layout UI — drag-and-drop, floating windows, minimize/maximize, JSON session persistence |
+| `papiflyfx-docking-docks` | Core docking/layout UI — drag-and-drop, floating windows, minimize/maximize, JSON session persistence, and ribbon runtime hosting (`Ribbon`, `RibbonManager`, `RibbonDockHost`) |
 | `papiflyfx-docking-settings` | Composable settings runtime, event-driven UI, tokenized styling, and secure secret storage |
 | `papiflyfx-docking-login-idapi` | Identity-provider SPI and built-in provider contracts |
 | `papiflyfx-docking-login-session-api` | Authentication session lifecycle and storage SPI |
@@ -202,6 +202,7 @@ The generated project includes a multi-module structure with DockManager starter
 ## Documentation
 
 - Module specs and design docs: `spec/` directory
+- Ribbon implementation dossier: `spec/papiflyfx-docking-docks/2026-04-19-0-ribbon/`
 - UI standards research and rollout plan: `spec/ui-standards/research.md`, `spec/ui-standards/plan.md`
 - Agent operating model, playbook, prompt pack, and cheat sheet: `spec/agents/README.md`, `spec/agents/playbook.md`, `spec/agents/prompts.md`, and `spec/agents/cheatsheet.md`
 

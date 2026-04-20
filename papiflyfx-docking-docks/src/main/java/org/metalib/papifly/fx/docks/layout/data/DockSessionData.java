@@ -11,15 +11,17 @@ import java.util.List;
  * @param floating serialized floating leaves
  * @param minimized serialized minimized leaves
  * @param maximized serialized maximized leaf state
+ * @param ribbon optional ribbon state payload
  */
 public record DockSessionData(
     int version,
     LayoutNode layout,
     List<FloatingLeafData> floating,
     List<MinimizedLeafData> minimized,
-    MaximizedLeafData maximized
+    MaximizedLeafData maximized,
+    RibbonSessionData ribbon
 ) {
-    public static final int CURRENT_VERSION = 1;
+    public static final int CURRENT_VERSION = 2;
 
     /**
      * Creates a DockSessionData with current version.
@@ -36,7 +38,27 @@ public record DockSessionData(
         List<MinimizedLeafData> minimized,
         MaximizedLeafData maximized
     ) {
-        return new DockSessionData(CURRENT_VERSION, layout, floating, minimized, maximized);
+        return of(layout, floating, minimized, maximized, null);
+    }
+
+    /**
+     * Creates a DockSessionData with current version and optional ribbon state.
+     *
+     * @param layout serialized docked layout tree
+     * @param floating serialized floating leaves
+     * @param minimized serialized minimized leaves
+     * @param maximized serialized maximized leaf state
+     * @param ribbon optional ribbon state payload
+     * @return session data using {@link #CURRENT_VERSION}
+     */
+    public static DockSessionData of(
+        LayoutNode layout,
+        List<FloatingLeafData> floating,
+        List<MinimizedLeafData> minimized,
+        MaximizedLeafData maximized,
+        RibbonSessionData ribbon
+    ) {
+        return new DockSessionData(CURRENT_VERSION, layout, floating, minimized, maximized, ribbon);
     }
 
     /**
@@ -45,6 +67,16 @@ public record DockSessionData(
      * @return empty session data using {@link #CURRENT_VERSION}
      */
     public static DockSessionData empty() {
-        return new DockSessionData(CURRENT_VERSION, null, List.of(), List.of(), null);
+        return new DockSessionData(CURRENT_VERSION, null, List.of(), List.of(), null, null);
+    }
+
+    /**
+     * Returns a copy with the supplied ribbon session state.
+     *
+     * @param ribbon optional ribbon state payload
+     * @return copied session state
+     */
+    public DockSessionData withRibbon(RibbonSessionData ribbon) {
+        return new DockSessionData(version, layout, floating, minimized, maximized, ribbon);
     }
 }

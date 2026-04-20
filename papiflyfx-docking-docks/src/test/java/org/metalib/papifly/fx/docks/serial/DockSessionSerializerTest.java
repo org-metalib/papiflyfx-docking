@@ -10,15 +10,18 @@ import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.MaximizedLeafData;
 import org.metalib.papifly.fx.docks.layout.data.MinimizedLeafData;
+import org.metalib.papifly.fx.docks.layout.data.RibbonSessionData;
 import org.metalib.papifly.fx.docks.layout.data.RestoreHintData;
 import org.metalib.papifly.fx.docks.layout.data.SplitData;
 import org.metalib.papifly.fx.docks.layout.data.TabGroupData;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -69,6 +72,54 @@ class DockSessionSerializerTest {
         DockSessionData restored = serializer.deserialize(map);
 
         assertEquals(session, restored);
+    }
+
+    @Test
+    void serializeDeserialize_roundTrip_withRibbonState() {
+        DockSessionData session = DockSessionData.of(
+            null,
+            List.of(),
+            List.of(),
+            null,
+            new RibbonSessionData(true, "hugo-editor", List.of("github.fetch", "hugo.preview"))
+        );
+
+        Map<String, Object> map = serializer.serialize(session);
+        DockSessionData restored = serializer.deserialize(map);
+
+        assertEquals(session, restored);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void deserialize_missingRibbonPayload_staysBackwardCompatible() {
+        DockSessionData session = buildSession("Editor 2");
+        Map<String, Object> map = serializer.serialize(session);
+        map.remove("ribbon");
+
+        DockSessionData restored = serializer.deserialize(map);
+
+        assertNull(restored.ribbon());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void deserialize_ribbonPayload_filtersInvalidQuickAccessIds() {
+        Map<String, Object> map = serializer.serialize(buildSession("Editor 2"));
+        Map<String, Object> ribbonMap = new LinkedHashMap<>();
+        ribbonMap.put("minimized", true);
+        ribbonMap.put("selectedTabId", "home");
+        List<Object> quickAccessIds = new ArrayList<>();
+        quickAccessIds.add("valid-id");
+        quickAccessIds.add(42);
+        quickAccessIds.add(null);
+        quickAccessIds.add("another-id");
+        ribbonMap.put("quickAccessCommandIds", quickAccessIds);
+        map.put("ribbon", ribbonMap);
+
+        DockSessionData restored = serializer.deserialize(map);
+
+        assertEquals(new RibbonSessionData(true, "home", List.of("valid-id", "another-id")), restored.ribbon());
     }
 
     @Test
