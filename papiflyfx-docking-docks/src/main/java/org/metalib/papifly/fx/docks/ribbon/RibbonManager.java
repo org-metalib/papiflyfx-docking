@@ -39,7 +39,7 @@ public class RibbonManager {
             .thenComparing(RibbonTabSpec::id);
     private static final Comparator<RibbonGroupSpec> GROUP_COMPARATOR =
         Comparator.comparingInt(RibbonGroupSpec::order)
-            .thenComparingInt(RibbonGroupSpec::reductionPriority)
+            .thenComparingInt(RibbonGroupSpec::collapseOrder)
             .thenComparing(RibbonGroupSpec::id);
 
     private final ObservableList<RibbonProvider> providers = FXCollections.observableArrayList();
@@ -330,7 +330,7 @@ public class RibbonManager {
         private final String id;
         private final String label;
         private final int order;
-        private final int reductionPriority;
+        private final int collapseOrder;
         private PapiflyCommand dialogLauncher;
         private final List<RibbonControlSpec> controls = new ArrayList<>();
 
@@ -338,7 +338,7 @@ public class RibbonManager {
             this.id = initial.id();
             this.label = initial.label();
             this.order = initial.order();
-            this.reductionPriority = initial.reductionPriority();
+            this.collapseOrder = initial.collapseOrder();
             this.dialogLauncher = initial.dialogLauncher();
             merge(initial);
         }
@@ -351,7 +351,7 @@ public class RibbonManager {
         }
 
         private RibbonGroupSpec toSpec() {
-            return new RibbonGroupSpec(id, label, order, reductionPriority, dialogLauncher, controls);
+            return new RibbonGroupSpec(id, label, order, collapseOrder, dialogLauncher, controls);
         }
     }
 }

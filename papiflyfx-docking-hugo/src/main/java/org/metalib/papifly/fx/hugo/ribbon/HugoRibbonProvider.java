@@ -1,6 +1,6 @@
 package org.metalib.papifly.fx.hugo.ribbon;
 
-import javafx.beans.property.SimpleBooleanProperty;
+import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
@@ -24,9 +24,13 @@ import java.util.Optional;
  */
 public final class HugoRibbonProvider implements RibbonProvider {
 
-    private static final int HIGH_PRIORITY = 30;
-    private static final int MEDIUM_PRIORITY = 20;
-    private static final int LOW_PRIORITY = 10;
+    /**
+     * Collapse-order constants for Hugo groups. Higher values stay visible
+     * longer under adaptive layout (see {@code RibbonGroupSpec#collapseOrder}).
+     */
+    private static final int COLLAPSE_LATE = 30;
+    private static final int COLLAPSE_MID = 20;
+    private static final int COLLAPSE_EARLY = 10;
 
     @Override
     public String id() {
@@ -111,7 +115,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             "hugo-development",
             "Development",
             0,
-            HIGH_PRIORITY,
+            COLLAPSE_LATE,
             null,
             List.of(new RibbonToggleSpec(toggle))
         );
@@ -149,7 +153,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             "hugo-new-content",
             "New Content",
             10,
-            HIGH_PRIORITY,
+            COLLAPSE_LATE,
             null,
             List.of(new RibbonSplitButtonSpec(primary, List.of(page, draft)))
         );
@@ -160,7 +164,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             "hugo-build",
             "Build",
             20,
-            HIGH_PRIORITY,
+            COLLAPSE_LATE,
             null,
             List.of(new RibbonButtonSpec(command(
                 "build.site",
@@ -206,7 +210,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             "hugo-modules",
             "Modules",
             30,
-            MEDIUM_PRIORITY,
+            COLLAPSE_MID,
             null,
             List.of(new RibbonMenuSpec(
                 "hugo-mod-menu",
@@ -224,7 +228,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             "hugo-environment",
             "Environment",
             40,
-            LOW_PRIORITY,
+            COLLAPSE_EARLY,
             null,
             List.of(new RibbonButtonSpec(command(
                 "environment.env",
@@ -243,7 +247,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             "hugo-editor-front-matter",
             "Front Matter",
             0,
-            MEDIUM_PRIORITY,
+            COLLAPSE_MID,
             null,
             List.of(new RibbonButtonSpec(command(
                 "editor.front-matter",
@@ -280,7 +284,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             "hugo-editor-shortcodes",
             "Shortcodes",
             10,
-            LOW_PRIORITY,
+            COLLAPSE_EARLY,
             null,
             List.of(new RibbonMenuSpec(
                 "hugo-editor-shortcodes-menu",
@@ -309,7 +313,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             tooltip,
             icon(octiconName),
             icon(octiconName),
-            new SimpleBooleanProperty(enabled),
+            new MutableBoolState(enabled),
             null,
             () -> actions.ifPresent(run)
         );
@@ -332,8 +336,8 @@ public final class HugoRibbonProvider implements RibbonProvider {
             tooltip,
             icon(octiconName),
             icon(octiconName),
-            new SimpleBooleanProperty(enabled),
-            new SimpleBooleanProperty(selected),
+            new MutableBoolState(enabled),
+            new MutableBoolState(selected),
             () -> actions.ifPresent(run)
         );
     }

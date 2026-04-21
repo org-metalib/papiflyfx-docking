@@ -75,7 +75,7 @@ class HugoRibbonProviderTest {
         List<RibbonTabSpec> markdownTabs = visibleTabs(provider, markdownContext);
         assertTrue(markdownTabs.stream().anyMatch(tab -> tab.id().equals("hugo-editor")));
         RibbonTabSpec editorTab = markdownTabs.stream().filter(tab -> tab.id().equals("hugo-editor")).findFirst().orElseThrow();
-        assertFalse(command(editorTab, "hugo.ribbon.editor.front-matter").enabledProperty().get());
+        assertFalse(command(editorTab, "hugo.ribbon.editor.front-matter").enabled().get());
 
         RibbonContext javaContext = new RibbonContext(
             "dock-java",

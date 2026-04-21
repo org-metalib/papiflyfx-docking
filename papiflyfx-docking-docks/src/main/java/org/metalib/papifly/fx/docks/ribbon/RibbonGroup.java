@@ -150,7 +150,7 @@ public class RibbonGroup extends VBox {
         }
         launcherButton.setManaged(true);
         launcherButton.setVisible(true);
-        launcherButton.disableProperty().bind(launcher.enabledProperty().not());
+        launcherButton.disableProperty().bind(JavaFxCommandBindings.readOnly(launcher.enabled()).not());
         launcherButton.setOnAction(event -> launcher.execute());
         String tooltip = launcher.tooltip() == null || launcher.tooltip().isBlank()
             ? launcher.label()

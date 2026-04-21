@@ -58,18 +58,18 @@ class GitHubRibbonProviderTest {
         assertEquals(1, actions.commitCount);
         assertEquals(1, actions.discardCount);
 
-        assertFalse(command(tab, "github.ribbon.merge").enabledProperty().get());
-        assertFalse(command(tab, "github.ribbon.rebase").enabledProperty().get());
-        assertFalse(command(tab, "github.ribbon.stage").enabledProperty().get());
+        assertFalse(command(tab, "github.ribbon.merge").enabled().get());
+        assertFalse(command(tab, "github.ribbon.rebase").enabled().get());
+        assertFalse(command(tab, "github.ribbon.stage").enabled().get());
     }
 
     @Test
     void disablesCommandsWithoutActiveGitHubActions() {
         GitHubRibbonProvider provider = new GitHubRibbonProvider();
         RibbonTabSpec tab = provider.getTabs(RibbonContext.empty()).getFirst();
-        assertFalse(command(tab, "github.ribbon.pull").enabledProperty().get());
-        assertFalse(command(tab, "github.ribbon.push").enabledProperty().get());
-        assertFalse(command(tab, "github.ribbon.commit").enabledProperty().get());
+        assertFalse(command(tab, "github.ribbon.pull").enabled().get());
+        assertFalse(command(tab, "github.ribbon.push").enabled().get());
+        assertFalse(command(tab, "github.ribbon.commit").enabled().get());
     }
 
     private static PapiflyCommand command(RibbonTabSpec tab, String id) {

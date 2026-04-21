@@ -1,6 +1,6 @@
 package org.metalib.papifly.fx.samples.docks.ribbon;
 
-import javafx.beans.property.SimpleBooleanProperty;
+import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
@@ -144,7 +144,7 @@ public final class SampleRibbonProvider implements RibbonProvider {
             null,
             null,
             null,
-            new SimpleBooleanProperty(selected),
+            new MutableBoolState(selected),
             () -> {}
         );
     }

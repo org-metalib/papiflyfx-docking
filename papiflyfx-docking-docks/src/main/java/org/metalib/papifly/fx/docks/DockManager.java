@@ -914,11 +914,18 @@ public class DockManager {
                 attributes.put(RibbonContextAttributes.CONTENT_STATE, new LinkedHashMap<>(contentData.state()));
             }
         }
-        if (leaf.getContent() != null) {
-            attributes.put(RibbonContextAttributes.ACTIVE_CONTENT_NODE, leaf.getContent());
+        Map<Class<?>, Object> capabilities = new LinkedHashMap<>();
+        Node contentNode = leaf.getContent();
+        if (contentNode != null) {
+            // Ribbon 2: still expose ACTIVE_CONTENT_NODE as a transitional bridge.
+            // The deprecated attribute will be removed once provider migration completes.
+            attributes.put(RibbonContextAttributes.ACTIVE_CONTENT_NODE, contentNode);
+            // Register the content node under its concrete class so providers can
+            // resolve typed capabilities through RibbonContext#capability(Class).
+            capabilities.put(contentNode.getClass(), contentNode);
         }
 
-        return new RibbonContext(metadata.id(), contentId, contentTypeKey, attributes);
+        return new RibbonContext(metadata.id(), contentId, contentTypeKey, attributes, capabilities);
     }
 
     private void cleanupStaleRibbonContextListeners() {

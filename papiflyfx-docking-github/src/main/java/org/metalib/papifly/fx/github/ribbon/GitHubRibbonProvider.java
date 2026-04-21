@@ -1,6 +1,6 @@
 package org.metalib.papifly.fx.github.ribbon;
 
-import javafx.beans.property.SimpleBooleanProperty;
+import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
@@ -19,9 +19,13 @@ import java.util.Optional;
  */
 public final class GitHubRibbonProvider implements RibbonProvider {
 
-    private static final int HIGH_PRIORITY = 30;
-    private static final int MEDIUM_PRIORITY = 20;
-    private static final int LOW_PRIORITY = 10;
+    /**
+     * Collapse-order constants for GitHub groups. Higher values stay visible
+     * longer under adaptive layout (see {@code RibbonGroupSpec#collapseOrder}).
+     */
+    private static final int COLLAPSE_LATE = 30;
+    private static final int COLLAPSE_MID = 20;
+    private static final int COLLAPSE_EARLY = 10;
 
     @Override
     public String id() {
@@ -56,7 +60,7 @@ public final class GitHubRibbonProvider implements RibbonProvider {
             "github-sync",
             "Sync",
             0,
-            HIGH_PRIORITY,
+            COLLAPSE_LATE,
             null,
             List.of(
                 new RibbonButtonSpec(command("pull", "Pull", "Pull and update from remote", "repo-pull", actions, GitHubRibbonActions::canPull, GitHubRibbonActions::pull)),
@@ -71,7 +75,7 @@ public final class GitHubRibbonProvider implements RibbonProvider {
             "github-branches",
             "Branches",
             10,
-            MEDIUM_PRIORITY,
+            COLLAPSE_MID,
             null,
             List.of(
                 new RibbonButtonSpec(command("new-branch", "New Branch", "Create and checkout a branch", "git-branch", actions, GitHubRibbonActions::canCreateBranch, GitHubRibbonActions::createBranch)),
@@ -86,7 +90,7 @@ public final class GitHubRibbonProvider implements RibbonProvider {
             "github-collaborate",
             "Collaborate",
             20,
-            LOW_PRIORITY,
+            COLLAPSE_EARLY,
             null,
             List.of(
                 new RibbonButtonSpec(command("pull-request", "Pull Request", "Create a pull request", "git-pull-request", actions, GitHubRibbonActions::canPullRequest, GitHubRibbonActions::pullRequest)),
@@ -100,7 +104,7 @@ public final class GitHubRibbonProvider implements RibbonProvider {
             "github-state",
             "State",
             30,
-            HIGH_PRIORITY,
+            COLLAPSE_LATE,
             null,
             List.of(
                 new RibbonButtonSpec(command("commit", "Commit", "Create a commit", "git-commit", actions, GitHubRibbonActions::canCommit, GitHubRibbonActions::commit)),
@@ -127,7 +131,7 @@ public final class GitHubRibbonProvider implements RibbonProvider {
             tooltip,
             icon(octiconName),
             icon(octiconName),
-            new SimpleBooleanProperty(enabled),
+            new MutableBoolState(enabled),
             null,
             action
         );

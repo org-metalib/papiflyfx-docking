@@ -47,8 +47,8 @@ public class Ribbon extends VBox {
     private final Button minimizeButton = new Button("Collapse");
     private final BorderPane header = new BorderPane();
     private final HBox headerActions = new HBox();
-    private final Comparator<RibbonGroup> reductionComparator =
-        Comparator.comparingInt((RibbonGroup group) -> group.getSpec().reductionPriority())
+    private final Comparator<RibbonGroup> collapseOrderComparator =
+        Comparator.comparingInt((RibbonGroup group) -> group.getSpec().collapseOrder())
             .thenComparingInt(group -> group.getSpec().order())
             .thenComparing(group -> group.getSpec().id());
 
@@ -334,7 +334,7 @@ public class Ribbon extends VBox {
             return;
         }
 
-        for (RibbonGroup group : groups.stream().sorted(reductionComparator).toList()) {
+        for (RibbonGroup group : groups.stream().sorted(collapseOrderComparator).toList()) {
             while (totalWidth > availableWidth && group.getSizeMode() != RibbonGroupSizeMode.COLLAPSED) {
                 group.setSizeMode(group.getSizeMode().smaller());
                 totalWidth = estimatedTotalWidth(groups);

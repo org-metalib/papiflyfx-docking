@@ -110,7 +110,7 @@ final class RibbonControlFactory {
         ToggleButton toggle = new ToggleButton();
         toggle.getStyleClass().add("pf-ribbon-toggle-button");
         configureGroupCommand(toggle, command, classLoader, mode);
-        toggle.selectedProperty().bindBidirectional(command.selectedProperty());
+        toggle.selectedProperty().bindBidirectional(JavaFxCommandBindings.bidirectional(command.selected()));
         toggle.setOnAction(event -> command.execute());
         return toggle;
     }
@@ -150,7 +150,7 @@ final class RibbonControlFactory {
         MenuItem item = new MenuItem(command.label());
         Node graphic = createGraphic(command.label(), command.smallIcon(), command.largeIcon(), true, false, classLoader);
         item.setGraphic(graphic);
-        item.disableProperty().bind(command.enabledProperty().not());
+        item.disableProperty().bind(JavaFxCommandBindings.readOnly(command.enabled()).not());
         item.setOnAction(event -> command.execute());
         return item;
     }
@@ -171,7 +171,7 @@ final class RibbonControlFactory {
             mode
         );
         if (labeled instanceof ButtonBase buttonBase) {
-            buttonBase.disableProperty().bind(command.enabledProperty().not());
+            buttonBase.disableProperty().bind(JavaFxCommandBindings.readOnly(command.enabled()).not());
         }
     }
 
@@ -231,7 +231,7 @@ final class RibbonControlFactory {
             classLoader
         );
         if (labeled instanceof ButtonBase buttonBase) {
-            buttonBase.disableProperty().bind(command.enabledProperty().not());
+            buttonBase.disableProperty().bind(JavaFxCommandBindings.readOnly(command.enabled()).not());
         }
     }
 
