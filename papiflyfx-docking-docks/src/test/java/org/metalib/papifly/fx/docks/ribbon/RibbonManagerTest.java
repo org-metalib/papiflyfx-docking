@@ -282,6 +282,34 @@ class RibbonManagerTest {
             manager.getQuickAccessCommands().stream().map(PapiflyCommand::id).toList());
     }
 
+    @Test
+    void mergesSingleContributionWithoutDoubleCountingControls() {
+        RibbonProvider provider = new TestProvider("provider", 0, context -> List.of(
+            new RibbonTabSpec(
+                "home",
+                "Home",
+                0,
+                false,
+                ribbonContext -> true,
+                List.of(new RibbonGroupSpec(
+                    "actions",
+                    "Actions",
+                    0,
+                    0,
+                    null,
+                    List.of(new RibbonButtonSpec(PapiflyCommand.of("save", "Save", () -> {
+                    })))
+                ))
+            )
+        ));
+
+        RibbonManager manager = new RibbonManager(List.of(provider));
+
+        assertEquals(1, manager.getTabs().size());
+        assertEquals(1, manager.getTabs().getFirst().groups().size());
+        assertEquals(1, manager.getTabs().getFirst().groups().getFirst().controls().size());
+    }
+
     private static PapiflyCommand extractFirstButtonCommand(RibbonManager manager) {
         RibbonControlSpec control = manager.getTabs().getFirst().groups().getFirst().controls().getFirst();
         return ((RibbonButtonSpec) control).command();

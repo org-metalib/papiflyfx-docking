@@ -1,14 +1,18 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonIconHandle;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 import org.metalib.papifly.fx.docks.testutil.FxTestUtil;
@@ -16,26 +20,50 @@ import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
 class RibbonAdaptiveLayoutFxTest {
 
+    private static final String SAMPLE_PNG_URI = Path.of(
+        "/Users/igor/github/ikatraev/mixhawkmusic-ws/github/papiflyfx-docking/target/papiflyfx-docking/papiflyfx-docking-samples/src/main/resources/sample-media/sample.png"
+    ).toUri().toString();
+
     private final AtomicInteger alphaExecutions = new AtomicInteger();
+    private final AtomicReference<List<RibbonTabSpec>> tabs = new AtomicReference<>();
+    private final RibbonLayoutTelemetryRecorder telemetry = new RibbonLayoutTelemetryRecorder();
 
     private StackPane host;
     private Ribbon ribbon;
+    private RibbonManager manager;
+
+    @BeforeEach
+    void resetProviderState() {
+        tabs.set(defaultTabs());
+        telemetry.clear();
+        alphaExecutions.set(0);
+    }
 
     @Start
     private void start(Stage stage) {
-        RibbonManager manager = new RibbonManager(List.of(new TestRibbonProvider()));
+        if (tabs.get() == null || tabs.get().isEmpty()) {
+            tabs.set(defaultTabs());
+        }
+        manager = new RibbonManager(List.of(new TestRibbonProvider()));
         ribbon = new Ribbon(manager);
+        ribbon.setLayoutTelemetry(telemetry);
         host = new StackPane(ribbon);
         host.setAlignment(javafx.geometry.Pos.TOP_LEFT);
         host.setPrefSize(1200, 280);
@@ -44,6 +72,7 @@ class RibbonAdaptiveLayoutFxTest {
         stage.setScene(new Scene(host, 1200, 280));
         stage.show();
         settleFx();
+        telemetry.clear();
     }
 
     @Test
@@ -80,6 +109,83 @@ class RibbonAdaptiveLayoutFxTest {
         assertEquals(RibbonGroupSizeMode.LARGE, group("alpha").getSizeMode());
         assertEquals(RibbonGroupSizeMode.LARGE, group("beta").getSizeMode());
         assertEquals(RibbonGroupSizeMode.LARGE, group("gamma").getSizeMode());
+    }
+
+    @Test
+    void repeatedRefreshWithIdenticalTabsProducesOnlyCacheHits() {
+        FxTestUtil.runFx(manager::refresh);
+        settleFx();
+
+        assertTrue(telemetry.tabRebuilds().isEmpty());
+        assertTrue(telemetry.groupRebuilds().isEmpty());
+        assertTrue(telemetry.controlRebuilds().isEmpty());
+        assertTrue(telemetry.cacheHits().stream().anyMatch(event -> event.kind() == RibbonLayoutTelemetry.CacheKind.TAB));
+        assertTrue(telemetry.cacheHits().stream().anyMatch(event -> event.kind() == RibbonLayoutTelemetry.CacheKind.GROUP));
+        assertTrue(telemetry.cacheHits().stream().anyMatch(event -> event.kind() == RibbonLayoutTelemetry.CacheKind.CONTROL));
+    }
+
+    @Test
+    void structuralChangeEmitsExactlyOneControlRebuild() {
+        FxTestUtil.runFx(() -> tabs.set(structuralChangeTabs()));
+        FxTestUtil.runFx(manager::refresh);
+        settleFx();
+
+        assertEquals(1, telemetry.controlRebuilds().stream()
+            .filter(event -> event.reason() == RibbonLayoutTelemetry.RebuildReason.STRUCTURAL)
+            .count());
+        assertEquals(1, telemetry.controlRebuilds().stream()
+            .filter(event -> "alpha-4".equals(event.controlId()))
+            .filter(event -> event.reason() == RibbonLayoutTelemetry.RebuildReason.STRUCTURAL)
+            .count());
+    }
+
+    @Test
+    void collapseTransitionsShrinkThenRestoreInReverseOrderWithoutControlLoss() {
+        shrinkUntil(() -> group("gamma").getSizeMode() == RibbonGroupSizeMode.COLLAPSED, 560.0, 520.0, 480.0, 440.0, 400.0, 360.0, 320.0, 280.0, 240.0, 220.0, 200.0, 180.0, 160.0);
+        List<String> shrinkOrder = telemetry.collapseTransitions().stream()
+            .map(RibbonLayoutTelemetryRecorder.CollapseTransitionEvent::groupId)
+            .distinct()
+            .toList();
+        assertEquals(List.of("alpha", "beta", "gamma"), shrinkOrder);
+
+        telemetry.clear();
+        resizeTo(1200.0);
+
+        List<String> growOrder = telemetry.collapseTransitions().stream()
+            .map(RibbonLayoutTelemetryRecorder.CollapseTransitionEvent::groupId)
+            .distinct()
+            .toList();
+        assertEquals(List.of("gamma", "beta", "alpha"), growOrder);
+        assertEquals(3, group("alpha").getSpec().controls().size());
+        assertEquals(3, group("beta").getSpec().controls().size());
+        assertEquals(3, group("gamma").getSpec().controls().size());
+    }
+
+    @Test
+    void brokenSvgFallsBackToRasterWithoutThrowing() throws IOException {
+        Path brokenSvg = Files.createTempFile("ribbon-icon", ".svg");
+        try {
+            Files.writeString(brokenSvg, "<svg><path d=\"broken", StandardCharsets.UTF_8);
+            PapiflyCommand command = new PapiflyCommand(
+                "icon-test",
+                "Icon Test",
+                "Icon Test",
+                RibbonIconHandle.of(brokenSvg.toUri().toString()),
+                RibbonIconHandle.of(SAMPLE_PNG_URI),
+                null,
+                null,
+                () -> {
+                }
+            );
+
+            Button button = FxTestUtil.callFx(() ->
+                RibbonControlFactory.createQuickAccessButton(command, getClass().getClassLoader()));
+
+            assertTrue(button.getGraphic() != null);
+            assertInstanceOf(ImageView.class, button.getGraphic());
+        } finally {
+            Files.deleteIfExists(brokenSvg);
+        }
     }
 
     private void assertPriorityOrder() {
@@ -130,6 +236,82 @@ class RibbonAdaptiveLayoutFxTest {
         assertTrue(condition.getAsBoolean(), "Ribbon did not reach the expected adaptive state");
     }
 
+    private List<RibbonTabSpec> defaultTabs() {
+        return List.of(new RibbonTabSpec(
+            "home",
+            "Home",
+            0,
+            false,
+            ribbonContext -> true,
+            List.of(
+                new RibbonGroupSpec(
+                    "alpha",
+                    "Alpha",
+                    0,
+                    0,
+                    null,
+                    List.of(
+                        new RibbonButtonSpec(new PapiflyCommand("alpha-1", "Alpha One", "Alpha One", null, null, null, null, alphaExecutions::incrementAndGet)),
+                        new RibbonButtonSpec(PapiflyCommand.of("alpha-2", "Alpha Two", () -> {})),
+                        new RibbonButtonSpec(PapiflyCommand.of("alpha-3", "Alpha Three", () -> {}))
+                    )
+                ),
+                new RibbonGroupSpec(
+                    "beta",
+                    "Beta",
+                    10,
+                    10,
+                    null,
+                    List.of(
+                        new RibbonButtonSpec(PapiflyCommand.of("beta-1", "Beta One", () -> {})),
+                        new RibbonButtonSpec(PapiflyCommand.of("beta-2", "Beta Two", () -> {})),
+                        new RibbonButtonSpec(PapiflyCommand.of("beta-3", "Beta Three", () -> {}))
+                    )
+                ),
+                new RibbonGroupSpec(
+                    "gamma",
+                    "Gamma",
+                    20,
+                    20,
+                    null,
+                    List.of(
+                        new RibbonButtonSpec(PapiflyCommand.of("gamma-1", "Gamma One", () -> {})),
+                        new RibbonButtonSpec(PapiflyCommand.of("gamma-2", "Gamma Two", () -> {})),
+                        new RibbonButtonSpec(PapiflyCommand.of("gamma-3", "Gamma Three", () -> {}))
+                    )
+                )
+            )
+        ));
+    }
+
+    private List<RibbonTabSpec> structuralChangeTabs() {
+        RibbonTabSpec baseline = defaultTabs().getFirst();
+        return List.of(new RibbonTabSpec(
+            baseline.id(),
+            baseline.label(),
+            baseline.order(),
+            baseline.contextual(),
+            ribbonContext -> true,
+            List.of(
+                new RibbonGroupSpec(
+                    "alpha",
+                    "Alpha",
+                    0,
+                    0,
+                    null,
+                    List.of(
+                        new RibbonButtonSpec(new PapiflyCommand("alpha-1", "Alpha One", "Alpha One", null, null, null, null, alphaExecutions::incrementAndGet)),
+                        new RibbonButtonSpec(PapiflyCommand.of("alpha-2", "Alpha Two", () -> {})),
+                        new RibbonButtonSpec(PapiflyCommand.of("alpha-3", "Alpha Three", () -> {})),
+                        new RibbonButtonSpec(PapiflyCommand.of("alpha-4", "Alpha Four", () -> {}))
+                    )
+                ),
+                baseline.groups().get(1),
+                baseline.groups().get(2)
+            )
+        ));
+    }
+
     private final class TestRibbonProvider implements RibbonProvider {
 
         @Override
@@ -139,51 +321,7 @@ class RibbonAdaptiveLayoutFxTest {
 
         @Override
         public List<RibbonTabSpec> getTabs(org.metalib.papifly.fx.api.ribbon.RibbonContext context) {
-            return List.of(new RibbonTabSpec(
-                "home",
-                "Home",
-                0,
-                false,
-                ribbonContext -> true,
-                List.of(
-                    new RibbonGroupSpec(
-                        "alpha",
-                        "Alpha",
-                        0,
-                        0,
-                        null,
-                        List.of(
-                            new RibbonButtonSpec(new PapiflyCommand("alpha-1", "Alpha One", "Alpha One", null, null, null, null, alphaExecutions::incrementAndGet)),
-                            new RibbonButtonSpec(PapiflyCommand.of("alpha-2", "Alpha Two", () -> {})),
-                            new RibbonButtonSpec(PapiflyCommand.of("alpha-3", "Alpha Three", () -> {}))
-                        )
-                    ),
-                    new RibbonGroupSpec(
-                        "beta",
-                        "Beta",
-                        10,
-                        10,
-                        null,
-                        List.of(
-                            new RibbonButtonSpec(PapiflyCommand.of("beta-1", "Beta One", () -> {})),
-                            new RibbonButtonSpec(PapiflyCommand.of("beta-2", "Beta Two", () -> {})),
-                            new RibbonButtonSpec(PapiflyCommand.of("beta-3", "Beta Three", () -> {}))
-                        )
-                    ),
-                    new RibbonGroupSpec(
-                        "gamma",
-                        "Gamma",
-                        20,
-                        20,
-                        null,
-                        List.of(
-                            new RibbonButtonSpec(PapiflyCommand.of("gamma-1", "Gamma One", () -> {})),
-                            new RibbonButtonSpec(PapiflyCommand.of("gamma-2", "Gamma Two", () -> {})),
-                            new RibbonButtonSpec(PapiflyCommand.of("gamma-3", "Gamma Three", () -> {}))
-                        )
-                    )
-                )
-            ));
+            return tabs.get();
         }
     }
 }

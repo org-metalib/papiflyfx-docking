@@ -17,4 +17,13 @@ enum RibbonGroupSizeMode {
             case COLLAPSED -> COLLAPSED;
         };
     }
+
+    RibbonGroupSizeMode larger() {
+        return switch (this) {
+            case LARGE -> LARGE;
+            case MEDIUM -> LARGE;
+            case SMALL -> MEDIUM;
+            case COLLAPSED -> SMALL;
+        };
+    }
 }

@@ -475,7 +475,6 @@ public class RibbonManager {
             this.label = initial.label();
             this.order = initial.order();
             this.contextual = initial.contextual();
-            merge(initial);
         }
 
         private void merge(RibbonTabSpec tab) {
@@ -508,7 +507,6 @@ public class RibbonManager {
             this.order = initial.order();
             this.collapseOrder = initial.collapseOrder();
             this.dialogLauncher = initial.dialogLauncher();
-            merge(initial);
         }
 
         private void merge(RibbonGroupSpec group) {

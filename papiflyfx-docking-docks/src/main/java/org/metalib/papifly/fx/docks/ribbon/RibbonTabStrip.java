@@ -11,6 +11,10 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -21,6 +25,9 @@ public class RibbonTabStrip extends HBox {
     private final ObservableList<RibbonTabSpec> tabs = FXCollections.observableArrayList();
     private final ToggleGroup toggleGroup = new ToggleGroup();
     private final StringProperty selectedTabId = new SimpleStringProperty();
+    private final Map<String, TabRenderState> renderedTabs = new LinkedHashMap<>();
+
+    private RibbonLayoutTelemetry telemetry = RibbonLayoutTelemetry.noop();
 
     /**
      * Creates an empty ribbon tab strip.
@@ -69,20 +76,35 @@ public class RibbonTabStrip extends HBox {
         return selectedTabId;
     }
 
+    void setLayoutTelemetry(RibbonLayoutTelemetry telemetry) {
+        this.telemetry = telemetry == null ? RibbonLayoutTelemetry.noop() : telemetry;
+    }
+
     private void rebuild() {
-        getChildren().clear();
-        toggleGroup.getToggles().clear();
         ensureSelection();
+        List<ToggleButton> desiredButtons = new ArrayList<>(tabs.size());
         for (RibbonTabSpec tab : tabs) {
-            ToggleButton button = new ToggleButton(tab.label());
-            button.getProperties().put(RibbonTabSpec.class.getName(), tab.id());
-            button.getStyleClass().add("pf-ribbon-tab");
-            if (tab.contextual()) {
-                button.getStyleClass().add("pf-ribbon-tab-contextual");
+            TabRenderState existing = renderedTabs.get(tab.id());
+            if (existing != null) {
+                telemetry.nodeCacheHit(RibbonLayoutTelemetry.CacheKind.TAB, tab.id());
+                if (!existing.matches(tab)) {
+                    telemetry.tabRebuild(tab.id(), RibbonLayoutTelemetry.RebuildReason.STRUCTURAL);
+                    configureButton(existing.button(), tab);
+                    renderedTabs.put(tab.id(), new TabRenderState(tab.label(), tab.contextual(), existing.button()));
+                }
+                desiredButtons.add(existing.button());
+                continue;
             }
-            button.setToggleGroup(toggleGroup);
-            button.setOnAction(event -> setSelectedTabId(tab.id()));
-            getChildren().add(button);
+
+            telemetry.nodeCacheMiss(RibbonLayoutTelemetry.CacheKind.TAB, tab.id());
+            telemetry.tabRebuild(tab.id(), RibbonLayoutTelemetry.RebuildReason.INITIAL);
+            ToggleButton button = new ToggleButton();
+            configureButton(button, tab);
+            renderedTabs.put(tab.id(), new TabRenderState(tab.label(), tab.contextual(), button));
+            desiredButtons.add(button);
+        }
+        if (!getChildren().equals(desiredButtons)) {
+            getChildren().setAll(desiredButtons);
         }
         syncSelection();
     }
@@ -103,5 +125,24 @@ public class RibbonTabStrip extends HBox {
     private void syncSelection() {
         toggleGroup.getToggles().forEach(toggle ->
             toggle.setSelected(Objects.equals(toggle.getProperties().get(RibbonTabSpec.class.getName()), selectedTabId.get())));
+    }
+
+    private void configureButton(ToggleButton button, RibbonTabSpec tab) {
+        button.setText(tab.label());
+        button.getProperties().put(RibbonTabSpec.class.getName(), tab.id());
+        button.getStyleClass().setAll("toggle-button", "pf-ribbon-tab");
+        if (tab.contextual()) {
+            button.getStyleClass().add("pf-ribbon-tab-contextual");
+        }
+        if (button.getToggleGroup() != toggleGroup) {
+            button.setToggleGroup(toggleGroup);
+        }
+        button.setOnAction(event -> setSelectedTabId(tab.id()));
+    }
+
+    private record TabRenderState(String label, boolean contextual, ToggleButton button) {
+        boolean matches(RibbonTabSpec tab) {
+            return Objects.equals(label, tab.label()) && contextual == tab.contextual();
+        }
     }
 }

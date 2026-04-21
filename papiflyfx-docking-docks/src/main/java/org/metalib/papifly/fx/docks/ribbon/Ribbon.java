@@ -16,13 +16,16 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.docks.layout.data.RibbonSessionData;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -49,14 +52,20 @@ public class Ribbon extends VBox {
     private final HBox headerActions = new HBox();
     private final Comparator<RibbonGroup> collapseOrderComparator =
         Comparator.comparingInt((RibbonGroup group) -> group.getSpec().collapseOrder())
+            .thenComparing((RibbonGroup group) -> group.getSpec().order(), Comparator.reverseOrder())
+            .thenComparing(group -> group.getSpec().id());
+    private final Comparator<RibbonGroup> restoreOrderComparator =
+        Comparator.comparingInt((RibbonGroup group) -> group.getSpec().collapseOrder()).reversed()
             .thenComparingInt(group -> group.getSpec().order())
             .thenComparing(group -> group.getSpec().id());
+    private final Map<String, RibbonGroup> groupCache = new LinkedHashMap<>();
 
     private final ListChangeListener<RibbonTabSpec> tabsListener = change -> refreshTabs();
     private final ListChangeListener<PapiflyCommand> quickAccessListener = change -> refreshQuickAccessToolbar();
 
     private RibbonManager manager;
     private boolean adaptiveLayoutRequested;
+    private RibbonLayoutTelemetry layoutTelemetry = RibbonLayoutTelemetry.noop();
 
     /**
      * Creates a ribbon backed by a default {@link RibbonManager}.
@@ -105,7 +114,11 @@ public class Ribbon extends VBox {
 
         theme.addListener((obs, oldTheme, newTheme) -> applyTheme(newTheme));
         minimized.addListener((obs, oldValue, newValue) -> updateMinimizedState());
-        selectedTabId.addListener((obs, oldValue, newValue) -> rebuildGroups());
+        selectedTabId.addListener((obs, oldValue, newValue) -> {
+            if (rebuildGroups()) {
+                requestAdaptiveLayout();
+            }
+        });
         widthProperty().addListener((obs, oldWidth, newWidth) -> requestAdaptiveLayout());
 
         setManager(manager);
@@ -203,6 +216,7 @@ public class Ribbon extends VBox {
         this.manager.getTabs().addListener(tabsListener);
         this.manager.getQuickAccessCommands().addListener(quickAccessListener);
         quickAccessToolbar.setClassLoader(this.manager.getClassLoader());
+        tabStrip.setLayoutTelemetry(layoutTelemetry);
         refreshQuickAccessToolbar();
         refreshTabs();
     }
@@ -260,7 +274,9 @@ public class Ribbon extends VBox {
     private void refreshTabs() {
         tabStrip.getTabs().setAll(manager.getTabs());
         ensureSelectedTab();
-        rebuildGroups();
+        if (rebuildGroups()) {
+            requestAdaptiveLayout();
+        }
     }
 
     private void ensureSelectedTab() {
@@ -277,19 +293,30 @@ public class Ribbon extends VBox {
         }
     }
 
-    private void rebuildGroups() {
-        groupRow.getChildren().clear();
+    private boolean rebuildGroups() {
         if (isMinimized() || manager == null || manager.getTabs().isEmpty()) {
-            return;
+            if (!groupRow.getChildren().isEmpty()) {
+                groupRow.getChildren().clear();
+                return true;
+            }
+            return false;
         }
         RibbonTabSpec selectedTab = manager.getTabs().stream()
             .filter(tab -> Objects.equals(tab.id(), selectedTabId.get()))
             .findFirst()
             .orElse(manager.getTabs().getFirst());
-        groupRow.getChildren().setAll(selectedTab.groups().stream()
-            .map(group -> new RibbonGroup(group, manager.getClassLoader(), theme))
-            .toList());
-        requestAdaptiveLayout();
+        boolean structureChanged = false;
+        List<RibbonGroup> desiredGroups = new java.util.ArrayList<>(selectedTab.groups().size());
+        for (RibbonGroupSpec group : selectedTab.groups()) {
+            GroupResolution resolution = resolveGroup(selectedTab.id(), group);
+            desiredGroups.add(resolution.group());
+            structureChanged = structureChanged || resolution.changed();
+        }
+        if (!groupRow.getChildren().equals(desiredGroups)) {
+            groupRow.getChildren().setAll(desiredGroups);
+            return true;
+        }
+        return structureChanged;
     }
 
     private void updateMinimizedState() {
@@ -310,6 +337,12 @@ public class Ribbon extends VBox {
             .filter(RibbonGroup.class::isInstance)
             .map(RibbonGroup.class::cast)
             .toList();
+    }
+
+    void setLayoutTelemetry(RibbonLayoutTelemetry telemetry) {
+        layoutTelemetry = telemetry == null ? RibbonLayoutTelemetry.noop() : telemetry;
+        tabStrip.setLayoutTelemetry(layoutTelemetry);
+        groupCache.values().forEach(group -> group.setLayoutTelemetry(layoutTelemetry));
     }
 
     private void requestAdaptiveLayout() {
@@ -337,20 +370,28 @@ public class Ribbon extends VBox {
             return;
         }
 
-        groups.forEach(group -> group.setSizeMode(RibbonGroupSizeMode.LARGE));
         double totalWidth = estimatedTotalWidth(groups);
-        if (totalWidth <= availableWidth) {
-            return;
-        }
-
-        for (RibbonGroup group : groups.stream().sorted(collapseOrderComparator).toList()) {
-            while (totalWidth > availableWidth && group.getSizeMode() != RibbonGroupSizeMode.COLLAPSED) {
-                group.setSizeMode(group.getSizeMode().smaller());
-                totalWidth = estimatedTotalWidth(groups);
-            }
-            if (totalWidth <= availableWidth) {
+        while (totalWidth > availableWidth) {
+            RibbonGroup next = nextGroupToShrink(groups);
+            if (next == null) {
                 break;
             }
+            next.setSizeMode(next.getSizeMode().smaller());
+            totalWidth = estimatedTotalWidth(groups);
+        }
+
+        while (totalWidth < availableWidth) {
+            RibbonGroup next = nextGroupToGrow(groups);
+            if (next == null) {
+                break;
+            }
+            RibbonGroupSizeMode expandedMode = next.getSizeMode().larger();
+            double candidateWidth = totalWidth - next.estimateWidth(next.getSizeMode()) + next.estimateWidth(expandedMode);
+            if (candidateWidth > availableWidth) {
+                break;
+            }
+            next.setSizeMode(expandedMode);
+            totalWidth = candidateWidth;
         }
     }
 
@@ -360,5 +401,38 @@ public class Ribbon extends VBox {
             .sum();
         double spacing = Math.max(0, groups.size() - 1) * groupRow.getSpacing();
         return widths + spacing;
+    }
+
+    private GroupResolution resolveGroup(String tabId, RibbonGroupSpec groupSpec) {
+        String key = tabId + "/" + groupSpec.id();
+        RibbonGroup cached = groupCache.get(key);
+        if (cached == null) {
+            layoutTelemetry.nodeCacheMiss(RibbonLayoutTelemetry.CacheKind.GROUP, key);
+            RibbonGroup created = new RibbonGroup(tabId, groupSpec, manager.getClassLoader(), theme, layoutTelemetry);
+            groupCache.put(key, created);
+            return new GroupResolution(created, true);
+        }
+        layoutTelemetry.nodeCacheHit(RibbonLayoutTelemetry.CacheKind.GROUP, key);
+        cached.setLayoutTelemetry(layoutTelemetry);
+        return new GroupResolution(cached, cached.updateSpec(groupSpec));
+    }
+
+    private RibbonGroup nextGroupToShrink(List<RibbonGroup> groups) {
+        return groups.stream()
+            .filter(group -> group.getSizeMode() != RibbonGroupSizeMode.COLLAPSED)
+            .sorted(collapseOrderComparator)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private RibbonGroup nextGroupToGrow(List<RibbonGroup> groups) {
+        return groups.stream()
+            .filter(group -> group.getSizeMode() != RibbonGroupSizeMode.LARGE)
+            .sorted(restoreOrderComparator)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private record GroupResolution(RibbonGroup group, boolean changed) {
     }
 }

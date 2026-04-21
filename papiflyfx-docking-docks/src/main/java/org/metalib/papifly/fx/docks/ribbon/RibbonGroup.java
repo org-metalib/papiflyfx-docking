@@ -5,6 +5,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.geometry.Bounds;
 import javafx.geometry.Orientation;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.PopupControl;
 import javafx.scene.control.Tooltip;
@@ -13,10 +14,19 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonControlSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonSplitButtonSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.ui.UiStyleSupport;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -26,7 +36,7 @@ public class RibbonGroup extends VBox {
 
     private static final double GROUP_HORIZONTAL_PADDING = 20.0;
 
-    private final RibbonGroupSpec spec;
+    private RibbonGroupSpec spec;
     private final FlowPane controlsPane = new FlowPane(Orientation.HORIZONTAL, 8.0, 8.0);
     private final StackPane contentPane = new StackPane();
     private final javafx.scene.control.Label label = new javafx.scene.control.Label();
@@ -36,7 +46,11 @@ public class RibbonGroup extends VBox {
     private final ClassLoader classLoader;
     private final ObservableValue<Theme> theme;
     private final BorderPane footer = new BorderPane();
+    private final String tabId;
+    private final Map<ControlCacheKey, Node> controlNodeCache = new LinkedHashMap<>();
+    private final Map<String, ControlSignature> controlSignatures = new LinkedHashMap<>();
 
+    private RibbonLayoutTelemetry telemetry;
     private PopupControl collapsedPopup;
     private VBox collapsedPopupRoot;
 
@@ -47,7 +61,7 @@ public class RibbonGroup extends VBox {
      * @param classLoader class loader used for icon resolution
      */
     public RibbonGroup(RibbonGroupSpec spec, ClassLoader classLoader) {
-        this(spec, classLoader, null);
+        this(null, spec, classLoader, null, RibbonLayoutTelemetry.noop());
     }
 
     /**
@@ -58,19 +72,28 @@ public class RibbonGroup extends VBox {
      * @param theme ribbon theme used by collapsed popups
      */
     public RibbonGroup(RibbonGroupSpec spec, ClassLoader classLoader, ObservableValue<Theme> theme) {
+        this(null, spec, classLoader, theme, RibbonLayoutTelemetry.noop());
+    }
+
+    RibbonGroup(
+        String tabId,
+        RibbonGroupSpec spec,
+        ClassLoader classLoader,
+        ObservableValue<Theme> theme,
+        RibbonLayoutTelemetry telemetry
+    ) {
         this.spec = Objects.requireNonNull(spec, "spec");
         this.classLoader = classLoader;
         this.theme = theme;
+        this.tabId = tabId == null ? "" : tabId;
+        this.telemetry = telemetry == null ? RibbonLayoutTelemetry.noop() : telemetry;
         getStyleClass().add("pf-ribbon-group");
         setId("pf-ribbon-group-" + spec.id());
 
         controlsPane.getStyleClass().add("pf-ribbon-group-controls");
         contentPane.getStyleClass().add("pf-ribbon-group-content");
         label.getStyleClass().add("pf-ribbon-group-label");
-        label.setText(spec.label());
-
         launcherButton.getStyleClass().add("pf-ribbon-group-launcher");
-        configureLauncher(spec.dialogLauncher());
 
         footer.getStyleClass().add("pf-ribbon-group-footer");
         footer.setCenter(label);
@@ -78,15 +101,18 @@ public class RibbonGroup extends VBox {
 
         collapsedButton.setId("pf-ribbon-group-collapsed-" + spec.id());
         collapsedButton.setOnAction(event -> toggleCollapsedPopup());
-        RibbonControlFactory.configureCollapsedGroupButton(collapsedButton, spec, classLoader);
 
         getChildren().addAll(contentPane, footer);
 
-        sizeMode.addListener((obs, oldMode, newMode) -> applySizeMode(newMode));
+        sizeMode.addListener((obs, oldMode, newMode) -> applySizeMode(oldMode, newMode, RibbonLayoutTelemetry.RebuildReason.COLLAPSE, true));
         if (theme != null) {
             theme.addListener((obs, oldTheme, newTheme) -> updateCollapsedPopupTheme());
         }
-        applySizeMode(sizeMode.get());
+
+        refreshPresentationMetadata();
+        reindexControlSignatures(spec);
+        this.telemetry.groupRebuild(spec.id(), RibbonLayoutTelemetry.RebuildReason.INITIAL);
+        applySizeMode(null, sizeMode.get(), RibbonLayoutTelemetry.RebuildReason.INITIAL, false);
     }
 
     /**
@@ -113,7 +139,10 @@ public class RibbonGroup extends VBox {
      * @param mode active size mode
      */
     public void setSizeMode(RibbonGroupSizeMode mode) {
-        sizeMode.set(mode == null ? RibbonGroupSizeMode.LARGE : mode);
+        RibbonGroupSizeMode resolvedMode = mode == null ? RibbonGroupSizeMode.LARGE : mode;
+        if (resolvedMode != sizeMode.get()) {
+            sizeMode.set(resolvedMode);
+        }
     }
 
     /**
@@ -142,10 +171,36 @@ public class RibbonGroup extends VBox {
             + GROUP_HORIZONTAL_PADDING;
     }
 
+    void setLayoutTelemetry(RibbonLayoutTelemetry telemetry) {
+        this.telemetry = telemetry == null ? RibbonLayoutTelemetry.noop() : telemetry;
+    }
+
+    boolean updateSpec(RibbonGroupSpec newSpec) {
+        Objects.requireNonNull(newSpec, "newSpec");
+        boolean structuralChange = !structurallyEquivalent(spec, newSpec);
+        spec = newSpec;
+        refreshPresentationMetadata();
+        if (!structuralChange) {
+            observeCurrentModeReuse();
+            return false;
+        }
+
+        telemetry.groupRebuild(newSpec.id(), RibbonLayoutTelemetry.RebuildReason.STRUCTURAL);
+        invalidateChangedControls(newSpec);
+        invalidateCollapsedPopup();
+        if (getSizeMode() != RibbonGroupSizeMode.COLLAPSED) {
+            renderControlsForMode(getSizeMode(), RibbonLayoutTelemetry.RebuildReason.STRUCTURAL);
+        }
+        return true;
+    }
+
     private void configureLauncher(PapiflyCommand launcher) {
+        launcherButton.disableProperty().unbind();
         if (launcher == null) {
             launcherButton.setManaged(false);
             launcherButton.setVisible(false);
+            launcherButton.setTooltip(null);
+            launcherButton.setOnAction(null);
             return;
         }
         launcherButton.setManaged(true);
@@ -158,8 +213,17 @@ public class RibbonGroup extends VBox {
         launcherButton.setTooltip(new Tooltip(tooltip));
     }
 
-    private void applySizeMode(RibbonGroupSizeMode mode) {
+    private void applySizeMode(
+        RibbonGroupSizeMode previousMode,
+        RibbonGroupSizeMode mode,
+        RibbonLayoutTelemetry.RebuildReason reason,
+        boolean emitTransition
+    ) {
         RibbonGroupSizeMode resolvedMode = mode == null ? RibbonGroupSizeMode.LARGE : mode;
+        if (emitTransition && previousMode != null && previousMode != resolvedMode) {
+            telemetry.collapseTransition(spec.id(), previousMode, resolvedMode);
+        }
+
         getStyleClass().removeAll(
             "pf-ribbon-group-large",
             "pf-ribbon-group-medium",
@@ -176,19 +240,16 @@ public class RibbonGroup extends VBox {
         if (resolvedMode == RibbonGroupSizeMode.COLLAPSED) {
             footer.setManaged(false);
             footer.setVisible(false);
-            contentPane.getChildren().setAll(collapsedButton);
+            if (!contentPane.getChildren().equals(List.of(collapsedButton))) {
+                contentPane.getChildren().setAll(collapsedButton);
+            }
             return;
         }
 
         hideCollapsedPopup();
         footer.setManaged(true);
         footer.setVisible(true);
-        controlsPane.getChildren().setAll(spec.controls().stream()
-            .filter(Objects::nonNull)
-            .map(control -> RibbonControlFactory.createGroupControl(control, classLoader, resolvedMode))
-            .toList());
-        controlsPane.setPrefWrapLength(wrapLengthFor(resolvedMode));
-        contentPane.getChildren().setAll(controlsPane);
+        renderControlsForMode(resolvedMode, reason);
     }
 
     private int columnsFor(RibbonGroupSizeMode mode) {
@@ -244,7 +305,7 @@ public class RibbonGroup extends VBox {
     }
 
     private RibbonGroup newPopupGroup() {
-        RibbonGroup popupGroup = new RibbonGroup(spec, classLoader, theme);
+        RibbonGroup popupGroup = new RibbonGroup(tabId, spec, classLoader, theme, RibbonLayoutTelemetry.noop());
         popupGroup.setSizeMode(spec.controls().size() <= 2 ? RibbonGroupSizeMode.LARGE : RibbonGroupSizeMode.MEDIUM);
         popupGroup.getStyleClass().add("pf-ribbon-popup-group");
         return popupGroup;
@@ -256,5 +317,196 @@ public class RibbonGroup extends VBox {
         }
         Theme resolvedTheme = theme == null || theme.getValue() == null ? Theme.dark() : theme.getValue();
         collapsedPopupRoot.setStyle(RibbonThemeSupport.themeVariables(resolvedTheme));
+    }
+
+    private void refreshPresentationMetadata() {
+        label.setText(spec.label());
+        configureLauncher(spec.dialogLauncher());
+        RibbonControlFactory.configureCollapsedGroupButton(collapsedButton, spec, classLoader);
+    }
+
+    private void renderControlsForMode(RibbonGroupSizeMode mode, RibbonLayoutTelemetry.RebuildReason reason) {
+        List<Node> nodes = new ArrayList<>(spec.controls().size());
+        for (RibbonControlSpec control : spec.controls()) {
+            if (control == null) {
+                continue;
+            }
+            nodes.add(resolveControlNode(control, mode, reason));
+        }
+        controlsPane.setPrefWrapLength(wrapLengthFor(mode));
+        if (!controlsPane.getChildren().equals(nodes)) {
+            controlsPane.getChildren().setAll(nodes);
+        }
+        if (!contentPane.getChildren().equals(List.of(controlsPane))) {
+            contentPane.getChildren().setAll(controlsPane);
+        }
+    }
+
+    private Node resolveControlNode(
+        RibbonControlSpec control,
+        RibbonGroupSizeMode mode,
+        RibbonLayoutTelemetry.RebuildReason reason
+    ) {
+        ControlCacheKey key = new ControlCacheKey(control.id(), mode);
+        ControlSignature signature = ControlSignature.from(control);
+        Node cached = controlNodeCache.get(key);
+        if (cached != null && signature.equals(controlSignatures.get(control.id()))) {
+            telemetry.nodeCacheHit(RibbonLayoutTelemetry.CacheKind.CONTROL, controlCacheId(key));
+            return cached;
+        }
+        telemetry.nodeCacheMiss(RibbonLayoutTelemetry.CacheKind.CONTROL, controlCacheId(key));
+        Node rebuilt = RibbonControlFactory.createGroupControl(control, classLoader, mode);
+        controlNodeCache.put(key, rebuilt);
+        controlSignatures.put(control.id(), signature);
+        telemetry.controlRebuild(control.id(), reason);
+        return rebuilt;
+    }
+
+    private void observeCurrentModeReuse() {
+        RibbonGroupSizeMode currentMode = getSizeMode();
+        if (currentMode == RibbonGroupSizeMode.COLLAPSED) {
+            return;
+        }
+        for (RibbonControlSpec control : spec.controls()) {
+            if (control == null) {
+                continue;
+            }
+            ControlCacheKey key = new ControlCacheKey(control.id(), currentMode);
+            if (controlNodeCache.containsKey(key)) {
+                telemetry.nodeCacheHit(RibbonLayoutTelemetry.CacheKind.CONTROL, controlCacheId(key));
+            }
+        }
+    }
+
+    private void invalidateChangedControls(RibbonGroupSpec newSpec) {
+        Map<String, ControlSignature> previous = new LinkedHashMap<>(controlSignatures);
+        Map<String, ControlSignature> next = reindexControlSignatures(newSpec);
+        previous.entrySet().stream()
+            .filter(entry -> !Objects.equals(next.get(entry.getKey()), entry.getValue()))
+            .map(Map.Entry::getKey)
+            .forEach(this::removeControlFromCache);
+        controlSignatures.clear();
+        controlSignatures.putAll(next);
+    }
+
+    private Map<String, ControlSignature> reindexControlSignatures(RibbonGroupSpec groupSpec) {
+        Map<String, ControlSignature> signatures = new LinkedHashMap<>();
+        for (RibbonControlSpec control : groupSpec.controls()) {
+            if (control == null) {
+                continue;
+            }
+            signatures.put(control.id(), ControlSignature.from(control));
+        }
+        if (controlSignatures.isEmpty()) {
+            controlSignatures.putAll(signatures);
+        }
+        return signatures;
+    }
+
+    private void removeControlFromCache(String controlId) {
+        controlNodeCache.keySet().removeIf(key -> Objects.equals(key.controlId(), controlId));
+    }
+
+    private void invalidateCollapsedPopup() {
+        hideCollapsedPopup();
+        collapsedPopup = null;
+        collapsedPopupRoot = null;
+    }
+
+    private String controlCacheId(ControlCacheKey key) {
+        return tabId + "/" + spec.id() + "/" + key.controlId() + "/" + key.mode();
+    }
+
+    private static boolean structurallyEquivalent(RibbonGroupSpec left, RibbonGroupSpec right) {
+        if (left == right) {
+            return true;
+        }
+        if (left == null || right == null) {
+            return false;
+        }
+        if (!Objects.equals(left.id(), right.id())
+            || !Objects.equals(left.label(), right.label())
+            || left.order() != right.order()
+            || left.collapseOrder() != right.collapseOrder()
+            || !Objects.equals(commandSignature(left.dialogLauncher()), commandSignature(right.dialogLauncher()))
+            || left.controls().size() != right.controls().size()) {
+            return false;
+        }
+        for (int index = 0; index < left.controls().size(); index++) {
+            if (!Objects.equals(ControlSignature.from(left.controls().get(index)), ControlSignature.from(right.controls().get(index)))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static CommandSignature commandSignature(PapiflyCommand command) {
+        if (command == null) {
+            return null;
+        }
+        return new CommandSignature(
+            command.id(),
+            command.label(),
+            command.tooltip(),
+            command.smallIcon() == null ? null : command.smallIcon().resourcePath(),
+            command.largeIcon() == null ? null : command.largeIcon().resourcePath()
+        );
+    }
+
+    private record ControlCacheKey(String controlId, RibbonGroupSizeMode mode) {
+    }
+
+    private record ControlSignature(
+        String controlId,
+        String type,
+        CommandSignature primaryCommand,
+        List<String> itemCommandIds
+    ) {
+        static ControlSignature from(RibbonControlSpec control) {
+            if (control == null) {
+                return null;
+            }
+            return switch (control) {
+                case RibbonButtonSpec button -> new ControlSignature(
+                    button.id(),
+                    RibbonButtonSpec.class.getSimpleName(),
+                    commandSignature(button.command()),
+                    List.of()
+                );
+                case RibbonToggleSpec toggle -> new ControlSignature(
+                    toggle.id(),
+                    RibbonToggleSpec.class.getSimpleName(),
+                    commandSignature(toggle.command()),
+                    List.of()
+                );
+                case RibbonSplitButtonSpec splitButton -> new ControlSignature(
+                    splitButton.id(),
+                    RibbonSplitButtonSpec.class.getSimpleName(),
+                    commandSignature(splitButton.primaryCommand()),
+                    splitButton.secondaryCommands().stream().map(PapiflyCommand::id).toList()
+                );
+                case RibbonMenuSpec menu -> new ControlSignature(
+                    menu.id(),
+                    RibbonMenuSpec.class.getSimpleName(),
+                    new CommandSignature(
+                        menu.id(),
+                        menu.label(),
+                        menu.tooltip(),
+                        menu.smallIcon() == null ? null : menu.smallIcon().resourcePath(),
+                        menu.largeIcon() == null ? null : menu.largeIcon().resourcePath()
+                    ),
+                    menu.items().stream().map(PapiflyCommand::id).toList()
+                );
+            };
+        }
+    }
+
+    private record CommandSignature(
+        String id,
+        String label,
+        String tooltip,
+        String smallIconPath,
+        String largeIconPath
+    ) {
     }
 }
