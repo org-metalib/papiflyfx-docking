@@ -185,7 +185,7 @@ Bootstrap a new PapiflyFX application with a single command:
 mvn archetype:generate \
   -DarchetypeGroupId=org.metalib.papifly.docking \
   -DarchetypeArtifactId=papiflyfx-docking-archetype \
-  -DarchetypeVersion=0.0.19-SNAPSHOT \
+  -DarchetypeVersion=<current papiflyfx-docking version> \
   -DgroupId=com.example \
   -DartifactId=my-app \
   -Dversion=0.1.0-SNAPSHOT \

@@ -16,7 +16,7 @@ Maven archetype that bootstraps a multi-module PapiflyFX docking application wit
 mvn archetype:generate \
   -DarchetypeGroupId=org.metalib.papifly.docking \
   -DarchetypeArtifactId=papiflyfx-docking-archetype \
-  -DarchetypeVersion=0.0.19-SNAPSHOT \
+  -DarchetypeVersion=<current papiflyfx-docking version> \
   -DgroupId=com.example \
   -DartifactId=my-app \
   -Dversion=0.1.0-SNAPSHOT \
@@ -41,12 +41,14 @@ mvn wrapper:wrapper -Dmaven=3.9.12
 | `artifactId` | *(required)*      | Maven artifact ID (also used as root directory name) |
 | `version` | *(required)*      | Initial project version |
 | `package` | *(required)*      | Java package for generated source files |
-| `papiflyfxVersion` | `0.0.19-SNAPSHOT` | PapiflyFX framework version (BOM import version) |
+| `papiflyfxVersion` | current archetype build version | PapiflyFX framework version (BOM import version), injected from the archetype build's `project.version` |
 | `javaVersion` | `25`              | Java compiler release level |
 | `javafxVersion` | `25.0.2`          | JavaFX version for dependency management |
 | `mavenVersion` | `3.9.12`          | Maven version for the wrapper properties |
 
 ## Generated Project Structure
+
+The packaged archetype resolves `papiflyfxVersion` from the current `papiflyfx-docking` reactor version during `package`/`install`/`deploy`, so local builds and release CI stay aligned automatically.
 
 ```
 my-app/

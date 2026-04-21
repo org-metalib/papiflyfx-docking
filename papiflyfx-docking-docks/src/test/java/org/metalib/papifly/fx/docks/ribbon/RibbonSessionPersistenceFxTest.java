@@ -58,7 +58,7 @@ class RibbonSessionPersistenceFxTest {
     @Test
     void saveRestore_roundTripIncludesRibbonState() {
         FxTestUtil.runFx(() -> {
-            ribbonManager.getQuickAccessCommands().setAll(provider.save(), provider.preview());
+            ribbonManager.getQuickAccessCommandIds().setAll(CMD_SAVE, CMD_PREVIEW);
             ribbon.setSelectedTabId(TAB_HUGO);
             ribbon.setMinimized(true);
         });
@@ -72,7 +72,7 @@ class RibbonSessionPersistenceFxTest {
         FxTestUtil.runFx(() -> {
             ribbon.setMinimized(false);
             ribbon.setSelectedTabId(TAB_HOME);
-            ribbonManager.getQuickAccessCommands().clear();
+            ribbonManager.getQuickAccessCommandIds().clear();
             dockManager.restoreSessionFromString(json);
         });
         settle();
@@ -88,7 +88,7 @@ class RibbonSessionPersistenceFxTest {
     @Test
     void restore_missingTabAndCommandFallsBackGracefully() {
         String json = FxTestUtil.callFx(() -> {
-            ribbonManager.getQuickAccessCommands().setAll(provider.save(), provider.legacy());
+            ribbonManager.getQuickAccessCommandIds().setAll(CMD_SAVE, CMD_LEGACY);
             ribbon.setSelectedTabId(TAB_LEGACY);
             ribbon.setMinimized(false);
             return dockManager.saveSessionToString();
@@ -96,12 +96,18 @@ class RibbonSessionPersistenceFxTest {
 
         FxTestUtil.runFx(() -> {
             ribbonManager.getProviders().setAll(new TestProvider(false));
-            ribbonManager.getQuickAccessCommands().clear();
+            ribbonManager.getQuickAccessCommandIds().clear();
             dockManager.restoreSessionFromString(json);
         });
         settle();
 
         assertEquals(TAB_HOME, FxTestUtil.callFx(ribbon::getSelectedTabId));
+        // Both identifiers remain pinned, but only resolvable commands surface
+        // in the derived Quick Access Toolbar view.
+        assertEquals(
+            List.of(CMD_SAVE, CMD_LEGACY),
+            FxTestUtil.callFx(() -> List.copyOf(ribbonManager.getQuickAccessCommandIds()))
+        );
         assertEquals(
             List.of(CMD_SAVE),
             FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream().map(PapiflyCommand::id).toList())

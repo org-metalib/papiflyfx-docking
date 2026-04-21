@@ -6,11 +6,15 @@ import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonControlSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
+import org.metalib.papifly.fx.api.ribbon.RibbonSplitButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.ServiceLoader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,6 +32,23 @@ import java.util.logging.Logger;
 /**
  * Discovers ribbon providers and materializes the visible tab model for a
  * runtime {@link RibbonContext}.
+ *
+ * <p><b>Ribbon 2 command architecture:</b> the manager owns a long-lived
+ * {@link CommandRegistry} that canonicalizes every provider-contributed
+ * command by identifier. Provider specs are rebuilt on each
+ * {@link #refresh() refresh} cycle, but the command instances themselves are
+ * reused, so UI bindings, QAT selections, and shortcut wiring do not churn
+ * when contextual tabs recompute.</p>
+ *
+ * <p>The Quick Access Toolbar state is stored as an identifier list
+ * ({@link #getQuickAccessCommandIds()}). The {@link #getQuickAccessCommands()
+ * command view} is derived from that list and the registry and is only
+ * populated for identifiers that currently resolve to a registered command.
+ * This keeps QAT restore robust across context changes: hidden contextual
+ * commands disappear from the view but their identifiers remain in the list
+ * and reappear as soon as the owning tab becomes visible again.</p>
+ *
+ * @since Ribbon 2
  */
 public class RibbonManager {
 
@@ -45,7 +67,13 @@ public class RibbonManager {
     private final ObservableList<RibbonProvider> providers = FXCollections.observableArrayList();
     private final ObservableList<RibbonTabSpec> tabs = FXCollections.observableArrayList();
     private final ObservableList<RibbonTabSpec> tabsView = FXCollections.unmodifiableObservableList(tabs);
+
+    private final CommandRegistry commandRegistry = new CommandRegistry();
+    private final ObservableList<String> quickAccessCommandIds = FXCollections.observableArrayList();
     private final ObservableList<PapiflyCommand> quickAccessCommands = FXCollections.observableArrayList();
+    private final ObservableList<PapiflyCommand> quickAccessCommandsView =
+        FXCollections.unmodifiableObservableList(quickAccessCommands);
+
     private final ObjectProperty<RibbonContext> context = new SimpleObjectProperty<>(RibbonContext.empty());
     private final ClassLoader classLoader;
 
@@ -85,6 +113,7 @@ public class RibbonManager {
         this.classLoader = classLoader == null ? resolveClassLoader() : classLoader;
         this.providers.addListener((ListChangeListener<RibbonProvider>) change -> refresh());
         this.context.addListener((obs, oldContext, newContext) -> refresh());
+        this.quickAccessCommandIds.addListener((ListChangeListener<String>) change -> refreshQuickAccessCommandView());
         if (providers != null) {
             this.providers.addAll(providers);
         }
@@ -121,12 +150,81 @@ public class RibbonManager {
     }
 
     /**
-     * Returns the Quick Access Toolbar commands owned by the host.
+     * Returns the long-lived command registry that owns canonical command
+     * identities for every provider-contributed command plus any
+     * host-registered QAT commands.
      *
-     * @return mutable quick access command list
+     * @return command registry
+     */
+    public CommandRegistry getCommandRegistry() {
+        return commandRegistry;
+    }
+
+    /**
+     * Returns the mutable list of command identifiers pinned to the Quick
+     * Access Toolbar.
+     *
+     * <p>QAT state is stored by identifier, so hidden contextual commands
+     * remain in the list and reappear when their owning tab becomes visible
+     * again. Duplicate identifiers and blank entries are tolerated by
+     * {@link #refreshQuickAccessCommandView()} but should be avoided for
+     * predictable UI ordering.</p>
+     *
+     * @return mutable QAT command identifier list
+     * @since Ribbon 2
+     */
+    public ObservableList<String> getQuickAccessCommandIds() {
+        return quickAccessCommandIds;
+    }
+
+    /**
+     * Returns the currently resolvable Quick Access Toolbar commands.
+     *
+     * <p>This is a derived, unmodifiable view of
+     * {@link #getQuickAccessCommandIds()} joined against the
+     * {@link #getCommandRegistry() command registry}. Entries without a
+     * registered command are simply omitted; when the command is registered
+     * later (for example, when a contextual tab becomes visible) the entry
+     * reappears at the position implied by the identifier list.</p>
+     *
+     * <p><b>Ribbon 2 contract break:</b> the previous list was mutable and
+     * hosts wrote command instances directly. Hosts should now mutate
+     * {@link #getQuickAccessCommandIds()} and either rely on providers to
+     * register the command or call
+     * {@link #addQuickAccessCommand(PapiflyCommand)} for host-owned QAT
+     * commands.</p>
+     *
+     * @return unmodifiable Quick Access Toolbar command view
      */
     public ObservableList<PapiflyCommand> getQuickAccessCommands() {
-        return quickAccessCommands;
+        return quickAccessCommandsView;
+    }
+
+    /**
+     * Registers a host-owned command and appends its identifier to the Quick
+     * Access Toolbar list if it is not already pinned.
+     *
+     * <p>The command is canonicalized through {@link #getCommandRegistry()},
+     * so subsequent registrations of a command with the same identifier reuse
+     * the existing instance. Use this method for QAT entries that are not
+     * contributed by any {@link RibbonProvider}, for example application-level
+     * Save/Undo/Redo actions.</p>
+     *
+     * @param command command to register and pin to the QAT
+     * @return canonical command instance held by the registry
+     * @throws NullPointerException if {@code command} is {@code null}
+     */
+    public PapiflyCommand addQuickAccessCommand(PapiflyCommand command) {
+        Objects.requireNonNull(command, "command");
+        PapiflyCommand canonical = commandRegistry.canonicalize(command);
+        if (!quickAccessCommandIds.contains(canonical.id())) {
+            quickAccessCommandIds.add(canonical.id());
+        } else {
+            // Identifier already pinned; ensure the derived view reflects the
+            // canonical command (in case the registry previously missed it).
+            refreshQuickAccessCommandView();
+        }
+        return canonical;
     }
 
     /**
@@ -155,17 +253,17 @@ public class RibbonManager {
         if (commandIds == null || commandIds.isEmpty()) {
             return List.of();
         }
-        Map<String, PapiflyCommand> commandsById = collectCommandsById();
         LinkedHashSet<String> emitted = new LinkedHashSet<>();
         List<PapiflyCommand> resolved = new ArrayList<>();
         for (String commandId : commandIds) {
             if (commandId == null || commandId.isBlank()) {
                 continue;
             }
-            PapiflyCommand command = commandsById.get(commandId);
-            if (command != null && emitted.add(command.id())) {
-                resolved.add(command);
-            }
+            commandRegistry.find(commandId).ifPresent(command -> {
+                if (emitted.add(command.id())) {
+                    resolved.add(command);
+                }
+            });
         }
         return resolved;
     }
@@ -206,6 +304,23 @@ public class RibbonManager {
 
     /**
      * Rebuilds the visible tab model for the current context.
+     *
+     * <p>The refresh cycle is split into two concerns:</p>
+     * <ol>
+     *   <li><b>Command registration</b> — every provider-contributed command
+     *       is canonicalized through the {@link CommandRegistry} so repeated
+     *       {@link RibbonProvider#getTabs(RibbonContext)} invocations do not
+     *       churn command identities.</li>
+     *   <li><b>Tab materialization</b> — the resulting specs are merged and
+     *       sorted into the visible {@link #getTabs() tab list}. The
+     *       materialized specs always reference canonical commands, so the
+     *       rest of the ribbon shell can rely on reference equality.</li>
+     * </ol>
+     *
+     * <p>After materialization the registry is pruned to keep only commands
+     * that remain reachable either through visible tabs or through the Quick
+     * Access Toolbar identifier list. The QAT command view is then rebuilt so
+     * it reflects the latest registry state.</p>
      */
     public final void refresh() {
         RibbonContext resolvedContext = getContext() == null ? RibbonContext.empty() : getContext();
@@ -216,7 +331,17 @@ public class RibbonManager {
             .sorted(PROVIDER_COMPARATOR)
             .forEach(provider -> collectTabs(provider, resolvedContext, contributions));
 
-        tabs.setAll(mergeTabs(contributions));
+        List<RibbonTabSpec> merged = mergeTabs(contributions);
+        Set<String> reachable = new LinkedHashSet<>();
+        List<RibbonTabSpec> canonical = canonicalizeTabs(merged, reachable);
+        quickAccessCommandIds.stream()
+            .filter(Objects::nonNull)
+            .filter(id -> !id.isBlank())
+            .forEach(reachable::add);
+        commandRegistry.retain(reachable);
+
+        tabs.setAll(canonical);
+        refreshQuickAccessCommandView();
     }
 
     private void collectTabs(RibbonProvider provider, RibbonContext context, List<RibbonTabSpec> target) {
@@ -246,41 +371,84 @@ public class RibbonManager {
             .toList();
     }
 
-    private Map<String, PapiflyCommand> collectCommandsById() {
-        Map<String, PapiflyCommand> commandsById = new LinkedHashMap<>();
-        quickAccessCommands.stream()
-            .filter(Objects::nonNull)
-            .forEach(command -> commandsById.putIfAbsent(command.id(), command));
-        for (RibbonTabSpec tab : tabs) {
+    private List<RibbonTabSpec> canonicalizeTabs(List<RibbonTabSpec> merged, Set<String> reachable) {
+        List<RibbonTabSpec> result = new ArrayList<>(merged.size());
+        for (RibbonTabSpec tab : merged) {
+            List<RibbonGroupSpec> canonicalGroups = new ArrayList<>(tab.groups().size());
             for (RibbonGroupSpec group : tab.groups()) {
-                if (group.dialogLauncher() != null) {
-                    commandsById.putIfAbsent(group.dialogLauncher().id(), group.dialogLauncher());
+                PapiflyCommand dialogLauncher = group.dialogLauncher();
+                PapiflyCommand canonicalLauncher = dialogLauncher == null
+                    ? null
+                    : canonicalizeAndTrack(dialogLauncher, reachable);
+                List<RibbonControlSpec> canonicalControls = new ArrayList<>(group.controls().size());
+                for (RibbonControlSpec control : group.controls()) {
+                    canonicalControls.add(canonicalizeControl(control, reachable));
                 }
-                group.controls().forEach(control -> collectControlCommands(control, commandsById));
+                canonicalGroups.add(new RibbonGroupSpec(
+                    group.id(),
+                    group.label(),
+                    group.order(),
+                    group.collapseOrder(),
+                    canonicalLauncher,
+                    canonicalControls
+                ));
             }
+            result.add(new RibbonTabSpec(
+                tab.id(),
+                tab.label(),
+                tab.order(),
+                tab.contextual(),
+                ribbonContext -> true,
+                canonicalGroups
+            ));
         }
-        return commandsById;
+        return result;
     }
 
-    private static void collectControlCommands(RibbonControlSpec control, Map<String, PapiflyCommand> commandsById) {
-        switch (control) {
-            case org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec button ->
-                commandsById.putIfAbsent(button.command().id(), button.command());
-            case org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec toggle ->
-                commandsById.putIfAbsent(toggle.command().id(), toggle.command());
-            case org.metalib.papifly.fx.api.ribbon.RibbonSplitButtonSpec split -> {
-                commandsById.putIfAbsent(split.primaryCommand().id(), split.primaryCommand());
-                split.secondaryCommands().stream()
-                    .filter(Objects::nonNull)
-                    .forEach(command -> commandsById.putIfAbsent(command.id(), command));
+    private RibbonControlSpec canonicalizeControl(RibbonControlSpec control, Set<String> reachable) {
+        return switch (control) {
+            case RibbonButtonSpec button ->
+                new RibbonButtonSpec(canonicalizeAndTrack(button.command(), reachable));
+            case RibbonToggleSpec toggle ->
+                new RibbonToggleSpec(canonicalizeAndTrack(toggle.command(), reachable));
+            case RibbonSplitButtonSpec split -> {
+                PapiflyCommand primary = canonicalizeAndTrack(split.primaryCommand(), reachable);
+                List<PapiflyCommand> secondary = new ArrayList<>(split.secondaryCommands().size());
+                for (PapiflyCommand command : split.secondaryCommands()) {
+                    if (command != null) {
+                        secondary.add(canonicalizeAndTrack(command, reachable));
+                    }
+                }
+                yield new RibbonSplitButtonSpec(primary, secondary);
             }
-            case org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec menu ->
-                menu.items().stream()
-                    .filter(Objects::nonNull)
-                    .forEach(command -> commandsById.putIfAbsent(command.id(), command));
-            default -> {
+            case RibbonMenuSpec menu -> {
+                List<PapiflyCommand> items = new ArrayList<>(menu.items().size());
+                for (PapiflyCommand command : menu.items()) {
+                    if (command != null) {
+                        items.add(canonicalizeAndTrack(command, reachable));
+                    }
+                }
+                yield new RibbonMenuSpec(menu.id(), menu.label(), menu.tooltip(), menu.smallIcon(), menu.largeIcon(), items);
             }
+        };
+    }
+
+    private PapiflyCommand canonicalizeAndTrack(PapiflyCommand command, Set<String> reachable) {
+        PapiflyCommand canonical = commandRegistry.canonicalize(command);
+        reachable.add(canonical.id());
+        return canonical;
+    }
+
+    private void refreshQuickAccessCommandView() {
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
+        List<PapiflyCommand> resolved = new ArrayList<>();
+        for (String id : quickAccessCommandIds) {
+            if (id == null || id.isBlank() || !seen.add(id)) {
+                continue;
+            }
+            commandRegistry.find(id).ifPresent(resolved::add);
         }
+        quickAccessCommands.setAll(resolved);
     }
 
     private static List<RibbonProvider> discoverProviders(ClassLoader classLoader) {

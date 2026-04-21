@@ -52,11 +52,9 @@ public class RibbonShellSample implements SampleScene {
         dockManager.setRoot(dockManager.createHorizontalSplit(editors, sidePanel, 0.68));
 
         RibbonManager ribbonManager = new RibbonManager();
-        ribbonManager.getQuickAccessCommands().setAll(
-            PapiflyCommand.of("sample.save", "Save", () -> {}),
-            PapiflyCommand.of("sample.undo", "Undo", () -> {}),
-            PapiflyCommand.of("sample.redo", "Redo", () -> {})
-        );
+        ribbonManager.addQuickAccessCommand(PapiflyCommand.of("sample.save", "Save", () -> {}));
+        ribbonManager.addQuickAccessCommand(PapiflyCommand.of("sample.undo", "Undo", () -> {}));
+        ribbonManager.addQuickAccessCommand(PapiflyCommand.of("sample.redo", "Redo", () -> {}));
 
         RibbonDockHost host = new RibbonDockHost(dockManager, ribbonManager, new Ribbon());
         host.setMinSize(0, 0);

@@ -210,14 +210,19 @@ public class Ribbon extends VBox {
     /**
      * Captures ribbon-only session state.
      *
+     * <p>The Quick Access Toolbar snapshot is taken from the runtime identifier
+     * list ({@link RibbonManager#getQuickAccessCommandIds()}), not the
+     * derived command view, so identifiers tied to hidden contextual commands
+     * still round-trip through persistence.</p>
+     *
      * @return ribbon session payload
      */
     public RibbonSessionData captureSessionState() {
         List<String> quickAccessCommandIds = manager == null
             ? List.of()
-            : manager.getQuickAccessCommands().stream()
+            : manager.getQuickAccessCommandIds().stream()
                 .filter(Objects::nonNull)
-                .map(PapiflyCommand::id)
+                .filter(id -> !id.isBlank())
                 .distinct()
                 .toList();
         return new RibbonSessionData(isMinimized(), getSelectedTabId(), quickAccessCommandIds);
@@ -227,13 +232,17 @@ public class Ribbon extends VBox {
      * Restores ribbon-only session state. Missing tabs or commands are ignored
      * so persisted state remains tolerant of unavailable providers.
      *
+     * <p>Identifiers that cannot currently be resolved remain pinned on the
+     * Quick Access Toolbar list and reappear automatically once the owning
+     * contextual tab becomes visible.</p>
+     *
      * @param state ribbon session payload
      */
     public void restoreSessionState(RibbonSessionData state) {
         if (state == null || manager == null) {
             return;
         }
-        manager.getQuickAccessCommands().setAll(manager.resolveCommandsById(state.quickAccessCommandIds()));
+        manager.getQuickAccessCommandIds().setAll(state.quickAccessCommandIds());
         if (state.selectedTabId() != null && manager.hasTab(state.selectedTabId())) {
             setSelectedTabId(state.selectedTabId());
         } else if (!manager.getTabs().isEmpty()) {
