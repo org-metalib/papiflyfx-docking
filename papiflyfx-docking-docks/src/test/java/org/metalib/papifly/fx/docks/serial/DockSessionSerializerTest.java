@@ -2,15 +2,14 @@ package org.metalib.papifly.fx.docks.serial;
 
 import javafx.geometry.Orientation;
 import org.junit.jupiter.api.Test;
+import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.BoundsData;
 import org.metalib.papifly.fx.docks.layout.data.DockSessionData;
 import org.metalib.papifly.fx.docks.layout.data.FloatingLeafData;
 import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
-import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.MaximizedLeafData;
 import org.metalib.papifly.fx.docks.layout.data.MinimizedLeafData;
-import org.metalib.papifly.fx.docks.layout.data.RibbonSessionData;
 import org.metalib.papifly.fx.docks.layout.data.RestoreHintData;
 import org.metalib.papifly.fx.docks.layout.data.SplitData;
 import org.metalib.papifly.fx.docks.layout.data.TabGroupData;
@@ -21,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -75,51 +74,49 @@ class DockSessionSerializerTest {
     }
 
     @Test
-    void serializeDeserialize_roundTrip_withRibbonState() {
-        DockSessionData session = DockSessionData.of(
-            null,
-            List.of(),
-            List.of(),
-            null,
-            new RibbonSessionData(true, "hugo-editor", List.of("github.fetch", "hugo.preview"))
-        );
+    @SuppressWarnings("unchecked")
+    void serializeDeserialize_roundTrip_withNamespacedExtensions() {
+        DockSessionData session = buildSession("Editor 2")
+            .withExtension("zeta", Map.of("enabled", true))
+            .withExtension("ribbon", Map.of(
+                "minimized", true,
+                "selectedTabId", "hugo-editor",
+                "quickAccessCommandIds", List.of("github.fetch", "hugo.preview")
+            ))
+            .withExtension("alpha", Map.of("mode", "compact"));
 
         Map<String, Object> map = serializer.serialize(session);
+        Map<String, Object> extensions = (Map<String, Object>) map.get("extensions");
         DockSessionData restored = serializer.deserialize(map);
 
+        assertEquals(List.of("alpha", "ribbon", "zeta"), new ArrayList<>(extensions.keySet()));
         assertEquals(session, restored);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void deserialize_missingRibbonPayload_staysBackwardCompatible() {
+    void deserialize_missingExtensions_returnsSessionWithoutExtensions() {
         DockSessionData session = buildSession("Editor 2");
         Map<String, Object> map = serializer.serialize(session);
-        map.remove("ribbon");
+        map.remove("extensions");
 
         DockSessionData restored = serializer.deserialize(map);
 
-        assertNull(restored.ribbon());
+        assertTrue(restored.extensions().isEmpty());
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void deserialize_ribbonPayload_filtersInvalidQuickAccessIds() {
+    void deserialize_malformedExtensionPayload_ignoresOnlyBrokenExtension() {
         Map<String, Object> map = serializer.serialize(buildSession("Editor 2"));
-        Map<String, Object> ribbonMap = new LinkedHashMap<>();
-        ribbonMap.put("minimized", true);
-        ribbonMap.put("selectedTabId", "home");
-        List<Object> quickAccessIds = new ArrayList<>();
-        quickAccessIds.add("valid-id");
-        quickAccessIds.add(42);
-        quickAccessIds.add(null);
-        quickAccessIds.add("another-id");
-        ribbonMap.put("quickAccessCommandIds", quickAccessIds);
-        map.put("ribbon", ribbonMap);
+        Map<String, Object> extensions = new LinkedHashMap<>();
+        extensions.put("alpha", Map.of("enabled", true));
+        extensions.put("broken", "not-a-map");
+        map.put("extensions", extensions);
 
         DockSessionData restored = serializer.deserialize(map);
 
-        assertEquals(new RibbonSessionData(true, "home", List.of("valid-id", "another-id")), restored.ribbon());
+        assertEquals(Map.of("enabled", true), restored.extension("alpha"));
+        assertFalse(restored.extensions().containsKey("broken"));
     }
 
     @Test
@@ -129,6 +126,32 @@ class DockSessionSerializerTest {
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> serializer.deserialize(map));
         assertTrue(ex.getMessage().contains("Invalid session type"));
+    }
+
+    @Test
+    void deserialize_invalidFloatingShape_reportsFieldPath() {
+        Map<String, Object> map = serializer.serialize(buildSession("Editor 2"));
+        map.put("floating", "not-a-list");
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> serializer.deserialize(map));
+
+        assertTrue(ex.getMessage().contains("dockSession.floating"));
+        assertTrue(ex.getMessage().contains("expected list"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void deserialize_invalidNestedCoreField_reportsExactPath() {
+        Map<String, Object> map = serializer.serialize(buildSession("Editor 2"));
+        List<Object> floating = (List<Object>) map.get("floating");
+        Map<String, Object> floatingEntry = (Map<String, Object>) floating.getFirst();
+        Map<String, Object> bounds = (Map<String, Object>) floatingEntry.get("bounds");
+        bounds.put("width", "wide");
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> serializer.deserialize(map));
+
+        assertTrue(ex.getMessage().contains("dockSession.floating[0].bounds.width"));
+        assertTrue(ex.getMessage().contains("expected number"));
     }
 
     private DockSessionData buildSession(String floatingTitle) {

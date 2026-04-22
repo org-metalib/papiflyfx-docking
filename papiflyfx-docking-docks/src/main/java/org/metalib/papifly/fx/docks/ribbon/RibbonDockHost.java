@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.docks.ribbon;
 import javafx.scene.layout.BorderPane;
 import org.metalib.papifly.fx.docks.DockManager;
 import org.metalib.papifly.fx.docks.DockSessionStateContributor;
+import org.metalib.papifly.fx.docks.layout.data.RibbonSessionData;
 
 import java.util.Objects;
 
@@ -14,7 +15,7 @@ public class RibbonDockHost extends BorderPane {
     private final DockManager dockManager;
     private final RibbonManager ribbonManager;
     private final Ribbon ribbon;
-    private final DockSessionStateContributor sessionStateContributor;
+    private final DockSessionStateContributor<RibbonSessionData> sessionStateContributor;
 
     /**
      * Creates a host with default ribbon shell/runtime instances.

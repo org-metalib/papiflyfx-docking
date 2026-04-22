@@ -10,13 +10,13 @@ import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.MaximizedLeafData;
 import org.metalib.papifly.fx.docks.layout.data.MinimizedLeafData;
-import org.metalib.papifly.fx.docks.layout.data.RibbonSessionData;
 import org.metalib.papifly.fx.docks.layout.data.RestoreHintData;
 import org.metalib.papifly.fx.docks.layout.data.SplitData;
 import org.metalib.papifly.fx.docks.layout.data.TabGroupData;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -69,13 +69,19 @@ class DockSessionPersistenceTest {
 
     @Test
     void testRoundTrip_sessionWithRibbonState() {
-        DockSessionData original = buildSession().withRibbon(
-            new RibbonSessionData(true, "hugo", List.of("cmd.save", "cmd.preview"))
-        );
+        DockSessionData original = buildSession()
+            .withExtension("ribbon", Map.of(
+                "minimized", true,
+                "selectedTabId", "hugo",
+                "quickAccessCommandIds", List.of("cmd.save", "cmd.preview")
+            ))
+            .withExtension("workspace", Map.of("profile", "dev"));
 
         String json = persistence.toJsonString(original);
         DockSessionData restored = persistence.fromJsonString(json);
 
+        assertTrue(json.contains("\"extensions\""));
+        assertTrue(json.contains("\"ribbon\""));
         assertEquals(original, restored);
     }
 

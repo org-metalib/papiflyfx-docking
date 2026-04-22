@@ -1,7 +1,7 @@
 # Progress — Docking Ribbon 2
 
-**Status:** Phase 3 implementation complete; required on-host validation green  
-**Current Milestone:** Phase 3 — layout and rendering efficiency  
+**Status:** Phase 4 implementation complete; required on-host validation green  
+**Current Milestone:** Phase 4 — persistence extension generalization  
 **Priority:** P1 (High)  
 **Lead Agent:** @core-architect  
 **Required Reviewers:** @ui-ux-designer, @feature-dev, @qa-engineer, @ops-engineer, @spec-steward  
@@ -14,7 +14,7 @@
 - Phase 1 — API contracts: 100%
 - Phase 2 — Runtime command architecture: 100%
 - Phase 3 — Layout and rendering efficiency: 100%
-- Phase 4 — Persistence extension generalization: 0%
+- Phase 4 — Persistence extension generalization: 100%
 - Phase 5 — Provider migration and test closure: 0%
 
 ## Accomplishments
@@ -57,6 +57,32 @@
   - full collapse/restore transition ordering
   - accumulator merge regression
   - SVG parse failure with raster fallback
+- [2026-04-21] Ran the required Phase 3 preflight validation again before the Phase 4 schema refactor:
+  - `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am compile` → `BUILD SUCCESS`
+  - `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am -Dtestfx.headless=true test` → `BUILD SUCCESS` (`84` tests, `0` failures, `0` errors)
+  - `./mvnw -pl papiflyfx-docking-github,papiflyfx-docking-hugo,papiflyfx-docking-samples -am compile` → `BUILD SUCCESS`
+- [2026-04-21] Phase 4.1 — Replaced the dedicated `DockSessionData.ribbon` field with a deterministic namespaced extension container:
+  - `DockSessionData` now stores extension payloads under `extensions.<namespace>` and canonicalizes namespace ordering for stable JSON output.
+  - session schema version advanced from `2` to `3`.
+  - compatibility with the old top-level `ribbon` payload is intentionally not preserved for Ribbon 2; no legacy bridge was added.
+- [2026-04-21] Phase 4.2 — Generalized the contributor SPI around extension namespaces and codecs:
+  - `DockSessionStateContributor<T>` now declares `extensionNamespace()` plus a typed `DockSessionExtensionCodec<T>`.
+  - `DefaultDockSessionService` captures/restores contributor-owned payloads through codecs instead of mutating the whole `DockSessionData`.
+  - `DockManager.registerSessionStateContributor(...)` now rejects duplicate namespaces explicitly with a fail-fast `IllegalArgumentException`.
+- [2026-04-21] Phase 4.3 — Moved ribbon persistence onto the generalized extension path:
+  - `RibbonSessionStateContributor` now owns namespace `ribbon`.
+  - `RibbonSessionCodec` encodes/decodes `RibbonSessionData` through `extensions.ribbon`.
+  - Phase 2/3 ribbon invariants remain intact: QAT persistence stays ID-first, missing commands remain pinned but unresolved, and missing selected tabs still fall back gracefully.
+- [2026-04-21] Phase 4.4 — Hardened session deserialization with typed shape readers and extension isolation:
+  - `DockSessionSerializer` now uses reusable map/list/string/number readers for floating, minimized, maximized, bounds, and restore-hint parsing.
+  - malformed core session fields now fail with field-specific `IllegalArgumentException` messages such as `dockSession.floating[0].bounds.width`.
+  - malformed extension payloads no longer poison unrelated restore state: non-object or malformed extension entries are dropped with warnings, and codec decode failures are isolated to the owning contributor.
+- [2026-04-21] Phase 4.5 — Expanded persistence-focused regression coverage:
+  - serializer round-trip with multiple extension namespaces and deterministic ordering
+  - ribbon persistence assertions against the new `extensions.ribbon` JSON shape
+  - duplicate extension namespace rejection
+  - malformed extension payload tolerance during restore
+  - malformed core-session diagnostics from the new serializer helpers
 
 ## Validation status
 
@@ -80,6 +106,25 @@
 - `2026-04-21` — `./mvnw -pl papiflyfx-docking-samples -am -Dtest=SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` → `BUILD SUCCESS`
   - `SamplesSmokeTest`: `12` tests, `0` failures, `0` errors
 
+### Phase 4 preflight
+
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am compile` → `BUILD SUCCESS`
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am -Dtestfx.headless=true test` → `BUILD SUCCESS`
+  - `88` tests, `0` failures, `0` errors after the Phase 4 test additions
+  - expected warning coverage exercised:
+    - malformed ribbon extension decode logs a scoped contributor warning and leaves core restore intact
+    - malformed extension payload shape logs a serializer warning and drops only the broken namespace
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-github,papiflyfx-docking-hugo,papiflyfx-docking-samples -am compile` → `BUILD SUCCESS`
+
+### Phase 4 validation
+
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am compile` → `BUILD SUCCESS`
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am -Dtestfx.headless=true test` → `BUILD SUCCESS`
+  - `88` tests, `0` failures, `0` errors
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-github,papiflyfx-docking-hugo,papiflyfx-docking-samples -am compile` → `BUILD SUCCESS`
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-samples -am -Dtest=SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` → `BUILD SUCCESS`
+  - `SamplesSmokeTest`: `12` tests, `0` failures, `0` errors
+
 ### Packaging validation
 
 - Not required for this session.
@@ -96,53 +141,61 @@
 - The Phase 1 collapse contract is authoritative: smaller `collapseOrder` values collapse earlier. The prompt text also mentioned “highest collapseOrder first” in one test bullet; this implementation follows the Phase 1/Javadoc contract instead.
 - `TabAccumulator` and `GroupAccumulator` constructors no longer merge their initial contribution eagerly. The only merge now happens in the outer `computeIfAbsent(...).merge(...)` flow.
 - SVG icon support is best-effort and internal. Parsing/render failure must never propagate to providers; the loader logs a `WARNING` and falls back to raster loading.
+- Dock session extension persistence is now namespaced and contributor-owned. New extension state must be written under `extensions.<namespace>` rather than as new top-level `DockSessionData` fields.
+- `DockSessionStateContributor<T>` now owns both a stable namespace and a typed codec. Contributors no longer mutate the whole captured session object directly.
+- Duplicate session contributor namespaces are invalid and fail fast at registration time; there is no silent last-write-wins path.
+- Session schema version `3` is the authoritative Ribbon 2 persistence shape. The old top-level `ribbon` payload is intentionally unsupported after this cutover.
+- Malformed extension payloads are isolated from core restore: serializer-level shape failures drop only the broken extension entry, and codec-level decode failures are logged per contributor without aborting layout restore.
 
 ## Open risks and follow-ups
 
 - `RibbonIconLoader` currently supports path-based SVG documents, which is sufficient for icon-grade assets but not a general SVG renderer. Multi-element icons that rely on richer SVG features may still fall back to raster handles.
 - Hidden contextual tabs keep their cached `RibbonGroup` instances so they can reappear without reconstruction. This is intentional for Phase 3 efficiency, but it means cache lifetime is tied to the ribbon host lifetime rather than visible-tab lifetime.
 - `ACTIVE_CONTENT_NODE` is still populated in `RibbonContextAttributes` for the transitional provider migration phase and remains a Phase 5 cleanup item.
-- Phase 4 persistence-extension generalization is still pending. Phase 3 deliberately kept the existing `RibbonSessionData` shape intact.
+- Future dock extensions now have a stable namespace/codec path, but provider-facing documentation for adopting that pattern is still only captured here in progress notes; Phase 5 should publish contributor guidance more explicitly.
+- Because compatibility was intentionally cut, any persisted session produced before Phase 4 with a top-level `ribbon` payload will not restore ribbon state on schema version `3` hosts.
 
 ## Next tasks
 
-1. Phase 4 — design the namespaced session-extension payload model in `RibbonSessionData` / `DockSessionStateContributor`.
-2. Phase 4 — add serializer shape-validation helpers before touching the session schema.
-3. Phase 5 — migrate remaining providers off `ACTIVE_CONTENT_NODE` and onto typed capabilities.
-4. Phase 5 — expand provider-facing docs with the new cache/telemetry invariants and the FX-thread ownership rule for `CommandRegistry`.
+1. Phase 5 — document extension namespace/codec expectations for future contributors in the relevant README/spec surface.
+2. Phase 5 — migrate remaining providers off `ACTIVE_CONTENT_NODE` and onto typed capabilities.
+3. Phase 5 — expand provider-facing docs with the cache/telemetry invariants and the FX-thread ownership rule for `CommandRegistry`.
+4. Phase 5 — keep provider migration limited to compile-critical adaptations until the full cleanup prompt lands.
 
-## Handoff snapshot — Phase 3
+## Handoff snapshot — Phase 4
 
 Lead Agent: `@core-architect`  
-Task Scope: Ribbon 2 Phase 3 — adaptive layout/node reuse, layout telemetry, accumulator merge fix, SVG icon fallback, and deterministic regression coverage.  
+Task Scope: Ribbon 2 Phase 4 — namespaced session extensions, contributor codec generalization, ribbon persistence migration, serializer shape hardening, and persistence-focused regression coverage.  
 Impacted Modules: `papiflyfx-docking-docks` (runtime + tests), `spec/papiflyfx-docking-docks/2026-04-20-0-ribbon-2/**`.
 
-Files Changed — Phase 3 runtime:
+Files Changed — Phase 4 runtime:
 
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/Ribbon.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonTabStrip.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonGroup.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonGroupSizeMode.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonControlFactory.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonIconLoader.java` (new)
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonLayoutTelemetry.java` (new)
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonLayoutTelemetryRecorder.java` (new)
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonManager.java`
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockSessionExtensionCodec.java` (new)
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockSessionStateContributor.java`
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockManager.java`
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockManagerContext.java`
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DefaultDockSessionService.java`
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/layout/data/DockSessionData.java`
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/serial/DockSessionSerializer.java`
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonDockHost.java`
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonSessionCodec.java` (new)
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonSessionStateContributor.java`
 
-Files Changed — Phase 3 tests:
+Files Changed — Phase 4 tests:
 
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonAdaptiveLayoutFxTest.java`
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonManagerTest.java`
+- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/DockManagerSessionPersistenceFxTest.java`
+- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonSessionPersistenceFxTest.java`
+- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/serial/DockSessionPersistenceTest.java`
+- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/serial/DockSessionSerializerTest.java`
 
 Files Changed — Spec:
 
 - `spec/papiflyfx-docking-docks/2026-04-20-0-ribbon-2/progress.md`
-- `spec/papiflyfx-docking-docks/2026-04-20-0-ribbon-2/adr-0001-svg-icons.md`
 
 Reviewer focus:
 
-- `@ui-ux-designer` — verify the incremental collapse/grow ordering still feels correct in the live ribbon and that collapsed-group affordances remain visually stable when switching widths repeatedly.
-- `@feature-dev` — verify provider-authored controls with stable canonical command ids benefit from the cache path and that no provider assumes per-refresh control reconstruction.
-- `@qa-engineer` — scrutinize the new telemetry invariants and the headless `RibbonAdaptiveLayoutFxTest` coverage, especially the “identical refresh => hits only” expectation.
-- `@ops-engineer` — confirm the validation command record is sufficient and that the documented `SamplesSmokeTest` Surefire workaround is acceptable for reactor runs.
-- `@spec-steward` — confirm the Phase 3 handoff captures the prompt ambiguity around collapse ordering and the “no new dependency” SVG decision clearly enough for later phases.
+- `@ui-ux-designer` — verify ribbon restore still feels correct after the extension cutover, especially the selected-tab fallback path and malformed-extension no-op behavior.
+- `@feature-dev` — review the namespace/codec contract as the intended onboarding path for future dock extensions so new modules do not reintroduce top-level session fields.
+- `@qa-engineer` — scrutinize the new serializer diagnostics, duplicate-namespace fail-fast coverage, and the scoped malformed-extension restore test.
+- `@ops-engineer` — confirm the validation matrix and the schema-version cutover (`2` -> `3`) are recorded clearly enough for release/readiness notes.
+- `@spec-steward` — confirm the intentional no-legacy-bridge note for top-level `ribbon` is explicit enough and that the remaining Phase 5 doc tasks are scoped cleanly.

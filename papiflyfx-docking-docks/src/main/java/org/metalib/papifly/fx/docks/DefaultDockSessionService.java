@@ -310,32 +310,65 @@ final class DefaultDockSessionService implements DockSessionService {
 
     private DockSessionData applySessionContributorsOnCapture(DockSessionData session) {
         DockSessionData current = session;
-        for (DockSessionStateContributor contributor : context.getSessionStateContributors()) {
+        for (DockSessionStateContributor<?> contributor : context.getSessionStateContributors()) {
             if (contributor == null || current == null) {
                 continue;
             }
             try {
-                DockSessionData contributed = contributor.captureSessionState(current);
-                if (contributed != null) {
-                    current = contributed;
-                }
+                current = captureContributorState(current, contributor);
             } catch (RuntimeException exception) {
-                LOG.log(Level.WARNING, "Session contributor capture failed: " + contributor.getClass().getName(), exception);
+                LOG.log(Level.WARNING, "Session contributor capture failed: " + contributorDescription(contributor), exception);
             }
         }
         return current;
     }
 
     private void applySessionContributorsOnRestore(DockSessionData session) {
-        for (DockSessionStateContributor contributor : context.getSessionStateContributors()) {
+        for (DockSessionStateContributor<?> contributor : context.getSessionStateContributors()) {
             if (contributor == null) {
                 continue;
             }
             try {
-                contributor.restoreSessionState(session);
+                restoreContributorState(session, contributor);
             } catch (RuntimeException exception) {
-                LOG.log(Level.WARNING, "Session contributor restore failed: " + contributor.getClass().getName(), exception);
+                LOG.log(Level.WARNING, "Session contributor restore failed: " + contributorDescription(contributor), exception);
             }
         }
+    }
+
+    private <T> DockSessionData captureContributorState(
+        DockSessionData session,
+        DockSessionStateContributor<T> contributor
+    ) {
+        T contributorState = contributor.captureSessionState();
+        if (contributorState == null) {
+            return session.withoutExtension(contributor.extensionNamespace());
+        }
+        Map<String, Object> payload = contributor.codec().encode(contributorState);
+        if (payload == null) {
+            throw new IllegalArgumentException(
+                "Session contributor codec returned null payload for namespace " + contributor.extensionNamespace()
+            );
+        }
+        return session.withExtension(contributor.extensionNamespace(), payload);
+    }
+
+    private <T> void restoreContributorState(
+        DockSessionData session,
+        DockSessionStateContributor<T> contributor
+    ) {
+        Map<String, Object> payload = session.extension(contributor.extensionNamespace());
+        if (payload == null) {
+            return;
+        }
+        T contributorState = contributor.codec().decode(payload);
+        if (contributorState == null) {
+            return;
+        }
+        contributor.restoreSessionState(contributorState);
+    }
+
+    private String contributorDescription(DockSessionStateContributor<?> contributor) {
+        return contributor.getClass().getName() + "[namespace=" + contributor.extensionNamespace() + "]";
     }
 }

@@ -13,14 +13,18 @@ import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 import org.metalib.papifly.fx.docks.DockManager;
+import org.metalib.papifly.fx.docks.serial.DockSessionPersistence;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
 import org.metalib.papifly.fx.docks.testutil.FxTestUtil;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
@@ -35,6 +39,7 @@ class RibbonSessionPersistenceFxTest {
     private static final String CMD_LEGACY = "cmd.legacy";
 
     private DockManager dockManager;
+    private final DockSessionPersistence persistence = new DockSessionPersistence();
     private RibbonManager ribbonManager;
     private Ribbon ribbon;
     private TestProvider provider;
@@ -65,9 +70,13 @@ class RibbonSessionPersistenceFxTest {
         settle();
 
         String json = FxTestUtil.callFx(dockManager::saveSessionToString);
-        assertTrue(json.contains("\"ribbon\""));
-        assertTrue(json.contains("\"selectedTabId\": \"hugo\""));
-        assertTrue(json.contains("\"quickAccessCommandIds\""));
+        Map<String, Object> sessionMap = persistence.getSerializer().fromJson(json);
+        Map<String, Object> extensions = castMap(sessionMap.get("extensions"));
+        Map<String, Object> ribbonExtension = castMap(extensions.get("ribbon"));
+
+        assertFalse(sessionMap.containsKey("ribbon"));
+        assertEquals("hugo", ribbonExtension.get("selectedTabId"));
+        assertEquals(List.of(CMD_SAVE, CMD_PREVIEW), ribbonExtension.get("quickAccessCommandIds"));
 
         FxTestUtil.runFx(() -> {
             ribbon.setMinimized(false);
@@ -83,6 +92,36 @@ class RibbonSessionPersistenceFxTest {
             List.of(CMD_SAVE, CMD_PREVIEW),
             FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream().map(PapiflyCommand::id).toList())
         );
+    }
+
+    @Test
+    void restore_malformedRibbonExtensionDoesNotBlockCoreSessionRestore() {
+        String json = FxTestUtil.callFx(() -> {
+            ribbonManager.getQuickAccessCommandIds().setAll(CMD_SAVE, CMD_PREVIEW);
+            ribbon.setSelectedTabId(TAB_HUGO);
+            ribbon.setMinimized(true);
+            return dockManager.saveSessionToString();
+        });
+
+        Map<String, Object> sessionMap = persistence.getSerializer().fromJson(json);
+        Map<String, Object> extensions = castMap(sessionMap.get("extensions"));
+        Map<String, Object> ribbonExtension = castMap(extensions.get("ribbon"));
+        ribbonExtension.put("quickAccessCommandIds", "broken");
+        String malformedJson = persistence.getSerializer().toJson(sessionMap);
+
+        FxTestUtil.runFx(() -> {
+            ribbon.setMinimized(false);
+            ribbon.setSelectedTabId(TAB_HOME);
+            ribbonManager.getQuickAccessCommandIds().clear();
+            dockManager.setRoot((org.metalib.papifly.fx.docks.core.DockElement) null);
+            dockManager.restoreSessionFromString(malformedJson);
+        });
+        settle();
+
+        assertNotNull(FxTestUtil.callFx(dockManager::getRoot));
+        assertEquals(TAB_HOME, FxTestUtil.callFx(ribbon::getSelectedTabId));
+        assertTrue(FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommandIds().isEmpty()));
+        assertTrue(FxTestUtil.callFx(() -> !ribbon.isMinimized()));
     }
 
     @Test
@@ -112,6 +151,11 @@ class RibbonSessionPersistenceFxTest {
             List.of(CMD_SAVE),
             FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream().map(PapiflyCommand::id).toList())
         );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> castMap(Object value) {
+        return (Map<String, Object>) value;
     }
 
     private static void settle() {

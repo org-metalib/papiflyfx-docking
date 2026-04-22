@@ -65,7 +65,7 @@ public class DockManager {
     private final DockSessionService sessionService;
     private final ObjectProperty<RibbonContext> ribbonContext;
     private final Map<DockTabGroup, RibbonContextListenerHandle> ribbonContextListeners;
-    private final LinkedHashSet<DockSessionStateContributor> sessionStateContributors;
+    private final LinkedHashSet<DockSessionStateContributor<?>> sessionStateContributors;
 
     private ContentFactory contentFactory;
     private DockTabGroup activeRibbonTabGroup;
@@ -595,10 +595,17 @@ public class DockManager {
      *
      * @param contributor contributor implementation
      */
-    public void registerSessionStateContributor(DockSessionStateContributor contributor) {
-        if (contributor != null) {
-            sessionStateContributors.add(contributor);
+    public void registerSessionStateContributor(DockSessionStateContributor<?> contributor) {
+        if (contributor == null) {
+            return;
         }
+        String namespace = requireSessionContributorNamespace(contributor);
+        for (DockSessionStateContributor<?> existing : sessionStateContributors) {
+            if (existing != contributor && namespace.equals(requireSessionContributorNamespace(existing))) {
+                throw new IllegalArgumentException("Duplicate dock session contributor namespace: " + namespace);
+            }
+        }
+        sessionStateContributors.add(contributor);
     }
 
     /**
@@ -606,7 +613,7 @@ public class DockManager {
      *
      * @param contributor contributor implementation
      */
-    public void unregisterSessionStateContributor(DockSessionStateContributor contributor) {
+    public void unregisterSessionStateContributor(DockSessionStateContributor<?> contributor) {
         if (contributor != null) {
             sessionStateContributors.remove(contributor);
         }
@@ -617,8 +624,21 @@ public class DockManager {
      *
      * @return registered contributors
      */
-    public List<DockSessionStateContributor> getSessionStateContributors() {
+    public List<DockSessionStateContributor<?>> getSessionStateContributors() {
         return List.copyOf(sessionStateContributors);
+    }
+
+    private String requireSessionContributorNamespace(DockSessionStateContributor<?> contributor) {
+        String namespace = Objects.requireNonNull(
+            contributor.extensionNamespace(),
+            "Session contributor namespace must not be null: " + contributor.getClass().getName()
+        ).trim();
+        if (namespace.isEmpty()) {
+            throw new IllegalArgumentException(
+                "Session contributor namespace must not be blank: " + contributor.getClass().getName()
+            );
+        }
+        return namespace;
     }
 
     /**
@@ -1252,7 +1272,7 @@ public class DockManager {
         }
 
         @Override
-        public List<DockSessionStateContributor> getSessionStateContributors() {
+        public List<DockSessionStateContributor<?>> getSessionStateContributors() {
             return new ArrayList<>(sessionStateContributors);
         }
     }

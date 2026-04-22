@@ -1,12 +1,16 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
+import org.metalib.papifly.fx.docks.DockSessionExtensionCodec;
 import org.metalib.papifly.fx.docks.DockSessionStateContributor;
-import org.metalib.papifly.fx.docks.layout.data.DockSessionData;
 import org.metalib.papifly.fx.docks.layout.data.RibbonSessionData;
 
 import java.util.Objects;
 
-final class RibbonSessionStateContributor implements DockSessionStateContributor {
+final class RibbonSessionStateContributor implements DockSessionStateContributor<RibbonSessionData> {
+
+    static final String EXTENSION_NAMESPACE = "ribbon";
+
+    private static final RibbonSessionCodec CODEC = new RibbonSessionCodec();
 
     private final Ribbon ribbon;
 
@@ -15,19 +19,22 @@ final class RibbonSessionStateContributor implements DockSessionStateContributor
     }
 
     @Override
-    public DockSessionData captureSessionState(DockSessionData session) {
-        if (session == null) {
-            return null;
-        }
-        RibbonSessionData ribbonState = ribbon.captureSessionState();
-        return session.withRibbon(ribbonState);
+    public String extensionNamespace() {
+        return EXTENSION_NAMESPACE;
     }
 
     @Override
-    public void restoreSessionState(DockSessionData session) {
-        if (session == null || session.ribbon() == null) {
-            return;
-        }
-        ribbon.restoreSessionState(session.ribbon());
+    public DockSessionExtensionCodec<RibbonSessionData> codec() {
+        return CODEC;
+    }
+
+    @Override
+    public RibbonSessionData captureSessionState() {
+        return ribbon.captureSessionState();
+    }
+
+    @Override
+    public void restoreSessionState(RibbonSessionData sessionState) {
+        ribbon.restoreSessionState(sessionState);
     }
 }

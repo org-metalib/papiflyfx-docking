@@ -7,19 +7,23 @@ import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
 import org.metalib.papifly.fx.docks.layout.data.LeafData;
 import org.metalib.papifly.fx.docks.layout.data.MaximizedLeafData;
 import org.metalib.papifly.fx.docks.layout.data.MinimizedLeafData;
-import org.metalib.papifly.fx.docks.layout.data.RibbonSessionData;
 import org.metalib.papifly.fx.docks.layout.data.RestoreHintData;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Serializes and deserializes dock session data to/from Map structures.
- * Uses LayoutSerializer for layout node encoding plus floating, minimized, and maximized state.
+ * Uses LayoutSerializer for layout node encoding plus floating, minimized,
+ * maximized, and namespaced extension state.
  */
 public class DockSessionSerializer {
+
+    private static final Logger LOG = Logger.getLogger(DockSessionSerializer.class.getName());
 
     private static final String TYPE_KEY = "type";
     private static final String VERSION_KEY = "version";
@@ -27,7 +31,7 @@ public class DockSessionSerializer {
     private static final String FLOATING_KEY = "floating";
     private static final String MINIMIZED_KEY = "minimized";
     private static final String MAXIMIZED_KEY = "maximized";
-    private static final String RIBBON_KEY = "ribbon";
+    private static final String EXTENSIONS_KEY = "extensions";
 
     private static final String LEAF_KEY = "leaf";
     private static final String BOUNDS_KEY = "bounds";
@@ -43,11 +47,9 @@ public class DockSessionSerializer {
     private static final String HINT_TAB_INDEX_KEY = "tabIndex";
     private static final String HINT_SPLIT_POSITION_KEY = "splitPosition";
     private static final String HINT_SIBLING_ID_KEY = "siblingId";
-    private static final String RIBBON_MINIMIZED_KEY = "minimized";
-    private static final String RIBBON_SELECTED_TAB_ID_KEY = "selectedTabId";
-    private static final String RIBBON_QUICK_ACCESS_COMMAND_IDS_KEY = "quickAccessCommandIds";
 
     private static final String TYPE_DOCK_SESSION = "dockSession";
+    private static final String ROOT_PATH = TYPE_DOCK_SESSION;
 
     private final LayoutSerializer layoutSerializer;
 
@@ -82,13 +84,11 @@ public class DockSessionSerializer {
         map.put(TYPE_KEY, TYPE_DOCK_SESSION);
         map.put(VERSION_KEY, session.version());
 
-        // Serialize layout tree
         if (session.layout() != null) {
             map.put(LAYOUT_KEY, layoutSerializer.serialize(session.layout()));
         }
 
-        // Serialize floating leaves
-        if (session.floating() != null && !session.floating().isEmpty()) {
+        if (!session.floating().isEmpty()) {
             List<Map<String, Object>> floatingList = new ArrayList<>();
             for (FloatingLeafData floating : session.floating()) {
                 floatingList.add(serializeFloating(floating));
@@ -96,8 +96,7 @@ public class DockSessionSerializer {
             map.put(FLOATING_KEY, floatingList);
         }
 
-        // Serialize minimized leaves
-        if (session.minimized() != null && !session.minimized().isEmpty()) {
+        if (!session.minimized().isEmpty()) {
             List<Map<String, Object>> minimizedList = new ArrayList<>();
             for (MinimizedLeafData minimized : session.minimized()) {
                 minimizedList.add(serializeMinimized(minimized));
@@ -105,14 +104,12 @@ public class DockSessionSerializer {
             map.put(MINIMIZED_KEY, minimizedList);
         }
 
-        // Serialize maximized leaf
         if (session.maximized() != null) {
             map.put(MAXIMIZED_KEY, serializeMaximized(session.maximized()));
         }
 
-        // Serialize optional ribbon state
-        if (session.ribbon() != null) {
-            map.put(RIBBON_KEY, serializeRibbon(session.ribbon()));
+        if (!session.extensions().isEmpty()) {
+            map.put(EXTENSIONS_KEY, serializeExtensions(session.extensions()));
         }
 
         return map;
@@ -189,14 +186,10 @@ public class DockSessionSerializer {
         return map;
     }
 
-    private Map<String, Object> serializeRibbon(RibbonSessionData ribbon) {
+    private Map<String, Object> serializeExtensions(Map<String, Map<String, Object>> extensions) {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put(RIBBON_MINIMIZED_KEY, ribbon.minimized());
-        if (ribbon.selectedTabId() != null) {
-            map.put(RIBBON_SELECTED_TAB_ID_KEY, ribbon.selectedTabId());
-        }
-        if (ribbon.quickAccessCommandIds() != null && !ribbon.quickAccessCommandIds().isEmpty()) {
-            map.put(RIBBON_QUICK_ACCESS_COMMAND_IDS_KEY, ribbon.quickAccessCommandIds());
+        for (Map.Entry<String, Map<String, Object>> entry : extensions.entrySet()) {
+            map.put(entry.getKey(), new LinkedHashMap<>(entry.getValue()));
         }
         return map;
     }
@@ -207,164 +200,249 @@ public class DockSessionSerializer {
      * @param map serialized session map
      * @return deserialized session data, or {@code null} when input is {@code null}
      */
-    @SuppressWarnings("unchecked")
     public DockSessionData deserialize(Map<String, Object> map) {
         if (map == null) {
             return null;
         }
 
-        String type = (String) map.get(TYPE_KEY);
-        if (type == null || !TYPE_DOCK_SESSION.equals(type)) {
+        String type = requiredString(map, TYPE_KEY, ROOT_PATH);
+        if (!TYPE_DOCK_SESSION.equals(type)) {
             throw new IllegalArgumentException("Invalid session type: " + type);
         }
 
-        int version = ((Number) map.getOrDefault(VERSION_KEY, DockSessionData.CURRENT_VERSION)).intValue();
+        int version = optionalInt(map, VERSION_KEY, ROOT_PATH, DockSessionData.CURRENT_VERSION);
 
-        // Deserialize layout tree
         LayoutNode layout = null;
-        if (map.containsKey(LAYOUT_KEY)) {
-            Map<String, Object> layoutMap = (Map<String, Object>) map.get(LAYOUT_KEY);
+        Map<String, Object> layoutMap = optionalMap(map, LAYOUT_KEY, ROOT_PATH);
+        if (layoutMap != null) {
             layout = layoutSerializer.deserialize(layoutMap);
         }
 
-        // Deserialize floating leaves
         List<FloatingLeafData> floating = new ArrayList<>();
-        if (map.containsKey(FLOATING_KEY)) {
-            List<Map<String, Object>> floatingList = (List<Map<String, Object>>) map.get(FLOATING_KEY);
-            for (Map<String, Object> floatingMap : floatingList) {
-                floating.add(deserializeFloating(floatingMap));
-            }
+        List<Object> floatingEntries = optionalList(map, FLOATING_KEY, ROOT_PATH);
+        for (int index = 0; index < floatingEntries.size(); index++) {
+            String entryPath = ROOT_PATH + "." + FLOATING_KEY + "[" + index + "]";
+            floating.add(deserializeFloating(requireMapEntry(floatingEntries, index, ROOT_PATH + "." + FLOATING_KEY), entryPath));
         }
 
-        // Deserialize minimized leaves
         List<MinimizedLeafData> minimized = new ArrayList<>();
-        if (map.containsKey(MINIMIZED_KEY)) {
-            List<Map<String, Object>> minimizedList = (List<Map<String, Object>>) map.get(MINIMIZED_KEY);
-            for (Map<String, Object> minimizedMap : minimizedList) {
-                minimized.add(deserializeMinimized(minimizedMap));
-            }
+        List<Object> minimizedEntries = optionalList(map, MINIMIZED_KEY, ROOT_PATH);
+        for (int index = 0; index < minimizedEntries.size(); index++) {
+            String entryPath = ROOT_PATH + "." + MINIMIZED_KEY + "[" + index + "]";
+            minimized.add(deserializeMinimized(requireMapEntry(minimizedEntries, index, ROOT_PATH + "." + MINIMIZED_KEY), entryPath));
         }
 
-        // Deserialize maximized leaf
         MaximizedLeafData maximized = null;
-        if (map.containsKey(MAXIMIZED_KEY)) {
-            Map<String, Object> maximizedMap = (Map<String, Object>) map.get(MAXIMIZED_KEY);
-            maximized = deserializeMaximized(maximizedMap);
+        Map<String, Object> maximizedMap = optionalMap(map, MAXIMIZED_KEY, ROOT_PATH);
+        if (maximizedMap != null) {
+            maximized = deserializeMaximized(maximizedMap, ROOT_PATH + "." + MAXIMIZED_KEY);
         }
 
-        RibbonSessionData ribbon = null;
-        Object ribbonValue = map.get(RIBBON_KEY);
-        if (ribbonValue instanceof Map<?, ?> ribbonMap) {
-            ribbon = deserializeRibbon((Map<String, Object>) ribbonMap);
-        }
+        Map<String, Map<String, Object>> extensions = deserializeExtensions(map);
 
-        return new DockSessionData(version, layout, floating, minimized, maximized, ribbon);
+        return new DockSessionData(version, layout, floating, minimized, maximized, extensions);
     }
 
-    @SuppressWarnings("unchecked")
-    private FloatingLeafData deserializeFloating(Map<String, Object> map) {
-        LeafData leaf = null;
-        if (map.containsKey(LEAF_KEY)) {
-            Map<String, Object> leafMap = (Map<String, Object>) map.get(LEAF_KEY);
-            LayoutNode node = layoutSerializer.deserialize(leafMap);
-            if (node instanceof LeafData leafData) {
-                leaf = leafData;
-            }
-        }
-
-        BoundsData bounds = null;
-        if (map.containsKey(BOUNDS_KEY)) {
-            Map<String, Object> boundsMap = (Map<String, Object>) map.get(BOUNDS_KEY);
-            bounds = deserializeBounds(boundsMap);
-        }
-
-        RestoreHintData restoreHint = null;
-        if (map.containsKey(RESTORE_HINT_KEY)) {
-            Map<String, Object> hintMap = (Map<String, Object>) map.get(RESTORE_HINT_KEY);
-            restoreHint = deserializeRestoreHint(hintMap);
-        }
-
+    private FloatingLeafData deserializeFloating(Map<String, Object> map, String path) {
+        LeafData leaf = deserializeLeaf(map, LEAF_KEY, path);
+        BoundsData bounds = deserializeBounds(optionalMap(map, BOUNDS_KEY, path), path + "." + BOUNDS_KEY);
+        RestoreHintData restoreHint = deserializeRestoreHint(
+            optionalMap(map, RESTORE_HINT_KEY, path),
+            path + "." + RESTORE_HINT_KEY
+        );
         return new FloatingLeafData(leaf, bounds, restoreHint);
     }
 
-    @SuppressWarnings("unchecked")
-    private MinimizedLeafData deserializeMinimized(Map<String, Object> map) {
-        LeafData leaf = null;
-        if (map.containsKey(LEAF_KEY)) {
-            Map<String, Object> leafMap = (Map<String, Object>) map.get(LEAF_KEY);
-            LayoutNode node = layoutSerializer.deserialize(leafMap);
-            if (node instanceof LeafData leafData) {
-                leaf = leafData;
-            }
-        }
-
-        RestoreHintData restoreHint = null;
-        if (map.containsKey(RESTORE_HINT_KEY)) {
-            Map<String, Object> hintMap = (Map<String, Object>) map.get(RESTORE_HINT_KEY);
-            restoreHint = deserializeRestoreHint(hintMap);
-        }
-
+    private MinimizedLeafData deserializeMinimized(Map<String, Object> map, String path) {
+        LeafData leaf = deserializeLeaf(map, LEAF_KEY, path);
+        RestoreHintData restoreHint = deserializeRestoreHint(
+            optionalMap(map, RESTORE_HINT_KEY, path),
+            path + "." + RESTORE_HINT_KEY
+        );
         return new MinimizedLeafData(leaf, restoreHint);
     }
 
-    @SuppressWarnings("unchecked")
-    private MaximizedLeafData deserializeMaximized(Map<String, Object> map) {
-        LeafData leaf = null;
-        if (map.containsKey(LEAF_KEY)) {
-            Map<String, Object> leafMap = (Map<String, Object>) map.get(LEAF_KEY);
-            LayoutNode node = layoutSerializer.deserialize(leafMap);
-            if (node instanceof LeafData leafData) {
-                leaf = leafData;
-            }
-        }
-
-        RestoreHintData restoreHint = null;
-        if (map.containsKey(RESTORE_HINT_KEY)) {
-            Map<String, Object> hintMap = (Map<String, Object>) map.get(RESTORE_HINT_KEY);
-            restoreHint = deserializeRestoreHint(hintMap);
-        }
-
+    private MaximizedLeafData deserializeMaximized(Map<String, Object> map, String path) {
+        LeafData leaf = deserializeLeaf(map, LEAF_KEY, path);
+        RestoreHintData restoreHint = deserializeRestoreHint(
+            optionalMap(map, RESTORE_HINT_KEY, path),
+            path + "." + RESTORE_HINT_KEY
+        );
         return new MaximizedLeafData(leaf, restoreHint);
     }
 
-    private BoundsData deserializeBounds(Map<String, Object> map) {
-        double x = ((Number) map.getOrDefault(BOUNDS_X_KEY, 0.0)).doubleValue();
-        double y = ((Number) map.getOrDefault(BOUNDS_Y_KEY, 0.0)).doubleValue();
-        double width = ((Number) map.getOrDefault(BOUNDS_WIDTH_KEY, 400.0)).doubleValue();
-        double height = ((Number) map.getOrDefault(BOUNDS_HEIGHT_KEY, 300.0)).doubleValue();
-        return new BoundsData(x, y, width, height);
+    private LeafData deserializeLeaf(Map<String, Object> map, String key, String path) {
+        Map<String, Object> leafMap = optionalMap(map, key, path);
+        if (leafMap == null) {
+            return null;
+        }
+        LayoutNode node = layoutSerializer.deserialize(leafMap);
+        if (node instanceof LeafData leafData) {
+            return leafData;
+        }
+        throw new IllegalArgumentException("Invalid " + path + "." + key + ": expected leaf node but found " + describeType(node));
     }
 
-    private RestoreHintData deserializeRestoreHint(Map<String, Object> map) {
-        String parentId = (String) map.get(HINT_PARENT_ID_KEY);
-        String zone = (String) map.get(HINT_ZONE_KEY);
-        int tabIndex = ((Number) map.getOrDefault(HINT_TAB_INDEX_KEY, -1)).intValue();
-        double splitPosition = ((Number) map.getOrDefault(HINT_SPLIT_POSITION_KEY, 0.5)).doubleValue();
-        String siblingId = (String) map.get(HINT_SIBLING_ID_KEY);
-        return new RestoreHintData(parentId, zone, tabIndex, splitPosition, siblingId);
-    }
-
-    private RibbonSessionData deserializeRibbon(Map<String, Object> map) {
+    private BoundsData deserializeBounds(Map<String, Object> map, String path) {
         if (map == null) {
             return null;
         }
-        boolean minimized = Boolean.TRUE.equals(map.get(RIBBON_MINIMIZED_KEY));
-        String selectedTabId = map.get(RIBBON_SELECTED_TAB_ID_KEY) instanceof String value ? value : null;
+        double x = optionalDouble(map, BOUNDS_X_KEY, path, 0.0);
+        double y = optionalDouble(map, BOUNDS_Y_KEY, path, 0.0);
+        double width = optionalDouble(map, BOUNDS_WIDTH_KEY, path, 400.0);
+        double height = optionalDouble(map, BOUNDS_HEIGHT_KEY, path, 300.0);
+        return new BoundsData(x, y, width, height);
+    }
 
-        List<String> quickAccessCommandIds = new ArrayList<>();
-        Object quickAccessValue = map.get(RIBBON_QUICK_ACCESS_COMMAND_IDS_KEY);
-        if (quickAccessValue instanceof List<?> ids) {
-            ids.stream()
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .forEach(quickAccessCommandIds::add);
+    private RestoreHintData deserializeRestoreHint(Map<String, Object> map, String path) {
+        if (map == null) {
+            return null;
+        }
+        String parentId = optionalString(map, HINT_PARENT_ID_KEY, path);
+        String zone = optionalString(map, HINT_ZONE_KEY, path);
+        int tabIndex = optionalInt(map, HINT_TAB_INDEX_KEY, path, -1);
+        double splitPosition = optionalDouble(map, HINT_SPLIT_POSITION_KEY, path, 0.5);
+        String siblingId = optionalString(map, HINT_SIBLING_ID_KEY, path);
+        return new RestoreHintData(parentId, zone, tabIndex, splitPosition, siblingId);
+    }
+
+    private Map<String, Map<String, Object>> deserializeExtensions(Map<String, Object> map) {
+        Object rawExtensions = map.get(EXTENSIONS_KEY);
+        if (rawExtensions == null) {
+            return Map.of();
+        }
+        if (!(rawExtensions instanceof Map<?, ?> extensionsValue)) {
+            LOG.warning(
+                "Ignoring dock session extensions because the container is not an object: "
+                    + describeType(rawExtensions)
+            );
+            return Map.of();
         }
 
-        return new RibbonSessionData(minimized, selectedTabId, quickAccessCommandIds);
+        LinkedHashMap<String, Map<String, Object>> extensions = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : extensionsValue.entrySet()) {
+            if (!(entry.getKey() instanceof String namespace) || namespace.isBlank()) {
+                LOG.warning("Ignoring dock session extension with blank namespace");
+                continue;
+            }
+            if (!(entry.getValue() instanceof Map<?, ?> rawPayload)) {
+                LOG.warning(
+                    "Ignoring dock session extension '" + namespace + "' because the payload is not an object: "
+                        + describeType(entry.getValue())
+                );
+                continue;
+            }
+            try {
+                extensions.put(namespace, copyPayloadMap(rawPayload, ROOT_PATH + "." + EXTENSIONS_KEY + "." + namespace));
+            } catch (IllegalArgumentException exception) {
+                LOG.log(
+                    Level.WARNING,
+                    "Ignoring malformed dock session extension '" + namespace + "'",
+                    exception
+                );
+            }
+        }
+        return extensions;
+    }
+
+    private Map<String, Object> copyPayloadMap(Map<?, ?> payload, String path) {
+        LinkedHashMap<String, Object> copy = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : payload.entrySet()) {
+            if (!(entry.getKey() instanceof String key) || key.isBlank()) {
+                throw new IllegalArgumentException(
+                    "Invalid " + path + ": extension payload keys must be non-blank strings"
+                );
+            }
+            copy.put(key, entry.getValue());
+        }
+        return copy;
+    }
+
+    private Map<String, Object> optionalMap(Map<String, Object> map, String key, String path) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Map<?, ?> rawMap) {
+            return copyPayloadMap(rawMap, path + "." + key);
+        }
+        throw invalidShape(path + "." + key, "object", value);
+    }
+
+    private List<Object> optionalList(Map<String, Object> map, String key, String path) {
+        Object value = map.get(key);
+        if (value == null) {
+            return List.of();
+        }
+        if (value instanceof List<?> rawList) {
+            return List.copyOf(rawList);
+        }
+        throw invalidShape(path + "." + key, "list", value);
+    }
+
+    private Map<String, Object> requireMapEntry(List<Object> values, int index, String path) {
+        Object value = values.get(index);
+        if (value instanceof Map<?, ?> rawMap) {
+            return copyPayloadMap(rawMap, path + "[" + index + "]");
+        }
+        throw invalidShape(path + "[" + index + "]", "object", value);
+    }
+
+    private String requiredString(Map<String, Object> map, String key, String path) {
+        String value = optionalString(map, key, path);
+        if (value == null) {
+            throw new IllegalArgumentException("Missing required " + path + "." + key);
+        }
+        return value;
+    }
+
+    private String optionalString(Map<String, Object> map, String key, String path) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String stringValue) {
+            return stringValue;
+        }
+        throw invalidShape(path + "." + key, "string", value);
+    }
+
+    private int optionalInt(Map<String, Object> map, String key, String path, int defaultValue) {
+        Number number = optionalNumber(map, key, path);
+        return number != null ? number.intValue() : defaultValue;
+    }
+
+    private double optionalDouble(Map<String, Object> map, String key, String path, double defaultValue) {
+        Number number = optionalNumber(map, key, path);
+        return number != null ? number.doubleValue() : defaultValue;
+    }
+
+    private Number optionalNumber(Map<String, Object> map, String key, String path) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number;
+        }
+        throw invalidShape(path + "." + key, "number", value);
+    }
+
+    private IllegalArgumentException invalidShape(String path, String expectedType, Object value) {
+        return new IllegalArgumentException(
+            "Invalid " + path + ": expected " + expectedType + " but was " + describeType(value)
+        );
+    }
+
+    private String describeType(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        return value.getClass().getSimpleName();
     }
 
     /**
-     * Converts a Map to JSON string using LayoutSerializer's JSON utility.
+     * Converts a map to a simple JSON string (basic implementation without dependencies).
      *
      * @param map map to convert
      * @return JSON representation
@@ -374,10 +452,10 @@ public class DockSessionSerializer {
     }
 
     /**
-     * Converts a JSON string to Map using LayoutSerializer's JSON utility.
+     * Parses a simple JSON string to a map (basic implementation without dependencies).
      *
-     * @param json JSON payload
-     * @return parsed map structure
+     * @param json JSON text to parse
+     * @return parsed map
      */
     public Map<String, Object> fromJson(String json) {
         return layoutSerializer.fromJson(json);

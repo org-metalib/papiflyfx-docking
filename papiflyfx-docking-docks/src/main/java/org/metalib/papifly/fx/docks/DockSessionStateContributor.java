@@ -1,30 +1,43 @@
 package org.metalib.papifly.fx.docks;
 
-import org.metalib.papifly.fx.docks.layout.data.DockSessionData;
-
 /**
  * Optional extension hook for enriching dock sessions with module-specific
  * payloads and restoring that payload after layout/session restore.
+ *
+ * @param <T> typed extension state owned by the contributor namespace
  */
-public interface DockSessionStateContributor {
+public interface DockSessionStateContributor<T> {
 
     /**
-     * Enriches the captured session before serialization.
+     * Returns the unique namespace used for persistence ownership.
      *
-     * @param session captured dock session
-     * @return session to persist; implementations should return the provided
-     *     instance when no changes are required
+     * @return stable, non-blank namespace
      */
-    default DockSessionData captureSessionState(DockSessionData session) {
-        return session;
+    String extensionNamespace();
+
+    /**
+     * Returns the codec used to encode/decode the contributor payload.
+     *
+     * @return typed extension codec
+     */
+    DockSessionExtensionCodec<T> codec();
+
+    /**
+     * Captures the current contributor-owned extension state.
+     *
+     * @return typed state to persist; {@code null} removes the namespace from
+     *     the captured session
+     */
+    default T captureSessionState() {
+        return null;
     }
 
     /**
-     * Restores module-specific state after the core dock session restore
-     * finishes.
+     * Restores contributor-owned extension state after the core dock session
+     * restore finishes.
      *
-     * @param session restored dock session
+     * @param sessionState decoded extension state
      */
-    default void restoreSessionState(DockSessionData session) {
+    default void restoreSessionState(T sessionState) {
     }
 }

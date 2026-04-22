@@ -42,5 +42,5 @@ interface DockManagerContext {
 
     StackPane getRootStack();
 
-    List<DockSessionStateContributor> getSessionStateContributors();
+    List<DockSessionStateContributor<?>> getSessionStateContributors();
 }
