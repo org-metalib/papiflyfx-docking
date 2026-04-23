@@ -129,8 +129,12 @@ Ribbon providers should use typed capabilities for executable integrations and
 attributes for metadata/visibility decisions.
 
 - `RibbonContext#capability(Class)` resolves action interfaces such as `GitHubRibbonActions` and `HugoRibbonActions`.
-- `RibbonContextAttributes` are for dock title, content-factory id, floating/maximized state, and similar metadata.
+- Active content can expose one or more explicit action interfaces through `RibbonCapabilityContributor`; direct root-node `implements ActionInterface` remains supported for simple content.
+- `RibbonContextAttributes` typed keys are for dock title, content-factory id, content kind/domain, floating/maximized state, and similar metadata. Active content can publish explicit metadata through `RibbonAttributeContributor`.
 - `RibbonContextAttributes.ACTIVE_CONTENT_NODE` is a temporary compatibility bridge in the docks runtime and should not be used by new providers.
+- Provider ids and command ids must be stable because selected tabs and Quick Access Toolbar entries are persisted by id.
+
+See `../spec/papiflyfx-docking-docks/ribbon-provider-authoring.md` for ServiceLoader registration, id namespace conventions, contextual metadata guidance, QAT implications, and the provider test checklist.
 
 ### Command registry invariants
 

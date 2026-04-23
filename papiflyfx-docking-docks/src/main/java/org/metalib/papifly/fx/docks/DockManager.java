@@ -12,6 +12,9 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
+import org.metalib.papifly.fx.api.ribbon.RibbonAttributeContributor;
+import org.metalib.papifly.fx.api.ribbon.RibbonAttributeKey;
+import org.metalib.papifly.fx.api.ribbon.RibbonCapabilityContributor;
 import org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes;
 import org.metalib.papifly.fx.docking.api.ContentFactory;
 import org.metalib.papifly.fx.docking.api.LeafContentData;
@@ -688,6 +691,7 @@ public class DockManager {
      */
     public void floatLeaf(DockLeaf leaf) {
         floatingService.floatLeaf(leaf);
+        markFloatingRibbonGroupActive(leaf);
         syncRibbonContextFromTree();
     }
 
@@ -700,7 +704,20 @@ public class DockManager {
      */
     public void floatLeaf(DockLeaf leaf, double x, double y) {
         floatingService.floatLeaf(leaf, x, y);
+        markFloatingRibbonGroupActive(leaf);
         syncRibbonContextFromTree();
+    }
+
+    private void markFloatingRibbonGroupActive(DockLeaf leaf) {
+        org.metalib.papifly.fx.docks.floating.FloatingWindowManager floatingWindowManager =
+            floatingService.getFloatingWindowManager();
+        if (floatingWindowManager == null || leaf == null) {
+            return;
+        }
+        org.metalib.papifly.fx.docks.floating.FloatingDockWindow window = floatingWindowManager.getWindow(leaf);
+        if (window != null && window.getTabGroup() != null) {
+            activeRibbonTabGroup = window.getTabGroup();
+        }
     }
 
     /**
@@ -865,14 +882,14 @@ public class DockManager {
             activeRibbonTabGroup = null;
         }
 
-        DockLeaf activeLeaf = activeRibbonTabGroup == null ? null : activeRibbonTabGroup.getActiveTab();
-        if (activeLeaf != null) {
-            return activeLeaf;
-        }
         DockTabGroup focusedGroup = resolveFocusedRibbonTabGroup();
         if (focusedGroup != null && focusedGroup.getActiveTab() != null) {
             activeRibbonTabGroup = focusedGroup;
             return focusedGroup.getActiveTab();
+        }
+        DockLeaf activeLeaf = activeRibbonTabGroup == null ? null : activeRibbonTabGroup.getActiveTab();
+        if (activeLeaf != null) {
+            return activeLeaf;
         }
         DockElement root = rootElement.get();
         if (root == null) {
@@ -940,12 +957,85 @@ public class DockManager {
             // Ribbon 2: still expose ACTIVE_CONTENT_NODE as a transitional bridge.
             // The deprecated attribute will be removed once provider migration completes.
             attributes.put(RibbonContextAttributes.ACTIVE_CONTENT_NODE, contentNode);
-            // Register the content node under its concrete class so providers can
-            // resolve typed capabilities through RibbonContext#capability(Class).
-            capabilities.put(contentNode.getClass(), contentNode);
+            contributeRibbonAttributes(attributes, contentNode);
+            registerContentCapabilities(capabilities, contentNode);
         }
 
         return new RibbonContext(metadata.id(), contentId, contentTypeKey, attributes, capabilities);
+    }
+
+    private static void contributeRibbonAttributes(Map<String, Object> attributes, Node contentNode) {
+        if (!(contentNode instanceof RibbonAttributeContributor contributor)) {
+            return;
+        }
+        Map<? extends RibbonAttributeKey<?>, ?> contributed = contributor.ribbonAttributes();
+        if (contributed == null || contributed.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<? extends RibbonAttributeKey<?>, ?> entry : contributed.entrySet()) {
+            putContributedAttribute(attributes, entry.getKey(), entry.getValue());
+        }
+    }
+
+    private static void putContributedAttribute(
+        Map<String, Object> attributes,
+        RibbonAttributeKey<?> key,
+        Object value
+    ) {
+        if (key == null || value == null || !key.type().isInstance(value)) {
+            return;
+        }
+        attributes.put(key.id(), value);
+    }
+
+    private static void registerContentCapabilities(Map<Class<?>, Object> capabilities, Node contentNode) {
+        capabilities.put(contentNode.getClass(), contentNode);
+        registerCapabilityInterfaces(capabilities, contentNode.getClass(), contentNode, new LinkedHashSet<>());
+        if (contentNode instanceof RibbonCapabilityContributor contributor) {
+            Map<? extends Class<?>, ?> contributed = contributor.ribbonCapabilities();
+            if (contributed != null) {
+                for (Map.Entry<? extends Class<?>, ?> entry : contributed.entrySet()) {
+                    putContributedCapability(capabilities, entry.getKey(), entry.getValue());
+                }
+            }
+        }
+    }
+
+    private static void registerCapabilityInterfaces(
+        Map<Class<?>, Object> capabilities,
+        Class<?> type,
+        Object instance,
+        LinkedHashSet<Class<?>> seen
+    ) {
+        if (type == null || type == Object.class) {
+            return;
+        }
+        for (Class<?> iface : type.getInterfaces()) {
+            registerCapabilityInterface(capabilities, iface, instance, seen);
+        }
+        registerCapabilityInterfaces(capabilities, type.getSuperclass(), instance, seen);
+    }
+
+    private static void registerCapabilityInterface(
+        Map<Class<?>, Object> capabilities,
+        Class<?> iface,
+        Object instance,
+        LinkedHashSet<Class<?>> seen
+    ) {
+        if (iface == null || !seen.add(iface) || !iface.isInstance(instance)) {
+            return;
+        }
+        capabilities.putIfAbsent(iface, instance);
+        for (Class<?> parent : iface.getInterfaces()) {
+            registerCapabilityInterface(capabilities, parent, instance, seen);
+        }
+    }
+
+    private static void putContributedCapability(Map<Class<?>, Object> capabilities, Class<?> type, Object value) {
+        if (type == null || value == null || !type.isInstance(value)) {
+            return;
+        }
+        capabilities.put(type, value);
     }
 
     private void cleanupStaleRibbonContextListeners() {

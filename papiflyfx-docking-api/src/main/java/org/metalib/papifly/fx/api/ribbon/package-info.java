@@ -25,7 +25,14 @@
  *   descriptors (button, toggle, split, menu) decoupled from JavaFX node
  *   classes.</li>
  *   <li>{@link org.metalib.papifly.fx.api.ribbon.RibbonContext}: typed
- *   capability registry plus dock/content identity for provider routing.</li>
+ *   capability registry plus dock/content identity and metadata for provider
+ *   routing.</li>
+ *   <li>{@link org.metalib.papifly.fx.api.ribbon.RibbonAttributeKey}: typed
+ *   metadata keys layered over the legacy raw-string attribute map.</li>
+ *   <li>{@link org.metalib.papifly.fx.api.ribbon.RibbonCapabilityContributor}
+ *   and {@link org.metalib.papifly.fx.api.ribbon.RibbonAttributeContributor}:
+ *   optional active-content contracts for publishing explicit capabilities and
+ *   contextual metadata.</li>
  * </ul>
  *
  * <p><b>Ribbon 2 contract breaks:</b></p>
@@ -40,15 +47,26 @@
  *   deprecated
  *   {@link org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes#ACTIVE_CONTENT_NODE}
  *   attribute.</li>
+ *   <li>Ribbon 5 Phase 2 adds typed context metadata and explicit content-side
+ *   contribution contracts without removing raw-string attribute access.</li>
  * </ul>
  *
  * <p>Provider guidance:</p>
  * <ul>
  *   <li>Use {@link org.metalib.papifly.fx.api.ribbon.RibbonContext#capability(Class)}
  *   for executable integrations and reserve
- *   {@link org.metalib.papifly.fx.api.ribbon.RibbonContext#attribute(String)}
- *   lookups for metadata such as dock titles, factory ids, and visibility
- *   hints.</li>
+ *   {@link org.metalib.papifly.fx.api.ribbon.RibbonContext#attribute(RibbonAttributeKey)}
+ *   lookups for metadata such as dock titles, factory ids, content kind/domain,
+ *   and visibility hints.</li>
+ *   <li>Expose active-content actions either by making the root node implement
+ *   the action interface or by implementing
+ *   {@link org.metalib.papifly.fx.api.ribbon.RibbonCapabilityContributor} when
+ *   the action object lives in a nested controller. Use
+ *   {@link org.metalib.papifly.fx.api.ribbon.RibbonAttributeContributor} for
+ *   explicit contextual metadata such as
+ *   {@link org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes#CONTENT_DOMAIN_KEY}
+ *   and
+ *   {@link org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes#CONTENT_KIND_KEY}.</li>
  *   <li>Keep tab, group, control, and command identifiers stable once
  *   published. Hosts persist selected-tab state and Quick Access Toolbar
  *   command identifiers by ID, so changing them breaks session continuity for

@@ -91,6 +91,91 @@ class HugoRibbonProviderTest {
     }
 
     @Test
+    void contextualEditorTabPrefersExplicitMetadataOverLegacyHeuristics() {
+        HugoRibbonProvider provider = new HugoRibbonProvider();
+
+        RibbonContext explicitHugo = new RibbonContext(
+            "dock-explicit",
+            "draft.txt",
+            "sample.other",
+            Map.of(RibbonContextAttributes.DOCK_TITLE, "draft.txt")
+        ).withAttribute(RibbonContextAttributes.CONTENT_DOMAIN_KEY, "hugo");
+        assertTrue(hasEditorTab(provider, explicitHugo));
+
+        RibbonContext explicitCodeMarkdown = new RibbonContext(
+            "dock-code",
+            "content/post.md",
+            "sample.markdown",
+            Map.of(RibbonContextAttributes.DOCK_TITLE, "content/post.md")
+        ).withAttribute(RibbonContextAttributes.CONTENT_DOMAIN_KEY, "code");
+        assertFalse(hasEditorTab(provider, explicitCodeMarkdown),
+            "explicit non-Hugo domain should suppress legacy markdown/path fallback");
+    }
+
+    @Test
+    void contextualEditorTabKeepsLegacyHeuristicFallbacks() {
+        HugoRibbonProvider provider = new HugoRibbonProvider();
+        List<LegacyCase> cases = List.of(
+            new LegacyCase(
+                "active type key",
+                new RibbonContext("dock-type", "draft.txt", HugoPreviewFactory.FACTORY_ID,
+                    Map.of(RibbonContextAttributes.DOCK_TITLE, "draft.txt"))
+            ),
+            new LegacyCase(
+                "content factory id",
+                new RibbonContext("dock-factory", "draft.txt", "sample.other",
+                    Map.of(
+                        RibbonContextAttributes.DOCK_TITLE, "draft.txt",
+                        RibbonContextAttributes.CONTENT_FACTORY_ID, HugoPreviewFactory.FACTORY_ID
+                    ))
+            ),
+            new LegacyCase(
+                ".md file extension",
+                new RibbonContext("dock-md", "docs/readme.md", "sample.other",
+                    Map.of(RibbonContextAttributes.DOCK_TITLE, "readme.txt"))
+            ),
+            new LegacyCase(
+                ".markdown file extension",
+                new RibbonContext("dock-markdown", "docs/readme.markdown", "sample.other",
+                    Map.of(RibbonContextAttributes.DOCK_TITLE, "readme.txt"))
+            ),
+            new LegacyCase(
+                "/content/ path segment",
+                new RibbonContext("dock-content", "site/content/page.txt", "sample.other",
+                    Map.of(RibbonContextAttributes.DOCK_TITLE, "page.txt"))
+            ),
+            new LegacyCase(
+                "type key containing markdown",
+                new RibbonContext("dock-type-markdown", "docs/readme.txt", "sample.markdown",
+                    Map.of(RibbonContextAttributes.DOCK_TITLE, "readme.txt"))
+            ),
+            new LegacyCase(
+                "type key containing hugo",
+                new RibbonContext("dock-type-hugo", "docs/readme.txt", "sample.hugo",
+                    Map.of(RibbonContextAttributes.DOCK_TITLE, "readme.txt"))
+            )
+        );
+
+        for (LegacyCase legacyCase : cases) {
+            assertTrue(hasEditorTab(provider, legacyCase.context()), legacyCase.label());
+        }
+    }
+
+    @Test
+    void contextualEditorTabHidesForNegativeNonHugoContent() {
+        HugoRibbonProvider provider = new HugoRibbonProvider();
+
+        RibbonContext javaContext = new RibbonContext(
+            "dock-java",
+            "src/App.java",
+            "sample.code",
+            Map.of(RibbonContextAttributes.DOCK_TITLE, "App.java")
+        );
+
+        assertFalse(hasEditorTab(provider, javaContext));
+    }
+
+    @Test
     void resolvesTypedCapabilitiesWithoutLegacyNodeAttribute() {
         StubActions actions = new StubActions();
         RibbonContext context = new RibbonContext(
@@ -127,6 +212,10 @@ class HugoRibbonProviderTest {
             .toList();
     }
 
+    private static boolean hasEditorTab(HugoRibbonProvider provider, RibbonContext context) {
+        return visibleTabs(provider, context).stream().anyMatch(tab -> tab.id().equals("hugo-editor"));
+    }
+
     private static PapiflyCommand command(RibbonTabSpec tab, String id) {
         return commands(tab).stream()
             .filter(command -> command.id().equals(id))
@@ -150,6 +239,9 @@ class HugoRibbonProviderTest {
             }
         }
         return commands;
+    }
+
+    private record LegacyCase(String label, RibbonContext context) {
     }
 
     private static final class StubActions extends StackPane implements HugoRibbonActions {

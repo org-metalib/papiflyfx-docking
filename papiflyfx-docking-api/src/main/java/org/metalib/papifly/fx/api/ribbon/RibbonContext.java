@@ -10,13 +10,18 @@ import java.util.Optional;
  * Lightweight runtime context passed to ribbon providers and visibility rules.
  *
  * <p>The context exposes stable dock/content identity, an attribute bag for
- * string-keyed metadata, and a typed capability registry for action
- * interfaces that the active content exposes. Providers should prefer
- * {@link #capability(Class)} for action dispatch and rely on attributes for
- * presentation metadata only. Typical attribute uses include tab visibility,
- * dock-title heuristics, and content-factory metadata; executable integrations
- * such as {@code GitHubRibbonActions} or {@code HugoRibbonActions} belong in
- * the capability map.</p>
+ * metadata, and a typed capability registry for action interfaces that the
+ * active content exposes. Providers should prefer {@link #capability(Class)}
+ * for action dispatch and rely on attributes for presentation metadata only.
+ * Typical attribute uses include tab visibility, dock-title heuristics, and
+ * content-factory metadata; executable integrations such as
+ * {@code GitHubRibbonActions} or {@code HugoRibbonActions} belong in the
+ * capability map.</p>
+ *
+ * <p>Attributes may be accessed through legacy raw string keys or through
+ * typed {@link RibbonAttributeKey} instances. Both paths address the same
+ * underlying map, so hosts can migrate provider code incrementally without
+ * breaking existing {@link #attribute(String)} callers.</p>
  *
  * <p><b>Ribbon 2 contract break:</b> a new {@code capabilities} component has
  * been added. Constructors that accept the legacy 4-argument form are kept
@@ -154,16 +159,35 @@ public record RibbonContext(
     }
 
     /**
-     * Returns the capability registered under the supplied type, falling back
-     * to a linear scan so hosts may register a single active value under a
-     * more specific key.
+     * Looks up a contextual attribute through a typed key.
+     *
+     * <p>This overload is equivalent to
+     * {@link #attribute(String, Class)} using {@link RibbonAttributeKey#id()}
+     * and {@link RibbonAttributeKey#type()}, but it keeps the key and expected
+     * type together at call sites.</p>
+     *
+     * @param key typed attribute key
+     * @param <T> requested value type
+     * @return typed attribute value when present and compatible
+     */
+    public <T> Optional<T> attribute(RibbonAttributeKey<T> key) {
+        Objects.requireNonNull(key, "key");
+        return attribute(key.id(), key.type());
+    }
+
+    /**
+     * Returns the capability registered under the supplied type.
      *
      * <p>Ribbon 2 providers should use this method to obtain typed action
-     * interfaces (for example, {@code context.capability(GitHubRibbonActions.class)})
-     * instead of casting raw nodes retrieved from
-     * {@link RibbonContextAttributes#ACTIVE_CONTENT_NODE}. Hosts may register a
-     * concrete active content node under its implementation class and still
-     * satisfy provider lookups for the exported action interface.</p>
+     * interfaces (for example,
+     * {@code context.capability(GitHubRibbonActions.class)}) instead of
+     * casting raw nodes retrieved from
+     * {@link RibbonContextAttributes#ACTIVE_CONTENT_NODE}. Hosts are expected
+     * to register explicit {@link RibbonCapabilityContributor} entries and may
+     * also register the active content root under its implementation class and
+     * interface hierarchy. The final linear scan is a compatibility fallback
+     * for hosts that still register one concrete value under a more specific
+     * key.</p>
      *
      * @param type requested capability type
      * @param <T> requested capability type
@@ -200,5 +224,24 @@ public record RibbonContext(
             next.put(type, instance);
         }
         return new RibbonContext(activeDockId, activeContentId, activeContentTypeKey, attributes, next);
+    }
+
+    /**
+     * Returns a copy of this context with the supplied typed attribute applied.
+     *
+     * @param key typed attribute key
+     * @param value attribute value; {@code null} removes the attribute
+     * @param <T> attribute value type
+     * @return copy of the context with the attribute applied
+     */
+    public <T> RibbonContext withAttribute(RibbonAttributeKey<T> key, T value) {
+        Objects.requireNonNull(key, "key");
+        LinkedHashMap<String, Object> next = new LinkedHashMap<>(attributes);
+        if (value == null) {
+            next.remove(key.id());
+        } else {
+            next.put(key.id(), key.type().cast(value));
+        }
+        return new RibbonContext(activeDockId, activeContentId, activeContentTypeKey, next, capabilities);
     }
 }

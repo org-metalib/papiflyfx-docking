@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.hugo.ribbon;
 
 import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonAttributeKey;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes;
@@ -31,6 +32,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
     private static final int COLLAPSE_LATE = 30;
     private static final int COLLAPSE_MID = 20;
     private static final int COLLAPSE_EARLY = 10;
+    private static final String HUGO_DOMAIN = "hugo";
 
     @Override
     public String id() {
@@ -78,6 +80,15 @@ public final class HugoRibbonProvider implements RibbonProvider {
         if (context == null) {
             return false;
         }
+        Optional<String> explicitDomain = normalizedAttribute(context, RibbonContextAttributes.CONTENT_DOMAIN_KEY);
+        Optional<String> explicitKind = normalizedAttribute(context, RibbonContextAttributes.CONTENT_KIND_KEY);
+        if (explicitDomain.isPresent()) {
+            return HUGO_DOMAIN.equals(explicitDomain.orElse(""));
+        }
+        if (explicitKind.isPresent()) {
+            String kind = explicitKind.orElse("");
+            return kind.contains("hugo") || kind.contains("markdown");
+        }
         String typeKey = context.activeContentTypeKey();
         if (HugoPreviewFactory.FACTORY_ID.equals(typeKey)) {
             return true;
@@ -88,16 +99,30 @@ public final class HugoRibbonProvider implements RibbonProvider {
         }
         String contentId = context.activeContentIdOptional().orElse("").toLowerCase(Locale.ROOT);
         String dockTitle = context.attribute(RibbonContextAttributes.DOCK_TITLE, String.class).orElse("").toLowerCase(Locale.ROOT);
-        boolean markdownContent = contentId.endsWith(".md")
+        return contentId.endsWith(".md")
             || contentId.endsWith(".markdown")
             || dockTitle.endsWith(".md")
-            || dockTitle.endsWith(".markdown");
-        if (!markdownContent) {
+            || dockTitle.endsWith(".markdown")
+            || contentId.contains("/content/")
+            || dockTitle.contains("/content/")
+            || typeKeyContainsHugoContext(typeKey);
+    }
+
+    private static Optional<String> normalizedAttribute(
+        RibbonContext context,
+        RibbonAttributeKey<String> key
+    ) {
+        return context.attribute(key)
+            .map(value -> value.toLowerCase(Locale.ROOT).trim())
+            .filter(value -> !value.isBlank());
+    }
+
+    private static boolean typeKeyContainsHugoContext(String typeKey) {
+        if (typeKey == null) {
             return false;
         }
-        return contentId.contains("/content/")
-            || dockTitle.contains("/content/")
-            || (typeKey != null && (typeKey.contains("markdown") || typeKey.contains("hugo")));
+        String normalized = typeKey.toLowerCase(Locale.ROOT);
+        return normalized.contains("markdown") || normalized.contains("hugo");
     }
 
     private static RibbonGroupSpec developmentGroup(Optional<HugoRibbonActions> actions) {

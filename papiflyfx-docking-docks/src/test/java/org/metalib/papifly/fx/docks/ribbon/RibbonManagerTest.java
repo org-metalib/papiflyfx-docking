@@ -3,8 +3,10 @@ package org.metalib.papifly.fx.docks.ribbon;
 import org.junit.jupiter.api.Test;
 import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonAttributeKey;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
+import org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes;
 import org.metalib.papifly.fx.api.ribbon.RibbonControlSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec;
@@ -22,6 +24,28 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RibbonManagerTest {
+
+    @Test
+    void ribbonContext_typedAttributesShareLegacyRawStringStorage() {
+        RibbonAttributeKey<String> ownerKey = RibbonAttributeKey.of("test.ribbon.owner", String.class);
+        RibbonContext context = new RibbonContext(
+            "dock",
+            "content",
+            "type",
+            Map.of(RibbonContextAttributes.DOCK_TITLE, "Draft.md")
+        )
+            .withAttribute(RibbonContextAttributes.CONTENT_KIND_KEY, "markdown")
+            .withAttribute(ownerKey, "feature");
+
+        assertEquals("Draft.md", context.attribute(RibbonContextAttributes.DOCK_TITLE_KEY).orElseThrow());
+        assertEquals("markdown", context.attribute(RibbonContextAttributes.CONTENT_KIND, String.class).orElseThrow());
+        assertEquals("feature", context.attribute(ownerKey.id(), String.class).orElseThrow());
+
+        RibbonContext removed = context.withAttribute(RibbonContextAttributes.CONTENT_KIND_KEY, null);
+
+        assertFalse(removed.attribute(RibbonContextAttributes.CONTENT_KIND_KEY).isPresent());
+        assertFalse(removed.attribute(RibbonContextAttributes.CONTENT_KIND).isPresent());
+    }
 
     @Test
     void mergesSharedTabsAndContextualVisibility() {
