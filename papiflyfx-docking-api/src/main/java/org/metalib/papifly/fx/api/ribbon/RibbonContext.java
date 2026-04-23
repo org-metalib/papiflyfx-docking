@@ -13,7 +13,10 @@ import java.util.Optional;
  * string-keyed metadata, and a typed capability registry for action
  * interfaces that the active content exposes. Providers should prefer
  * {@link #capability(Class)} for action dispatch and rely on attributes for
- * presentation metadata only.</p>
+ * presentation metadata only. Typical attribute uses include tab visibility,
+ * dock-title heuristics, and content-factory metadata; executable integrations
+ * such as {@code GitHubRibbonActions} or {@code HugoRibbonActions} belong in
+ * the capability map.</p>
  *
  * <p><b>Ribbon 2 contract break:</b> a new {@code capabilities} component has
  * been added. Constructors that accept the legacy 4-argument form are kept
@@ -26,8 +29,10 @@ import java.util.Optional;
  * @param activeDockId active dock identifier, or {@code null} when no dock is active
  * @param activeContentId active content identifier, or {@code null} when no content is active
  * @param activeContentTypeKey active content type key, or {@code null} when unknown
- * @param attributes additional host-defined contextual attributes
- * @param capabilities typed capability instances contributed by the host
+ * @param attributes additional host-defined contextual attributes used for
+ *     metadata and visibility decisions
+ * @param capabilities typed capability instances contributed by the host for
+ *     command routing and other executable integrations
  * @since Ribbon 2
  */
 public record RibbonContext(
@@ -114,6 +119,10 @@ public record RibbonContext(
     /**
      * Looks up a contextual attribute.
      *
+     * <p>Attributes are intended for metadata rather than executable behavior.
+     * Providers should prefer {@link #capability(Class)} when they need to
+     * invoke host or content actions.</p>
+     *
      * @param key attribute key
      * @return attribute value when present
      */
@@ -124,6 +133,10 @@ public record RibbonContext(
 
     /**
      * Looks up a contextual attribute and narrows it to the requested type.
+     *
+     * <p>This is appropriate for visibility metadata such as dock titles,
+     * content-factory identifiers, or persisted content-state hints. It should
+     * not be used as a substitute for typed action capabilities.</p>
      *
      * @param key attribute key
      * @param type requested value type
@@ -148,7 +161,9 @@ public record RibbonContext(
      * <p>Ribbon 2 providers should use this method to obtain typed action
      * interfaces (for example, {@code context.capability(GitHubRibbonActions.class)})
      * instead of casting raw nodes retrieved from
-     * {@link RibbonContextAttributes#ACTIVE_CONTENT_NODE}.</p>
+     * {@link RibbonContextAttributes#ACTIVE_CONTENT_NODE}. Hosts may register a
+     * concrete active content node under its implementation class and still
+     * satisfy provider lookups for the exported action interface.</p>
      *
      * @param type requested capability type
      * @param <T> requested capability type

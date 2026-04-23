@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HugoRibbonProviderTest {
 
+    private static final String LEGACY_ACTIVE_CONTENT_NODE = "activeContentNode";
+
     @Test
     void mapsHugoCommandsAndRoutesToActiveActions() {
         StubActions actions = new StubActions();
@@ -33,13 +35,14 @@ class HugoRibbonProviderTest {
             "hugo:docs",
             HugoPreviewFactory.FACTORY_ID,
             Map.of(
-                RibbonContextAttributes.ACTIVE_CONTENT_NODE, actions,
                 RibbonContextAttributes.DOCK_TITLE, "content/posts/welcome.md",
                 RibbonContextAttributes.CONTENT_FACTORY_ID, HugoPreviewFactory.FACTORY_ID
-            )
+            ),
+            Map.of(HugoRibbonActions.class, actions)
         );
         HugoRibbonProvider provider = new HugoRibbonProvider();
 
+        assertFalse(context.attribute(LEGACY_ACTIVE_CONTENT_NODE).isPresent());
         List<RibbonTabSpec> tabs = visibleTabs(provider, context);
         assertEquals(2, tabs.size());
         RibbonTabSpec hugoTab = tabs.stream().filter(tab -> tab.id().equals("hugo")).findFirst().orElseThrow();
@@ -85,6 +88,37 @@ class HugoRibbonProviderTest {
         );
         List<RibbonTabSpec> javaTabs = visibleTabs(provider, javaContext);
         assertFalse(javaTabs.stream().anyMatch(tab -> tab.id().equals("hugo-editor")));
+    }
+
+    @Test
+    void resolvesTypedCapabilitiesWithoutLegacyNodeAttribute() {
+        StubActions actions = new StubActions();
+        RibbonContext context = new RibbonContext(
+            "dock-hugo",
+            "content/posts/welcome.md",
+            HugoPreviewFactory.FACTORY_ID,
+            Map.of(
+                RibbonContextAttributes.DOCK_TITLE, "content/posts/welcome.md",
+                RibbonContextAttributes.CONTENT_FACTORY_ID, HugoPreviewFactory.FACTORY_ID
+            ),
+            Map.of(HugoRibbonActions.class, actions)
+        );
+        HugoRibbonProvider provider = new HugoRibbonProvider();
+
+        assertFalse(context.attribute(LEGACY_ACTIVE_CONTENT_NODE).isPresent());
+        assertEquals(actions, context.capability(HugoRibbonActions.class).orElseThrow());
+        assertEquals(actions, context.capability(StubActions.class).orElseThrow());
+
+        RibbonTabSpec hugoTab = visibleTabs(provider, context).stream()
+            .filter(tab -> tab.id().equals("hugo"))
+            .findFirst()
+            .orElseThrow();
+        PapiflyCommand build = command(hugoTab, "hugo.ribbon.build.site");
+        assertTrue(build.enabled().get());
+
+        build.execute();
+
+        assertEquals(1, actions.buildCount);
     }
 
     private static List<RibbonTabSpec> visibleTabs(HugoRibbonProvider provider, RibbonContext context) {

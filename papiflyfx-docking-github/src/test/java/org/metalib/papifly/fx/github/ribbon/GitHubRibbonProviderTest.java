@@ -20,8 +20,11 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GitHubRibbonProviderTest {
+
+    private static final String LEGACY_ACTIVE_CONTENT_NODE = "activeContentNode";
 
     @Test
     void mapsGroupsAndRoutesCommandsToActions() {
@@ -30,10 +33,12 @@ class GitHubRibbonProviderTest {
             "dock-1",
             "github:toolbar",
             "github-toolbar",
-            Map.of(RibbonContextAttributes.ACTIVE_CONTENT_NODE, actions)
+            Map.of(),
+            Map.of(GitHubRibbonActions.class, actions)
         );
         GitHubRibbonProvider provider = new GitHubRibbonProvider();
 
+        assertFalse(context.attribute(LEGACY_ACTIVE_CONTENT_NODE).isPresent());
         List<RibbonTabSpec> tabs = provider.getTabs(context);
         assertEquals(1, tabs.size());
         RibbonTabSpec tab = tabs.getFirst();
@@ -70,6 +75,31 @@ class GitHubRibbonProviderTest {
         assertFalse(command(tab, "github.ribbon.pull").enabled().get());
         assertFalse(command(tab, "github.ribbon.push").enabled().get());
         assertFalse(command(tab, "github.ribbon.commit").enabled().get());
+    }
+
+    @Test
+    void resolvesActionsFromTypedCapabilitiesWithoutLegacyNodeAttribute() {
+        StubActions actions = new StubActions();
+        RibbonContext context = new RibbonContext(
+            "dock-1",
+            "github:toolbar",
+            "github-toolbar",
+            Map.of(RibbonContextAttributes.DOCK_TITLE, "GitHub"),
+            Map.of(GitHubRibbonActions.class, actions)
+        );
+        GitHubRibbonProvider provider = new GitHubRibbonProvider();
+
+        assertFalse(context.attribute(LEGACY_ACTIVE_CONTENT_NODE).isPresent());
+        PapiflyCommand pull = command(provider.getTabs(context).getFirst(), "github.ribbon.pull");
+
+        assertEquals(actions, context.capability(GitHubRibbonActions.class).orElseThrow());
+        assertEquals(actions, context.capability(StubActions.class).orElseThrow());
+        assertFalse(context.capability(Runnable.class).isPresent());
+        assertTrue(pull.enabled().get());
+
+        pull.execute();
+
+        assertEquals(1, actions.pullCount);
     }
 
     private static PapiflyCommand command(RibbonTabSpec tab, String id) {

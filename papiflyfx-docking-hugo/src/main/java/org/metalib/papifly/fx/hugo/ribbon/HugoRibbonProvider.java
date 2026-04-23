@@ -350,8 +350,6 @@ public final class HugoRibbonProvider implements RibbonProvider {
         if (context == null) {
             return Optional.empty();
         }
-        return context.attribute(RibbonContextAttributes.ACTIVE_CONTENT_NODE)
-            .filter(HugoRibbonActions.class::isInstance)
-            .map(HugoRibbonActions.class::cast);
+        return context.capability(HugoRibbonActions.class);
     }
 }

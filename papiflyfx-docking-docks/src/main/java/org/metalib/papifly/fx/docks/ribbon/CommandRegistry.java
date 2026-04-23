@@ -35,7 +35,17 @@ import java.util.Set;
  * <p>The registry is intentionally not thread-safe. It is owned by
  * {@link RibbonManager} and is expected to be accessed from the JavaFX
  * application thread (or whichever thread drives the hosting
- * {@link RibbonManager#refresh() refresh} cycle).</p>
+ * {@link RibbonManager#refresh() refresh} cycle). Hosts and providers should
+ * treat it as runtime-owned infrastructure rather than a shared mutable store
+ * for ad hoc background updates.</p>
+ *
+ * <h2>Refresh invariants</h2>
+ * <p>Ribbon 2 steady-state refresh performance relies on canonical command
+ * identity plus node-cache reuse in the shell layer. When a refresh emits the
+ * same command ids, the runtime reuses the existing command surfaces and
+ * telemetry reports cache hits instead of rebuilds. Replacing command ids for
+ * the same semantic action breaks QAT persistence and defeats those
+ * invariants.</p>
  *
  * @since Ribbon 2
  */
@@ -50,6 +60,9 @@ public final class CommandRegistry {
      * {@link PapiflyCommand#id()} identifier, the stored instance is returned
      * unchanged. Otherwise the supplied command is stored and returned as the
      * new canonical instance.</p>
+     *
+     * <p>Callers are expected to invoke this from the same FX-thread /
+     * refresh-driving thread that owns the surrounding {@link RibbonManager}.</p>
      *
      * @param command command to canonicalize
      * @return canonical command instance for the supplied identifier
@@ -160,6 +173,11 @@ public final class CommandRegistry {
      * <p>Used by {@link RibbonManager} during refresh cycles to evict commands
      * that are no longer reachable through visible tabs or through Quick Access
      * Toolbar references.</p>
+     *
+     * <p>This pruning behavior is part of the Ribbon 2 cache/telemetry model:
+     * steady-state refreshes should normally keep the same identifiers alive,
+     * allowing the shell to reuse command-backed controls instead of rebuilding
+     * them wholesale.</p>
      *
      * @param idsToKeep identifiers to retain
      * @throws NullPointerException if {@code idsToKeep} is {@code null}

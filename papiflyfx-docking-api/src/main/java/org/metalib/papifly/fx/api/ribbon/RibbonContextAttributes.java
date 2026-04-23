@@ -5,8 +5,10 @@ package org.metalib.papifly.fx.api.ribbon;
  * {@link RibbonContext#attributes()}.
  *
  * <p>Providers should prefer these keys when they need host metadata to drive
- * tab visibility or command behavior while remaining decoupled from concrete
- * host implementation types.</p>
+ * tab visibility or presentation behavior while remaining decoupled from
+ * concrete host implementation types. Attributes are the metadata side of the
+ * contract; executable integrations belong in
+ * {@link RibbonContext#capability(Class)}.</p>
  *
  * <p><b>Ribbon 2 note:</b> {@link #ACTIVE_CONTENT_NODE} is preserved as a
  * presentation-time bridge only. Providers that previously cast this value

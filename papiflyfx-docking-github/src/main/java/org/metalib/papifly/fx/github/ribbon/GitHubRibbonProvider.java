@@ -4,7 +4,6 @@ import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
-import org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonIconHandle;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
@@ -145,8 +144,6 @@ public final class GitHubRibbonProvider implements RibbonProvider {
         if (context == null) {
             return Optional.empty();
         }
-        return context.attribute(RibbonContextAttributes.ACTIVE_CONTENT_NODE)
-            .filter(GitHubRibbonActions.class::isInstance)
-            .map(GitHubRibbonActions.class::cast);
+        return context.capability(GitHubRibbonActions.class);
     }
 }

@@ -1,7 +1,7 @@
 # Progress — Docking Ribbon 2
 
-**Status:** Phase 4 implementation complete; required on-host validation green  
-**Current Milestone:** Phase 4 — persistence extension generalization  
+**Status:** Phase 5 implementation complete; required on-host validation green  
+**Current Milestone:** Phase 5 — provider migration and test/documentation closure  
 **Priority:** P1 (High)  
 **Lead Agent:** @core-architect  
 **Required Reviewers:** @ui-ux-designer, @feature-dev, @qa-engineer, @ops-engineer, @spec-steward  
@@ -15,7 +15,7 @@
 - Phase 2 — Runtime command architecture: 100%
 - Phase 3 — Layout and rendering efficiency: 100%
 - Phase 4 — Persistence extension generalization: 100%
-- Phase 5 — Provider migration and test closure: 0%
+- Phase 5 — Provider migration and test closure: 100%
 
 ## Accomplishments
 
@@ -83,6 +83,22 @@
   - duplicate extension namespace rejection
   - malformed extension payload tolerance during restore
   - malformed core-session diagnostics from the new serializer helpers
+- [2026-04-21] Ran the required Phase 4 preflight validation before starting Phase 5 provider/doc work:
+  - `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am compile` → `BUILD SUCCESS`
+  - `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am -Dtestfx.headless=true test` → `BUILD SUCCESS` (`88` tests, `0` failures, `0` errors)
+  - `./mvnw -pl papiflyfx-docking-github,papiflyfx-docking-hugo,papiflyfx-docking-samples -am compile` → `BUILD SUCCESS`
+- [2026-04-21] Phase 5.1 — Migrated the remaining shipped ribbon providers off the deprecated raw-node bridge:
+  - `GitHubRibbonProvider` and `HugoRibbonProvider` now resolve their action integrations through `RibbonContext#capability(Class)`.
+  - provider tests now build contexts with typed capability maps and explicitly prove command routing/enablement still works when the legacy `activeContentNode` attribute is absent.
+  - the docks runtime bridge remains temporarily populated so non-migrated hosts/providers outside this compile-critical scope are not disturbed by this prompt.
+- [2026-04-21] Phase 5.2 — Published contributor/runtime guidance for Ribbon 2 contracts:
+  - `RibbonContext`, `RibbonContextAttributes`, and ribbon package docs now spell out the intended split: attributes are metadata/visibility hints, capabilities are executable integrations.
+  - `DockSessionStateContributor` and `DockSessionExtensionCodec` now document the `extensions.<namespace>` ownership model, stable namespace expectations, codec responsibility boundaries, and malformed-payload isolation behavior.
+  - `CommandRegistry` and `papiflyfx-docking-docks/README.md` now document canonical command identity, stable tab/command IDs for persisted ribbon/QAT state, FX-thread ownership, and the Phase 2/3 cache-reuse and telemetry invariants.
+- [2026-04-21] Phase 5.3 — Closed validation/docs gaps without reopening already-green work:
+  - audited Phase 2-4 coverage and kept the existing QAT restore, adaptive-layout telemetry, and extension round-trip regressions as the authoritative proof for those earlier invariants.
+  - added only the missing provider-facing coverage for typed capability resolution and command routing after the provider migration.
+  - verified no compile fallout in `papiflyfx-docking-samples`; no sample code changes were required.
 
 ## Validation status
 
@@ -125,6 +141,30 @@
 - `2026-04-21` — `./mvnw -pl papiflyfx-docking-samples -am -Dtest=SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` → `BUILD SUCCESS`
   - `SamplesSmokeTest`: `12` tests, `0` failures, `0` errors
 
+### Phase 5 preflight
+
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am compile` → `BUILD SUCCESS`
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am -Dtestfx.headless=true test` → `BUILD SUCCESS`
+  - `88` tests, `0` failures, `0` errors
+  - expected warning coverage exercised:
+    - malformed SVG icon fallback still logs a scoped `WARNING` and keeps the ribbon usable
+    - malformed ribbon extension restore still logs an isolated contributor warning without blocking core session restore
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-github,papiflyfx-docking-hugo,papiflyfx-docking-samples -am compile` → `BUILD SUCCESS`
+
+### Phase 5 validation
+
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am compile` → `BUILD SUCCESS`
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-api,papiflyfx-docking-docks -am -Dtestfx.headless=true test` → `BUILD SUCCESS`
+  - `88` tests, `0` failures, `0` errors
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-github,papiflyfx-docking-hugo,papiflyfx-docking-samples -am compile` → `BUILD SUCCESS`
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-github,papiflyfx-docking-hugo -am -Dtestfx.headless=true test` → `BUILD SUCCESS`
+  - `53` tests, `0` failures, `0` errors across the full reactor slice
+  - provider-focused proof:
+    - `GitHubRibbonProviderTest` confirms typed capability lookup and command routing without `activeContentNode`
+    - `HugoRibbonProviderTest` confirms typed capability lookup, enablement, and contextual editor visibility without `activeContentNode`
+- `2026-04-21` — `./mvnw -pl papiflyfx-docking-samples -am -Dtest=SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` → `BUILD SUCCESS`
+  - `SamplesSmokeTest`: `12` tests, `0` failures, `0` errors
+
 ### Packaging validation
 
 - Not required for this session.
@@ -146,56 +186,63 @@
 - Duplicate session contributor namespaces are invalid and fail fast at registration time; there is no silent last-write-wins path.
 - Session schema version `3` is the authoritative Ribbon 2 persistence shape. The old top-level `ribbon` payload is intentionally unsupported after this cutover.
 - Malformed extension payloads are isolated from core restore: serializer-level shape failures drop only the broken extension entry, and codec-level decode failures are logged per contributor without aborting layout restore.
+- Remaining provider integrations should treat `RibbonContextAttributes.ACTIVE_CONTENT_NODE` as transitional only. Attributes are metadata/visibility inputs; typed capabilities are the action-resolution contract.
+- Stable ribbon tab and command identifiers are now explicitly part of the persisted contract because selected-tab state and QAT state are restored by ID rather than by rebuilt object identity.
 
 ## Open risks and follow-ups
 
 - `RibbonIconLoader` currently supports path-based SVG documents, which is sufficient for icon-grade assets but not a general SVG renderer. Multi-element icons that rely on richer SVG features may still fall back to raster handles.
 - Hidden contextual tabs keep their cached `RibbonGroup` instances so they can reappear without reconstruction. This is intentional for Phase 3 efficiency, but it means cache lifetime is tied to the ribbon host lifetime rather than visible-tab lifetime.
-- `ACTIVE_CONTENT_NODE` is still populated in `RibbonContextAttributes` for the transitional provider migration phase and remains a Phase 5 cleanup item.
-- Future dock extensions now have a stable namespace/codec path, but provider-facing documentation for adopting that pattern is still only captured here in progress notes; Phase 5 should publish contributor guidance more explicitly.
+- `ACTIVE_CONTENT_NODE` is still populated in `RibbonContextAttributes` by the docks runtime as a deliberate temporary bridge. Phase 5 migrated the remaining shipped providers away from it, but broad removal remains a later cleanup task.
 - Because compatibility was intentionally cut, any persisted session produced before Phase 4 with a top-level `ribbon` payload will not restore ribbon state on schema version `3` hosts.
 
 ## Next tasks
 
-1. Phase 5 — document extension namespace/codec expectations for future contributors in the relevant README/spec surface.
-2. Phase 5 — migrate remaining providers off `ACTIVE_CONTENT_NODE` and onto typed capabilities.
-3. Phase 5 — expand provider-facing docs with the cache/telemetry invariants and the FX-thread ownership rule for `CommandRegistry`.
-4. Phase 5 — keep provider migration limited to compile-critical adaptations until the full cleanup prompt lands.
+1. Remove the transitional `ACTIVE_CONTENT_NODE` bridge from the docks runtime once all remaining downstream/internal consumers have moved to typed capabilities.
+2. Keep future ribbon providers on stable tab/group/control/command identifiers so persisted selected-tab and QAT state remain valid.
+3. Use `extensions.<namespace>` for any new dock-session extension instead of adding bespoke top-level schema fields.
 
-## Handoff snapshot — Phase 4
+## Handoff snapshot — Phase 5
 
 Lead Agent: `@core-architect`  
-Task Scope: Ribbon 2 Phase 4 — namespaced session extensions, contributor codec generalization, ribbon persistence migration, serializer shape hardening, and persistence-focused regression coverage.  
-Impacted Modules: `papiflyfx-docking-docks` (runtime + tests), `spec/papiflyfx-docking-docks/2026-04-20-0-ribbon-2/**`.
+Task Scope: Ribbon 2 Phase 5 — provider migration to typed capabilities, contributor/runtime documentation closure, targeted provider regression coverage, and final validation/handoff.  
+Impacted Modules: `papiflyfx-docking-api`, `papiflyfx-docking-docks`, `papiflyfx-docking-github`, `papiflyfx-docking-hugo`, `spec/papiflyfx-docking-docks/2026-04-20-0-ribbon-2/**`.
 
-Files Changed — Phase 4 runtime:
+Files Changed — Phase 5 runtime/docs:
 
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockSessionExtensionCodec.java` (new)
+- `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/api/ribbon/RibbonContext.java`
+- `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/api/ribbon/RibbonContextAttributes.java`
+- `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/api/ribbon/package-info.java`
 - `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockSessionStateContributor.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockManager.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockManagerContext.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DefaultDockSessionService.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/layout/data/DockSessionData.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/serial/DockSessionSerializer.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonDockHost.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonSessionCodec.java` (new)
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonSessionStateContributor.java`
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockSessionExtensionCodec.java`
+- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/CommandRegistry.java`
+- `papiflyfx-docking-docks/README.md`
+- `papiflyfx-docking-github/src/main/java/org/metalib/papifly/fx/github/ribbon/GitHubRibbonProvider.java`
+- `papiflyfx-docking-hugo/src/main/java/org/metalib/papifly/fx/hugo/ribbon/HugoRibbonProvider.java`
 
-Files Changed — Phase 4 tests:
+Files Changed — Phase 5 tests/spec:
 
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/DockManagerSessionPersistenceFxTest.java`
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonSessionPersistenceFxTest.java`
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/serial/DockSessionPersistenceTest.java`
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/serial/DockSessionSerializerTest.java`
-
-Files Changed — Spec:
-
+- `papiflyfx-docking-github/src/test/java/org/metalib/papifly/fx/github/ribbon/GitHubRibbonProviderTest.java`
+- `papiflyfx-docking-hugo/src/test/java/org/metalib/papifly/fx/hugo/ribbon/HugoRibbonProviderTest.java`
 - `spec/papiflyfx-docking-docks/2026-04-20-0-ribbon-2/progress.md`
+
+Documentation updated for contributor onboarding:
+
+- typed capability vs attribute guidance at the ribbon SPI boundary
+- `extensions.<namespace>` ownership and codec responsibilities
+- malformed-payload isolation behavior for extension restore
+- stable ribbon command/tab identifiers for persisted selected-tab and QAT state
+- `CommandRegistry` ownership, thread-affinity, and steady-state cache/telemetry invariants
 
 Reviewer focus:
 
-- `@ui-ux-designer` — verify ribbon restore still feels correct after the extension cutover, especially the selected-tab fallback path and malformed-extension no-op behavior.
-- `@feature-dev` — review the namespace/codec contract as the intended onboarding path for future dock extensions so new modules do not reintroduce top-level session fields.
-- `@qa-engineer` — scrutinize the new serializer diagnostics, duplicate-namespace fail-fast coverage, and the scoped malformed-extension restore test.
-- `@ops-engineer` — confirm the validation matrix and the schema-version cutover (`2` -> `3`) are recorded clearly enough for release/readiness notes.
-- `@spec-steward` — confirm the intentional no-legacy-bridge note for top-level `ribbon` is explicit enough and that the remaining Phase 5 doc tasks are scoped cleanly.
+- `@ui-ux-designer` — verify the README/API guidance on stable ribbon identifiers and capability-vs-attribute usage matches the intended provider authoring model.
+- `@feature-dev` — confirm the GitHub/Hugo providers now use typed capabilities only and that the contributor docs are clear enough for future feature modules.
+- `@qa-engineer` — review the new provider tests as the missing Phase 5 proof and confirm the earlier QAT/adaptive-layout/extension regressions are referenced rather than duplicated.
+- `@ops-engineer` — confirm the validation matrix and compile/test outcomes are fully recorded, including the provider-reactor test slice and samples smoke run.
+- `@spec-steward` — verify Phase 5 closure, the remaining intentional bridge note, and the handoff summary align with the completed scope.
+
+Residual risks:
+
+- the docks runtime still populates the deprecated `ACTIVE_CONTENT_NODE` attribute until the broader cleanup lands
+- compatibility with pre-Phase-4 persisted `ribbon` payloads remains intentionally unsupported

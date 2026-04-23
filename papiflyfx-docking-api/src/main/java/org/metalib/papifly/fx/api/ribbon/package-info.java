@@ -42,8 +42,20 @@
  *   attribute.</li>
  * </ul>
  *
- * <p>Persistence guidance: contributors must keep command and tab identifiers
- * stable once published because hosts can persist selected tabs and Quick
- * Access Toolbar command IDs across application restarts.</p>
+ * <p>Provider guidance:</p>
+ * <ul>
+ *   <li>Use {@link org.metalib.papifly.fx.api.ribbon.RibbonContext#capability(Class)}
+ *   for executable integrations and reserve
+ *   {@link org.metalib.papifly.fx.api.ribbon.RibbonContext#attribute(String)}
+ *   lookups for metadata such as dock titles, factory ids, and visibility
+ *   hints.</li>
+ *   <li>Keep tab, group, control, and command identifiers stable once
+ *   published. Hosts persist selected-tab state and Quick Access Toolbar
+ *   command identifiers by ID, so changing them breaks session continuity for
+ *   that provider-owned surface.</li>
+ *   <li>Provider command state should be updated on canonical command
+ *   instances returned by the runtime rather than by inventing replacement
+ *   identifiers for the same semantic action.</li>
+ * </ul>
  */
 package org.metalib.papifly.fx.api.ribbon;

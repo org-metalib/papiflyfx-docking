@@ -87,11 +87,58 @@ String json = dockManager.saveSessionToString();
 dockManager.restoreSessionFromString(json);
 ```
 
-Persisted ribbon fields:
+Persisted ribbon state now lives under the namespaced dock-session extension
+payload `extensions.ribbon`:
 
-- `ribbon.minimized`
-- `ribbon.selectedTabId`
-- `ribbon.quickAccessCommandIds`
+- `extensions.ribbon.minimized`
+- `extensions.ribbon.selectedTabId`
+- `extensions.ribbon.quickAccessCommandIds`
+
+Ribbon contributors and hosts should keep tab and command identifiers stable
+once published. Selected-tab restore and Quick Access Toolbar persistence are
+ID-first and depend on those stable identifiers.
+
+### Extension contributors
+
+Dock-session extensions are contributor-owned and persist under
+`extensions.<namespace>`.
+
+- Choose one stable namespace per contributor and keep it unchanged once sessions may be persisted.
+- Encode and decode only your own payload through `DockSessionExtensionCodec`; do not add bespoke top-level session fields.
+- Malformed extension payloads are isolated to the owning contributor during restore and do not block unrelated core dock state.
+
+Typical contributor shape:
+
+```java
+class ExampleSessionContributor implements DockSessionStateContributor<ExampleState> {
+    @Override
+    public String extensionNamespace() {
+        return "example";
+    }
+
+    @Override
+    public DockSessionExtensionCodec<ExampleState> codec() {
+        return new ExampleSessionCodec();
+    }
+}
+```
+
+### Ribbon provider integration
+
+Ribbon providers should use typed capabilities for executable integrations and
+attributes for metadata/visibility decisions.
+
+- `RibbonContext#capability(Class)` resolves action interfaces such as `GitHubRibbonActions` and `HugoRibbonActions`.
+- `RibbonContextAttributes` are for dock title, content-factory id, floating/maximized state, and similar metadata.
+- `RibbonContextAttributes.ACTIVE_CONTENT_NODE` is a temporary compatibility bridge in the docks runtime and should not be used by new providers.
+
+### Command registry invariants
+
+`RibbonManager` owns the runtime `CommandRegistry`.
+
+- Command identity is canonical and registry-owned. Reuse the same command id for the same semantic action.
+- Mutate registry-backed command state on the FX thread or the single thread that drives `RibbonManager.refresh()`.
+- Steady-state refreshes rely on cache reuse and telemetry-backed invariants rather than rebuilding every tab/group/control surface.
 
 ### Restoring content with a factory
 
