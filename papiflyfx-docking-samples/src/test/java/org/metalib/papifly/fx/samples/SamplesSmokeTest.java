@@ -98,6 +98,16 @@ class SamplesSmokeTest {
     }
 
     @Test
+    void sampleCatalogIncludesProviderSpecificRibbonSamples() {
+        List<String> titles = SampleCatalog.all().stream()
+            .map(SampleScene::title)
+            .toList();
+
+        assertTrue(titles.contains("GitHub Ribbon"));
+        assertTrue(titles.contains("Hugo Ribbon"));
+    }
+
+    @Test
     void persistSampleSavesNonEmptyJsonAndRestoresWithoutError() {
         uncaughtException = null;
         ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
