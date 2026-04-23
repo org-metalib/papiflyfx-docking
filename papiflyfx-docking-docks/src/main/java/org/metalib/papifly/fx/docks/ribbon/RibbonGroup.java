@@ -5,6 +5,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.geometry.Bounds;
 import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.PopupControl;
@@ -98,6 +99,8 @@ public class RibbonGroup extends VBox {
         footer.getStyleClass().add("pf-ribbon-group-footer");
         footer.setCenter(label);
         footer.setRight(launcherButton);
+        BorderPane.setAlignment(label, Pos.CENTER);
+        BorderPane.setAlignment(launcherButton, Pos.CENTER_RIGHT);
 
         collapsedButton.setId("pf-ribbon-group-collapsed-" + spec.id());
         collapsedButton.setOnAction(event -> toggleCollapsedPopup());

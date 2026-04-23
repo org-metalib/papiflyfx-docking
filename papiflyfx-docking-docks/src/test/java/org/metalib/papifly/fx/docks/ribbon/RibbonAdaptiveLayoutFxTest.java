@@ -1,10 +1,15 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
+import javafx.geometry.Bounds;
+import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
+import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +20,7 @@ import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonIconHandle;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
 import org.metalib.papifly.fx.docks.testutil.FxTestUtil;
 import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
@@ -28,10 +34,12 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
@@ -162,6 +170,39 @@ class RibbonAdaptiveLayoutFxTest {
     }
 
     @Test
+    void sampleRibbonLabelsStayInsideControlsAndFooters() {
+        FxTestUtil.runFx(() -> {
+            tabs.set(sampleRibbonTabs());
+            manager.refresh();
+        });
+        resizeTo(1200.0);
+
+        assertEquals(RibbonGroupSizeMode.LARGE, group("clipboard").getSizeMode());
+        assertEquals(RibbonGroupSizeMode.LARGE, group("layout").getSizeMode());
+        assertCommandLabelContained("clipboard", "Paste");
+        assertCommandLabelContained("clipboard", "Copy");
+        assertCommandLabelContained("clipboard", "Duplicate");
+        assertCommandLabelContained("layout", "Pin Preview");
+        assertGroupCaptionContained("clipboard", "Clipboard");
+        assertGroupCaptionContained("layout", "Layout");
+
+        FxTestUtil.runFx(() -> {
+            group("clipboard").setSizeMode(RibbonGroupSizeMode.MEDIUM);
+            group("layout").setSizeMode(RibbonGroupSizeMode.MEDIUM);
+            host.applyCss();
+            host.layout();
+        });
+        settleFx();
+
+        assertCommandLabelContained("clipboard", "Paste");
+        assertCommandLabelContained("clipboard", "Copy");
+        assertCommandLabelContained("clipboard", "Duplicate");
+        assertCommandLabelContained("layout", "Pin Preview");
+        assertGroupCaptionContained("clipboard", "Clipboard");
+        assertGroupCaptionContained("layout", "Layout");
+    }
+
+    @Test
     void brokenSvgFallsBackToRasterWithoutThrowing() throws IOException {
         Path brokenSvg = Files.createTempFile("ribbon-icon", ".svg");
         try {
@@ -195,6 +236,75 @@ class RibbonAdaptiveLayoutFxTest {
 
         assertTrue(alpha.getSizeMode().compareTo(beta.getSizeMode()) >= 0);
         assertTrue(beta.getSizeMode().compareTo(gamma.getSizeMode()) >= 0);
+    }
+
+    private void assertCommandLabelContained(String groupId, String label) {
+        FxTestUtil.runFx(() -> {
+            RibbonGroup ribbonGroup = group(groupId);
+            ButtonBase control = findDescendant(
+                ribbonGroup,
+                ButtonBase.class,
+                button -> label.equals(button.getText())
+            );
+            assertNotNull(control, "Expected command control for " + label);
+            Text text = findDescendant(control, Text.class, node -> label.equals(node.getText()));
+            assertNotNull(text, "Expected command label text for " + label);
+            assertContained(control, text, "command label " + label);
+        });
+    }
+
+    private void assertGroupCaptionContained(String groupId, String caption) {
+        FxTestUtil.runFx(() -> {
+            RibbonGroup ribbonGroup = group(groupId);
+            Label label = findDescendant(
+                ribbonGroup,
+                Label.class,
+                node -> caption.equals(node.getText()) && node.getStyleClass().contains("pf-ribbon-group-label")
+            );
+            assertNotNull(label, "Expected group caption for " + caption);
+            Parent footer = findAncestor(label, node -> node.getStyleClass().contains("pf-ribbon-group-footer"));
+            assertContained(footer, label, "group caption " + caption);
+        });
+    }
+
+    private static void assertContained(Parent owner, Node child, String description) {
+        Bounds ownerBounds = owner.localToScene(owner.getBoundsInLocal());
+        Bounds childBounds = child.localToScene(child.getBoundsInLocal());
+        double tolerance = 0.5;
+        assertTrue(
+            childBounds.getMinY() >= ownerBounds.getMinY() - tolerance
+                && childBounds.getMaxY() <= ownerBounds.getMaxY() + tolerance,
+            () -> description + " vertical bounds " + childBounds + " exceed owner bounds " + ownerBounds
+        );
+    }
+
+    private static <T extends Node> T findDescendant(Parent root, Class<T> type, Predicate<T> predicate) {
+        for (Node child : root.getChildrenUnmodifiable()) {
+            if (type.isInstance(child)) {
+                T cast = type.cast(child);
+                if (predicate.test(cast)) {
+                    return cast;
+                }
+            }
+            if (child instanceof Parent parent) {
+                T match = findDescendant(parent, type, predicate);
+                if (match != null) {
+                    return match;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Parent findAncestor(Node child, Predicate<Parent> predicate) {
+        Parent parent = child.getParent();
+        while (parent != null) {
+            if (predicate.test(parent)) {
+                return parent;
+            }
+            parent = parent.getParent();
+        }
+        throw new AssertionError("No matching ancestor for " + child);
     }
 
     private RibbonGroup group(String id) {
@@ -278,6 +388,41 @@ class RibbonAdaptiveLayoutFxTest {
                         new RibbonButtonSpec(PapiflyCommand.of("gamma-1", "Gamma One", () -> {})),
                         new RibbonButtonSpec(PapiflyCommand.of("gamma-2", "Gamma Two", () -> {})),
                         new RibbonButtonSpec(PapiflyCommand.of("gamma-3", "Gamma Three", () -> {}))
+                    )
+                )
+            )
+        ));
+    }
+
+    private List<RibbonTabSpec> sampleRibbonTabs() {
+        return List.of(new RibbonTabSpec(
+            "home",
+            "Home",
+            0,
+            false,
+            ribbonContext -> true,
+            List.of(
+                new RibbonGroupSpec(
+                    "clipboard",
+                    "Clipboard",
+                    0,
+                    10,
+                    PapiflyCommand.of("clipboard-settings", "Clipboard settings", () -> {}),
+                    List.of(
+                        new RibbonButtonSpec(PapiflyCommand.of("paste", "Paste", () -> {})),
+                        new RibbonButtonSpec(PapiflyCommand.of("copy", "Copy", () -> {})),
+                        new RibbonButtonSpec(PapiflyCommand.of("duplicate", "Duplicate", () -> {}))
+                    )
+                ),
+                new RibbonGroupSpec(
+                    "layout",
+                    "Layout",
+                    10,
+                    20,
+                    null,
+                    List.of(
+                        new RibbonToggleSpec(PapiflyCommand.of("pin-preview", "Pin Preview", () -> {})),
+                        new RibbonButtonSpec(PapiflyCommand.of("presets", "Presets", () -> {}))
                     )
                 )
             )

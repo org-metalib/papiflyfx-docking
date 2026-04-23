@@ -125,7 +125,9 @@
 .pf-ribbon-group-footer {
     -fx-border-color: -pf-ui-border-subtle transparent transparent transparent;
     -fx-border-width: 1 0 0 0;
-    -fx-padding: 6px 0 0 0;
+    -fx-min-height: 28px;
+    -fx-pref-height: 28px;
+    -fx-padding: 6px 0 3px 0;
 }
 
 .pf-ribbon-group-label {
@@ -207,8 +209,8 @@
 .pf-ribbon-control-large {
     -fx-min-width: 84px;
     -fx-pref-width: 92px;
-    -fx-min-height: 76px;
-    -fx-pref-height: 76px;
+    -fx-min-height: 88px;
+    -fx-pref-height: 88px;
     -fx-padding: 8px;
 }
 
@@ -216,8 +218,8 @@
     -fx-min-width: 68px;
     -fx-pref-width: 72px;
     -fx-max-width: 72px;
-    -fx-min-height: 58px;
-    -fx-pref-height: 58px;
+    -fx-min-height: 68px;
+    -fx-pref-height: 68px;
     -fx-padding: 6px;
     -fx-font-size: 11px;
     -fx-graphic-text-gap: 4px;
