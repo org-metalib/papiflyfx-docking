@@ -133,11 +133,81 @@ No automated validation. Cross-reference quality is the primary check; each find
 
 ## Findings
 
-_Not yet started._
+### F-01: No single current ribbon status source
+**Severity:** P2  
+**Area:** Roadmap  
+**Evidence:** `spec/papiflyfx-docking-docks/README.md:3-5` still frames the docks spec as a pure programmatic/no-CSS design; `spec/papiflyfx-docking-docks/IMPLEMENTATION_PLAN.md:27-28` still says theming is implemented without CSS; `spec/papiflyfx-docking-roadmap/README.md` and `phases.md` contain no ribbon/QAT/RibbonDockHost entries.  
+**Risk:** A new contributor cannot find the current ribbon stream, its completed stages, remaining follow-ups, or superseded decisions in under five minutes. The practical status is spread across four dated spec directories plus module docs.  
+**Suggested follow-up:** `@spec-steward`, M. Add a current ribbon status/index section to `spec/papiflyfx-docking-docks/README.md` or a dedicated `ribbon-status.md`; link `ribbon`, `ribbon-2`, `ribbon-3`, `ribbon-4`, current implementation docs, and remaining follow-ups. Add a roadmap note under sample quality/API clarity.
+
+### F-02: Ribbon 1 persistence docs are superseded but not marked historical
+**Severity:** P2  
+**Area:** Alignment  
+**Evidence:** `spec/papiflyfx-docking-docks/2026-04-19-0-ribbon/README.md:41-62` documents a top-level optional `ribbon` payload and schema version `2`, while `spec/papiflyfx-docking-docks/2026-04-20-0-ribbon-2/progress.md:184-188` records the `extensions.<namespace>` model, schema version `3`, and intentional lack of support for the old top-level ribbon payload. The live module README uses `extensions.ribbon` at `papiflyfx-docking-docks/README.md:90-95`.  
+**Risk:** Contributors using the Ribbon 1 README as architecture guidance may implement or test the wrong session shape. That is especially confusing because Ribbon 1 is marked complete rather than superseded.  
+**Suggested follow-up:** `@core-architect` with `@spec-steward`, S. Add a superseded banner to Ribbon 1 persistence sections and point readers to Ribbon 2 plus the docks README for the authoritative schema.
+
+### F-03: Several ribbon spec landing pages are prompt-only
+**Severity:** P2  
+**Area:** Hygiene  
+**Evidence:** `spec/papiflyfx-docking-docks/2026-04-20-0-ribbon-2/README.md:1-6`, `2026-04-23-0-ribbon-3/README.md:1-4`, and `2026-04-23-0-ribbon-4/README.md:1-7` are original prompts rather than status-oriented landing pages. Ribbon 2's ADR is referenced from progress, but not from the prompt-only README. Ribbon 1 uses `research-gemini.md` instead of the normal `research.md` naming.  
+**Risk:** Readers land on incomplete prompts instead of the actual plan/progress/validation state, and rationale artifacts such as the SVG ADR are easy to miss.  
+**Suggested follow-up:** `@spec-steward`, S/M. Normalize each ribbon README to list status, canonical artifacts, validation, superseded notes, ADR/research links, and next steps. Either rename `research-gemini.md` to `research.md` or make its canonical status explicit.
+
+### F-04: Ribbon 5 review prompts already contain stale baseline assumptions
+**Severity:** P3  
+**Area:** Governance  
+**Evidence:** This review asks to confirm Ribbon 4 is not implemented at `review-spec-steward.md:39`, but `spec/papiflyfx-docking-docks/2026-04-23-0-ribbon-4/progress.md:3-17` says implementation and validation are complete. The same review asks to verify a CLAUDE.md ribbon mention at `review-spec-steward.md:60`, but `CLAUDE.md` has no ribbon/QAT/RibbonDockHost references.  
+**Risk:** Reviewers spend time resolving false premises instead of inspecting current state, and consolidation may preserve outdated assumptions if each reviewer does not re-baseline first.  
+**Suggested follow-up:** `@spec-steward`, S. Add a "baseline verified on <date>" note to each review plan before execution, and update review questions when prior plans complete between authoring and execution. This review should proceed independently of Ribbon 4 because Ribbon 4 has already landed.
+
+### F-05: Provider-authoring guidance is too thin for feature-module owners
+**Severity:** P2  
+**Area:** Documentation  
+**Evidence:** `papiflyfx-docking-docks/README.md:126-141` documents typed capabilities, metadata attributes, and command registry invariants, and `AGENTS.md` references `org.metalib.papifly.fx.api.ribbon`. There is no dedicated `ribbon-provider-authoring.md` or README appendix covering provider lifecycle, ServiceLoader registration, stable tab/group/control/command IDs, contextual visibility, QAT implications, tests, and sample expectations end to end.  
+**Risk:** New feature modules can compile while still choosing unstable identifiers, using the transitional `ACTIVE_CONTENT_NODE` bridge, or omitting contextual/QAT regression coverage.  
+**Suggested follow-up:** `@feature-dev` with `@core-architect` and `@spec-steward`, M. Add a provider-authoring guide under `spec/papiflyfx-docking-docks/` or as a substantial docks README appendix, with a minimal provider example and required test checklist.
+
+### F-06: Acceptance criteria are mostly observable, but manual checks need explicit disposition
+**Severity:** P3  
+**Area:** Acceptance  
+**Evidence:** Rating: Ribbon 1 B (broad but observable; now partially superseded), Ribbon 2 B+ (good validation matrix, though "improved stability" needed telemetry-backed wording), Ribbon 3 A- (focused geometry criteria and a TestFX substitute), Ribbon 4 A- (observable sample criteria and headless coverage). Remaining manual gaps are still recorded as optional/not run in Ribbon 3 and Ribbon 4 progress (`2026-04-23-0-ribbon-3/progress.md:56-62`, `2026-04-23-0-ribbon-4/progress.md:76-80`).  
+**Risk:** A plan can read as "complete" while an ergonomic or visual acceptance criterion remains satisfied only by a proxy test, with no owner/date for the deferred manual pass.  
+**Suggested follow-up:** `@qa-engineer` and `@ui-ux-designer` with `@spec-steward`, S. For future plans, require each manual criterion to end as `performed`, `replaced by <test>`, or `deferred to <owner/date/reason>`.
 
 ## Consolidation Plan
 
-_To be drafted once the other five review plans begin filing findings. Target format is sketched in review question H.1._
+Create `spec/papiflyfx-docking-docks/2026-04-23-0-ribbon-5/findings.md` after all six review plans have populated findings. The consolidation should supplement, not replace, a future `ribbon-6/plan.md`; `findings.md` is the triage/input artifact, and Ribbon 6 should be created only for selected implementation work.
+
+Use this structure:
+
+```md
+# Ribbon 5 — Consolidated Findings
+
+## Critical (P0)
+## High (P1)
+## Normal (P2)
+### F-<role>-<NN>: <title>
+- Source plan:
+- Evidence:
+- Risk:
+- Proposed owner:
+- Estimated cost:
+- Dependencies / duplicates:
+## Low (P3)
+
+## Recommended Follow-up Plans
+```
+
+Consolidation steps:
+
+1. Copy findings from each `review-*.md` file, preserving source-role IDs.
+2. De-duplicate shared concerns by keeping the most specific evidence and linking related reviewer findings.
+3. Resolve severity conflicts by choosing the higher severity only when the risk crosses module boundaries or blocks follow-up work.
+4. Assign one proposed owner per consolidated finding and list required reviewers.
+5. Group follow-up work into small plans: likely documentation/status cleanup, provider-authoring guide, and any implementation/test gaps raised by the specialist reviews.
+
+Target date: one week after the last specialist review is filed. If all review files land on 2026-04-23, target consolidation by 2026-04-30.
 
 ## Handoff Snapshot
 

@@ -113,7 +113,45 @@ Do not commit output into this file; summarize the effect in the finding instead
 
 ## Findings
 
-_Not yet started._
+No P0/P1 release blockers found in the reviewed build/runtime surface.
+
+Source-inspection notes:
+
+- Module boundaries are mostly clean: `papiflyfx-docking-docks` depends on `papiflyfx-docking-api`; `papiflyfx-docking-github` and `papiflyfx-docking-hugo` depend on `papiflyfx-docking-api` plus `papiflyfx-docking-settings-api`, with `papiflyfx-docking-docks` only in test scope (`papiflyfx-docking-github/pom.xml:17`, `papiflyfx-docking-github/pom.xml:22`, `papiflyfx-docking-github/pom.xml:49`; `papiflyfx-docking-hugo/pom.xml:17`, `papiflyfx-docking-hugo/pom.xml:22`, `papiflyfx-docking-hugo/pom.xml:27`).
+- Feature ribbon providers import the API ribbon package, not docks runtime classes (`papiflyfx-docking-github/src/main/java/org/metalib/papifly/fx/github/ribbon/GitHubRibbonProvider.java:3`; `papiflyfx-docking-hugo/src/main/java/org/metalib/papifly/fx/hugo/ribbon/HugoRibbonProvider.java:3`).
+- `ServiceLoader` descriptors exist for GitHub, Hugo, and sample ribbon providers (`papiflyfx-docking-github/src/main/resources/META-INF/services/org.metalib.papifly.fx.api.ribbon.RibbonProvider:1`; `papiflyfx-docking-hugo/src/main/resources/META-INF/services/org.metalib.papifly.fx.api.ribbon.RibbonProvider:1`; `papiflyfx-docking-samples/src/main/resources/META-INF/services/org.metalib.papifly.fx.api.ribbon.RibbonProvider:1`).
+- The BOM includes ribbon-relevant published modules and continues to exclude samples (`papiflyfx-docking-bom/pom.xml:18`, `papiflyfx-docking-bom/pom.xml:23`, `papiflyfx-docking-bom/pom.xml:68`, `papiflyfx-docking-bom/pom.xml:73`).
+- Samples now include `Ribbon Shell`, `Hugo Ribbon`, and `GitHub Ribbon` (`papiflyfx-docking-samples/src/main/java/org/metalib/papifly/fx/samples/catalog/SampleCatalog.java:56`, `papiflyfx-docking-samples/src/main/java/org/metalib/papifly/fx/samples/catalog/SampleCatalog.java:70`, `papiflyfx-docking-samples/src/main/java/org/metalib/papifly/fx/samples/catalog/SampleCatalog.java:72`), and `SamplesRuntimeSupport.initialize(...)` wires the shared settings runtime before the samples app builds content (`papiflyfx-docking-samples/src/main/java/org/metalib/papifly/fx/samples/SamplesApp.java:73`, `papiflyfx-docking-samples/src/main/java/org/metalib/papifly/fx/samples/SamplesRuntimeSupport.java:26`).
+- Ribbon session state is registered by `RibbonDockHost` under the `ribbon` namespace and duplicate namespaces fail fast (`papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonDockHost.java:40`, `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonDockHost.java:52`, `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonSessionStateContributor.java:11`, `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/DockManager.java:598`).
+- Validation: `source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk use java 25.0.1.fx-zulu >/dev/null && ./mvnw -pl papiflyfx-docking-samples -am -Dtest=SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test` passed on 2026-04-23 with 13 tests, 0 failures, 0 errors, 0 skips.
+
+### F-01: Archetype does not expose ribbon SPI wiring
+**Severity:** P2
+**Area:** BOM/archetype
+**Evidence:** The generated app template still creates a bare `DockManager` scene (`papiflyfx-docking-archetype/src/main/resources/archetype-resources/__rootArtifactId__-app/src/main/java/App.java:16`, `papiflyfx-docking-archetype/src/main/resources/archetype-resources/__rootArtifactId__-app/src/main/java/App.java:20`). The generated app POM only pulls `papiflyfx-docking-docks` as the framework dependency (`papiflyfx-docking-archetype/src/main/resources/archetype-resources/__rootArtifactId__-app/pom.xml:15`, `papiflyfx-docking-archetype/src/main/resources/archetype-resources/__rootArtifactId__-app/pom.xml:19`), and the generated test only asserts startup (`papiflyfx-docking-archetype/src/main/resources/archetype-resources/__rootArtifactId__-app/src/test/java/AppTest.java:19`). `rg` found no `Ribbon`, `RibbonDockHost`, `RibbonProvider`, or `META-INF/services/org.metalib.papifly.fx.api.ribbon.RibbonProvider` path in `papiflyfx-docking-archetype/src/main/resources/archetype-resources`.
+**Risk:** New downstream apps generated from the archetype do not demonstrate the newly published ribbon contribution path, so consumers can miss the required `ServiceLoader` descriptor and host wiring even though the API is in the BOM.
+**Suggested follow-up:** `@ops-engineer` lead with `@core-architect` review, rough cost M. Add an optional/sample `RibbonDockHost` scaffold, a minimal generated `RibbonProvider`, descriptor registration, and an archetype integration assertion that the provider tab is visible.
+
+### F-02: Surefire JavaFX/TestFX flags are duplicated across ribbon-touching modules
+**Severity:** P3
+**Area:** Headless profile
+**Evidence:** Parent plugin management pins the Surefire version but does not centralize the shared JavaFX/TestFX `argLine` or system properties (`pom.xml:167`). Each ribbon-touching module repeats the same `--enable-native-access`, `--add-exports`, `--add-opens`, and TestFX system-property block with small local variations (`papiflyfx-docking-docks/pom.xml:55`, `papiflyfx-docking-github/pom.xml:87`, `papiflyfx-docking-hugo/pom.xml:76`, `papiflyfx-docking-samples/pom.xml:90`).
+**Risk:** Headless behavior can drift by module as more ribbon/UI tests are added. A future JavaFX flag or Monocle property fix may land in one module but not the others, creating platform-specific CI failures.
+**Suggested follow-up:** `@ops-engineer` lead with `@qa-engineer` review, rough cost S. Move common Surefire/TestFX configuration into parent plugin management or a shared Maven property, leaving only module-specific native-access additions such as `javafx.web` and `javafx.media` locally overridden.
+
+### F-03: Ribbon layout telemetry is test-only and has no operator-facing switch
+**Severity:** P3
+**Area:** Observability
+**Evidence:** `RibbonLayoutTelemetry` is package-private and documented as an internal test sink (`papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonLayoutTelemetry.java:3`, `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonLayoutTelemetry.java:7`). The ribbon defaults telemetry to noop (`papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/Ribbon.java:68`) and the setter is package-private (`papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/Ribbon.java:342`). The only direct caller found is the adaptive-layout FX test (`papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonAdaptiveLayoutFxTest.java:74`).
+**Risk:** Operators and downstream app owners cannot enable layout/cache diagnostics when a ribbon becomes sluggish or collapses unexpectedly in production. Debugging requires a custom build or debugger instead of a documented runtime knob.
+**Suggested follow-up:** `@core-architect` lead with `@ops-engineer` review, rough cost S. Add a JUL-backed or system-property-enabled telemetry adapter and document the logger/category or property in the docks README.
+
+### F-04: Ribbon 2 breaking changes are documented in Javadocs but not in release notes
+**Severity:** P3
+**Area:** Release
+**Evidence:** API Javadocs record the Ribbon 2 contract breaks (`papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/api/ribbon/package-info.java:31`, `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/api/ribbon/PapiflyCommand.java:14`), but `rg --files | rg 'CHANGELOG|RELEASE|release-notes|changes'` returned no repository changelog or release-notes file. The root README documentation section links the ribbon implementation dossier, not migration/release notes (`README.md:202`, `README.md:205`).
+**Risk:** Consumers upgrading through published artifacts may not see breaking API notes unless they inspect Javadocs or internal spec progress. That weakens release readiness for the accepted ribbon-1 to ribbon-2 break.
+**Suggested follow-up:** `@spec-steward` lead with `@ops-engineer` and `@core-architect` review, rough cost S. Add a concise release/migration note that lists the Ribbon 2 contract breaks and links the API Javadocs.
 
 ## Handoff Snapshot
 
@@ -128,6 +166,6 @@ Key Invariants:
 - samples must remain excluded from the BOM
 - findings must cite files and, where relevant, `mvn` behavior
 
-Validation Performed: source inspection; optional dry-runs as recorded in findings  
-Open Risks / Follow-ups: recorded as numbered findings  
+Validation Performed: source inspection; optional dry-runs as recorded in findings
+Open Risks / Follow-ups: F-01 archetype ribbon scaffold gap; F-02 duplicated Surefire/TestFX flags; F-03 telemetry not operator-facing; F-04 release notes gap
 Required Reviewer: `@spec-steward`, `@qa-engineer`
