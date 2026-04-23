@@ -215,6 +215,7 @@ public class Ribbon extends VBox {
         this.manager = resolvedManager;
         this.manager.getTabs().addListener(tabsListener);
         this.manager.getQuickAccessCommands().addListener(quickAccessListener);
+        this.manager.setLayoutTelemetry(layoutTelemetry);
         quickAccessToolbar.setClassLoader(this.manager.getClassLoader());
         tabStrip.setLayoutTelemetry(layoutTelemetry);
         refreshQuickAccessToolbar();
@@ -341,6 +342,9 @@ public class Ribbon extends VBox {
 
     void setLayoutTelemetry(RibbonLayoutTelemetry telemetry) {
         layoutTelemetry = telemetry == null ? RibbonLayoutTelemetry.noop() : telemetry;
+        if (manager != null) {
+            manager.setLayoutTelemetry(layoutTelemetry);
+        }
         tabStrip.setLayoutTelemetry(layoutTelemetry);
         groupCache.values().forEach(group -> group.setLayoutTelemetry(layoutTelemetry));
     }

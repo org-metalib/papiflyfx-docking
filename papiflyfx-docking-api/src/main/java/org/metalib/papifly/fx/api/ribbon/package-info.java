@@ -52,10 +52,16 @@
  *   <li>Keep tab, group, control, and command identifiers stable once
  *   published. Hosts persist selected-tab state and Quick Access Toolbar
  *   command identifiers by ID, so changing them breaks session continuity for
- *   that provider-owned surface.</li>
- *   <li>Provider command state should be updated on canonical command
- *   instances returned by the runtime rather than by inventing replacement
- *   identifiers for the same semantic action.</li>
+ *   that provider-owned surface. Use a dotted namespace such as
+ *   {@code <module>.ribbon.<action>} for command ids.</li>
+ *   <li>Duplicate tab ids are merged by the host with first tab label/order
+ *   winning; duplicate command ids keep the first metadata/action surface.
+ *   Runtime hosts should warn or emit telemetry when first-wins metadata
+ *   conflicts are detected.</li>
+ *   <li>Provider command state may be recomputed on every
+ *   {@code getTabs(context)} call. Hosts canonicalize command identity by id
+ *   and project later {@code enabled}/{@code selected} snapshots onto the
+ *   canonical command.</li>
  * </ul>
  */
 package org.metalib.papifly.fx.api.ribbon;

@@ -44,13 +44,33 @@
     -fx-background-color: -fx-ribbon-tab-hover;
 }
 
+.pf-ribbon-tab:focused {
+    -fx-border-color: -pf-ui-border-focus -pf-ui-border-focus -pf-ui-border-focus -pf-ui-border-focus;
+    -fx-border-width: 1 1 2 1;
+}
+
 .pf-ribbon-tab:selected {
     -fx-background-color: -fx-ribbon-tab-selected;
     -fx-border-color: transparent transparent -fx-ribbon-accent transparent;
 }
 
+.pf-ribbon-tab:selected:focused {
+    -fx-border-color: -pf-ui-border-focus -pf-ui-border-focus -fx-ribbon-accent -pf-ui-border-focus;
+}
+
 .pf-ribbon-tab-contextual {
     -fx-background-color: -fx-ribbon-contextual-background;
+}
+
+.pf-ribbon-tab-contextual:selected {
+    -fx-background-color: -fx-ribbon-contextual-selected;
+    -fx-border-color: transparent transparent -fx-ribbon-accent transparent;
+}
+
+.pf-ribbon-tab-contextual:focused,
+.pf-ribbon-tab-contextual:selected:focused {
+    -fx-background-color: -fx-ribbon-contextual-selected;
+    -fx-border-color: -pf-ui-border-focus -pf-ui-border-focus -fx-ribbon-accent -pf-ui-border-focus;
 }
 
 .pf-ribbon-qat {
@@ -73,6 +93,10 @@
 
 .pf-ribbon-qat-button:hover {
     -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-qat-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
 }
 
 .pf-ribbon-scroll {
@@ -152,6 +176,12 @@
 .pf-ribbon-group-launcher:hover {
     -fx-background-color: -pf-ui-surface-control-hover;
     -fx-border-color: -pf-ui-border-default;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.pf-ribbon-group-launcher:focused {
+    -fx-border-color: -pf-ui-border-focus;
     -fx-border-radius: 4px;
     -fx-background-radius: 4px;
 }
@@ -258,6 +288,10 @@
     -fx-background-color: -pf-ui-surface-control-pressed;
 }
 
+.pf-ribbon-group-collapsed-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
 .pf-ribbon-collapsed-popup {
     -fx-background-color: -fx-ribbon-background-subtle;
     -fx-border-color: -pf-ui-border-default;
@@ -270,6 +304,35 @@
 
 .pf-ribbon-popup-group {
     -fx-background-color: transparent;
+}
+
+.pf-ribbon-svg-path,
+.pf-ribbon-octicon {
+    -fx-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-command-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-toggle-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-split-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-menu-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-qat-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-group-collapsed-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-command-button:disabled .pf-ribbon-octicon,
+.pf-ribbon-toggle-button:disabled .pf-ribbon-octicon,
+.pf-ribbon-split-button:disabled .pf-ribbon-octicon,
+.pf-ribbon-menu-button:disabled .pf-ribbon-octicon,
+.pf-ribbon-qat-button:disabled .pf-ribbon-octicon,
+.pf-ribbon-group-collapsed-button:disabled .pf-ribbon-octicon {
+    -fx-fill: -pf-ui-text-disabled;
+}
+
+.pf-ribbon-command-button:disabled .pf-ribbon-icon,
+.pf-ribbon-toggle-button:disabled .pf-ribbon-icon,
+.pf-ribbon-split-button:disabled .pf-ribbon-icon,
+.pf-ribbon-menu-button:disabled .pf-ribbon-icon,
+.pf-ribbon-qat-button:disabled .pf-ribbon-icon,
+.pf-ribbon-group-collapsed-button:disabled .pf-ribbon-icon {
+    -fx-opacity: 0.48;
 }
 
 .pf-ribbon-fallback-glyph {

@@ -8,12 +8,16 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Paint;
+import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
@@ -21,6 +25,7 @@ import org.metalib.papifly.fx.api.ribbon.RibbonIconHandle;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.docks.testutil.FxTestUtil;
 import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
@@ -39,7 +44,9 @@ import java.util.function.Predicate;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
@@ -105,6 +112,107 @@ class RibbonAdaptiveLayoutFxTest {
         settleFx();
 
         assertEquals(1, alphaExecutions.get());
+    }
+
+    @Test
+    void collapsedGroupPopupClosesOnEscapeAndRestoresFocus(FxRobot robot) {
+        shrinkUntil(() -> group("alpha").getSizeMode() == RibbonGroupSizeMode.COLLAPSED, 560.0, 520.0, 480.0, 440.0, 400.0, 360.0, 320.0, 280.0);
+
+        Button trigger = robot.lookup("#pf-ribbon-group-collapsed-alpha").queryAs(Button.class);
+        robot.clickOn(trigger);
+        settleFx();
+        assertFalse(robot.lookup(".pf-ribbon-collapsed-popup").queryAll().isEmpty());
+
+        robot.press(KeyCode.ESCAPE).release(KeyCode.ESCAPE);
+        settleFx();
+
+        assertTrue(robot.lookup(".pf-ribbon-collapsed-popup").queryAll().isEmpty());
+        assertSame(trigger, FxTestUtil.callFx(() -> trigger.getScene().getFocusOwner()));
+    }
+
+    @Test
+    void themeSwitchUpdatesLiveRibbonAndOpenCollapsedPopup(FxRobot robot) {
+        shrinkUntil(() -> group("alpha").getSizeMode() == RibbonGroupSizeMode.COLLAPSED, 560.0, 520.0, 480.0, 440.0, 400.0, 360.0, 320.0, 280.0);
+        robot.clickOn("#pf-ribbon-group-collapsed-alpha");
+        settleFx();
+
+        Parent popupRoot = robot.lookup(".pf-ribbon-collapsed-popup").queryAs(Parent.class);
+        String darkRibbonStyle = FxTestUtil.callFx(ribbon::getStyle);
+        String darkPopupStyle = FxTestUtil.callFx(popupRoot::getStyle);
+
+        FxTestUtil.runFx(() -> ribbon.themeProperty().set(Theme.light()));
+        settleFx();
+
+        assertNotEquals(darkRibbonStyle, FxTestUtil.callFx(ribbon::getStyle));
+        assertNotEquals(darkPopupStyle, FxTestUtil.callFx(popupRoot::getStyle));
+    }
+
+    @Test
+    void iconOnlyControlsExposeAccessibleNamesAndDisabledVectorIcons() {
+        MutableBoolState enabled = new MutableBoolState(false);
+        PapiflyCommand command = new PapiflyCommand(
+            "icon-only",
+            "Icon Only",
+            "Icon Only",
+            RibbonIconHandle.of("octicon:sync"),
+            null,
+            enabled,
+            null,
+            () -> {
+            }
+        );
+
+        FxTestUtil.runFx(() -> {
+            tabs.set(iconOnlyTabs(command));
+            manager.getQuickAccessCommandIds().setAll(command.id());
+            manager.refresh();
+        });
+        settleFx();
+
+        Button qatButton = FxTestUtil.callFx(() -> findDescendant(
+            ribbon,
+            Button.class,
+            button -> button.getStyleClass().contains("pf-ribbon-qat-button")
+        ));
+        assertNotNull(qatButton);
+        assertEquals("Icon Only", FxTestUtil.callFx(qatButton::getAccessibleText));
+        assertTrue(FxTestUtil.callFx(qatButton::isDisabled));
+
+        ButtonBase smallButton = FxTestUtil.callFx(() -> {
+            ButtonBase button = (ButtonBase) RibbonControlFactory.createGroupControl(
+                new RibbonButtonSpec(command),
+                getClass().getClassLoader(),
+                RibbonGroupSizeMode.SMALL
+            );
+            return button;
+        });
+        assertEquals("Icon Only", FxTestUtil.callFx(smallButton::getAccessibleText));
+        FxTestUtil.runFx(() -> RibbonControlFactory.dispose(smallButton));
+
+        SVGPath iconPath = FxTestUtil.callFx(() -> {
+            host.applyCss();
+            host.layout();
+            assertInstanceOf(Parent.class, qatButton.getGraphic());
+            return findDescendant(
+                (Parent) qatButton.getGraphic(),
+                SVGPath.class,
+                path -> path.getStyleClass().contains("pf-ribbon-octicon")
+            );
+        });
+        assertNotNull(iconPath);
+        Paint disabledFill = FxTestUtil.callFx(iconPath::getFill);
+        assertNotNull(disabledFill);
+
+        FxTestUtil.runFx(() -> {
+            enabled.set(true);
+            host.applyCss();
+            host.layout();
+        });
+        settleFx();
+
+        Paint enabledFill = FxTestUtil.callFx(iconPath::getFill);
+        assertNotNull(enabledFill);
+        assertNotEquals(disabledFill, enabledFill);
     }
 
     @Test
@@ -426,6 +534,24 @@ class RibbonAdaptiveLayoutFxTest {
                     )
                 )
             )
+        ));
+    }
+
+    private List<RibbonTabSpec> iconOnlyTabs(PapiflyCommand command) {
+        return List.of(new RibbonTabSpec(
+            "home",
+            "Home",
+            0,
+            false,
+            ribbonContext -> true,
+            List.of(new RibbonGroupSpec(
+                "icons",
+                "Icons",
+                0,
+                0,
+                null,
+                List.of(new RibbonButtonSpec(command))
+            ))
         ));
     }
 

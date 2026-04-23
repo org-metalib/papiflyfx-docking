@@ -97,7 +97,6 @@ final class RibbonIconLoader {
                 SVGPath path = new SVGPath();
                 path.setContent(pathData);
                 path.getStyleClass().add("pf-ribbon-svg-path");
-                path.setStyle("-fx-fill: -pf-ui-text-primary;");
                 group.getChildren().add(path);
             }
             if (group.getChildren().isEmpty()) {
@@ -192,12 +191,11 @@ final class RibbonIconLoader {
         SVGPath svgPath = new SVGPath();
         svgPath.setContent(pathData);
         svgPath.getStyleClass().add("pf-ribbon-octicon");
-        svgPath.setStyle("-fx-fill: -pf-ui-text-primary;");
         double scale = size / 16.0;
         svgPath.setScaleX(scale);
         svgPath.setScaleY(scale);
         StackPane wrapper = new StackPane(svgPath);
-        wrapper.getStyleClass().add("pf-ribbon-icon-octicon-wrap");
+        wrapper.getStyleClass().addAll("pf-ribbon-icon", "pf-ribbon-icon-octicon-wrap");
         wrapper.setMinSize(size, size);
         wrapper.setPrefSize(size, size);
         wrapper.setMaxSize(size, size);

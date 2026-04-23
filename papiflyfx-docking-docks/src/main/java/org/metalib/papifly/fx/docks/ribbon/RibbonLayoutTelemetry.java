@@ -31,6 +31,21 @@ interface RibbonLayoutTelemetry {
     default void nodeCacheMiss(CacheKind kind, String id) {
     }
 
+    default void providerFailure(String providerId, RuntimeException exception) {
+    }
+
+    default void tabIdCollision(
+        String tabId,
+        String retainedLabel,
+        int retainedOrder,
+        String ignoredLabel,
+        int ignoredOrder
+    ) {
+    }
+
+    default void commandIdCollision(String commandId, String retainedLabel, String ignoredLabel) {
+    }
+
     enum RebuildReason {
         INITIAL,
         STRUCTURAL,

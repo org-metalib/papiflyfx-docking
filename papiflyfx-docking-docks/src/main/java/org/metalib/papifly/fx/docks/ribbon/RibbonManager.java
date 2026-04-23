@@ -73,9 +73,12 @@ public class RibbonManager {
     private final ObservableList<PapiflyCommand> quickAccessCommands = FXCollections.observableArrayList();
     private final ObservableList<PapiflyCommand> quickAccessCommandsView =
         FXCollections.unmodifiableObservableList(quickAccessCommands);
+    private final Set<String> reportedTabIdCollisions = new LinkedHashSet<>();
+    private final Set<String> reportedCommandIdCollisions = new LinkedHashSet<>();
 
     private final ObjectProperty<RibbonContext> context = new SimpleObjectProperty<>(RibbonContext.empty());
     private final ClassLoader classLoader;
+    private RibbonLayoutTelemetry telemetry = RibbonLayoutTelemetry.noop();
 
     /**
      * Creates a manager that discovers providers from the current context class
@@ -295,6 +298,10 @@ public class RibbonManager {
         return context;
     }
 
+    void setLayoutTelemetry(RibbonLayoutTelemetry telemetry) {
+        this.telemetry = telemetry == null ? RibbonLayoutTelemetry.noop() : telemetry;
+    }
+
     /**
      * Re-runs ServiceLoader discovery against the manager class loader.
      */
@@ -357,6 +364,7 @@ public class RibbonManager {
                 .forEach(target::add);
         } catch (RuntimeException exception) {
             LOG.log(Level.WARNING, "Ribbon provider failed: " + provider.id(), exception);
+            telemetry.providerFailure(provider.id(), exception);
         }
     }
 
@@ -364,7 +372,16 @@ public class RibbonManager {
         Map<String, TabAccumulator> mergedTabs = new LinkedHashMap<>();
         contributions.stream()
             .sorted(TAB_COMPARATOR)
-            .forEach(tab -> mergedTabs.computeIfAbsent(tab.id(), ignored -> new TabAccumulator(tab)).merge(tab));
+            .forEach(tab -> {
+                TabAccumulator accumulator = mergedTabs.get(tab.id());
+                if (accumulator == null) {
+                    accumulator = new TabAccumulator(tab);
+                    mergedTabs.put(tab.id(), accumulator);
+                } else {
+                    reportTabCollisionIfNeeded(accumulator, tab);
+                }
+                accumulator.merge(tab);
+            });
         return mergedTabs.values().stream()
             .map(TabAccumulator::toSpec)
             .sorted(TAB_COMPARATOR)
@@ -434,9 +451,51 @@ public class RibbonManager {
     }
 
     private PapiflyCommand canonicalizeAndTrack(PapiflyCommand command, Set<String> reachable) {
+        reportCommandCollisionIfNeeded(command);
         PapiflyCommand canonical = commandRegistry.canonicalize(command);
         reachable.add(canonical.id());
         return canonical;
+    }
+
+    private void reportTabCollisionIfNeeded(TabAccumulator accumulator, RibbonTabSpec incoming) {
+        if (!accumulator.conflictsWith(incoming) || !reportedTabIdCollisions.add(incoming.id())) {
+            return;
+        }
+        LOG.warning(() -> "Duplicate ribbon tab id '" + incoming.id()
+            + "'; first label/order wins ('" + accumulator.label + "', " + accumulator.order
+            + "), ignoring conflicting label/order ('" + incoming.label() + "', " + incoming.order() + ")");
+        telemetry.tabIdCollision(
+            incoming.id(),
+            accumulator.label,
+            accumulator.order,
+            incoming.label(),
+            incoming.order()
+        );
+    }
+
+    private void reportCommandCollisionIfNeeded(PapiflyCommand incoming) {
+        commandRegistry.find(incoming.id()).ifPresent(existing -> {
+            if (existing == incoming
+                || !commandPresentationDiffers(existing, incoming)
+                || !reportedCommandIdCollisions.add(incoming.id())) {
+                return;
+            }
+            LOG.warning(() -> "Duplicate ribbon command id '" + incoming.id()
+                + "'; first command metadata wins ('" + existing.label()
+                + "'), projecting runtime state from ignored metadata ('" + incoming.label() + "')");
+            telemetry.commandIdCollision(incoming.id(), existing.label(), incoming.label());
+        });
+    }
+
+    private static boolean commandPresentationDiffers(PapiflyCommand left, PapiflyCommand right) {
+        return !Objects.equals(left.label(), right.label())
+            || !Objects.equals(left.tooltip(), right.tooltip())
+            || !Objects.equals(iconPath(left.smallIcon()), iconPath(right.smallIcon()))
+            || !Objects.equals(iconPath(left.largeIcon()), iconPath(right.largeIcon()));
+    }
+
+    private static String iconPath(org.metalib.papifly.fx.api.ribbon.RibbonIconHandle iconHandle) {
+        return iconHandle == null ? null : iconHandle.resourcePath();
     }
 
     private void refreshQuickAccessCommandView() {
@@ -490,6 +549,10 @@ public class RibbonManager {
                 .sorted(GROUP_COMPARATOR)
                 .toList();
             return new RibbonTabSpec(id, label, order, contextual, ribbonContext -> true, mergedGroups);
+        }
+
+        private boolean conflictsWith(RibbonTabSpec tab) {
+            return !Objects.equals(label, tab.label()) || order != tab.order();
         }
     }
 

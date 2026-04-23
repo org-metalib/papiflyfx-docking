@@ -1,6 +1,7 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
 import org.junit.jupiter.api.Test;
+import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
@@ -169,6 +170,49 @@ class RibbonManagerTest {
     }
 
     @Test
+    void commandRegistry_refreshesProviderComputedCommandStateAcrossContexts() {
+        RibbonProvider provider = new TestProvider("provider", 0, context -> {
+            boolean enabled = context.activeContentTypeKeyOptional()
+                .map("ready"::equals)
+                .orElse(false);
+            return List.of(new RibbonTabSpec(
+                "home",
+                "Home",
+                0,
+                false,
+                ribbonContext -> true,
+                List.of(new RibbonGroupSpec(
+                    "actions",
+                    "Actions",
+                    0,
+                    0,
+                    null,
+                    List.of(new RibbonButtonSpec(new PapiflyCommand(
+                        "refresh-state",
+                        "Refresh State",
+                        "Refresh State",
+                        null,
+                        null,
+                        new MutableBoolState(enabled),
+                        null,
+                        () -> {
+                        }
+                    )))
+                ))
+            ));
+        });
+
+        RibbonManager manager = new RibbonManager(List.of(provider));
+        PapiflyCommand command = manager.getCommandRegistry().find("refresh-state").orElseThrow();
+        assertFalse(command.enabled().get());
+
+        manager.setContext(new RibbonContext(null, null, "ready", Map.of()));
+
+        assertSame(command, manager.getCommandRegistry().find("refresh-state").orElseThrow());
+        assertTrue(command.enabled().get());
+    }
+
+    @Test
     void commandRegistry_prunesCommandsNoLongerReachable() {
         RibbonProvider provider = new TestProvider("provider", 0, context -> {
             boolean includeContextualTab = context.activeContentTypeKeyOptional()
@@ -310,9 +354,115 @@ class RibbonManagerTest {
         assertEquals(1, manager.getTabs().getFirst().groups().getFirst().controls().size());
     }
 
+    @Test
+    void providerFailureEmitsTelemetryAndKeepsHealthyProviderTabs() {
+        RibbonProvider broken = new TestProvider("broken-provider", 0, context -> {
+            throw new IllegalStateException("boom");
+        });
+        RibbonProvider healthy = new TestProvider("healthy-provider", 10, context -> List.of(simpleTab(
+            "home",
+            "Home",
+            "save",
+            "Save"
+        )));
+        RibbonLayoutTelemetryRecorder telemetry = new RibbonLayoutTelemetryRecorder();
+        RibbonManager manager = new RibbonManager(List.of());
+        manager.setLayoutTelemetry(telemetry);
+
+        manager.getProviders().setAll(broken, healthy);
+
+        assertEquals(List.of("home"), manager.getTabs().stream().map(RibbonTabSpec::id).toList());
+        assertEquals(1, telemetry.providerFailures().size());
+        assertEquals("broken-provider", telemetry.providerFailures().getFirst().providerId());
+        assertTrue(telemetry.providerFailures().getFirst().exception() instanceof IllegalStateException);
+    }
+
+    @Test
+    void duplicateTabIdsEmitFirstWinsTelemetry() {
+        RibbonProvider first = new TestProvider("first", 0, context -> List.of(simpleTab(
+            "home",
+            "Home",
+            "save",
+            "Save"
+        )));
+        RibbonProvider second = new TestProvider("second", 10, context -> List.of(simpleTab(
+            "home",
+            "Start",
+            "open",
+            "Open"
+        )));
+        RibbonLayoutTelemetryRecorder telemetry = new RibbonLayoutTelemetryRecorder();
+        RibbonManager manager = new RibbonManager(List.of());
+        manager.setLayoutTelemetry(telemetry);
+
+        manager.getProviders().setAll(first, second);
+
+        assertEquals("Home", manager.getTabs().getFirst().label());
+        assertEquals(1, telemetry.tabIdCollisions().size());
+        RibbonLayoutTelemetryRecorder.TabIdCollisionEvent collision = telemetry.tabIdCollisions().getFirst();
+        assertEquals("home", collision.tabId());
+        assertEquals("Home", collision.retainedLabel());
+        assertEquals("Start", collision.ignoredLabel());
+    }
+
+    @Test
+    void duplicateCommandIdsEmitFirstWinsTelemetry() {
+        RibbonProvider provider = new TestProvider("provider", 0, context -> List.of(new RibbonTabSpec(
+            "home",
+            "Home",
+            0,
+            false,
+            ribbonContext -> true,
+            List.of(new RibbonGroupSpec(
+                "actions",
+                "Actions",
+                0,
+                0,
+                null,
+                List.of(
+                    new RibbonButtonSpec(PapiflyCommand.of("duplicate", "First", () -> {
+                    })),
+                    new RibbonButtonSpec(PapiflyCommand.of("duplicate", "Second", () -> {
+                    }))
+                )
+            ))
+        )));
+        RibbonLayoutTelemetryRecorder telemetry = new RibbonLayoutTelemetryRecorder();
+        RibbonManager manager = new RibbonManager(List.of());
+        manager.setLayoutTelemetry(telemetry);
+
+        manager.getProviders().setAll(provider);
+
+        assertEquals("First", manager.getCommandRegistry().find("duplicate").orElseThrow().label());
+        assertEquals(1, telemetry.commandIdCollisions().size());
+        RibbonLayoutTelemetryRecorder.CommandIdCollisionEvent collision = telemetry.commandIdCollisions().getFirst();
+        assertEquals("duplicate", collision.commandId());
+        assertEquals("First", collision.retainedLabel());
+        assertEquals("Second", collision.ignoredLabel());
+    }
+
     private static PapiflyCommand extractFirstButtonCommand(RibbonManager manager) {
         RibbonControlSpec control = manager.getTabs().getFirst().groups().getFirst().controls().getFirst();
         return ((RibbonButtonSpec) control).command();
+    }
+
+    private static RibbonTabSpec simpleTab(String tabId, String tabLabel, String commandId, String commandLabel) {
+        return new RibbonTabSpec(
+            tabId,
+            tabLabel,
+            0,
+            false,
+            ribbonContext -> true,
+            List.of(new RibbonGroupSpec(
+                "actions",
+                "Actions",
+                0,
+                0,
+                null,
+                List.of(new RibbonButtonSpec(PapiflyCommand.of(commandId, commandLabel, () -> {
+                })))
+            ))
+        );
     }
 
     private record TestProvider(

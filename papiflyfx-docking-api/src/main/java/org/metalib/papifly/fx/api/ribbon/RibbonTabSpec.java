@@ -7,7 +7,10 @@ import java.util.function.Predicate;
 /**
  * Descriptor for a ribbon tab contributed by a {@link RibbonProvider}.
  *
- * @param id stable tab identifier
+ * @param id stable tab identifier; when several providers contribute the same
+ *     id, runtimes merge groups into the first tab metadata and should emit a
+ *     diagnostic if later contributions disagree on first-wins fields such as
+ *     label or order
  * @param label localized tab label
  * @param order tab ordering within the ribbon; lower values sort first
  * @param contextual whether the tab is contextual and may be styled differently by the host

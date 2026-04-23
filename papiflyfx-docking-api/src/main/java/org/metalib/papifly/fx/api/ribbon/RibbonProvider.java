@@ -12,6 +12,20 @@ import java.util.List;
  * Keep {@link RibbonTabSpec#id()} and {@link PapiflyCommand#id()} values
  * stable because hosts may persist selected tabs and Quick Access Toolbar
  * command sets by identifier.</p>
+ *
+ * <p>When multiple providers contribute the same tab identifier, hosts merge
+ * the groups into the first provider's tab metadata: the first label/order
+ * wins, contextual styling is ORed across contributions, and runtimes should
+ * emit diagnostics for conflicting label/order metadata. Command identifiers
+ * follow the same first-metadata-wins rule for labels, icons, tooltips, and
+ * action dispatch while runtime {@link BoolState} values are refreshed from
+ * the latest provider emission. Prefer a dotted namespace such as
+ * {@code <module>.ribbon.<action>} for command ids.</p>
+ *
+ * <p>Providers should fail closed. Runtime hosts are expected to isolate
+ * {@link #getTabs(RibbonContext)} failures so one broken provider does not
+ * remove healthy provider tabs, and to surface the failure through logging or
+ * telemetry.</p>
  */
 public interface RibbonProvider {
 
@@ -38,7 +52,8 @@ public interface RibbonProvider {
      * context.
      *
      * @param context current ribbon context
-     * @return contributed tab descriptors, never {@code null}
+     * @return contributed tab descriptors, never {@code null}; throw a runtime
+     *     exception only for unrecoverable provider defects
      */
     List<RibbonTabSpec> getTabs(RibbonContext context);
 }

@@ -40,6 +40,27 @@ final class RibbonLayoutTelemetryRecorder implements RibbonLayoutTelemetry {
         events.add(new NodeCacheMissEvent(kind, id));
     }
 
+    @Override
+    public void providerFailure(String providerId, RuntimeException exception) {
+        events.add(new ProviderFailureEvent(providerId, exception));
+    }
+
+    @Override
+    public void tabIdCollision(
+        String tabId,
+        String retainedLabel,
+        int retainedOrder,
+        String ignoredLabel,
+        int ignoredOrder
+    ) {
+        events.add(new TabIdCollisionEvent(tabId, retainedLabel, retainedOrder, ignoredLabel, ignoredOrder));
+    }
+
+    @Override
+    public void commandIdCollision(String commandId, String retainedLabel, String ignoredLabel) {
+        events.add(new CommandIdCollisionEvent(commandId, retainedLabel, ignoredLabel));
+    }
+
     List<Event> events() {
         return List.copyOf(events);
     }
@@ -90,13 +111,37 @@ final class RibbonLayoutTelemetryRecorder implements RibbonLayoutTelemetry {
             .toList();
     }
 
+    List<ProviderFailureEvent> providerFailures() {
+        return events.stream()
+            .filter(ProviderFailureEvent.class::isInstance)
+            .map(ProviderFailureEvent.class::cast)
+            .toList();
+    }
+
+    List<TabIdCollisionEvent> tabIdCollisions() {
+        return events.stream()
+            .filter(TabIdCollisionEvent.class::isInstance)
+            .map(TabIdCollisionEvent.class::cast)
+            .toList();
+    }
+
+    List<CommandIdCollisionEvent> commandIdCollisions() {
+        return events.stream()
+            .filter(CommandIdCollisionEvent.class::isInstance)
+            .map(CommandIdCollisionEvent.class::cast)
+            .toList();
+    }
+
     sealed interface Event permits
         TabRebuildEvent,
         GroupRebuildEvent,
         ControlRebuildEvent,
         CollapseTransitionEvent,
         NodeCacheHitEvent,
-        NodeCacheMissEvent {
+        NodeCacheMissEvent,
+        ProviderFailureEvent,
+        TabIdCollisionEvent,
+        CommandIdCollisionEvent {
     }
 
     record TabRebuildEvent(String tabId, RebuildReason reason) implements Event {
@@ -115,5 +160,20 @@ final class RibbonLayoutTelemetryRecorder implements RibbonLayoutTelemetry {
     }
 
     record NodeCacheMissEvent(CacheKind kind, String id) implements Event {
+    }
+
+    record ProviderFailureEvent(String providerId, RuntimeException exception) implements Event {
+    }
+
+    record TabIdCollisionEvent(
+        String tabId,
+        String retainedLabel,
+        int retainedOrder,
+        String ignoredLabel,
+        int ignoredOrder
+    ) implements Event {
+    }
+
+    record CommandIdCollisionEvent(String commandId, String retainedLabel, String ignoredLabel) implements Event {
     }
 }

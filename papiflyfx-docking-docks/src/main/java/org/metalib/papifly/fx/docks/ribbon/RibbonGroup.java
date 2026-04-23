@@ -198,18 +198,21 @@ public class RibbonGroup extends VBox {
     }
 
     private void configureLauncher(PapiflyCommand launcher) {
+        JavaFxCommandBindings.disposeSubscriptions(launcherButton);
         launcherButton.disableProperty().unbind();
         if (launcher == null) {
             launcherButton.setManaged(false);
             launcherButton.setVisible(false);
             launcherButton.setTooltip(null);
             launcherButton.setOnAction(null);
+            launcherButton.setAccessibleText(null);
             return;
         }
         launcherButton.setManaged(true);
         launcherButton.setVisible(true);
-        launcherButton.disableProperty().bind(JavaFxCommandBindings.readOnly(launcher.enabled()).not());
+        JavaFxCommandBindings.bindDisabledToNot(launcherButton, launcher.enabled());
         launcherButton.setOnAction(event -> launcher.execute());
+        launcherButton.setAccessibleText(launcher.label());
         String tooltip = launcher.tooltip() == null || launcher.tooltip().isBlank()
             ? launcher.label()
             : launcher.tooltip();
@@ -303,6 +306,11 @@ public class RibbonGroup extends VBox {
             collapsedPopup.setAutoHide(true);
             collapsedPopup.setHideOnEscape(true);
             collapsedPopup.getScene().setRoot(collapsedPopupRoot);
+            collapsedPopup.setOnHidden(event -> {
+                if (collapsedButton.getScene() != null && collapsedButton.isVisible()) {
+                    collapsedButton.requestFocus();
+                }
+            });
         }
         return collapsedPopup;
     }
@@ -407,11 +415,17 @@ public class RibbonGroup extends VBox {
     }
 
     private void removeControlFromCache(String controlId) {
-        controlNodeCache.keySet().removeIf(key -> Objects.equals(key.controlId(), controlId));
+        List<ControlCacheKey> keysToRemove = controlNodeCache.keySet().stream()
+            .filter(key -> Objects.equals(key.controlId(), controlId))
+            .toList();
+        for (ControlCacheKey key : keysToRemove) {
+            RibbonControlFactory.dispose(controlNodeCache.remove(key));
+        }
     }
 
     private void invalidateCollapsedPopup() {
         hideCollapsedPopup();
+        RibbonControlFactory.dispose(collapsedPopupRoot);
         collapsedPopup = null;
         collapsedPopupRoot = null;
     }

@@ -25,11 +25,13 @@ import java.util.Set;
  *
  * <h2>Identity semantics</h2>
  * <p>{@link #canonicalize(PapiflyCommand)} is the primary entry point. The
- * first command with a given identifier wins: subsequent calls with the same
- * identifier return the original instance. Providers that want to update
- * runtime state should mutate the {@code enabled} / {@code selected}
- * {@link org.metalib.papifly.fx.api.ribbon.BoolState} fields on the existing
- * command rather than emitting a new instance.</p>
+ * first command with a given identifier wins for stable command metadata and
+ * action dispatch: subsequent calls with the same identifier return the
+ * original instance. Runtime state is refreshed on every call by projecting the
+ * incoming {@code enabled} / {@code selected}
+ * {@link org.metalib.papifly.fx.api.ribbon.BoolState} snapshots onto the
+ * canonical command. This lets providers rebuild specs from the current
+ * context without leaking replacement command instances into rendered UI.</p>
  *
  * <h2>Lifecycle</h2>
  * <p>The registry is intentionally not thread-safe. It is owned by
@@ -58,8 +60,9 @@ public final class CommandRegistry {
      *
      * <p>If the registry already holds a command with the same
      * {@link PapiflyCommand#id()} identifier, the stored instance is returned
-     * unchanged. Otherwise the supplied command is stored and returned as the
-     * new canonical instance.</p>
+     * after its runtime state has been updated from the incoming command.
+     * Otherwise the supplied command is stored and returned as the new
+     * canonical instance.</p>
      *
      * <p>Callers are expected to invoke this from the same FX-thread /
      * refresh-driving thread that owns the surrounding {@link RibbonManager}.</p>
@@ -72,10 +75,16 @@ public final class CommandRegistry {
         Objects.requireNonNull(command, "command");
         PapiflyCommand existing = commands.get(command.id());
         if (existing != null) {
+            projectRuntimeState(existing, command);
             return existing;
         }
         commands.put(command.id(), command);
         return command;
+    }
+
+    private static void projectRuntimeState(PapiflyCommand canonical, PapiflyCommand incoming) {
+        canonical.enabled().set(incoming.enabled().get());
+        canonical.selected().set(incoming.selected().get());
     }
 
     /**

@@ -60,6 +60,10 @@ final class RibbonControlFactory {
         return button;
     }
 
+    static void dispose(Node node) {
+        JavaFxCommandBindings.dispose(node);
+    }
+
     static void configureCollapsedGroupButton(Button button, RibbonGroupSpec spec, ClassLoader classLoader) {
         RibbonPresentation presentation = groupPresentation(spec);
         button.getStyleClass().add("pf-ribbon-group-collapsed-button");
@@ -104,7 +108,7 @@ final class RibbonControlFactory {
         ToggleButton toggle = new ToggleButton();
         toggle.getStyleClass().add("pf-ribbon-toggle-button");
         configureGroupCommand(toggle, command, classLoader, mode);
-        toggle.selectedProperty().bindBidirectional(JavaFxCommandBindings.bidirectional(command.selected()));
+        JavaFxCommandBindings.bindBidirectional(toggle, command.selected());
         toggle.setOnAction(event -> command.execute());
         return toggle;
     }
@@ -144,7 +148,7 @@ final class RibbonControlFactory {
         MenuItem item = new MenuItem(command.label());
         Node graphic = createGraphic(command.label(), command.smallIcon(), command.largeIcon(), true, false, classLoader);
         item.setGraphic(graphic);
-        item.disableProperty().bind(JavaFxCommandBindings.readOnly(command.enabled()).not());
+        JavaFxCommandBindings.bindDisabledToNot(item, command.enabled());
         item.setOnAction(event -> command.execute());
         return item;
     }
@@ -165,7 +169,7 @@ final class RibbonControlFactory {
             mode
         );
         if (labeled instanceof ButtonBase buttonBase) {
-            buttonBase.disableProperty().bind(JavaFxCommandBindings.readOnly(command.enabled()).not());
+            JavaFxCommandBindings.bindDisabledToNot(buttonBase, command.enabled());
         }
     }
 
@@ -200,6 +204,7 @@ final class RibbonControlFactory {
                 labeled.setContentDisplay(graphic == null ? ContentDisplay.TEXT_ONLY : ContentDisplay.GRAPHIC_ONLY);
             }
         }
+        updateAccessibleText(labeled, label);
 
         if (labeled instanceof Control control) {
             String resolvedTooltip = tooltip == null || tooltip.isBlank() ? label : tooltip;
@@ -225,7 +230,7 @@ final class RibbonControlFactory {
             classLoader
         );
         if (labeled instanceof ButtonBase buttonBase) {
-            buttonBase.disableProperty().bind(JavaFxCommandBindings.readOnly(command.enabled()).not());
+            JavaFxCommandBindings.bindDisabledToNot(buttonBase, command.enabled());
         }
     }
 
@@ -252,10 +257,16 @@ final class RibbonControlFactory {
             labeled.setWrapText(true);
             labeled.setContentDisplay(graphic == null ? ContentDisplay.TEXT_ONLY : ContentDisplay.TOP);
         }
+        updateAccessibleText(labeled, label);
 
         if (tooltip != null && !tooltip.isBlank() && labeled instanceof Control control) {
             control.setTooltip(new Tooltip(tooltip));
         }
+    }
+
+    private static void updateAccessibleText(Labeled labeled, String label) {
+        String text = labeled.getText();
+        labeled.setAccessibleText(text == null || text.isBlank() ? label : null);
     }
 
     private static Node createGraphic(

@@ -1,6 +1,7 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
 import org.junit.jupiter.api.Test;
+import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 
 import java.util.Set;
@@ -29,6 +30,43 @@ class CommandRegistryTest {
         assertSame(first, reRegistered);
         assertNotSame(second, reRegistered);
         assertEquals(1, registry.size());
+    }
+
+    @Test
+    void canonicalize_projectsIncomingRuntimeStateIntoCanonicalCommand() {
+        CommandRegistry registry = new CommandRegistry();
+        MutableBoolState canonicalEnabled = new MutableBoolState(false);
+        MutableBoolState canonicalSelected = new MutableBoolState(false);
+        PapiflyCommand disabled = new PapiflyCommand(
+            "refresh",
+            "Refresh",
+            "Refresh",
+            null,
+            null,
+            canonicalEnabled,
+            canonicalSelected,
+            () -> {
+            }
+        );
+        PapiflyCommand enabled = new PapiflyCommand(
+            "refresh",
+            "Refresh",
+            "Refresh",
+            null,
+            null,
+            new MutableBoolState(true),
+            new MutableBoolState(true),
+            () -> {
+            }
+        );
+
+        PapiflyCommand first = registry.canonicalize(disabled);
+        PapiflyCommand second = registry.canonicalize(enabled);
+
+        assertSame(disabled, first);
+        assertSame(disabled, second);
+        assertTrue(canonicalEnabled.get());
+        assertTrue(canonicalSelected.get());
     }
 
     @Test

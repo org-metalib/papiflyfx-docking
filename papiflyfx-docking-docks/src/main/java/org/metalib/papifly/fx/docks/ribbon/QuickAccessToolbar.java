@@ -50,6 +50,7 @@ public class QuickAccessToolbar extends HBox {
     }
 
     private void rebuild() {
+        getChildren().forEach(RibbonControlFactory::dispose);
         getChildren().setAll(commands.stream()
             .filter(Objects::nonNull)
             .map(command -> (Node) RibbonControlFactory.createQuickAccessButton(command, classLoader))

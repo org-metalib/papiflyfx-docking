@@ -42,6 +42,7 @@ final class RibbonThemeSupport {
             -fx-ribbon-tab-hover: %s;
             -fx-ribbon-tab-selected: %s;
             -fx-ribbon-contextual-background: %s;
+            -fx-ribbon-contextual-selected: %s;
             -fx-ribbon-group-label-color: %s;
             -fx-ribbon-shadow: %s;
             """.formatted(
@@ -51,6 +52,7 @@ final class RibbonThemeSupport {
             UiCommonThemeSupport.paintToCss(UiCommonThemeSupport.hover(theme), "transparent"),
             UiCommonThemeSupport.paintToCss(UiCommonThemeSupport.headerBackgroundActive(theme), "transparent"),
             UiCommonThemeSupport.paintToCss(UiCommonThemeSupport.alpha(UiCommonThemeSupport.accent(theme), 0.16), "transparent"),
+            UiCommonThemeSupport.paintToCss(UiCommonThemeSupport.alpha(UiCommonThemeSupport.accent(theme), 0.24), "transparent"),
             UiCommonThemeSupport.paintToCss(UiCommonThemeSupport.alpha(UiCommonThemeSupport.textPrimary(theme), 0.66), "transparent"),
             UiCommonThemeSupport.paintToCss(UiCommonThemeSupport.shadowColor(theme, 0.30, 0.18), "transparent")
         );
