@@ -1,7 +1,7 @@
 # Progress - Ribbon 5 Consolidated Implementation Follow-up
 
-**Status:** Phase 3 implementation complete; reviewer handoff ready
-**Current Milestone:** Phase 3 - Build, Fixture, And Performance Guardrails complete
+**Status:** Phase 4 design complete; reviewer handoff ready
+**Current Milestone:** Phase 4 - API Design And Compatibility Decisions complete
 **Priority:** P1 (High)  
 **Planning Lead:** @spec-steward  
 **Implementation Coordination Lead:** @spec-steward  
@@ -14,9 +14,9 @@
 - Phase 1 - P1 Runtime And Accessibility Stabilization: 100%
 - Phase 2 - Context And Provider Authoring Foundation: 100%
 - Phase 3 - Build, Fixture, And Performance Guardrails: 100%
-- Phase 4 - API Design And Compatibility Decisions: 0%
+- Phase 4 - API Design And Compatibility Decisions: 100%
 - Phase 5 - Documentation And Roadmap Closure: 0%
-- Validation: Phase 3 focused validation complete
+- Validation: Phase 4 documentation validation complete
 
 ## Accomplishments
 
@@ -64,6 +64,15 @@
 - [2026-04-23] The new GitHub provider Fx test exposed that canonical commands refreshed enabled state but kept the first no-capability action lambda. Updated `CommandRegistry` to keep stable canonical identity and first metadata while refreshing action dispatch from later provider emissions.
 - [2026-04-23] Added `CommandRegistryTest` coverage for refreshed action dispatch so provider callbacks stay coherent with refreshed command state.
 - [2026-04-23] Deferred a ribbon refresh/adaptive-layout benchmark. Owner: @qa-engineer with @ops-engineer and @core-architect input. Reason: no accepted timing/layout budget exists. Likely shape: benchmark-tagged large-provider fixture with 50+ groups/commands, refresh/adaptive telemetry counts, and a budget derived from observed CI baselines before any timing assertion enters a release gate.
+- [2026-04-24] Began Phase 4 with @core-architect lead, @spec-steward support, and required @feature-dev, @ui-ux-designer, @qa-engineer, and @spec-steward review.
+- [2026-04-24] Checked Phase 3 reviewer feedback status in this directory. No separate post-Phase-3 feedback artifact was available, so Phase 4 proceeds from the current Phase 3 handoff and records residual reviewer risk in `ribbon-6-design.md`.
+- [2026-04-24] Added `ribbon-6-design.md` as the dedicated Ribbon 6 compatibility design note.
+- [2026-04-24] Accepted a Ribbon 6 command-contract split candidate: action commands should not carry toggle-only selected state; toggle controls should require a toggle-capable command contract. Current `PapiflyCommand` behavior remains unchanged for Ribbon 5.
+- [2026-04-24] Deferred busy/running command state out of the base Ribbon 6 command break. Feature-local status surfaces remain authoritative until a later UI/accessibility design defines an optional activity/status extension.
+- [2026-04-24] Accepted a Ribbon 6 boolean-state candidate: replace add/remove listener state with a UI-neutral subscription-returning observable boolean contract and separate mutable state.
+- [2026-04-24] Accepted a Ribbon 6 control-extensibility direction: move from scattered sealed-hierarchy switches toward UI-neutral render-plan/strategy handling, while rejecting arbitrary JavaFX node factories in the API.
+- [2026-04-24] Recorded a non-breaking `RibbonManager` decomposition plan covering provider discovery, tab merging, command canonicalization, QAT state, refresh scheduling, and session boundaries.
+- [2026-04-24] Defined the session forward-compatibility policy for future customization: keep `extensions.ribbon`, preserve QAT id-first semantics, ignore unknown fields on decode, keep malformed known fields strict/isolated, and defer schema/customization fields until a dedicated plan.
 
 ## Current Understanding
 
@@ -85,17 +94,18 @@ The implementation should therefore proceed by workstream, not by review file.
 | Phase 1 - P1 Runtime And Accessibility Stabilization | @core-architect / @ui-ux-designer / @qa-engineer | Complete | Runtime, accessibility, diagnostics, and focused validation complete |
 | Phase 2 - Context And Provider Authoring Foundation | @core-architect / @feature-dev | Complete | Typed metadata, explicit capability contribution, Hugo fallback coverage, floating context test, provider guide complete |
 | Phase 3 - Build, Fixture, And Performance Guardrails | @qa-engineer / @ops-engineer | Complete | Focused selector docs, narrow test helper, rapid churn coverage, provider Fx coverage, and benchmark deferral complete |
-| Phase 4 - API Design And Compatibility Decisions | @core-architect / @spec-steward | Not started | Breaking-change candidates only |
+| Phase 4 - API Design And Compatibility Decisions | @core-architect / @spec-steward | Complete | `ribbon-6-design.md` records accepted, rejected, deferred, migration, and compatibility decisions |
 | Phase 5 - Documentation And Roadmap Closure | @spec-steward | Not started | Some docs can begin early; final closure waits for implementation outcomes |
 
 ## Next Tasks
 
-1. Required Phase 3 reviewers should inspect their ownership slices:
-   - @ops-engineer: docs-only Surefire/TestFX decision, no POM centralization, and provider-module validation impact.
-   - @core-architect: `CommandRegistry` canonical command action-dispatch refresh semantics and API documentation alignment.
-   - @ui-ux-designer: no new visual/CSS changes; confirm Phase 3 test coverage does not alter UI expectations.
-   - @spec-steward: progress/handoff completeness, benchmark deferral, and docs alignment.
-2. Begin Phase 4 only after Phase 3 reviewer feedback is resolved or explicitly recorded.
+1. Required Phase 4 reviewers should inspect `ribbon-6-design.md`:
+   - @feature-dev: command split migration impact, busy-state deferral, provider authoring implications.
+   - @ui-ux-designer: busy/activity deferral, keytip/gallery deferrals, and control extensibility UX constraints.
+   - @qa-engineer: proposed migration and regression test expectations.
+   - @spec-steward: finding dispositions, handoff completeness, and Phase 5 documentation carry-forward.
+2. Consult @ops-engineer before any future Ribbon 6 plan touches archetype, release notes, Maven/TestFX configuration, or persisted-session migration tooling.
+3. Begin Phase 5 documentation and roadmap closure after Phase 4 reviewer feedback is recorded or explicitly carried as residual risk.
 
 ## Validation Status
 
@@ -165,6 +175,19 @@ Commands and results:
 
 No POM/TestFX/Surefire configuration was changed, so a full repository test run was not required for Phase 3. Samples files were not touched, but the sample ribbon Fx selector was run because `CommandRegistry` action dispatch is shared runtime behavior.
 
+Phase 4 documentation validation completed on 2026-04-24.
+
+Commands and results:
+
+1. `rg -n "review-core-architect\.md.*F-05|review-feature-dev\.md.*F-05|review-core-architect\.md.*F-13|review-core-architect\.md.*F-08|review-core-architect\.md.*F-07|review-core-architect\.md.*F-14" spec/papiflyfx-docking-docks/2026-04-23-0-ribbon-5/ribbon-6-design.md`
+   - Passed. The design note contains source inputs and explicit dispositions for the Phase 4 source findings.
+2. `rg -n "extensions.ribbon|quickAccessCommandIds|schemaVersion|customization|BoolState|PapiflyCommand|RibbonControlSpec|RibbonManager" spec/papiflyfx-docking-docks/2026-04-23-0-ribbon-5/ribbon-6-design.md`
+   - Passed. The design note covers session policy, QAT id semantics, command contracts, boolean state, control extensibility, and manager decomposition.
+3. `git diff --check`
+   - Passed. No whitespace errors were reported.
+
+No Java source, Javadocs, POMs, CSS, or runtime behavior changed in Phase 4, so no Maven compile or TestFX run was required.
+
 ## Open Risks
 
 - The plan intentionally includes breaking-change candidates, but those must not be implemented without a narrower design note and migration plan.
@@ -180,35 +203,27 @@ No POM/TestFX/Surefire configuration was changed, so a full repository test run 
 - Surefire/TestFX POM centralization remains deferred to @ops-engineer with @qa-engineer review; this phase documented focused selectors instead of changing module-specific JavaFX native-access flags.
 - Ribbon refresh/adaptive-layout benchmarking remains deferred to @qa-engineer with @ops-engineer and @core-architect input until a large-provider fixture and concrete timing/layout budget are agreed. Any future benchmark should be opt-in and excluded from default CI.
 - Full repository `./mvnw -Dtestfx.headless=true test` was not run because Phase 3 made no parent/module POM changes.
+- Phase 3 reviewer inspection was requested but no separate feedback artifact was available before Phase 4. `ribbon-6-design.md` records the residual risk and proceeds from the Phase 3 handoff.
+- Ribbon 6 accepted candidates remain design-only. They require exact type names, compatibility adapters, migration notes, release notes, and focused validation before any code changes.
+- Busy/running command state, per-user customization schema/UI, keytips, galleries, archetype scaffold work, and performance budgets remain deferred.
 
 ## Handoff Snapshot
 
-Lead Agent: `@qa-engineer`
-Task Scope: Phase 3 - Build, Fixture, And Performance Guardrails
-Impacted Modules: `papiflyfx-docking-api`, `papiflyfx-docking-docks`, `papiflyfx-docking-github`, `papiflyfx-docking-hugo`, `spec/**`
+Lead Agent: `@core-architect`
+Support Agent: `@spec-steward`
+Task Scope: Phase 4 - API Design And Compatibility Decisions
+Impacted Modules: `spec/**`
 Files Changed:
-- `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/api/ribbon/PapiflyCommand.java`
-- `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/api/ribbon/RibbonProvider.java`
-- `papiflyfx-docking-api/src/main/java/org/metalib/papifly/fx/api/ribbon/package-info.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/CommandRegistry.java`
-- `papiflyfx-docking-docks/src/main/java/org/metalib/papifly/fx/docks/ribbon/RibbonManager.java`
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/CommandRegistryTest.java`
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonCommandRegistryFxTest.java`
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonContextResolutionFxTest.java`
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonFloatingContextFxTest.java`
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonManagerTest.java`
-- `papiflyfx-docking-docks/src/test/java/org/metalib/papifly/fx/docks/ribbon/RibbonTestSupport.java`
-- `papiflyfx-docking-github/src/test/java/org/metalib/papifly/fx/github/ribbon/GitHubRibbonProviderFxTest.java`
-- `papiflyfx-docking-hugo/src/test/java/org/metalib/papifly/fx/hugo/ribbon/HugoRibbonProviderFxTest.java`
-- `spec/papiflyfx-docking-docks/ribbon-provider-authoring.md`
+- `spec/papiflyfx-docking-docks/2026-04-23-0-ribbon-5/ribbon-6-design.md`
 - `spec/papiflyfx-docking-docks/2026-04-23-0-ribbon-5/progress.md`
 Key Invariants:
 - feature modules continue to depend on `papiflyfx-docking-api`, not `papiflyfx-docking-docks`
 - QAT id-first persistence semantics are unchanged
 - canonical command identity remains stable while runtime state and action dispatch refresh from later provider emissions
 - no POM/TestFX/Surefire configuration was changed
-- provider-module production dependencies remain pointed at `papiflyfx-docking-api`; new runtime imports are test-scoped
-- benchmark/performance guardrails remain opt-in-only until a concrete budget is approved
-Validation Performed: required docks ribbon selector; broad GitHub/Hugo provider module tests; sample ribbon Fx selector as downstream integration
-Open Risks / Follow-ups: reviewer inspection pending; Surefire/TestFX centralization deferred; benchmark deferred pending budget; archetype ribbon scaffold remains deferred to Phase 5/future @ops-engineer work; no full repository test run because no POM changes were made
-Required Reviewer: `@ops-engineer`, `@core-architect`, `@ui-ux-designer`, `@spec-steward`
+- provider-module production dependencies remain pointed at `papiflyfx-docking-api`
+- no public API, session schema, runtime, CSS, Maven, or test behavior changed in Phase 4
+- raw-string attributes, `RibbonContextAttributes` constants, and Hugo legacy heuristics remain intact
+Validation Performed: documentation/source sanity checks listed under Phase 4 validation; no Maven run required because Phase 4 was docs-only
+Open Risks / Follow-ups: required Phase 4 reviewer inspection pending; Phase 3 feedback had no separate artifact; accepted Ribbon 6 candidates require a dedicated implementation plan before code changes; busy state/customization/keytips/galleries/performance budgets remain deferred
+Required Reviewer: `@feature-dev`, `@ui-ux-designer`, `@qa-engineer`, `@spec-steward`
