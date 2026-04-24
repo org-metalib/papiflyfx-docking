@@ -1,5 +1,7 @@
 # Docking Ribbon Toolbar
 
+> Historical note: this Ribbon 1 document is preserved for traceability. Its persistence section shows the original top-level `ribbon` payload. Current Ribbon 5 code persists ribbon shell state under `extensions.ribbon`; see [../ribbon-status.md](../ribbon-status.md) and [../ribbon-release-notes.md](../ribbon-release-notes.md).
+
 ## Status
 
 Phase 5 complete (API, runtime, adoption, persistence, docs, and validation coverage).
@@ -38,7 +40,9 @@ keeping the framework modular and session-compatible:
 - `DockManager` session capture/restore now supports extensible
   `DockSessionStateContributor` hooks; ribbon uses this hook for persistence.
 
-## Persistence Model (Phase 5)
+## Persistence Model (Phase 5, Superseded)
+
+The JSON example below is the historical Ribbon 1 shape. It was intentionally superseded by Ribbon 2's namespaced extension model. Current persisted state lives under `extensions.ribbon.minimized`, `extensions.ribbon.selectedTabId`, and `extensions.ribbon.quickAccessCommandIds`.
 
 Ribbon state is stored in the dock session payload under optional `ribbon`:
 

@@ -134,7 +134,7 @@ attributes for metadata/visibility decisions.
 - `RibbonContextAttributes.ACTIVE_CONTENT_NODE` is a temporary compatibility bridge in the docks runtime and should not be used by new providers.
 - Provider ids and command ids must be stable because selected tabs and Quick Access Toolbar entries are persisted by id.
 
-See `../spec/papiflyfx-docking-docks/ribbon-provider-authoring.md` for ServiceLoader registration, id namespace conventions, contextual metadata guidance, QAT implications, and the provider test checklist.
+See `../spec/papiflyfx-docking-docks/ribbon-provider-authoring.md` for ServiceLoader registration, id namespace conventions, contextual metadata guidance, QAT implications, and the provider test checklist. See `../spec/papiflyfx-docking-docks/ribbon-status.md` for the current Ribbon 1-6 status index and `../spec/papiflyfx-docking-docks/ribbon-release-notes.md` for Ribbon 2 migration notes and Ribbon 6 design-only candidates.
 
 ### Command registry invariants
 

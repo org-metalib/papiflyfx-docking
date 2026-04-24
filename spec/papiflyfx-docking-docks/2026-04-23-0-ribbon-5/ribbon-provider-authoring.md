@@ -1,7 +1,7 @@
 # Ribbon Provider Authoring Guide
 
-**Status:** current for Ribbon 5 Phase 2  
-**Primary audience:** feature modules that contribute tabs through `papiflyfx-docking-api`  
+**Status:** current for Ribbon 5 Phase 5
+**Primary audience:** feature modules that contribute tabs through `papiflyfx-docking-api`
 **Runtime host:** `papiflyfx-docking-docks` discovers providers through `ServiceLoader`
 
 ## Lead And Review
@@ -98,6 +98,20 @@ Provider responsibilities:
 - Do not reuse an id for a different action.
 - Ensure hidden contextual commands can reappear with the same id and compatible command metadata.
 
+Ribbon session state is stored under `extensions.ribbon.quickAccessCommandIds`. Do not read QAT state from `RibbonManager#getQuickAccessCommands()` for persistence; that method is a derived view of ids that are currently resolvable from contributed commands.
+
+## Session And Customization Boundaries
+
+Current Ribbon 5 shell state is:
+
+- `extensions.ribbon.minimized`
+- `extensions.ribbon.selectedTabId`
+- `extensions.ribbon.quickAccessCommandIds`
+
+Providers own stable tab and command ids, not the session codec. Unknown fields under `extensions.ribbon` are ignored on decode, while malformed known fields are strict for the ribbon extension and isolated from core dock-session restore. Ribbon 5 does not preserve unknown ribbon customization fields when saving because the runtime recaptures known shell state only.
+
+Future per-user customization is a Ribbon 6 design candidate, not a provider requirement today. See [ribbon-status.md](ribbon-status.md) and [2026-04-23-0-ribbon-6/ribbon-6-design.md](2026-04-23-0-ribbon-6/ribbon-6-design.md) before adding hide/reorder/customization semantics.
+
 ## Minimal Provider Shape
 
 ```java
@@ -178,3 +192,7 @@ module-local JavaFX requirements.
 ## Archetype Scaffold Decision
 
 Docs are sufficient for Ribbon 5 Phase 2 because the API/runtime path is additive and existing sample modules already demonstrate mounted ribbon hosts. A generated-app scaffold remains useful, but it should be handled by `@ops-engineer` in a later Phase 3/5 task so archetype templates can include a minimal provider, ServiceLoader descriptor, and generated-app assertion without coupling that work to the core API change.
+
+## Production Provider Scope
+
+This guide makes the current provider path authoritative, but it does not require new production providers for `papiflyfx-docking-code`, `papiflyfx-docking-tree`, or `papiflyfx-docking-media`. Those modules need separate feature plans to define action contracts, contextual metadata, tests, and sample expectations.

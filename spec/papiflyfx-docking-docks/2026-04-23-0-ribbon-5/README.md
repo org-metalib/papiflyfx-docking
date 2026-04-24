@@ -1,13 +1,20 @@
-# Ribbon 5 — Multi-Perspective Review Plans
+# Ribbon 5 - Multi-Perspective Review And Consolidated Follow-up
 
-**Initiative:** Ribbon design and implementation review  
-**Date:** 2026-04-23  
-**Planning Lead:** @spec-steward  
-**Scope:** Review-only. No implementation is authorized by this spec. Any follow-up work must open a separate plan document.
+**Initiative:** Ribbon design and implementation review
+**Date:** 2026-04-23
+**Planning Lead:** @spec-steward
+**Implementation Coordination Lead:** @spec-steward
+**Status:** consolidated follow-up closed by Phase 5 documentation and roadmap closure
+
+## Current Status
+
+Ribbon 5 began as a review-only directory, then gained [plan.md](plan.md) and [progress.md](progress.md) to execute the consolidated follow-up. The current authoritative ribbon entry point is [../ribbon-status.md](../ribbon-status.md). Provider authoring is documented in [../ribbon-provider-authoring.md](../ribbon-provider-authoring.md), and migration/release notes are in [../ribbon-release-notes.md](../ribbon-release-notes.md).
 
 ## Goal
 
 Produce a structured, multi-perspective review of the current ribbon design and implementation so the team can decide where to invest in the next iteration. Each perspective in this directory is owned by one specialist role and focuses on the questions that role is accountable for. Findings feed into a consolidated action list that a future `ribbon-6` plan can convert into concrete work.
+
+The consolidated follow-up is now complete. Ribbon 5 fixed or disposed of the review findings through Phases 1-5 without implementing Ribbon 6 breaking API/session changes.
 
 ## Current Baseline (inputs to every review)
 
@@ -68,9 +75,9 @@ Each file is self-contained and can be executed by its owning specialist without
 
 ## Handoff Snapshot
 
-Lead Agent: `@spec-steward`  
-Task Scope: organize a multi-perspective ribbon review under `spec/papiflyfx-docking-docks/2026-04-23-0-ribbon-5`  
-Impacted Modules: `spec/**` only  
+Lead Agent: `@spec-steward`
+Task Scope: organize a multi-perspective ribbon review under `spec/papiflyfx-docking-docks/2026-04-23-0-ribbon-5`
+Impacted Modules: `spec/**` only
 Files Changed:
 
 - `spec/papiflyfx-docking-docks/2026-04-23-0-ribbon-5/README.md`
@@ -88,6 +95,6 @@ Key Invariants:
 - Findings must cite files and, where useful, methods or line numbers.
 - No public API or session format changes are authorized by this spec.
 
-Validation Performed: source and spec inspection only  
-Open Risks / Follow-ups: specialists should coordinate on overlapping findings through the cross-reference convention in each plan  
+Validation Performed: source and spec inspection only
+Open Risks / Follow-ups: specialists should coordinate on overlapping findings through the cross-reference convention in each plan
 Required Reviewer: `@spec-steward`

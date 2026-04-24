@@ -202,7 +202,9 @@ The generated project includes a multi-module structure with DockManager starter
 ## Documentation
 
 - Module specs and design docs: `spec/` directory
-- Ribbon implementation dossier: `spec/papiflyfx-docking-docks/2026-04-19-0-ribbon/`
+- Ribbon current status: `spec/papiflyfx-docking-docks/ribbon-status.md`
+- Ribbon provider authoring: `spec/papiflyfx-docking-docks/ribbon-provider-authoring.md`
+- Ribbon release and migration notes: `spec/papiflyfx-docking-docks/ribbon-release-notes.md`
 - UI standards research and rollout plan: `spec/ui-standards/research.md`, `spec/ui-standards/plan.md`
 - Agent operating model, playbook, prompt pack, and cheat sheet: `spec/agents/README.md`, `spec/agents/playbook.md`, `spec/agents/prompts.md`, and `spec/agents/cheatsheet.md`
 
