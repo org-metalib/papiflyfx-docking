@@ -7,7 +7,7 @@ import java.util.Objects;
  *
  * @param command command rendered by the button
  */
-public record RibbonButtonSpec(PapiflyCommand command) implements RibbonControlSpec {
+public record RibbonButtonSpec(RibbonCommand command) implements RibbonControlSpec {
 
     /**
      * Creates a button descriptor.
@@ -21,5 +21,10 @@ public record RibbonButtonSpec(PapiflyCommand command) implements RibbonControlS
     @Override
     public String id() {
         return command.id();
+    }
+
+    @Override
+    public RibbonControlKind kind() {
+        return RibbonControlKind.BUTTON;
     }
 }

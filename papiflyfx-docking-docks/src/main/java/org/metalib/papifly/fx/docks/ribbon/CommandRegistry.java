@@ -1,6 +1,10 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.MutableRibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonIconHandle;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -11,8 +15,8 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Ribbon-runtime command registry that stores long-lived {@link PapiflyCommand}
- * instances keyed by {@link PapiflyCommand#id() command identifier}.
+ * Ribbon-runtime command registry that stores long-lived {@link RibbonCommand}
+ * instances keyed by {@link RibbonCommand#id() command identifier}.
  *
  * <p>Providers typically rebuild contributed specs on every
  * {@code getTabs(context)} invocation. Without a canonicalizing registry, each
@@ -24,12 +28,12 @@ import java.util.Set;
  * referenced by the Quick Access Toolbar.</p>
  *
  * <h2>Identity semantics</h2>
- * <p>{@link #canonicalize(PapiflyCommand)} is the primary entry point. The
+ * <p>{@link #canonicalize(RibbonCommand)} is the primary entry point. The
  * first command with a given identifier wins for stable command metadata, and
  * subsequent calls with the same identifier return that canonical instance.
  * Runtime state is refreshed on every call by projecting the incoming
  * {@code enabled} / {@code selected}
- * {@link org.metalib.papifly.fx.api.ribbon.BoolState} snapshots onto the
+ * {@link org.metalib.papifly.fx.api.ribbon.RibbonBooleanState} snapshots onto the
  * canonical command. Action dispatch is refreshed from the latest provider
  * emission through an internal delegating callback so providers can rebuild
  * context-bound callbacks without leaking replacement command instances into
@@ -55,13 +59,14 @@ import java.util.Set;
  */
 public final class CommandRegistry {
 
-    private final Map<String, PapiflyCommand> commands = new LinkedHashMap<>();
+    private final Map<String, RibbonCommand> commands = new LinkedHashMap<>();
+    private final Map<String, CommandKind> kinds = new LinkedHashMap<>();
 
     /**
      * Returns the canonical instance for the supplied command.
      *
      * <p>If the registry already holds a command with the same
-     * {@link PapiflyCommand#id()} identifier, the stored instance is returned
+     * {@link RibbonCommand#id()} identifier, the stored instance is returned
      * after its runtime state has been updated from the incoming command.
      * Otherwise the supplied command is stored and returned as the new
      * canonical instance.</p>
@@ -73,37 +78,82 @@ public final class CommandRegistry {
      * @return canonical command instance for the supplied identifier
      * @throws NullPointerException if {@code command} is {@code null}
      */
-    public PapiflyCommand canonicalize(PapiflyCommand command) {
+    public RibbonCommand canonicalize(RibbonCommand command) {
+        return canonicalize(command, CommandKind.ACTION);
+    }
+
+    /**
+     * Returns the canonical toggle-capable instance for the supplied command.
+     *
+     * @param command toggle command to canonicalize
+     * @return canonical toggle command
+     */
+    public RibbonToggleCommand canonicalizeToggle(RibbonToggleCommand command) {
+        return (RibbonToggleCommand) canonicalize(command, CommandKind.TOGGLE);
+    }
+
+    private RibbonCommand canonicalize(RibbonCommand command, CommandKind kind) {
         Objects.requireNonNull(command, "command");
-        PapiflyCommand existing = commands.get(command.id());
+        RibbonCommand existing = commands.get(command.id());
         if (existing != null) {
+            CommandKind existingKind = kinds.get(command.id());
+            if (existingKind != kind) {
+                throw new IllegalArgumentException("Ribbon command id '" + command.id()
+                    + "' was contributed as both " + existingKind.label + " and " + kind.label);
+            }
             projectRuntimeSurface(existing, command);
             return existing;
         }
-        PapiflyCommand canonical = createCanonicalCommand(command);
+        RibbonCommand canonical = createCanonicalCommand(command, kind);
         commands.put(canonical.id(), canonical);
+        kinds.put(canonical.id(), kind);
         return canonical;
     }
 
-    private static PapiflyCommand createCanonicalCommand(PapiflyCommand command) {
-        if (command.action() instanceof RefreshableAction) {
-            return command;
+    private static RibbonCommand createCanonicalCommand(RibbonCommand command, CommandKind kind) {
+        RefreshableAction action = command.action() instanceof RefreshableAction refreshable
+            ? refreshable
+            : new RefreshableAction(command.action());
+        if (kind == CommandKind.TOGGLE) {
+            RibbonToggleCommand toggle = (RibbonToggleCommand) command;
+            return new CanonicalRibbonToggleCommand(
+                command.id(),
+                command.label(),
+                command.tooltip(),
+                command.smallIcon(),
+                command.largeIcon(),
+                mutableCopy(command.enabled()),
+                mutableCopy(toggle.selected()),
+                action
+            );
         }
-        return new PapiflyCommand(
+        return new CanonicalRibbonCommand(
             command.id(),
             command.label(),
             command.tooltip(),
             command.smallIcon(),
             command.largeIcon(),
-            command.enabled(),
-            command.selected(),
-            new RefreshableAction(command.action())
+            mutableCopy(command.enabled()),
+            action
         );
     }
 
-    private static void projectRuntimeSurface(PapiflyCommand canonical, PapiflyCommand incoming) {
-        canonical.enabled().set(incoming.enabled().get());
-        canonical.selected().set(incoming.selected().get());
+    private static MutableRibbonBooleanState mutableCopy(RibbonBooleanState state) {
+        if (state instanceof MutableRibbonBooleanState mutable) {
+            return mutable;
+        }
+        return RibbonBooleanState.mutable(state != null && state.get());
+    }
+
+    private static void projectRuntimeSurface(RibbonCommand canonical, RibbonCommand incoming) {
+        if (canonical.enabled() instanceof MutableRibbonBooleanState enabled) {
+            enabled.set(incoming.enabled().get());
+        }
+        if (canonical instanceof RibbonToggleCommand canonicalToggle
+            && incoming instanceof RibbonToggleCommand incomingToggle
+            && canonicalToggle.selected() instanceof MutableRibbonBooleanState selected) {
+            selected.set(incomingToggle.selected().get());
+        }
         if (canonical.action() instanceof RefreshableAction refreshable
             && canonical.action() != incoming.action()) {
             refreshable.replace(incoming.action());
@@ -116,7 +166,7 @@ public final class CommandRegistry {
      * @param id command identifier
      * @return command when registered under the identifier
      */
-    public Optional<PapiflyCommand> find(String id) {
+    public Optional<RibbonCommand> find(String id) {
         if (id == null || id.isBlank()) {
             return Optional.empty();
         }
@@ -147,7 +197,7 @@ public final class CommandRegistry {
      *
      * @return unmodifiable view of registered commands
      */
-    public Collection<PapiflyCommand> commands() {
+    public Collection<RibbonCommand> commands() {
         return Collections.unmodifiableCollection(commands.values());
     }
 
@@ -172,7 +222,7 @@ public final class CommandRegistry {
     /**
      * Registers the supplied command if its identifier is not already present.
      *
-     * <p>Unlike {@link #canonicalize(PapiflyCommand)} this method explicitly
+     * <p>Unlike {@link #canonicalize(RibbonCommand)} this method explicitly
      * surfaces whether the registration was a no-op.</p>
      *
      * @param command command to register
@@ -180,9 +230,13 @@ public final class CommandRegistry {
      *     otherwise {@link Optional#empty()}
      * @throws NullPointerException if {@code command} is {@code null}
      */
-    public Optional<PapiflyCommand> register(PapiflyCommand command) {
+    public Optional<RibbonCommand> register(RibbonCommand command) {
         Objects.requireNonNull(command, "command");
-        return Optional.ofNullable(commands.putIfAbsent(command.id(), command));
+        Optional<RibbonCommand> previous = Optional.ofNullable(commands.putIfAbsent(command.id(), command));
+        if (previous.isEmpty()) {
+            kinds.put(command.id(), command instanceof RibbonToggleCommand ? CommandKind.TOGGLE : CommandKind.ACTION);
+        }
+        return previous;
     }
 
     /**
@@ -191,10 +245,11 @@ public final class CommandRegistry {
      * @param id command identifier
      * @return removed command when present
      */
-    public Optional<PapiflyCommand> unregister(String id) {
+    public Optional<RibbonCommand> unregister(String id) {
         if (id == null || id.isBlank()) {
             return Optional.empty();
         }
+        kinds.remove(id);
         return Optional.ofNullable(commands.remove(id));
     }
 
@@ -217,6 +272,7 @@ public final class CommandRegistry {
     public void retain(Set<String> idsToKeep) {
         Objects.requireNonNull(idsToKeep, "idsToKeep");
         commands.keySet().removeIf(id -> !idsToKeep.contains(id));
+        kinds.keySet().removeIf(id -> !commands.containsKey(id));
     }
 
     /**
@@ -224,6 +280,41 @@ public final class CommandRegistry {
      */
     public void clear() {
         commands.clear();
+        kinds.clear();
+    }
+
+    private enum CommandKind {
+        ACTION("action-only"),
+        TOGGLE("toggle-capable");
+
+        private final String label;
+
+        CommandKind(String label) {
+            this.label = label;
+        }
+    }
+
+    private record CanonicalRibbonCommand(
+        String id,
+        String label,
+        String tooltip,
+        RibbonIconHandle smallIcon,
+        RibbonIconHandle largeIcon,
+        RibbonBooleanState enabled,
+        Runnable action
+    ) implements RibbonCommand {
+    }
+
+    private record CanonicalRibbonToggleCommand(
+        String id,
+        String label,
+        String tooltip,
+        RibbonIconHandle smallIcon,
+        RibbonIconHandle largeIcon,
+        RibbonBooleanState enabled,
+        MutableRibbonBooleanState selected,
+        Runnable action
+    ) implements RibbonToggleCommand {
     }
 
     private static final class RefreshableAction implements Runnable {

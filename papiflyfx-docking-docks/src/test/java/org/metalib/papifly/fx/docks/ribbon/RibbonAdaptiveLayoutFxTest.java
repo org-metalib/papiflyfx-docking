@@ -17,13 +17,15 @@ import javafx.stage.Stage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.MutableRibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonIconHandle;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.docks.testutil.FxTestUtil;
@@ -149,15 +151,14 @@ class RibbonAdaptiveLayoutFxTest {
 
     @Test
     void iconOnlyControlsExposeAccessibleNamesAndDisabledVectorIcons() {
-        MutableBoolState enabled = new MutableBoolState(false);
-        PapiflyCommand command = new PapiflyCommand(
+        MutableRibbonBooleanState enabled = RibbonBooleanState.mutable(false);
+        RibbonCommand command = RibbonCommand.of(
             "icon-only",
             "Icon Only",
             "Icon Only",
             RibbonIconHandle.of("octicon:sync"),
             null,
             enabled,
-            null,
             () -> {
             }
         );
@@ -315,13 +316,12 @@ class RibbonAdaptiveLayoutFxTest {
         Path brokenSvg = Files.createTempFile("ribbon-icon", ".svg");
         try {
             Files.writeString(brokenSvg, "<svg><path d=\"broken", StandardCharsets.UTF_8);
-            PapiflyCommand command = new PapiflyCommand(
+            RibbonCommand command = RibbonCommand.of(
                 "icon-test",
                 "Icon Test",
                 "Icon Test",
                 RibbonIconHandle.of(brokenSvg.toUri().toString()),
                 RibbonIconHandle.of(SAMPLE_PNG_URI),
-                null,
                 null,
                 () -> {
                 }
@@ -469,9 +469,9 @@ class RibbonAdaptiveLayoutFxTest {
                     0,
                     null,
                     List.of(
-                        new RibbonButtonSpec(new PapiflyCommand("alpha-1", "Alpha One", "Alpha One", null, null, null, null, alphaExecutions::incrementAndGet)),
-                        new RibbonButtonSpec(PapiflyCommand.of("alpha-2", "Alpha Two", () -> {})),
-                        new RibbonButtonSpec(PapiflyCommand.of("alpha-3", "Alpha Three", () -> {}))
+                        new RibbonButtonSpec(RibbonCommand.of("alpha-1", "Alpha One", "Alpha One", null, null, null, alphaExecutions::incrementAndGet)),
+                        new RibbonButtonSpec(RibbonCommand.of("alpha-2", "Alpha Two", () -> {})),
+                        new RibbonButtonSpec(RibbonCommand.of("alpha-3", "Alpha Three", () -> {}))
                     )
                 ),
                 new RibbonGroupSpec(
@@ -481,9 +481,9 @@ class RibbonAdaptiveLayoutFxTest {
                     10,
                     null,
                     List.of(
-                        new RibbonButtonSpec(PapiflyCommand.of("beta-1", "Beta One", () -> {})),
-                        new RibbonButtonSpec(PapiflyCommand.of("beta-2", "Beta Two", () -> {})),
-                        new RibbonButtonSpec(PapiflyCommand.of("beta-3", "Beta Three", () -> {}))
+                        new RibbonButtonSpec(RibbonCommand.of("beta-1", "Beta One", () -> {})),
+                        new RibbonButtonSpec(RibbonCommand.of("beta-2", "Beta Two", () -> {})),
+                        new RibbonButtonSpec(RibbonCommand.of("beta-3", "Beta Three", () -> {}))
                     )
                 ),
                 new RibbonGroupSpec(
@@ -493,9 +493,9 @@ class RibbonAdaptiveLayoutFxTest {
                     20,
                     null,
                     List.of(
-                        new RibbonButtonSpec(PapiflyCommand.of("gamma-1", "Gamma One", () -> {})),
-                        new RibbonButtonSpec(PapiflyCommand.of("gamma-2", "Gamma Two", () -> {})),
-                        new RibbonButtonSpec(PapiflyCommand.of("gamma-3", "Gamma Three", () -> {}))
+                        new RibbonButtonSpec(RibbonCommand.of("gamma-1", "Gamma One", () -> {})),
+                        new RibbonButtonSpec(RibbonCommand.of("gamma-2", "Gamma Two", () -> {})),
+                        new RibbonButtonSpec(RibbonCommand.of("gamma-3", "Gamma Three", () -> {}))
                     )
                 )
             )
@@ -515,11 +515,11 @@ class RibbonAdaptiveLayoutFxTest {
                     "Clipboard",
                     0,
                     10,
-                    PapiflyCommand.of("clipboard-settings", "Clipboard settings", () -> {}),
+                    RibbonCommand.of("clipboard-settings", "Clipboard settings", () -> {}),
                     List.of(
-                        new RibbonButtonSpec(PapiflyCommand.of("paste", "Paste", () -> {})),
-                        new RibbonButtonSpec(PapiflyCommand.of("copy", "Copy", () -> {})),
-                        new RibbonButtonSpec(PapiflyCommand.of("duplicate", "Duplicate", () -> {}))
+                        new RibbonButtonSpec(RibbonCommand.of("paste", "Paste", () -> {})),
+                        new RibbonButtonSpec(RibbonCommand.of("copy", "Copy", () -> {})),
+                        new RibbonButtonSpec(RibbonCommand.of("duplicate", "Duplicate", () -> {}))
                     )
                 ),
                 new RibbonGroupSpec(
@@ -529,15 +529,15 @@ class RibbonAdaptiveLayoutFxTest {
                     20,
                     null,
                     List.of(
-                        new RibbonToggleSpec(PapiflyCommand.of("pin-preview", "Pin Preview", () -> {})),
-                        new RibbonButtonSpec(PapiflyCommand.of("presets", "Presets", () -> {}))
+                        new RibbonToggleSpec(RibbonToggleCommand.of("pin-preview", "Pin Preview", RibbonBooleanState.mutable(false), () -> {})),
+                        new RibbonButtonSpec(RibbonCommand.of("presets", "Presets", () -> {}))
                     )
                 )
             )
         ));
     }
 
-    private List<RibbonTabSpec> iconOnlyTabs(PapiflyCommand command) {
+    private List<RibbonTabSpec> iconOnlyTabs(RibbonCommand command) {
         return List.of(new RibbonTabSpec(
             "home",
             "Home",
@@ -571,10 +571,10 @@ class RibbonAdaptiveLayoutFxTest {
                     0,
                     null,
                     List.of(
-                        new RibbonButtonSpec(new PapiflyCommand("alpha-1", "Alpha One", "Alpha One", null, null, null, null, alphaExecutions::incrementAndGet)),
-                        new RibbonButtonSpec(PapiflyCommand.of("alpha-2", "Alpha Two", () -> {})),
-                        new RibbonButtonSpec(PapiflyCommand.of("alpha-3", "Alpha Three", () -> {})),
-                        new RibbonButtonSpec(PapiflyCommand.of("alpha-4", "Alpha Four", () -> {}))
+                        new RibbonButtonSpec(RibbonCommand.of("alpha-1", "Alpha One", "Alpha One", null, null, null, alphaExecutions::incrementAndGet)),
+                        new RibbonButtonSpec(RibbonCommand.of("alpha-2", "Alpha Two", () -> {})),
+                        new RibbonButtonSpec(RibbonCommand.of("alpha-3", "Alpha Three", () -> {})),
+                        new RibbonButtonSpec(RibbonCommand.of("alpha-4", "Alpha Four", () -> {}))
                     )
                 ),
                 baseline.groups().get(1),

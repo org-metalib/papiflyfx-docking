@@ -5,7 +5,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonControlSpec;
@@ -14,6 +14,7 @@ import org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
 import org.metalib.papifly.fx.api.ribbon.RibbonSplitButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
 
 import java.util.ArrayList;
@@ -69,10 +70,7 @@ public class RibbonManager {
     private final ObservableList<RibbonTabSpec> tabsView = FXCollections.unmodifiableObservableList(tabs);
 
     private final CommandRegistry commandRegistry = new CommandRegistry();
-    private final ObservableList<String> quickAccessCommandIds = FXCollections.observableArrayList();
-    private final ObservableList<PapiflyCommand> quickAccessCommands = FXCollections.observableArrayList();
-    private final ObservableList<PapiflyCommand> quickAccessCommandsView =
-        FXCollections.unmodifiableObservableList(quickAccessCommands);
+    private final QuickAccessState quickAccessState = new QuickAccessState(this::refreshQuickAccessCommandView);
     private final Set<String> reportedTabIdCollisions = new LinkedHashSet<>();
     private final Set<String> reportedCommandIdCollisions = new LinkedHashSet<>();
 
@@ -116,7 +114,6 @@ public class RibbonManager {
         this.classLoader = classLoader == null ? resolveClassLoader() : classLoader;
         this.providers.addListener((ListChangeListener<RibbonProvider>) change -> refresh());
         this.context.addListener((obs, oldContext, newContext) -> refresh());
-        this.quickAccessCommandIds.addListener((ListChangeListener<String>) change -> refreshQuickAccessCommandView());
         if (providers != null) {
             this.providers.addAll(providers);
         }
@@ -177,7 +174,7 @@ public class RibbonManager {
      * @since Ribbon 2
      */
     public ObservableList<String> getQuickAccessCommandIds() {
-        return quickAccessCommandIds;
+        return quickAccessState.commandIds();
     }
 
     /**
@@ -194,13 +191,13 @@ public class RibbonManager {
      * hosts wrote command instances directly. Hosts should now mutate
      * {@link #getQuickAccessCommandIds()} and either rely on providers to
      * register the command or call
-     * {@link #addQuickAccessCommand(PapiflyCommand)} for host-owned QAT
+     * {@link #addQuickAccessCommand(RibbonCommand)} for host-owned QAT
      * commands.</p>
      *
      * @return unmodifiable Quick Access Toolbar command view
      */
-    public ObservableList<PapiflyCommand> getQuickAccessCommands() {
-        return quickAccessCommandsView;
+    public ObservableList<RibbonCommand> getQuickAccessCommands() {
+        return quickAccessState.commandsView();
     }
 
     /**
@@ -217,12 +214,10 @@ public class RibbonManager {
      * @return canonical command instance held by the registry
      * @throws NullPointerException if {@code command} is {@code null}
      */
-    public PapiflyCommand addQuickAccessCommand(PapiflyCommand command) {
+    public RibbonCommand addQuickAccessCommand(RibbonCommand command) {
         Objects.requireNonNull(command, "command");
-        PapiflyCommand canonical = commandRegistry.canonicalize(command);
-        if (!quickAccessCommandIds.contains(canonical.id())) {
-            quickAccessCommandIds.add(canonical.id());
-        } else {
+        RibbonCommand canonical = commandRegistry.canonicalize(command);
+        if (!quickAccessState.pinIfAbsent(canonical.id())) {
             // Identifier already pinned; ensure the derived view reflects the
             // canonical command (in case the registry previously missed it).
             refreshQuickAccessCommandView();
@@ -252,23 +247,8 @@ public class RibbonManager {
      * @param commandIds command identifiers to resolve
      * @return resolved commands in input order without duplicates
      */
-    public List<PapiflyCommand> resolveCommandsById(List<String> commandIds) {
-        if (commandIds == null || commandIds.isEmpty()) {
-            return List.of();
-        }
-        LinkedHashSet<String> emitted = new LinkedHashSet<>();
-        List<PapiflyCommand> resolved = new ArrayList<>();
-        for (String commandId : commandIds) {
-            if (commandId == null || commandId.isBlank()) {
-                continue;
-            }
-            commandRegistry.find(commandId).ifPresent(command -> {
-                if (emitted.add(command.id())) {
-                    resolved.add(command);
-                }
-            });
-        }
-        return resolved;
+    public List<RibbonCommand> resolveCommandsById(List<String> commandIds) {
+        return quickAccessState.resolveCommandsById(commandIds, commandRegistry::find);
     }
 
     /**
@@ -339,12 +319,9 @@ public class RibbonManager {
             .forEach(provider -> collectTabs(provider, resolvedContext, contributions));
 
         List<RibbonTabSpec> merged = mergeTabs(contributions);
-        Set<String> reachable = new LinkedHashSet<>();
+        LinkedHashSet<String> reachable = new LinkedHashSet<>();
         List<RibbonTabSpec> canonical = canonicalizeTabs(merged, reachable);
-        quickAccessCommandIds.stream()
-            .filter(Objects::nonNull)
-            .filter(id -> !id.isBlank())
-            .forEach(reachable::add);
+        quickAccessState.addReachableIdsTo(reachable);
         commandRegistry.retain(reachable);
 
         tabs.setAll(canonical);
@@ -393,13 +370,19 @@ public class RibbonManager {
         for (RibbonTabSpec tab : merged) {
             List<RibbonGroupSpec> canonicalGroups = new ArrayList<>(tab.groups().size());
             for (RibbonGroupSpec group : tab.groups()) {
-                PapiflyCommand dialogLauncher = group.dialogLauncher();
-                PapiflyCommand canonicalLauncher = dialogLauncher == null
+                RibbonCommand dialogLauncher = group.dialogLauncher();
+                RibbonCommand canonicalLauncher = dialogLauncher == null
                     ? null
                     : canonicalizeAndTrack(dialogLauncher, reachable);
                 List<RibbonControlSpec> canonicalControls = new ArrayList<>(group.controls().size());
                 for (RibbonControlSpec control : group.controls()) {
-                    canonicalControls.add(canonicalizeControl(control, reachable));
+                    RibbonControlSpec canonicalControl = canonicalizeControl(control, reachable);
+                    if (canonicalControl != null) {
+                        canonicalControls.add(canonicalControl);
+                    }
+                }
+                if (canonicalControls.isEmpty()) {
+                    continue;
                 }
                 canonicalGroups.add(new RibbonGroupSpec(
                     group.id(),
@@ -410,49 +393,48 @@ public class RibbonManager {
                     canonicalControls
                 ));
             }
-            result.add(new RibbonTabSpec(
-                tab.id(),
-                tab.label(),
-                tab.order(),
-                tab.contextual(),
-                ribbonContext -> true,
-                canonicalGroups
-            ));
+            if (!canonicalGroups.isEmpty()) {
+                result.add(new RibbonTabSpec(
+                    tab.id(),
+                    tab.label(),
+                    tab.order(),
+                    tab.contextual(),
+                    ribbonContext -> true,
+                    canonicalGroups
+                ));
+            }
         }
         return result;
     }
 
     private RibbonControlSpec canonicalizeControl(RibbonControlSpec control, Set<String> reachable) {
-        return switch (control) {
-            case RibbonButtonSpec button ->
-                new RibbonButtonSpec(canonicalizeAndTrack(button.command(), reachable));
-            case RibbonToggleSpec toggle ->
-                new RibbonToggleSpec(canonicalizeAndTrack(toggle.command(), reachable));
-            case RibbonSplitButtonSpec split -> {
-                PapiflyCommand primary = canonicalizeAndTrack(split.primaryCommand(), reachable);
-                List<PapiflyCommand> secondary = new ArrayList<>(split.secondaryCommands().size());
-                for (PapiflyCommand command : split.secondaryCommands()) {
-                    if (command != null) {
-                        secondary.add(canonicalizeAndTrack(command, reachable));
-                    }
-                }
-                yield new RibbonSplitButtonSpec(primary, secondary);
-            }
-            case RibbonMenuSpec menu -> {
-                List<PapiflyCommand> items = new ArrayList<>(menu.items().size());
-                for (PapiflyCommand command : menu.items()) {
-                    if (command != null) {
-                        items.add(canonicalizeAndTrack(command, reachable));
-                    }
-                }
-                yield new RibbonMenuSpec(menu.id(), menu.label(), menu.tooltip(), menu.smallIcon(), menu.largeIcon(), items);
-            }
-        };
+        try {
+            return RibbonControlStrategies.canonicalize(
+                control,
+                command -> canonicalizeAndTrack(command, reachable),
+                command -> canonicalizeToggleAndTrack(command, reachable)
+            ).orElseGet(() -> {
+                LOG.warning(() -> "Unknown ribbon control kind '" + control.kind() + "' for control '" + control.id() + "'");
+                telemetry.unknownControlKind(control.id(), control.kind().name());
+                return null;
+            });
+        } catch (IllegalArgumentException exception) {
+            LOG.warning(exception::getMessage);
+            telemetry.incompatibleCommandKind(control.id(), exception.getMessage());
+            return null;
+        }
     }
 
-    private PapiflyCommand canonicalizeAndTrack(PapiflyCommand command, Set<String> reachable) {
+    private RibbonCommand canonicalizeAndTrack(RibbonCommand command, Set<String> reachable) {
         reportCommandCollisionIfNeeded(command);
-        PapiflyCommand canonical = commandRegistry.canonicalize(command);
+        RibbonCommand canonical = commandRegistry.canonicalize(command);
+        reachable.add(canonical.id());
+        return canonical;
+    }
+
+    private RibbonToggleCommand canonicalizeToggleAndTrack(RibbonToggleCommand command, Set<String> reachable) {
+        reportCommandCollisionIfNeeded(command);
+        RibbonToggleCommand canonical = commandRegistry.canonicalizeToggle(command);
         reachable.add(canonical.id());
         return canonical;
     }
@@ -473,7 +455,7 @@ public class RibbonManager {
         );
     }
 
-    private void reportCommandCollisionIfNeeded(PapiflyCommand incoming) {
+    private void reportCommandCollisionIfNeeded(RibbonCommand incoming) {
         commandRegistry.find(incoming.id()).ifPresent(existing -> {
             if (existing == incoming
                 || !commandPresentationDiffers(existing, incoming)
@@ -487,7 +469,7 @@ public class RibbonManager {
         });
     }
 
-    private static boolean commandPresentationDiffers(PapiflyCommand left, PapiflyCommand right) {
+    private static boolean commandPresentationDiffers(RibbonCommand left, RibbonCommand right) {
         return !Objects.equals(left.label(), right.label())
             || !Objects.equals(left.tooltip(), right.tooltip())
             || !Objects.equals(iconPath(left.smallIcon()), iconPath(right.smallIcon()))
@@ -499,15 +481,7 @@ public class RibbonManager {
     }
 
     private void refreshQuickAccessCommandView() {
-        LinkedHashSet<String> seen = new LinkedHashSet<>();
-        List<PapiflyCommand> resolved = new ArrayList<>();
-        for (String id : quickAccessCommandIds) {
-            if (id == null || id.isBlank() || !seen.add(id)) {
-                continue;
-            }
-            commandRegistry.find(id).ifPresent(resolved::add);
-        }
-        quickAccessCommands.setAll(resolved);
+        quickAccessState.refreshCommandView(commandRegistry::find);
     }
 
     private static List<RibbonProvider> discoverProviders(ClassLoader classLoader) {
@@ -561,7 +535,7 @@ public class RibbonManager {
         private final String label;
         private final int order;
         private final int collapseOrder;
-        private PapiflyCommand dialogLauncher;
+        private RibbonCommand dialogLauncher;
         private final List<RibbonControlSpec> controls = new ArrayList<>();
 
         private GroupAccumulator(RibbonGroupSpec initial) {

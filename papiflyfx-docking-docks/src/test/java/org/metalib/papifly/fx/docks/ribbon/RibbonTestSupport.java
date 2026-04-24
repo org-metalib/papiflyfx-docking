@@ -1,6 +1,6 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
@@ -54,13 +54,13 @@ final class RibbonTestSupport {
                 0,
                 0,
                 null,
-                List.of(new RibbonButtonSpec(PapiflyCommand.of(commandId, commandLabel, () -> {
+                List.of(new RibbonButtonSpec(RibbonCommand.of(commandId, commandLabel, () -> {
                 })))
             ))
         );
     }
 
-    static PapiflyCommand command(RibbonManager manager, String commandId) {
+    static RibbonCommand command(RibbonManager manager, String commandId) {
         return manager.getCommandRegistry()
             .find(commandId)
             .orElseThrow(() -> new AssertionError("Missing command: " + commandId));

@@ -1,18 +1,22 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
 import org.junit.jupiter.api.Test;
-import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.MutableRibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonAttributeKey;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes;
+import org.metalib.papifly.fx.api.ribbon.RibbonControlKind;
 import org.metalib.papifly.fx.api.ribbon.RibbonControlSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
 import org.metalib.papifly.fx.api.ribbon.RibbonSplitButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
 
 import java.util.List;
 import java.util.Map;
@@ -63,7 +67,7 @@ class RibbonManagerTest {
                     0,
                     0,
                     null,
-                    List.of(new RibbonButtonSpec(PapiflyCommand.of("copy", "Copy", () -> {})))
+                    List.of(new RibbonButtonSpec(RibbonCommand.of("copy", "Copy", () -> {})))
                 ))
             )
         ));
@@ -81,7 +85,7 @@ class RibbonManagerTest {
                     10,
                     10,
                     null,
-                    List.of(new RibbonButtonSpec(PapiflyCommand.of("float", "Float", () -> {})))
+                    List.of(new RibbonButtonSpec(RibbonCommand.of("float", "Float", () -> {})))
                 ))
             ),
             new RibbonTabSpec(
@@ -98,7 +102,7 @@ class RibbonManagerTest {
                     0,
                     0,
                     null,
-                    List.of(new RibbonButtonSpec(PapiflyCommand.of("preview", "Preview", () -> {})))
+                    List.of(new RibbonButtonSpec(RibbonCommand.of("preview", "Preview", () -> {})))
                 ))
             )
         ));
@@ -118,13 +122,13 @@ class RibbonManagerTest {
 
     @Test
     void resolveCommandsById_collectsFromTabsAndSkipsMissingIds() {
-        PapiflyCommand save = PapiflyCommand.of("save", "Save", () -> {
+        RibbonCommand save = RibbonCommand.of("save", "Save", () -> {
         });
-        PapiflyCommand preview = PapiflyCommand.of("preview", "Preview", () -> {
+        RibbonCommand preview = RibbonCommand.of("preview", "Preview", () -> {
         });
-        PapiflyCommand publish = PapiflyCommand.of("publish", "Publish", () -> {
+        RibbonCommand publish = RibbonCommand.of("publish", "Publish", () -> {
         });
-        PapiflyCommand legacy = PapiflyCommand.of("legacy", "Legacy", () -> {
+        RibbonCommand legacy = RibbonCommand.of("legacy", "Legacy", () -> {
         });
 
         RibbonProvider provider = provider("provider", context -> List.of(
@@ -153,7 +157,7 @@ class RibbonManagerTest {
         manager.addQuickAccessCommand(legacy);
 
         List<String> ids = List.of("preview", "legacy", "missing", "preview", "publish");
-        List<String> resolved = manager.resolveCommandsById(ids).stream().map(PapiflyCommand::id).toList();
+        List<String> resolved = manager.resolveCommandsById(ids).stream().map(RibbonCommand::id).toList();
 
         assertEquals(List.of("preview", "legacy", "publish"), resolved);
     }
@@ -173,23 +177,23 @@ class RibbonManagerTest {
                     0,
                     0,
                     null,
-                    List.of(new RibbonButtonSpec(PapiflyCommand.of("save", "Save", () -> {
+                    List.of(new RibbonButtonSpec(RibbonCommand.of("save", "Save", () -> {
                     })))
                 ))
             )
         ));
 
         RibbonManager manager = new RibbonManager(List.of(provider));
-        PapiflyCommand firstResolved = manager.getCommandRegistry().find("save").orElseThrow();
-        PapiflyCommand firstRendered = extractFirstButtonCommand(manager);
+        RibbonCommand firstResolved = manager.getCommandRegistry().find("save").orElseThrow();
+        RibbonCommand firstRendered = extractFirstButtonCommand(manager);
         assertSame(firstResolved, firstRendered);
 
         // Force a refresh via context change — provider will emit a brand-new
-        // PapiflyCommand instance, but the registry must canonicalize it.
+        // RibbonCommand instance, but the registry must canonicalize it.
         manager.setContext(new RibbonContext("dock", "content", "key", Map.of()));
 
-        PapiflyCommand secondResolved = manager.getCommandRegistry().find("save").orElseThrow();
-        PapiflyCommand secondRendered = extractFirstButtonCommand(manager);
+        RibbonCommand secondResolved = manager.getCommandRegistry().find("save").orElseThrow();
+        RibbonCommand secondRendered = extractFirstButtonCommand(manager);
         assertSame(firstResolved, secondResolved);
         assertSame(firstResolved, secondRendered);
     }
@@ -212,14 +216,13 @@ class RibbonManagerTest {
                     0,
                     0,
                     null,
-                    List.of(new RibbonButtonSpec(new PapiflyCommand(
+                    List.of(new RibbonButtonSpec(RibbonCommand.of(
                         "refresh-state",
                         "Refresh State",
                         "Refresh State",
                         null,
                         null,
-                        new MutableBoolState(enabled),
-                        null,
+                        RibbonBooleanState.mutable(enabled),
                         () -> {
                         }
                     )))
@@ -228,7 +231,7 @@ class RibbonManagerTest {
         });
 
         RibbonManager manager = new RibbonManager(List.of(provider));
-        PapiflyCommand command = manager.getCommandRegistry().find("refresh-state").orElseThrow();
+        RibbonCommand command = manager.getCommandRegistry().find("refresh-state").orElseThrow();
         assertFalse(command.enabled().get());
 
         manager.setContext(new RibbonContext(null, null, "ready", Map.of()));
@@ -256,7 +259,7 @@ class RibbonManagerTest {
                         0,
                         0,
                         null,
-                        List.of(new RibbonButtonSpec(PapiflyCommand.of("save", "Save", () -> {
+                        List.of(new RibbonButtonSpec(RibbonCommand.of("save", "Save", () -> {
                         })))
                     ))
                 ));
@@ -274,7 +277,7 @@ class RibbonManagerTest {
                         0,
                         0,
                         null,
-                        List.of(new RibbonButtonSpec(PapiflyCommand.of("save", "Save", () -> {
+                        List.of(new RibbonButtonSpec(RibbonCommand.of("save", "Save", () -> {
                         })))
                     ))
                 ),
@@ -290,7 +293,7 @@ class RibbonManagerTest {
                         0,
                         0,
                         null,
-                        List.of(new RibbonButtonSpec(PapiflyCommand.of("publish", "Publish", () -> {
+                        List.of(new RibbonButtonSpec(RibbonCommand.of("publish", "Publish", () -> {
                         })))
                     ))
                 )
@@ -317,9 +320,9 @@ class RibbonManagerTest {
 
     @Test
     void quickAccessCommands_isDerivedFromIdsAndToleratesMissingIds() {
-        PapiflyCommand save = PapiflyCommand.of("save", "Save", () -> {
+        RibbonCommand save = RibbonCommand.of("save", "Save", () -> {
         });
-        PapiflyCommand preview = PapiflyCommand.of("preview", "Preview", () -> {
+        RibbonCommand preview = RibbonCommand.of("preview", "Preview", () -> {
         });
 
         RibbonProvider provider = provider("provider", context -> List.of(
@@ -348,7 +351,7 @@ class RibbonManagerTest {
         assertEquals(List.of("save", "missing", "preview", "save"),
             List.copyOf(manager.getQuickAccessCommandIds()));
         assertEquals(List.of("save", "preview"),
-            manager.getQuickAccessCommands().stream().map(PapiflyCommand::id).toList());
+            manager.getQuickAccessCommands().stream().map(RibbonCommand::id).toList());
     }
 
     @Test
@@ -366,7 +369,7 @@ class RibbonManagerTest {
                     0,
                     0,
                     null,
-                    List.of(new RibbonButtonSpec(PapiflyCommand.of("save", "Save", () -> {
+                    List.of(new RibbonButtonSpec(RibbonCommand.of("save", "Save", () -> {
                     })))
                 ))
             )
@@ -445,9 +448,9 @@ class RibbonManagerTest {
                 0,
                 null,
                 List.of(
-                    new RibbonButtonSpec(PapiflyCommand.of("duplicate", "First", () -> {
+                    new RibbonButtonSpec(RibbonCommand.of("duplicate", "First", () -> {
                     })),
-                    new RibbonButtonSpec(PapiflyCommand.of("duplicate", "Second", () -> {
+                    new RibbonButtonSpec(RibbonCommand.of("duplicate", "Second", () -> {
                     }))
                 )
             ))
@@ -466,7 +469,77 @@ class RibbonManagerTest {
         assertEquals("Second", collision.ignoredLabel());
     }
 
-    private static PapiflyCommand extractFirstButtonCommand(RibbonManager manager) {
+    @Test
+    void incompatibleCommandKindsAreDiagnosedAndSkipped() {
+        RibbonProvider provider = provider("mixed-kinds", 0, context -> List.of(new RibbonTabSpec(
+            "home",
+            "Home",
+            0,
+            false,
+            ribbonContext -> true,
+            List.of(new RibbonGroupSpec(
+                "actions",
+                "Actions",
+                0,
+                0,
+                null,
+                List.of(
+                    new RibbonButtonSpec(RibbonCommand.of("same", "Action", () -> {})),
+                    new RibbonToggleSpec(RibbonToggleCommand.of("same", "Toggle", RibbonBooleanState.mutable(false), () -> {}))
+                )
+            ))
+        )));
+        RibbonLayoutTelemetryRecorder telemetry = new RibbonLayoutTelemetryRecorder();
+        RibbonManager manager = new RibbonManager(List.of());
+        manager.setLayoutTelemetry(telemetry);
+
+        manager.getProviders().setAll(provider);
+
+        assertEquals(1, manager.getTabs().getFirst().groups().getFirst().controls().size());
+        assertEquals(1, telemetry.incompatibleCommandKinds().size());
+        assertEquals("same", telemetry.incompatibleCommandKinds().getFirst().commandId());
+    }
+
+    @Test
+    void unknownControlKindsAreDiagnosedAndSkipped() {
+        RibbonControlSpec unknown = new RibbonControlSpec() {
+            @Override
+            public String id() {
+                return "unknown-control";
+            }
+
+            @Override
+            public RibbonControlKind kind() {
+                return RibbonControlKind.UNKNOWN;
+            }
+        };
+        RibbonProvider provider = provider("unknown-control-provider", 0, context -> List.of(new RibbonTabSpec(
+            "home",
+            "Home",
+            0,
+            false,
+            ribbonContext -> true,
+            List.of(new RibbonGroupSpec(
+                "actions",
+                "Actions",
+                0,
+                0,
+                null,
+                List.of(unknown)
+            ))
+        )));
+        RibbonLayoutTelemetryRecorder telemetry = new RibbonLayoutTelemetryRecorder();
+        RibbonManager manager = new RibbonManager(List.of());
+        manager.setLayoutTelemetry(telemetry);
+
+        manager.getProviders().setAll(provider);
+
+        assertTrue(manager.getTabs().isEmpty());
+        assertEquals(1, telemetry.unknownControlKinds().size());
+        assertEquals("unknown-control", telemetry.unknownControlKinds().getFirst().controlId());
+    }
+
+    private static RibbonCommand extractFirstButtonCommand(RibbonManager manager) {
         RibbonControlSpec control = manager.getTabs().getFirst().groups().getFirst().controls().getFirst();
         return ((RibbonButtonSpec) control).command();
     }

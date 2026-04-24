@@ -6,7 +6,7 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
@@ -90,7 +90,7 @@ class RibbonSessionPersistenceFxTest {
         assertEquals(TAB_HUGO, FxTestUtil.callFx(ribbon::getSelectedTabId));
         assertEquals(
             List.of(CMD_SAVE, CMD_PREVIEW),
-            FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream().map(PapiflyCommand::id).toList())
+            FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream().map(RibbonCommand::id).toList())
         );
     }
 
@@ -149,7 +149,7 @@ class RibbonSessionPersistenceFxTest {
         );
         assertEquals(
             List.of(CMD_SAVE),
-            FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream().map(PapiflyCommand::id).toList())
+            FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream().map(RibbonCommand::id).toList())
         );
     }
 
@@ -165,11 +165,11 @@ class RibbonSessionPersistenceFxTest {
 
     private static final class TestProvider implements RibbonProvider {
         private final boolean includeLegacy;
-        private final PapiflyCommand save = PapiflyCommand.of(CMD_SAVE, "Save", () -> {
+        private final RibbonCommand save = RibbonCommand.of(CMD_SAVE, "Save", () -> {
         });
-        private final PapiflyCommand preview = PapiflyCommand.of(CMD_PREVIEW, "Preview", () -> {
+        private final RibbonCommand preview = RibbonCommand.of(CMD_PREVIEW, "Preview", () -> {
         });
-        private final PapiflyCommand legacy = PapiflyCommand.of(CMD_LEGACY, "Legacy", () -> {
+        private final RibbonCommand legacy = RibbonCommand.of(CMD_LEGACY, "Legacy", () -> {
         });
 
         private TestProvider(boolean includeLegacy) {
@@ -239,15 +239,15 @@ class RibbonSessionPersistenceFxTest {
             );
         }
 
-        private PapiflyCommand save() {
+        private RibbonCommand save() {
             return save;
         }
 
-        private PapiflyCommand preview() {
+        private RibbonCommand preview() {
             return preview;
         }
 
-        private PapiflyCommand legacy() {
+        private RibbonCommand legacy() {
             return legacy;
         }
     }

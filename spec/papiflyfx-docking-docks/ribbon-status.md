@@ -1,6 +1,6 @@
 # Ribbon Current Status
 
-**Status:** current as of Ribbon 5 Phase 5 closure
+**Status:** current as of Ribbon 6 compatibility implementation
 **Lead:** @spec-steward
 **Required reviewers for future changes:** @core-architect, @feature-dev, @ops-engineer, @qa-engineer; add @ui-ux-designer for visual/accessibility behavior
 
@@ -8,18 +8,21 @@ This is the canonical status entry point for the PapiflyFX ribbon stream. Dated 
 
 ## Current Baseline
 
-Ribbon 5 is the current implemented baseline. The runtime keeps the Phase 1-3 decisions from the consolidated follow-up:
+Ribbon 6 is the current implemented baseline. It keeps the Ribbon 5 runtime decisions and adds the planned compatibility split:
 
-- `CommandRegistry` keeps stable command identity and first metadata while refreshing enabled state, selected state, and action dispatch from later provider emissions.
+- `CommandRegistry` keeps stable command identity and first metadata while refreshing enabled state, toggle selected state, and action dispatch from later provider emissions.
 - JavaFX command bindings are disposable, including rebuilt controls, QAT buttons, launchers, collapsed popups, and cache eviction paths.
 - Provider failures, duplicate tab ids, and duplicate command metadata conflicts are diagnostic and test-observable.
 - Ribbon focus, collapsed-popup focus return, icon-only accessible names, disabled icon treatment, contextual accent styling, and live theme switching have focused coverage.
 - Typed `RibbonAttributeKey<T>` metadata and explicit `RibbonAttributeContributor` / `RibbonCapabilityContributor` contracts are available while raw string attributes remain compatible.
 - Floating active-content context resolution is covered.
 - Hugo contextual tabs prefer explicit content metadata and retain legacy heuristics as fallback.
+- Action-only commands use `RibbonCommand`; toggle-capable commands use `RibbonToggleCommand`.
+- Boolean state exposes subscription-returning `RibbonBooleanState#subscribe(...)`.
+- `PapiflyCommand`, `BoolState`, and `MutableBoolState` have been removed; providers use the Ribbon 6 contracts directly.
+- Built-in control handling is centralized through package-private strategy/render-plan dispatch.
+- `QuickAccessState` owns QAT id state behind the stable `RibbonManager` facade.
 - Focused Maven selector guidance uses `-Dsurefire.failIfNoSpecifiedTests=false`.
-
-No Ribbon 6 breaking API, session, or customization behavior is implemented.
 
 ## Authoritative Docs
 
@@ -51,7 +54,7 @@ Future customization policy is design-only in [Ribbon 6 design](2026-04-23-0-rib
 | [Ribbon 3](2026-04-23-0-ribbon-3/README.md) | Implemented targeted fix | Fixed SamplesApp label/caption clipping and documented geometry validation. |
 | [Ribbon 4](2026-04-23-0-ribbon-4/README.md) | Implemented samples | Added GitHub and Hugo ribbon sample demos and headless sample coverage. |
 | [Ribbon 5](2026-04-23-0-ribbon-5/README.md) | Closed consolidated follow-up | Closed runtime/accessibility/context/test/docs findings from the multi-role review. |
-| [Ribbon 6](2026-04-23-0-ribbon-6/README.md) | Design-only | Captures candidate command contract, boolean state, control extensibility, manager decomposition, and customization/session policy work. |
+| [Ribbon 6](2026-04-23-0-ribbon-6/README.md) | Implemented compatibility break | Splits action/toggle commands, introduces subscription boolean state, centralizes control strategies, and starts `RibbonManager` decomposition. |
 
 ## Completed Ribbon 5 Fixes
 
@@ -69,16 +72,13 @@ Future customization policy is design-only in [Ribbon 6 design](2026-04-23-0-rib
 - Ribbon 6 design note for future breaking candidates.
 - Phase 5 docs/status/release closure.
 
-## Future Ribbon 6 Candidates
+## Deferred Ribbon Candidates
 
-These are not implemented in Ribbon 5 and require a dedicated plan:
+These remain outside the Ribbon 6 compatibility implementation and require a dedicated plan:
 
-- Split action and toggle command contracts.
-- Replace `BoolState` add/remove listener API with a subscription-returning UI-neutral observable boolean contract.
-- Move control handling toward UI-neutral render plans/strategies for keytips, galleries, and future control families.
-- Decompose `RibbonManager` behind its public facade.
 - Add per-user customization schema/UI with explicit unknown-field round-trip policy.
 - Consider optional busy/running command state only after UI/accessibility semantics are designed.
+- Complete deeper `RibbonManager` extraction beyond `QuickAccessState` when a follow-up can isolate provider catalog, tab merger, command canonicalizer, and refresh scheduling without expanding this API break.
 
 ## Carry-Forward Work
 

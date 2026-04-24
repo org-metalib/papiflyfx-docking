@@ -1,9 +1,9 @@
 package org.metalib.papifly.fx.hugo.ribbon;
 
-import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonBooleanState;
 import org.metalib.papifly.fx.api.ribbon.RibbonAttributeKey;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
@@ -12,6 +12,7 @@ import org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
 import org.metalib.papifly.fx.api.ribbon.RibbonSplitButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
 import org.metalib.papifly.fx.hugo.api.HugoPreviewFactory;
 import org.metalib.papifly.fx.hugo.api.HugoRibbonActions;
@@ -126,7 +127,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
     }
 
     private static RibbonGroupSpec developmentGroup(Optional<HugoRibbonActions> actions) {
-        PapiflyCommand toggle = toggleCommand(
+        RibbonToggleCommand toggle = toggleCommand(
             "development.server",
             "Server",
             "Start or stop hugo server",
@@ -147,7 +148,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
     }
 
     private static RibbonGroupSpec newContentGroup(Optional<HugoRibbonActions> actions) {
-        PapiflyCommand primary = command(
+        RibbonCommand primary = command(
             "new-content.post",
             "New Post",
             "Create a new Hugo post",
@@ -156,7 +157,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             HugoRibbonActions::canRunHugoCommands,
             ribbonActions -> ribbonActions.newContent("content/posts/ribbon-post.md")
         );
-        PapiflyCommand page = command(
+        RibbonCommand page = command(
             "new-content.page",
             "New Page",
             "Create a new Hugo page",
@@ -165,7 +166,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             HugoRibbonActions::canRunHugoCommands,
             ribbonActions -> ribbonActions.newContent("content/page/ribbon-page.md")
         );
-        PapiflyCommand draft = command(
+        RibbonCommand draft = command(
             "new-content.draft",
             "New Draft",
             "Create a new Hugo draft",
@@ -204,7 +205,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
     }
 
     private static RibbonGroupSpec modulesGroup(Optional<HugoRibbonActions> actions) {
-        PapiflyCommand tidy = command(
+        RibbonCommand tidy = command(
             "modules.tidy",
             "Mod Tidy",
             "Run hugo mod tidy",
@@ -213,7 +214,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             HugoRibbonActions::canRunHugoCommands,
             ribbonActions -> ribbonActions.mod("tidy")
         );
-        PapiflyCommand get = command(
+        RibbonCommand get = command(
             "modules.get",
             "Mod Get",
             "Run hugo mod get",
@@ -222,7 +223,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             HugoRibbonActions::canRunHugoCommands,
             ribbonActions -> ribbonActions.mod("get")
         );
-        PapiflyCommand vendor = command(
+        RibbonCommand vendor = command(
             "modules.vendor",
             "Mod Vendor",
             "Run hugo mod vendor",
@@ -287,7 +288,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
     }
 
     private static RibbonGroupSpec editorShortcodesGroup(Optional<HugoRibbonActions> actions) {
-        PapiflyCommand youtube = command(
+        RibbonCommand youtube = command(
             "editor.shortcode.youtube",
             "YouTube",
             "Insert youtube shortcode helper",
@@ -296,7 +297,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
             HugoRibbonActions::canRunHugoCommands,
             ribbonActions -> ribbonActions.insertShortcode("youtube")
         );
-        PapiflyCommand gallery = command(
+        RibbonCommand gallery = command(
             "editor.shortcode.gallery",
             "Gallery",
             "Insert gallery shortcode helper",
@@ -322,7 +323,7 @@ public final class HugoRibbonProvider implements RibbonProvider {
         );
     }
 
-    private static PapiflyCommand command(
+    private static RibbonCommand command(
         String id,
         String label,
         String tooltip,
@@ -332,19 +333,18 @@ public final class HugoRibbonProvider implements RibbonProvider {
         java.util.function.Consumer<HugoRibbonActions> run
     ) {
         boolean enabled = actions.map(canRun::test).orElse(false);
-        return new PapiflyCommand(
+        return RibbonCommand.of(
             "hugo.ribbon." + id,
             label,
             tooltip,
             icon(octiconName),
             icon(octiconName),
-            new MutableBoolState(enabled),
-            null,
+            RibbonBooleanState.mutable(enabled),
             () -> actions.ifPresent(run)
         );
     }
 
-    private static PapiflyCommand toggleCommand(
+    private static RibbonToggleCommand toggleCommand(
         String id,
         String label,
         String tooltip,
@@ -355,14 +355,14 @@ public final class HugoRibbonProvider implements RibbonProvider {
         boolean selected
     ) {
         boolean enabled = actions.map(canRun::test).orElse(false);
-        return new PapiflyCommand(
+        return RibbonToggleCommand.of(
             "hugo.ribbon." + id,
             label,
             tooltip,
             icon(octiconName),
             icon(octiconName),
-            new MutableBoolState(enabled),
-            new MutableBoolState(selected),
+            RibbonBooleanState.mutable(enabled),
+            RibbonBooleanState.mutable(selected),
             () -> actions.ifPresent(run)
         );
     }

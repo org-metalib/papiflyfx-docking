@@ -1,8 +1,10 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
 import org.junit.jupiter.api.Test;
-import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.MutableRibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand;
 
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,13 +21,13 @@ class CommandRegistryTest {
     @Test
     void canonicalize_returnsStableCanonicalInstanceForId() {
         CommandRegistry registry = new CommandRegistry();
-        PapiflyCommand first = PapiflyCommand.of("save", "Save", () -> {
+        RibbonCommand first = RibbonCommand.of("save", "Save", () -> {
         });
-        PapiflyCommand second = PapiflyCommand.of("save", "Save Again", () -> {
+        RibbonCommand second = RibbonCommand.of("save", "Save Again", () -> {
         });
 
-        PapiflyCommand registered = registry.canonicalize(first);
-        PapiflyCommand reRegistered = registry.canonicalize(second);
+        RibbonCommand registered = registry.canonicalize(first);
+        RibbonCommand reRegistered = registry.canonicalize(second);
 
         assertSame(registered, reRegistered);
         assertEquals("Save", registered.label());
@@ -36,9 +38,9 @@ class CommandRegistryTest {
     @Test
     void canonicalize_projectsIncomingRuntimeStateIntoCanonicalCommand() {
         CommandRegistry registry = new CommandRegistry();
-        MutableBoolState canonicalEnabled = new MutableBoolState(false);
-        MutableBoolState canonicalSelected = new MutableBoolState(false);
-        PapiflyCommand disabled = new PapiflyCommand(
+        MutableRibbonBooleanState canonicalEnabled = RibbonBooleanState.mutable(false);
+        MutableRibbonBooleanState canonicalSelected = RibbonBooleanState.mutable(false);
+        RibbonToggleCommand disabled = RibbonToggleCommand.of(
             "refresh",
             "Refresh",
             "Refresh",
@@ -49,20 +51,20 @@ class CommandRegistryTest {
             () -> {
             }
         );
-        PapiflyCommand enabled = new PapiflyCommand(
+        RibbonToggleCommand enabled = RibbonToggleCommand.of(
             "refresh",
             "Refresh",
             "Refresh",
             null,
             null,
-            new MutableBoolState(true),
-            new MutableBoolState(true),
+            RibbonBooleanState.mutable(true),
+            RibbonBooleanState.mutable(true),
             () -> {
             }
         );
 
-        PapiflyCommand first = registry.canonicalize(disabled);
-        PapiflyCommand second = registry.canonicalize(enabled);
+        RibbonToggleCommand first = registry.canonicalizeToggle(disabled);
+        RibbonToggleCommand second = registry.canonicalizeToggle(enabled);
 
         assertSame(first, second);
         assertTrue(canonicalEnabled.get());
@@ -74,10 +76,10 @@ class CommandRegistryTest {
         CommandRegistry registry = new CommandRegistry();
         AtomicInteger firstExecutions = new AtomicInteger();
         AtomicInteger secondExecutions = new AtomicInteger();
-        PapiflyCommand first = PapiflyCommand.of("refresh", "Refresh", firstExecutions::incrementAndGet);
-        PapiflyCommand second = PapiflyCommand.of("refresh", "Refresh", secondExecutions::incrementAndGet);
+        RibbonCommand first = RibbonCommand.of("refresh", "Refresh", firstExecutions::incrementAndGet);
+        RibbonCommand second = RibbonCommand.of("refresh", "Refresh", secondExecutions::incrementAndGet);
 
-        PapiflyCommand canonical = registry.canonicalize(first);
+        RibbonCommand canonical = registry.canonicalize(first);
         canonical.execute();
         registry.canonicalize(second);
         canonical.execute();
@@ -89,11 +91,11 @@ class CommandRegistryTest {
     @Test
     void canonicalize_registersDistinctIdsInInsertionOrder() {
         CommandRegistry registry = new CommandRegistry();
-        PapiflyCommand save = PapiflyCommand.of("save", "Save", () -> {
+        RibbonCommand save = RibbonCommand.of("save", "Save", () -> {
         });
-        PapiflyCommand undo = PapiflyCommand.of("undo", "Undo", () -> {
+        RibbonCommand undo = RibbonCommand.of("undo", "Undo", () -> {
         });
-        PapiflyCommand redo = PapiflyCommand.of("redo", "Redo", () -> {
+        RibbonCommand redo = RibbonCommand.of("redo", "Redo", () -> {
         });
 
         registry.canonicalize(save);
@@ -117,9 +119,9 @@ class CommandRegistryTest {
     @Test
     void register_reportsPreviousValueWhenIdAlreadyRegistered() {
         CommandRegistry registry = new CommandRegistry();
-        PapiflyCommand first = PapiflyCommand.of("copy", "Copy", () -> {
+        RibbonCommand first = RibbonCommand.of("copy", "Copy", () -> {
         });
-        PapiflyCommand second = PapiflyCommand.of("copy", "Copy (replacement)", () -> {
+        RibbonCommand second = RibbonCommand.of("copy", "Copy (replacement)", () -> {
         });
 
         assertTrue(registry.register(first).isEmpty());
@@ -130,7 +132,7 @@ class CommandRegistryTest {
     @Test
     void unregister_removesCommandAndReturnsIt() {
         CommandRegistry registry = new CommandRegistry();
-        PapiflyCommand save = PapiflyCommand.of("save", "Save", () -> {
+        RibbonCommand save = RibbonCommand.of("save", "Save", () -> {
         });
         registry.canonicalize(save);
 
@@ -142,11 +144,11 @@ class CommandRegistryTest {
     @Test
     void retain_keepsOnlyIdentifiersInTheKeepSet() {
         CommandRegistry registry = new CommandRegistry();
-        registry.canonicalize(PapiflyCommand.of("a", "A", () -> {
+        registry.canonicalize(RibbonCommand.of("a", "A", () -> {
         }));
-        registry.canonicalize(PapiflyCommand.of("b", "B", () -> {
+        registry.canonicalize(RibbonCommand.of("b", "B", () -> {
         }));
-        registry.canonicalize(PapiflyCommand.of("c", "C", () -> {
+        registry.canonicalize(RibbonCommand.of("c", "C", () -> {
         }));
 
         registry.retain(Set.of("a", "c"));

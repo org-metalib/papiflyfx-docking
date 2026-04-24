@@ -46,6 +46,12 @@ interface RibbonLayoutTelemetry {
     default void commandIdCollision(String commandId, String retainedLabel, String ignoredLabel) {
     }
 
+    default void incompatibleCommandKind(String commandId, String message) {
+    }
+
+    default void unknownControlKind(String controlId, String kind) {
+    }
+
     enum RebuildReason {
         INITIAL,
         STRUCTURAL,

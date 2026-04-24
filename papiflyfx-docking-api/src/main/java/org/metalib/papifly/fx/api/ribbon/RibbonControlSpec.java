@@ -6,8 +6,7 @@ package org.metalib.papifly.fx.api.ribbon;
  * <p>Hosts interpret these descriptors to render concrete JavaFX ribbon
  * controls without leaking view types into the shared API.</p>
  */
-public sealed interface RibbonControlSpec
-    permits RibbonButtonSpec, RibbonToggleSpec, RibbonSplitButtonSpec, RibbonMenuSpec {
+public interface RibbonControlSpec {
 
     /**
      * Returns the stable control identifier.
@@ -15,4 +14,12 @@ public sealed interface RibbonControlSpec
      * @return control identifier
      */
     String id();
+
+    /**
+     * Returns the stable built-in control kind used by runtime strategies.
+     *
+     * @return control kind
+     * @since Ribbon 6
+     */
+    RibbonControlKind kind();
 }

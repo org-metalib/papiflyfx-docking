@@ -4,7 +4,8 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.docks.ribbon.Ribbon;
 import org.metalib.papifly.fx.docks.ribbon.RibbonManager;
@@ -38,7 +39,7 @@ class GitHubRibbonProviderFxTest {
     @Test
     void commandEnablementTracksCapabilityContextRefreshes() {
         assertTrue(FxTestUtil.callFx(() -> ribbonManager.hasTab("github")));
-        PapiflyCommand fetch = command("github.ribbon.fetch");
+        RibbonCommand fetch = command("github.ribbon.fetch");
         assertFalse(fetch.enabled().get());
 
         StubActions actions = new StubActions();
@@ -51,7 +52,7 @@ class GitHubRibbonProviderFxTest {
         )));
         settle();
 
-        PapiflyCommand enabledFetch = command("github.ribbon.fetch");
+        RibbonCommand enabledFetch = command("github.ribbon.fetch");
         assertSame(fetch, enabledFetch);
         assertTrue(enabledFetch.enabled().get());
 
@@ -64,7 +65,7 @@ class GitHubRibbonProviderFxTest {
         assertFalse(command("github.ribbon.fetch").enabled().get());
     }
 
-    private PapiflyCommand command(String id) {
+    private RibbonCommand command(String id) {
         return FxTestUtil.callFx(() -> ribbonManager.getCommandRegistry().find(id).orElseThrow());
     }
 

@@ -6,7 +6,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.layout.HBox;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 
 import java.util.Objects;
 
@@ -16,7 +16,7 @@ import java.util.Objects;
  */
 public class QuickAccessToolbar extends HBox {
 
-    private final ObservableList<PapiflyCommand> commands = FXCollections.observableArrayList();
+    private final ObservableList<RibbonCommand> commands = FXCollections.observableArrayList();
     private ClassLoader classLoader;
 
     /**
@@ -27,7 +27,7 @@ public class QuickAccessToolbar extends HBox {
         getStyleClass().add("pf-ribbon-qat");
         setAlignment(Pos.CENTER_LEFT);
         setSpacing(6.0);
-        commands.addListener((ListChangeListener<PapiflyCommand>) change -> rebuild());
+        commands.addListener((ListChangeListener<RibbonCommand>) change -> rebuild());
     }
 
     /**
@@ -35,7 +35,7 @@ public class QuickAccessToolbar extends HBox {
      *
      * @return mutable command list
      */
-    public ObservableList<PapiflyCommand> getCommands() {
+    public ObservableList<RibbonCommand> getCommands() {
         return commands;
     }
 

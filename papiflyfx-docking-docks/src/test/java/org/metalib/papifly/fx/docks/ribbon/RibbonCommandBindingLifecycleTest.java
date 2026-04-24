@@ -1,7 +1,9 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
 import org.junit.jupiter.api.Test;
-import org.metalib.papifly.fx.api.ribbon.BoolState;
+import org.metalib.papifly.fx.api.ribbon.MutableRibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonStateSubscription;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +15,7 @@ class RibbonCommandBindingLifecycleTest {
 
     @Test
     void readOnlyBindingsCanBeDisposedAcrossRefreshCycles() {
-        CountingBoolState state = new CountingBoolState(false);
+        CountingBooleanState state = new CountingBooleanState(false);
 
         for (int cycle = 0; cycle < 25; cycle++) {
             JavaFxCommandBindings.ReadOnlyBinding binding = JavaFxCommandBindings.readOnly(state);
@@ -26,7 +28,7 @@ class RibbonCommandBindingLifecycleTest {
 
     @Test
     void bidirectionalBindingsCanBeDisposedAcrossRefreshCycles() {
-        CountingBoolState state = new CountingBoolState(false);
+        CountingBooleanState state = new CountingBooleanState(false);
 
         for (int cycle = 0; cycle < 25; cycle++) {
             JavaFxCommandBindings.BidirectionalBinding binding = JavaFxCommandBindings.bidirectional(state);
@@ -42,11 +44,11 @@ class RibbonCommandBindingLifecycleTest {
         }
     }
 
-    private static final class CountingBoolState implements BoolState {
+    private static final class CountingBooleanState implements MutableRibbonBooleanState {
         private final List<Listener> listeners = new ArrayList<>();
         private boolean value;
 
-        private CountingBoolState(boolean value) {
+        private CountingBooleanState(boolean value) {
             this.value = value;
         }
 
@@ -66,15 +68,11 @@ class RibbonCommandBindingLifecycleTest {
         }
 
         @Override
-        public void addListener(Listener listener) {
+        public RibbonStateSubscription subscribe(RibbonBooleanState.Listener listener) {
             if (!listeners.contains(listener)) {
                 listeners.add(listener);
             }
-        }
-
-        @Override
-        public void removeListener(Listener listener) {
-            listeners.remove(listener);
+            return () -> listeners.remove(listener);
         }
 
         int listenersSize() {

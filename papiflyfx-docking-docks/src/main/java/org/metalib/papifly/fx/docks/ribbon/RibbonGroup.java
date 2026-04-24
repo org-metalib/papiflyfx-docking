@@ -14,7 +14,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonControlSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
@@ -197,7 +197,7 @@ public class RibbonGroup extends VBox {
         return true;
     }
 
-    private void configureLauncher(PapiflyCommand launcher) {
+    private void configureLauncher(RibbonCommand launcher) {
         JavaFxCommandBindings.disposeSubscriptions(launcherButton);
         launcherButton.disableProperty().unbind();
         if (launcher == null) {
@@ -457,7 +457,7 @@ public class RibbonGroup extends VBox {
         return true;
     }
 
-    private static CommandSignature commandSignature(PapiflyCommand command) {
+    private static CommandSignature commandSignature(RibbonCommand command) {
         if (command == null) {
             return null;
         }
@@ -483,38 +483,14 @@ public class RibbonGroup extends VBox {
             if (control == null) {
                 return null;
             }
-            return switch (control) {
-                case RibbonButtonSpec button -> new ControlSignature(
-                    button.id(),
-                    RibbonButtonSpec.class.getSimpleName(),
-                    commandSignature(button.command()),
-                    List.of()
-                );
-                case RibbonToggleSpec toggle -> new ControlSignature(
-                    toggle.id(),
-                    RibbonToggleSpec.class.getSimpleName(),
-                    commandSignature(toggle.command()),
-                    List.of()
-                );
-                case RibbonSplitButtonSpec splitButton -> new ControlSignature(
-                    splitButton.id(),
-                    RibbonSplitButtonSpec.class.getSimpleName(),
-                    commandSignature(splitButton.primaryCommand()),
-                    splitButton.secondaryCommands().stream().map(PapiflyCommand::id).toList()
-                );
-                case RibbonMenuSpec menu -> new ControlSignature(
-                    menu.id(),
-                    RibbonMenuSpec.class.getSimpleName(),
-                    new CommandSignature(
-                        menu.id(),
-                        menu.label(),
-                        menu.tooltip(),
-                        menu.smallIcon() == null ? null : menu.smallIcon().resourcePath(),
-                        menu.largeIcon() == null ? null : menu.largeIcon().resourcePath()
-                    ),
-                    menu.items().stream().map(PapiflyCommand::id).toList()
-                );
-            };
+            return RibbonControlStrategies.renderPlan(control)
+                .map(plan -> new ControlSignature(
+                    plan.id(),
+                    plan.kind().name(),
+                    commandSignature(plan.primaryCommand()),
+                    plan.itemCommands().stream().map(RibbonCommand::id).toList()
+                ))
+                .orElse(null);
         }
     }
 

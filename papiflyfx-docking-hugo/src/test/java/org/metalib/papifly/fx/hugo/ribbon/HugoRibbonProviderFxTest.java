@@ -4,7 +4,8 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes;
 import org.metalib.papifly.fx.docks.ribbon.Ribbon;
@@ -53,7 +54,7 @@ class HugoRibbonProviderFxTest {
         settle();
 
         assertTrue(FxTestUtil.callFx(() -> ribbonManager.hasTab("hugo-editor")));
-        PapiflyCommand frontMatter = command("hugo.ribbon.editor.front-matter");
+        RibbonCommand frontMatter = command("hugo.ribbon.editor.front-matter");
         assertTrue(frontMatter.enabled().get());
 
         FxTestUtil.runFx(frontMatter::execute);
@@ -77,7 +78,7 @@ class HugoRibbonProviderFxTest {
             ribbonManager.getCommandRegistry().contains("hugo.ribbon.editor.front-matter")));
     }
 
-    private PapiflyCommand command(String id) {
+    private RibbonCommand command(String id) {
         return FxTestUtil.callFx(() -> ribbonManager.getCommandRegistry().find(id).orElseThrow());
     }
 

@@ -9,7 +9,7 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.docks.ribbon.RibbonDockHost;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.samples.SamplesRuntimeSupport;
@@ -59,7 +59,7 @@ class HugoRibbonSampleFxTest {
     @Test
     void serverCommandUpdatesSampleStatus() {
         runFx(() -> {
-            PapiflyCommand command = host.getRibbonManager()
+            RibbonCommand command = host.getRibbonManager()
                 .getCommandRegistry()
                 .find("hugo.ribbon.development.server")
                 .orElseThrow();

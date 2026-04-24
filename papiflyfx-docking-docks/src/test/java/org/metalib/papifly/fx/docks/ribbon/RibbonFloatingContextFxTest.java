@@ -7,8 +7,9 @@ import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.MutableRibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonAttributeContributor;
 import org.metalib.papifly.fx.api.ribbon.RibbonAttributeKey;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
@@ -102,7 +103,7 @@ class RibbonFloatingContextFxTest {
             .toList());
         assertTrue(tabIds.contains("floating-tools"));
 
-        PapiflyCommand command = FxTestUtil.callFx(() ->
+        RibbonCommand command = FxTestUtil.callFx(() ->
             ribbonManager.getCommandRegistry().find(FLOATING_COMMAND_ID).orElseThrow());
         assertTrue(command.enabled().get());
     }
@@ -181,7 +182,7 @@ class RibbonFloatingContextFxTest {
                         0,
                         0,
                         null,
-                        List.of(new RibbonButtonSpec(PapiflyCommand.of("phase2.ribbon.home", "Home", () -> {
+                        List.of(new RibbonButtonSpec(RibbonCommand.of("phase2.ribbon.home", "Home", () -> {
                         })))
                     ))
                 ),
@@ -198,14 +199,13 @@ class RibbonFloatingContextFxTest {
                         0,
                         0,
                         null,
-                        List.of(new RibbonButtonSpec(new PapiflyCommand(
+                        List.of(new RibbonButtonSpec(RibbonCommand.of(
                             FLOATING_COMMAND_ID,
                             "Act",
                             "Act on floating content",
                             null,
                             null,
-                            new MutableBoolState(actions.map(FloatingActions::canAct).orElse(false)),
-                            null,
+                            RibbonBooleanState.mutable(actions.map(FloatingActions::canAct).orElse(false)),
                             () -> actions.ifPresent(FloatingActions::act)
                         )))
                     ))

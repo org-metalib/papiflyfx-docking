@@ -2,7 +2,8 @@ package org.metalib.papifly.fx.hugo.ribbon;
 
 import javafx.scene.layout.StackPane;
 import org.junit.jupiter.api.Test;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes;
@@ -198,7 +199,7 @@ class HugoRibbonProviderTest {
             .filter(tab -> tab.id().equals("hugo"))
             .findFirst()
             .orElseThrow();
-        PapiflyCommand build = command(hugoTab, "hugo.ribbon.build.site");
+        RibbonCommand build = command(hugoTab, "hugo.ribbon.build.site");
         assertTrue(build.enabled().get());
 
         build.execute();
@@ -216,15 +217,15 @@ class HugoRibbonProviderTest {
         return visibleTabs(provider, context).stream().anyMatch(tab -> tab.id().equals("hugo-editor"));
     }
 
-    private static PapiflyCommand command(RibbonTabSpec tab, String id) {
+    private static RibbonCommand command(RibbonTabSpec tab, String id) {
         return commands(tab).stream()
             .filter(command -> command.id().equals(id))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Missing command: " + id));
     }
 
-    private static List<PapiflyCommand> commands(RibbonTabSpec tab) {
-        List<PapiflyCommand> commands = new ArrayList<>();
+    private static List<RibbonCommand> commands(RibbonTabSpec tab) {
+        List<RibbonCommand> commands = new ArrayList<>();
         for (RibbonGroupSpec group : tab.groups()) {
             for (RibbonControlSpec control : group.controls()) {
                 switch (control) {
@@ -235,6 +236,8 @@ class HugoRibbonProviderTest {
                         commands.addAll(splitButton.secondaryCommands());
                     }
                     case RibbonMenuSpec menu -> commands.addAll(menu.items());
+                    default -> {
+                    }
                 }
             }
         }

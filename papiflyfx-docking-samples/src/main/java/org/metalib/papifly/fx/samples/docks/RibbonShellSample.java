@@ -5,7 +5,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.docks.DockManager;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
@@ -52,9 +52,9 @@ public class RibbonShellSample implements SampleScene {
         dockManager.setRoot(dockManager.createHorizontalSplit(editors, sidePanel, 0.68));
 
         RibbonManager ribbonManager = new RibbonManager();
-        ribbonManager.addQuickAccessCommand(PapiflyCommand.of("sample.save", "Save", () -> {}));
-        ribbonManager.addQuickAccessCommand(PapiflyCommand.of("sample.undo", "Undo", () -> {}));
-        ribbonManager.addQuickAccessCommand(PapiflyCommand.of("sample.redo", "Redo", () -> {}));
+        ribbonManager.addQuickAccessCommand(RibbonCommand.of("sample.save", "Save", () -> {}));
+        ribbonManager.addQuickAccessCommand(RibbonCommand.of("sample.undo", "Undo", () -> {}));
+        ribbonManager.addQuickAccessCommand(RibbonCommand.of("sample.redo", "Redo", () -> {}));
 
         RibbonDockHost host = new RibbonDockHost(dockManager, ribbonManager, new Ribbon());
         host.setMinSize(0, 0);

@@ -19,7 +19,7 @@ public record RibbonMenuSpec(
     String tooltip,
     RibbonIconHandle smallIcon,
     RibbonIconHandle largeIcon,
-    List<PapiflyCommand> items
+    List<RibbonCommand> items
 ) implements RibbonControlSpec {
 
     /**
@@ -40,5 +40,10 @@ public record RibbonMenuSpec(
         if (items.isEmpty()) {
             throw new IllegalArgumentException("items must not be empty");
         }
+    }
+
+    @Override
+    public RibbonControlKind kind() {
+        return RibbonControlKind.MENU;
     }
 }

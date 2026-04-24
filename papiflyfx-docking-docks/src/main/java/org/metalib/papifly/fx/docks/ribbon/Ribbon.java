@@ -15,7 +15,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 import org.metalib.papifly.fx.docking.api.Theme;
@@ -61,7 +61,7 @@ public class Ribbon extends VBox {
     private final Map<String, RibbonGroup> groupCache = new LinkedHashMap<>();
 
     private final ListChangeListener<RibbonTabSpec> tabsListener = change -> refreshTabs();
-    private final ListChangeListener<PapiflyCommand> quickAccessListener = change -> refreshQuickAccessToolbar();
+    private final ListChangeListener<RibbonCommand> quickAccessListener = change -> refreshQuickAccessToolbar();
 
     private RibbonManager manager;
     private boolean adaptiveLayoutRequested;

@@ -12,7 +12,9 @@ import javafx.scene.control.ButtonBase;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ToggleButton;
-import org.metalib.papifly.fx.api.ribbon.BoolState;
+import org.metalib.papifly.fx.api.ribbon.MutableRibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonBooleanState;
+import org.metalib.papifly.fx.api.ribbon.RibbonStateSubscription;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,18 +22,18 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * JavaFX adapters for {@link BoolState} that let UI-neutral command state
+ * JavaFX adapters for {@link RibbonBooleanState} that let UI-neutral command state
  * participate in JavaFX bindings without exposing JavaFX types in the shared
  * ribbon API.
  *
  * <p>Two flavors are provided:</p>
  * <ul>
- *   <li>{@link #readOnly(BoolState)} — a disposable wrapper around a
+ *   <li>{@link #readOnly(RibbonBooleanState)} — a disposable wrapper around a
  *   {@link ReadOnlyBooleanProperty} that tracks the underlying state and is the
  *   right fit for things like {@code disableProperty().bind(...)}.</li>
- *   <li>{@link #bidirectional(BoolState)} — a disposable wrapper around a
+ *   <li>{@link #bidirectional(MutableRibbonBooleanState)} — a disposable wrapper around a
  *   {@link BooleanProperty} that propagates UI-driven changes back into the
- *   {@link BoolState}, suited for toggle controls.</li>
+ *   {@link MutableRibbonBooleanState}, suited for toggle controls.</li>
  * </ul>
  *
  * <p>Listeners are dispatched on the JavaFX application thread so the
@@ -54,7 +56,7 @@ final class JavaFxCommandBindings {
      * @param state UI-neutral state
      * @return disposable JavaFX property tracking the state
      */
-    static ReadOnlyBinding readOnly(BoolState state) {
+    static ReadOnlyBinding readOnly(RibbonBooleanState state) {
         return new ReadOnlyBinding(state);
     }
 
@@ -66,11 +68,11 @@ final class JavaFxCommandBindings {
      * @param state UI-neutral state
      * @return disposable JavaFX property bidirectionally bound to the state
      */
-    static BidirectionalBinding bidirectional(BoolState state) {
+    static BidirectionalBinding bidirectional(MutableRibbonBooleanState state) {
         return new BidirectionalBinding(state);
     }
 
-    static void bindDisabledToNot(ButtonBase buttonBase, BoolState state) {
+    static void bindDisabledToNot(ButtonBase buttonBase, RibbonBooleanState state) {
         Objects.requireNonNull(buttonBase, "buttonBase");
         ReadOnlyBinding binding = readOnly(state);
         buttonBase.disableProperty().bind(binding.property().not());
@@ -80,7 +82,7 @@ final class JavaFxCommandBindings {
         });
     }
 
-    static void bindDisabledToNot(MenuItem menuItem, BoolState state) {
+    static void bindDisabledToNot(MenuItem menuItem, RibbonBooleanState state) {
         Objects.requireNonNull(menuItem, "menuItem");
         ReadOnlyBinding binding = readOnly(state);
         menuItem.disableProperty().bind(binding.property().not());
@@ -90,7 +92,7 @@ final class JavaFxCommandBindings {
         });
     }
 
-    static void bindBidirectional(ToggleButton toggleButton, BoolState state) {
+    static void bindBidirectional(ToggleButton toggleButton, MutableRibbonBooleanState state) {
         Objects.requireNonNull(toggleButton, "toggleButton");
         BidirectionalBinding binding = bidirectional(state);
         toggleButton.selectedProperty().bindBidirectional(binding.property());
@@ -161,20 +163,19 @@ final class JavaFxCommandBindings {
     }
 
     static final class ReadOnlyBinding implements Subscription {
-        private final BoolState state;
+        private final RibbonBooleanState state;
         private final ReadOnlyBooleanWrapper wrapper;
-        private final BoolState.Listener listener;
+        private final RibbonStateSubscription subscription;
         private boolean closed;
 
-        private ReadOnlyBinding(BoolState state) {
+        private ReadOnlyBinding(RibbonBooleanState state) {
             this.state = Objects.requireNonNull(state, "state");
             this.wrapper = new ReadOnlyBooleanWrapper(state.get());
-            this.listener = (oldValue, newValue) -> runOnFx(() -> {
+            this.subscription = this.state.subscribe((oldValue, newValue) -> runOnFx(() -> {
                 if (!closed) {
                     wrapper.set(newValue);
                 }
-            });
-            this.state.addListener(listener);
+            }));
         }
 
         ReadOnlyBooleanProperty property() {
@@ -187,22 +188,22 @@ final class JavaFxCommandBindings {
                 return;
             }
             closed = true;
-            state.removeListener(listener);
+            subscription.close();
         }
     }
 
     static final class BidirectionalBinding implements Subscription {
-        private final BoolState state;
+        private final MutableRibbonBooleanState state;
         private final SimpleBooleanProperty property;
         private final boolean[] suppress = new boolean[1];
-        private final BoolState.Listener stateListener;
+        private final RibbonStateSubscription stateSubscription;
         private final ChangeListener<Boolean> propertyListener;
         private boolean closed;
 
-        private BidirectionalBinding(BoolState state) {
+        private BidirectionalBinding(MutableRibbonBooleanState state) {
             this.state = Objects.requireNonNull(state, "state");
             this.property = new SimpleBooleanProperty(state.get());
-            this.stateListener = (oldValue, newValue) -> runOnFx(() -> {
+            this.stateSubscription = this.state.subscribe((oldValue, newValue) -> runOnFx(() -> {
                 if (closed || suppress[0] || property.get() == newValue) {
                     return;
                 }
@@ -212,7 +213,7 @@ final class JavaFxCommandBindings {
                 } finally {
                     suppress[0] = false;
                 }
-            });
+            }));
             this.propertyListener = (obs, oldValue, newValue) -> {
                 boolean resolvedNewValue = Boolean.TRUE.equals(newValue);
                 if (closed || suppress[0] || state.get() == resolvedNewValue) {
@@ -225,7 +226,6 @@ final class JavaFxCommandBindings {
                     suppress[0] = false;
                 }
             };
-            this.state.addListener(stateListener);
             this.property.addListener(propertyListener);
         }
 
@@ -239,7 +239,7 @@ final class JavaFxCommandBindings {
                 return;
             }
             closed = true;
-            state.removeListener(stateListener);
+            stateSubscription.close();
             property.removeListener(propertyListener);
         }
     }

@@ -46,7 +46,7 @@ public record RibbonGroupSpec(
     String label,
     int order,
     int collapseOrder,
-    PapiflyCommand dialogLauncher,
+    RibbonCommand dialogLauncher,
     List<RibbonControlSpec> controls
 ) {
 

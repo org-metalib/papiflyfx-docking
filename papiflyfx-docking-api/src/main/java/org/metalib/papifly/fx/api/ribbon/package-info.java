@@ -10,12 +10,16 @@
  *
  * <p>Core contracts:</p>
  * <ul>
- *   <li>{@link org.metalib.papifly.fx.api.ribbon.PapiflyCommand}: stable
- *   command metadata, observable {@link org.metalib.papifly.fx.api.ribbon.BoolState}
- *   for enabled/selected, and an execution callback. UI-neutral by design.</li>
- *   <li>{@link org.metalib.papifly.fx.api.ribbon.BoolState} and
- *   {@link org.metalib.papifly.fx.api.ribbon.MutableBoolState}: UI-neutral
- *   command state contract that runtime hosts adapt to their toolkit.</li>
+ *   <li>{@link org.metalib.papifly.fx.api.ribbon.RibbonCommand}: stable
+ *   action-command metadata, observable enabled state, and an execution
+ *   callback. UI-neutral by design.</li>
+ *   <li>{@link org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand}: a
+ *   toggle-capable command contract that adds selected state only where a
+ *   toggle control needs it.</li>
+ *   <li>{@link org.metalib.papifly.fx.api.ribbon.RibbonBooleanState} and
+ *   {@link org.metalib.papifly.fx.api.ribbon.MutableRibbonBooleanState}:
+ *   UI-neutral command state contracts that runtime hosts adapt to their
+ *   toolkit through disposable subscriptions.</li>
  *   <li>{@link org.metalib.papifly.fx.api.ribbon.RibbonTabSpec}: tab-level
  *   contribution with visibility predicate support.</li>
  *   <li>{@link org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec}: grouped
@@ -35,11 +39,9 @@
  *   contextual metadata.</li>
  * </ul>
  *
- * <p><b>Ribbon 2 contract breaks:</b></p>
+ * <p><b>Ribbon contract breaks:</b></p>
  * <ul>
- *   <li>{@code PapiflyCommand} no longer exposes JavaFX
- *   {@code BooleanProperty}; it exposes {@code BoolState} fields named
- *   {@code enabled} and {@code selected}.</li>
+ *   <li>Ribbon 2 removed JavaFX {@code BooleanProperty} from command state.</li>
  *   <li>{@code RibbonGroupSpec.reductionPriority} has been renamed to
  *   {@code collapseOrder} with an explicit Javadoc-defined ordering rule.</li>
  *   <li>{@code RibbonContext} adds a {@code capabilities} component and a
@@ -49,6 +51,10 @@
  *   attribute.</li>
  *   <li>Ribbon 5 Phase 2 adds typed context metadata and explicit content-side
  *   contribution contracts without removing raw-string attribute access.</li>
+ *   <li>Ribbon 6 removes the deprecated {@code PapiflyCommand},
+ *   {@code BoolState}, and {@code MutableBoolState} bridge types. Providers use
+ *   {@code RibbonCommand}, {@code RibbonToggleCommand}, and
+ *   {@code RibbonBooleanState} directly.</li>
  * </ul>
  *
  * <p>Provider guidance:</p>

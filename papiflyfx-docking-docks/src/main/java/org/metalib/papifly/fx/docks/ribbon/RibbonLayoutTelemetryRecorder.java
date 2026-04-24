@@ -61,6 +61,16 @@ final class RibbonLayoutTelemetryRecorder implements RibbonLayoutTelemetry {
         events.add(new CommandIdCollisionEvent(commandId, retainedLabel, ignoredLabel));
     }
 
+    @Override
+    public void incompatibleCommandKind(String commandId, String message) {
+        events.add(new IncompatibleCommandKindEvent(commandId, message));
+    }
+
+    @Override
+    public void unknownControlKind(String controlId, String kind) {
+        events.add(new UnknownControlKindEvent(controlId, kind));
+    }
+
     List<Event> events() {
         return List.copyOf(events);
     }
@@ -132,6 +142,20 @@ final class RibbonLayoutTelemetryRecorder implements RibbonLayoutTelemetry {
             .toList();
     }
 
+    List<IncompatibleCommandKindEvent> incompatibleCommandKinds() {
+        return events.stream()
+            .filter(IncompatibleCommandKindEvent.class::isInstance)
+            .map(IncompatibleCommandKindEvent.class::cast)
+            .toList();
+    }
+
+    List<UnknownControlKindEvent> unknownControlKinds() {
+        return events.stream()
+            .filter(UnknownControlKindEvent.class::isInstance)
+            .map(UnknownControlKindEvent.class::cast)
+            .toList();
+    }
+
     sealed interface Event permits
         TabRebuildEvent,
         GroupRebuildEvent,
@@ -141,7 +165,9 @@ final class RibbonLayoutTelemetryRecorder implements RibbonLayoutTelemetry {
         NodeCacheMissEvent,
         ProviderFailureEvent,
         TabIdCollisionEvent,
-        CommandIdCollisionEvent {
+        CommandIdCollisionEvent,
+        IncompatibleCommandKindEvent,
+        UnknownControlKindEvent {
     }
 
     record TabRebuildEvent(String tabId, RebuildReason reason) implements Event {
@@ -175,5 +201,11 @@ final class RibbonLayoutTelemetryRecorder implements RibbonLayoutTelemetry {
     }
 
     record CommandIdCollisionEvent(String commandId, String retainedLabel, String ignoredLabel) implements Event {
+    }
+
+    record IncompatibleCommandKindEvent(String commandId, String message) implements Event {
+    }
+
+    record UnknownControlKindEvent(String controlId, String kind) implements Event {
     }
 }

@@ -10,7 +10,7 @@ import java.util.Objects;
  *
  * @param command command rendered by the toggle button
  */
-public record RibbonToggleSpec(PapiflyCommand command) implements RibbonControlSpec {
+public record RibbonToggleSpec(RibbonToggleCommand command) implements RibbonControlSpec {
 
     /**
      * Creates a toggle descriptor.
@@ -24,5 +24,10 @@ public record RibbonToggleSpec(PapiflyCommand command) implements RibbonControlS
     @Override
     public String id() {
         return command.id();
+    }
+
+    @Override
+    public RibbonControlKind kind() {
+        return RibbonControlKind.TOGGLE;
     }
 }

@@ -11,8 +11,8 @@ import java.util.Objects;
  * @param secondaryCommands commands shown in the split dropdown
  */
 public record RibbonSplitButtonSpec(
-    PapiflyCommand primaryCommand,
-    List<PapiflyCommand> secondaryCommands
+    RibbonCommand primaryCommand,
+    List<RibbonCommand> secondaryCommands
 ) implements RibbonControlSpec {
 
     /**
@@ -32,5 +32,10 @@ public record RibbonSplitButtonSpec(
     @Override
     public String id() {
         return primaryCommand.id();
+    }
+
+    @Override
+    public RibbonControlKind kind() {
+        return RibbonControlKind.SPLIT_BUTTON;
     }
 }

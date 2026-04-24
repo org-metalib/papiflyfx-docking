@@ -7,7 +7,7 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
@@ -117,7 +117,7 @@ class RibbonContextResolutionFxTest {
                         0,
                         0,
                         null,
-                        List.of(new RibbonButtonSpec(PapiflyCommand.of("copy", "Copy", () -> {})))
+                        List.of(new RibbonButtonSpec(RibbonCommand.of("copy", "Copy", () -> {})))
                     ))
                 ),
                 new RibbonTabSpec(
@@ -132,7 +132,7 @@ class RibbonContextResolutionFxTest {
                         0,
                         0,
                         null,
-                        List.of(new RibbonButtonSpec(PapiflyCommand.of("front-matter", "Front Matter", () -> {})))
+                        List.of(new RibbonButtonSpec(RibbonCommand.of("front-matter", "Front Matter", () -> {})))
                     ))
                 )
             );

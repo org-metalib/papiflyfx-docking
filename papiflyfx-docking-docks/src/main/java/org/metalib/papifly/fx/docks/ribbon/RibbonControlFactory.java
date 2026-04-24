@@ -14,7 +14,7 @@ import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.StackPane;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonControlSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
@@ -22,6 +22,7 @@ import org.metalib.papifly.fx.api.ribbon.RibbonIconHandle;
 import org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonSplitButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand;
 
 import java.util.List;
 import java.util.Locale;
@@ -44,15 +45,11 @@ final class RibbonControlFactory {
     }
 
     static Node createGroupControl(RibbonControlSpec spec, ClassLoader classLoader, RibbonGroupSizeMode mode) {
-        return switch (spec) {
-            case RibbonButtonSpec button -> createButton(button.command(), classLoader, mode);
-            case RibbonToggleSpec toggle -> createToggleButton(toggle.command(), classLoader, mode);
-            case RibbonSplitButtonSpec splitButton -> createSplitButton(splitButton, classLoader, mode);
-            case RibbonMenuSpec menu -> createMenuButton(menu, classLoader, mode);
-        };
+        return RibbonControlStrategies.createGroupControl(spec, classLoader, mode)
+            .orElseGet(() -> new Label());
     }
 
-    static Button createQuickAccessButton(PapiflyCommand command, ClassLoader classLoader) {
+    static Button createQuickAccessButton(RibbonCommand command, ClassLoader classLoader) {
         Button button = new Button();
         button.getStyleClass().add("pf-ribbon-qat-button");
         configureCommand(button, command, true, false, classLoader);
@@ -96,7 +93,7 @@ final class RibbonControlFactory {
         return CONTROL_GAP;
     }
 
-    private static Button createButton(PapiflyCommand command, ClassLoader classLoader, RibbonGroupSizeMode mode) {
+    static Button createButton(RibbonCommand command, ClassLoader classLoader, RibbonGroupSizeMode mode) {
         Button button = new Button();
         button.getStyleClass().add("pf-ribbon-command-button");
         configureGroupCommand(button, command, classLoader, mode);
@@ -104,7 +101,7 @@ final class RibbonControlFactory {
         return button;
     }
 
-    private static ToggleButton createToggleButton(PapiflyCommand command, ClassLoader classLoader, RibbonGroupSizeMode mode) {
+    static ToggleButton createToggleButton(RibbonToggleCommand command, ClassLoader classLoader, RibbonGroupSizeMode mode) {
         ToggleButton toggle = new ToggleButton();
         toggle.getStyleClass().add("pf-ribbon-toggle-button");
         configureGroupCommand(toggle, command, classLoader, mode);
@@ -113,7 +110,7 @@ final class RibbonControlFactory {
         return toggle;
     }
 
-    private static SplitMenuButton createSplitButton(RibbonSplitButtonSpec spec, ClassLoader classLoader, RibbonGroupSizeMode mode) {
+    static SplitMenuButton createSplitButton(RibbonSplitButtonSpec spec, ClassLoader classLoader, RibbonGroupSizeMode mode) {
         SplitMenuButton splitButton = new SplitMenuButton();
         splitButton.getStyleClass().add("pf-ribbon-split-button");
         configureGroupCommand(splitButton, spec.primaryCommand(), classLoader, mode);
@@ -122,7 +119,7 @@ final class RibbonControlFactory {
         return splitButton;
     }
 
-    private static MenuButton createMenuButton(RibbonMenuSpec spec, ClassLoader classLoader, RibbonGroupSizeMode mode) {
+    static MenuButton createMenuButton(RibbonMenuSpec spec, ClassLoader classLoader, RibbonGroupSizeMode mode) {
         MenuButton menuButton = new MenuButton();
         menuButton.getStyleClass().add("pf-ribbon-menu-button");
         configureGroupMetadata(
@@ -138,13 +135,13 @@ final class RibbonControlFactory {
         return menuButton;
     }
 
-    private static List<MenuItem> createMenuItems(List<PapiflyCommand> commands, ClassLoader classLoader) {
+    private static List<MenuItem> createMenuItems(List<RibbonCommand> commands, ClassLoader classLoader) {
         return commands.stream()
             .map(command -> createMenuItem(command, classLoader))
             .toList();
     }
 
-    private static MenuItem createMenuItem(PapiflyCommand command, ClassLoader classLoader) {
+    private static MenuItem createMenuItem(RibbonCommand command, ClassLoader classLoader) {
         MenuItem item = new MenuItem(command.label());
         Node graphic = createGraphic(command.label(), command.smallIcon(), command.largeIcon(), true, false, classLoader);
         item.setGraphic(graphic);
@@ -155,7 +152,7 @@ final class RibbonControlFactory {
 
     private static void configureGroupCommand(
         Labeled labeled,
-        PapiflyCommand command,
+        RibbonCommand command,
         ClassLoader classLoader,
         RibbonGroupSizeMode mode
     ) {
@@ -214,7 +211,7 @@ final class RibbonControlFactory {
 
     private static void configureCommand(
         Labeled labeled,
-        PapiflyCommand command,
+        RibbonCommand command,
         boolean compact,
         boolean allowFallbackGlyph,
         ClassLoader classLoader
@@ -341,15 +338,18 @@ final class RibbonControlFactory {
     }
 
     private static RibbonPresentation presentationFor(RibbonControlSpec control) {
-        return switch (control) {
-            case RibbonButtonSpec button -> presentationFor(button.command());
-            case RibbonToggleSpec toggle -> presentationFor(toggle.command());
-            case RibbonSplitButtonSpec splitButton -> presentationFor(splitButton.primaryCommand());
-            case RibbonMenuSpec menu -> new RibbonPresentation(menu.label(), menu.tooltip(), menu.smallIcon(), menu.largeIcon());
-        };
+        return RibbonControlStrategies.renderPlan(control)
+            .map(RibbonControlStrategies.RibbonControlRenderPlan::presentation)
+            .map(presentation -> new RibbonPresentation(
+                presentation.label(),
+                presentation.tooltip(),
+                presentation.smallIcon(),
+                presentation.largeIcon()
+            ))
+            .orElseGet(() -> new RibbonPresentation(null, null, null, null));
     }
 
-    private static RibbonPresentation presentationFor(PapiflyCommand command) {
+    private static RibbonPresentation presentationFor(RibbonCommand command) {
         return new RibbonPresentation(command.label(), command.tooltip(), command.smallIcon(), command.largeIcon());
     }
 

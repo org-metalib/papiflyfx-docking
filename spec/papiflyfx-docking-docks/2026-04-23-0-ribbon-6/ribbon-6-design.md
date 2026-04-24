@@ -93,7 +93,7 @@ The concrete type names should be finalized in the Ribbon 6 plan. Candidate name
 - Source compatibility break: providers constructing `PapiflyCommand` for toggle controls must migrate to the toggle-capable contract.
 - Source compatibility break: code that reads `command.selected()` from a push command must move that state to a toggle command or feature-local state.
 - Runtime behavior should not change for existing command ids after migration: id-based canonicalization, first metadata, refreshed enabled state, refreshed selected state for toggles, and refreshed action dispatch remain required.
-- A compatibility adapter can reduce churn: Ribbon 6 may keep `PapiflyCommand` as a deprecated bridge that implements the toggle-capable contract for one release, but the new public specs should document the separated contracts.
+- Ribbon 6 removes `PapiflyCommand`; providers migrate directly to `RibbonCommand` for actions and `RibbonToggleCommand` for toggles.
 - Tests must cover action-only commands not allocating or binding selected state, toggle commands preserving selected refresh semantics, and duplicate ids emitted with incompatible command kinds.
 
 ### Busy/Running State
@@ -151,7 +151,7 @@ public interface MutableRibbonBooleanState extends RibbonBooleanState {
 
 - Source compatibility break: `BoolState#addListener` and `removeListener` call sites migrate to `subscribe(...).close()`.
 - Source compatibility break: command records should accept read-only state for provider output; mutation belongs to `MutableRibbonBooleanState` or provider-owned state holders.
-- Existing `MutableBoolState` can be replaced or kept as a deprecated adapter for one release.
+- `MutableBoolState` is removed; providers use `MutableRibbonBooleanState` from `RibbonBooleanState.mutable(...)`.
 - JavaFX integration stays in `papiflyfx-docking-docks`: adapters read the initial value with `get()`, subscribe, update JavaFX properties on the FX thread, and close subscriptions when nodes/menu items are disposed.
 - Tests must retain the listener-count invariant from Phase 1: repeated refreshes, popup rebuilds, QAT rebuilds, and control-cache eviction must not increase retained subscriptions for stable commands.
 

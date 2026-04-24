@@ -9,7 +9,7 @@ import java.util.List;
  * the returned tab descriptors into the active ribbon model. Contributing
  * modules register provider implementations in
  * {@code META-INF/services/org.metalib.papifly.fx.api.ribbon.RibbonProvider}.
- * Keep {@link RibbonTabSpec#id()} and {@link PapiflyCommand#id()} values
+ * Keep {@link RibbonTabSpec#id()} and {@link RibbonCommand#id()} values
  * stable because hosts may persist selected tabs and Quick Access Toolbar
  * command sets by identifier.</p>
  *
@@ -18,7 +18,7 @@ import java.util.List;
  * wins, contextual styling is ORed across contributions, and runtimes should
  * emit diagnostics for conflicting label/order metadata. Command identifiers
  * follow the same first-metadata-wins rule for labels, icons, and tooltips
- * while runtime {@link BoolState} values and action dispatch are refreshed
+ * while runtime {@link RibbonBooleanState} values and action dispatch are refreshed
  * from the latest provider emission. Prefer a dotted namespace such as
  * {@code <module>.ribbon.<action>} for command ids.</p>
  *

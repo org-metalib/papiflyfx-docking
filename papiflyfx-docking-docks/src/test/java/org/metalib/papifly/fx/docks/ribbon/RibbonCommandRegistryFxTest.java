@@ -4,7 +4,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
@@ -56,7 +56,7 @@ class RibbonCommandRegistryFxTest {
 
     @Test
     void commandIdentityIsStableAcrossContextRefreshes() {
-        PapiflyCommand originalHome = FxTestUtil.callFx(
+        RibbonCommand originalHome = FxTestUtil.callFx(
             () -> ribbonManager.getCommandRegistry().find(CMD_HOME_SAVE).orElseThrow());
 
         FxTestUtil.runFx(() -> ribbonManager.setContext(
@@ -65,7 +65,7 @@ class RibbonCommandRegistryFxTest {
         FxTestUtil.runFx(() -> ribbonManager.setContext(RibbonContext.empty()));
         settleFx();
 
-        PapiflyCommand afterRefreshes = FxTestUtil.callFx(
+        RibbonCommand afterRefreshes = FxTestUtil.callFx(
             () -> ribbonManager.getCommandRegistry().find(CMD_HOME_SAVE).orElseThrow());
         assertSame(originalHome, afterRefreshes,
             "command instance must be stable across context-driven refreshes");
@@ -101,7 +101,7 @@ class RibbonCommandRegistryFxTest {
             FxTestUtil.callFx(() -> List.copyOf(ribbonManager.getQuickAccessCommandIds())));
         assertEquals(List.of(CMD_HOME_SAVE),
             FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream()
-                .map(PapiflyCommand::id).toList()));
+                .map(RibbonCommand::id).toList()));
 
         // When the contextual tab becomes visible again, the contextual
         // command resolves and the derived view updates automatically.
@@ -110,7 +110,7 @@ class RibbonCommandRegistryFxTest {
         settleFx();
         assertEquals(List.of(CMD_HOME_SAVE, CMD_MD_PREVIEW),
             FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream()
-                .map(PapiflyCommand::id).toList()));
+                .map(RibbonCommand::id).toList()));
     }
 
     @Test
@@ -170,7 +170,7 @@ class RibbonCommandRegistryFxTest {
                     0,
                     0,
                     null,
-                    List.of(new RibbonButtonSpec(PapiflyCommand.of(CMD_HOME_SAVE, "Save", () -> {
+                    List.of(new RibbonButtonSpec(RibbonCommand.of(CMD_HOME_SAVE, "Save", () -> {
                     })))
                 ))
             );
@@ -187,7 +187,7 @@ class RibbonCommandRegistryFxTest {
                     0,
                     0,
                     null,
-                    List.of(new RibbonButtonSpec(PapiflyCommand.of(CMD_MD_PREVIEW, "Preview", () -> {
+                    List.of(new RibbonButtonSpec(RibbonCommand.of(CMD_MD_PREVIEW, "Preview", () -> {
                     })))
                 ))
             );

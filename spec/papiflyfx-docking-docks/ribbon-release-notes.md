@@ -1,6 +1,6 @@
 # Ribbon Release And Migration Notes
 
-**Status:** current for Ribbon 5 Phase 5
+**Status:** current for Ribbon 6 compatibility implementation
 **Scope:** spec-level release notes because the repository does not currently have a project changelog
 
 ## Ribbon 2 Breaking Change Context
@@ -51,15 +51,30 @@ Ribbon 5 closed the review loop with non-breaking runtime, provider, test, and d
 
 ## Ribbon 6 Notes
 
-Ribbon 6 is design-only as of Ribbon 5 closure. The current design candidates include:
+Ribbon 6 implements the planned compatibility break from `2026-04-23-0-ribbon-6/plan.md`:
 
-- action/toggle command contract split;
-- subscription-returning boolean state;
-- control render-plan/strategy extensibility;
-- `RibbonManager` decomposition;
-- forward-compatible customization/session policy under `extensions.ribbon`.
+- action-only commands use `RibbonCommand`;
+- toggle-capable commands use `RibbonToggleCommand`;
+- action-only commands no longer expose selected state;
+- boolean state uses `RibbonBooleanState#subscribe(...)` and `RibbonStateSubscription`;
+- the deprecated `PapiflyCommand`, `BoolState`, and `MutableBoolState` bridge types are removed;
+- built-in controls expose `RibbonControlSpec#kind()` and are dispatched through package-private runtime strategies/render plans;
+- unknown control kinds are diagnosed and skipped;
+- `QuickAccessState` owns id-first QAT state behind the stable `RibbonManager` facade.
 
-Do not implement or depend on Ribbon 6 API/session behavior until a separate Ribbon 6 implementation plan is approved.
+Source compatibility breaks:
+
+- Providers should replace `PapiflyCommand.of(...)` with `RibbonCommand.of(...)` for action-only controls.
+- Providers that constructed `PapiflyCommand` directly should use `RibbonCommand.of(...)` for actions or `RibbonToggleCommand.of(...)` for toggles.
+- Toggle controls must provide `RibbonToggleCommand`; passing an action-only `RibbonCommand` to `RibbonToggleSpec` no longer compiles.
+- Code that read `selected()` from a push/action command must move that state to a toggle command or provider-local state.
+- `BoolState#addListener` / `removeListener` call sites should migrate to `subscribe(...).close()`.
+
+Session compatibility:
+
+- Ribbon state remains under `extensions.ribbon`.
+- QAT persistence remains `quickAccessCommandIds`; command objects are not persisted.
+- Unknown ribbon fields are ignored on decode; malformed known fields remain strict and isolated to ribbon extension restore.
 
 ## Deferred Work
 
@@ -72,4 +87,4 @@ Do not implement or depend on Ribbon 6 API/session behavior until a separate Rib
 | Keytips | @ui-ux-designer with @core-architect | Needs focus scope and accessibility design. |
 | Galleries | @ui-ux-designer with @core-architect and @feature-dev | Needs item identity, keyboard behavior, layout budget, QAT, and customization policy. |
 | Customization UI/schema | @core-architect with @ui-ux-designer and @spec-steward | Requires schema versioning and unknown-field round-trip policy before implementation. |
-| Code/tree/media providers | @feature-dev | Future feature-module work; Ribbon 5 does not add production provider requirements for those modules. |
+| Code/tree/media providers | @feature-dev | Future feature-module work; Ribbon 6 does not add production provider requirements for those modules. |

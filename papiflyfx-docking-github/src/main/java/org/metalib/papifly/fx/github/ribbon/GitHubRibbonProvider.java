@@ -1,8 +1,8 @@
 package org.metalib.papifly.fx.github.ribbon;
 
-import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
-import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
+import org.metalib.papifly.fx.api.ribbon.RibbonBooleanState;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
+import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonContext;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonIconHandle;
@@ -113,7 +113,7 @@ public final class GitHubRibbonProvider implements RibbonProvider {
         );
     }
 
-    private static PapiflyCommand command(
+    private static RibbonCommand command(
         String id,
         String label,
         String tooltip,
@@ -124,14 +124,13 @@ public final class GitHubRibbonProvider implements RibbonProvider {
     ) {
         boolean enabled = actions.map(canRun::test).orElse(false);
         Runnable action = () -> actions.ifPresent(run);
-        return new PapiflyCommand(
+        return RibbonCommand.of(
             "github.ribbon." + id,
             label,
             tooltip,
             icon(octiconName),
             icon(octiconName),
-            new MutableBoolState(enabled),
-            null,
+            RibbonBooleanState.mutable(enabled),
             action
         );
     }
