@@ -16,12 +16,13 @@ import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.metalib.papifly.fx.docks.ribbon.RibbonTestSupport.provider;
+import static org.metalib.papifly.fx.docks.ribbon.RibbonTestSupport.simpleButtonTab;
 
 class RibbonManagerTest {
 
@@ -49,7 +50,7 @@ class RibbonManagerTest {
 
     @Test
     void mergesSharedTabsAndContextualVisibility() {
-        RibbonProvider homeProvider = new TestProvider("home-provider", 0, context -> List.of(
+        RibbonProvider homeProvider = provider("home-provider", 0, context -> List.of(
             new RibbonTabSpec(
                 "home",
                 "Home",
@@ -67,7 +68,7 @@ class RibbonManagerTest {
             )
         ));
 
-        RibbonProvider viewProvider = new TestProvider("view-provider", 10, context -> List.of(
+        RibbonProvider viewProvider = provider("view-provider", 10, context -> List.of(
             new RibbonTabSpec(
                 "home",
                 "Home",
@@ -126,7 +127,7 @@ class RibbonManagerTest {
         PapiflyCommand legacy = PapiflyCommand.of("legacy", "Legacy", () -> {
         });
 
-        RibbonProvider provider = new TestProvider("provider", 0, context -> List.of(
+        RibbonProvider provider = provider("provider", context -> List.of(
             new RibbonTabSpec(
                 "home",
                 "Home",
@@ -159,7 +160,7 @@ class RibbonManagerTest {
 
     @Test
     void commandRegistry_canonicalizesAcrossRefreshCycles() {
-        RibbonProvider provider = new TestProvider("provider", 0, context -> List.of(
+        RibbonProvider provider = provider("provider", context -> List.of(
             new RibbonTabSpec(
                 "home",
                 "Home",
@@ -195,7 +196,7 @@ class RibbonManagerTest {
 
     @Test
     void commandRegistry_refreshesProviderComputedCommandStateAcrossContexts() {
-        RibbonProvider provider = new TestProvider("provider", 0, context -> {
+        RibbonProvider provider = provider("provider", context -> {
             boolean enabled = context.activeContentTypeKeyOptional()
                 .map("ready"::equals)
                 .orElse(false);
@@ -238,7 +239,7 @@ class RibbonManagerTest {
 
     @Test
     void commandRegistry_prunesCommandsNoLongerReachable() {
-        RibbonProvider provider = new TestProvider("provider", 0, context -> {
+        RibbonProvider provider = provider("provider", context -> {
             boolean includeContextualTab = context.activeContentTypeKeyOptional()
                 .map("markdown"::equals)
                 .orElse(false);
@@ -321,7 +322,7 @@ class RibbonManagerTest {
         PapiflyCommand preview = PapiflyCommand.of("preview", "Preview", () -> {
         });
 
-        RibbonProvider provider = new TestProvider("provider", 0, context -> List.of(
+        RibbonProvider provider = provider("provider", context -> List.of(
             new RibbonTabSpec(
                 "home",
                 "Home",
@@ -352,7 +353,7 @@ class RibbonManagerTest {
 
     @Test
     void mergesSingleContributionWithoutDoubleCountingControls() {
-        RibbonProvider provider = new TestProvider("provider", 0, context -> List.of(
+        RibbonProvider provider = provider("provider", context -> List.of(
             new RibbonTabSpec(
                 "home",
                 "Home",
@@ -380,10 +381,10 @@ class RibbonManagerTest {
 
     @Test
     void providerFailureEmitsTelemetryAndKeepsHealthyProviderTabs() {
-        RibbonProvider broken = new TestProvider("broken-provider", 0, context -> {
+        RibbonProvider broken = provider("broken-provider", context -> {
             throw new IllegalStateException("boom");
         });
-        RibbonProvider healthy = new TestProvider("healthy-provider", 10, context -> List.of(simpleTab(
+        RibbonProvider healthy = provider("healthy-provider", 10, context -> List.of(simpleButtonTab(
             "home",
             "Home",
             "save",
@@ -403,13 +404,13 @@ class RibbonManagerTest {
 
     @Test
     void duplicateTabIdsEmitFirstWinsTelemetry() {
-        RibbonProvider first = new TestProvider("first", 0, context -> List.of(simpleTab(
+        RibbonProvider first = provider("first", context -> List.of(simpleButtonTab(
             "home",
             "Home",
             "save",
             "Save"
         )));
-        RibbonProvider second = new TestProvider("second", 10, context -> List.of(simpleTab(
+        RibbonProvider second = provider("second", 10, context -> List.of(simpleButtonTab(
             "home",
             "Start",
             "open",
@@ -431,7 +432,7 @@ class RibbonManagerTest {
 
     @Test
     void duplicateCommandIdsEmitFirstWinsTelemetry() {
-        RibbonProvider provider = new TestProvider("provider", 0, context -> List.of(new RibbonTabSpec(
+        RibbonProvider provider = provider("provider", context -> List.of(new RibbonTabSpec(
             "home",
             "Home",
             0,
@@ -470,44 +471,4 @@ class RibbonManagerTest {
         return ((RibbonButtonSpec) control).command();
     }
 
-    private static RibbonTabSpec simpleTab(String tabId, String tabLabel, String commandId, String commandLabel) {
-        return new RibbonTabSpec(
-            tabId,
-            tabLabel,
-            0,
-            false,
-            ribbonContext -> true,
-            List.of(new RibbonGroupSpec(
-                "actions",
-                "Actions",
-                0,
-                0,
-                null,
-                List.of(new RibbonButtonSpec(PapiflyCommand.of(commandId, commandLabel, () -> {
-                })))
-            ))
-        );
-    }
-
-    private record TestProvider(
-        String providerId,
-        int providerOrder,
-        Function<RibbonContext, List<RibbonTabSpec>> tabsFactory
-    ) implements RibbonProvider {
-
-        @Override
-        public String id() {
-            return providerId;
-        }
-
-        @Override
-        public int order() {
-            return providerOrder;
-        }
-
-        @Override
-        public List<RibbonTabSpec> getTabs(RibbonContext context) {
-            return tabsFactory.apply(context);
-        }
-    }
 }

@@ -46,7 +46,7 @@ A provider returns `RibbonTabSpec` values from `getTabs(RibbonContext context)`.
 - Use `contextual=true` only for tabs that depend on active content.
 - Use `visibleWhen` for tab visibility, not for command enablement.
 - Use `PapiflyCommand` for executable actions and choose stable labels/tooltips/icons.
-- Provider command state may be recomputed on every `getTabs(context)` call; the runtime canonicalizes command identity by id and projects later `enabled` and `selected` snapshots onto the canonical command.
+- Provider command state and context-bound callbacks may be recomputed on every `getTabs(context)` call; the runtime canonicalizes command identity by id and projects later `enabled`, `selected`, and action dispatch snapshots onto the canonical command.
 
 Do not cache JavaFX controls in providers. Providers describe command surfaces; the runtime owns materialization.
 
@@ -154,6 +154,26 @@ Add focused provider tests before relying on sample coverage.
 - Floating context: a mounted `RibbonDockHost` resolves the active floating leaf, `FLOATING_KEY` is true, and provider capabilities update command state.
 - QAT: contextual command ids survive while hidden and resolve again when visible.
 - Diagnostics: duplicate ids or provider failures are covered where the provider introduces collision risk.
+
+## Focused Validation Commands
+
+When running selected tests through `-pl ... -am`, include `-Dsurefire.failIfNoSpecifiedTests=false`.
+Upstream reactor modules often do not contain the selected test class or pattern, and without this flag Surefire
+can fail before Maven reaches the target module.
+
+Useful ribbon loops:
+
+```bash
+./mvnw -pl papiflyfx-docking-docks -am '-Dtest=Ribbon*Test,Ribbon*FxTest,CommandRegistryTest' -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test
+./mvnw -pl papiflyfx-docking-github,papiflyfx-docking-hugo -am '-Dtest=*Ribbon*Test,*Ribbon*FxTest' -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test
+./mvnw -pl papiflyfx-docking-samples -am '-Dtest=*Ribbon*FxTest' -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test
+./mvnw -pl papiflyfx-docking-samples -am -Dtest=SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test
+```
+
+Ribbon 5 Phase 3 intentionally keeps common TestFX/Surefire flags documented rather than centralized in the parent
+POM. The current module POMs share most flags but still carry module-specific native-access requirements such as
+`javafx.web` and `javafx.media`; centralizing them should wait until it removes duplication without weakening those
+module-local JavaFX requirements.
 
 ## Archetype Scaffold Decision
 

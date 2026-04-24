@@ -73,13 +73,14 @@
  *   that provider-owned surface. Use a dotted namespace such as
  *   {@code <module>.ribbon.<action>} for command ids.</li>
  *   <li>Duplicate tab ids are merged by the host with first tab label/order
- *   winning; duplicate command ids keep the first metadata/action surface.
- *   Runtime hosts should warn or emit telemetry when first-wins metadata
- *   conflicts are detected.</li>
+ *   winning; duplicate command ids keep the first metadata surface while
+ *   runtime state and action dispatch refresh from later emissions. Runtime
+ *   hosts should warn or emit telemetry when first-wins metadata conflicts are
+ *   detected.</li>
  *   <li>Provider command state may be recomputed on every
  *   {@code getTabs(context)} call. Hosts canonicalize command identity by id
- *   and project later {@code enabled}/{@code selected} snapshots onto the
- *   canonical command.</li>
+ *   and project later {@code enabled}/{@code selected}/action snapshots onto
+ *   the canonical command.</li>
  * </ul>
  */
 package org.metalib.papifly.fx.api.ribbon;

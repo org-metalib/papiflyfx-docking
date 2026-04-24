@@ -17,7 +17,6 @@ import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docks.DockManager;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
 import org.metalib.papifly.fx.docks.core.DockTabGroup;
-import org.metalib.papifly.fx.docks.testutil.FxTestUtil;
 import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
@@ -27,6 +26,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.metalib.papifly.fx.docks.ribbon.RibbonTestSupport.settleFx;
 
 @ExtendWith(ApplicationExtension.class)
 class RibbonContextResolutionFxTest {
@@ -60,7 +60,7 @@ class RibbonContextResolutionFxTest {
         RibbonDockHost host = new RibbonDockHost(dockManager, ribbonManager, ribbon);
         stage.setScene(new Scene(host, 1120, 700));
         stage.show();
-        settle();
+        settleFx();
     }
 
     @Test
@@ -68,12 +68,12 @@ class RibbonContextResolutionFxTest {
         assertFalse(hasTab(robot, "Hugo Editor"));
 
         robot.clickOn("#hugo-content");
-        settle();
+        settleFx();
         assertEquals(HUGO_PREVIEW_TYPE, dockManager.getRibbonContext().activeContentTypeKey());
         assertTrue(hasTab(robot, "Hugo Editor"));
 
         robot.clickOn("#editor-content");
-        settle();
+        settleFx();
         assertEquals("sample.code", dockManager.getRibbonContext().activeContentTypeKey());
         assertFalse(hasTab(robot, "Hugo Editor"));
     }
@@ -93,11 +93,6 @@ class RibbonContextResolutionFxTest {
                 && label.equals(toggleButton.getText())
                 && toggleButton.isVisible()
         ).tryQuery().isPresent();
-    }
-
-    private static void settle() {
-        FxTestUtil.waitForFxEvents();
-        FxTestUtil.waitForFxEvents();
     }
 
     private static final class ContextProvider implements RibbonProvider {

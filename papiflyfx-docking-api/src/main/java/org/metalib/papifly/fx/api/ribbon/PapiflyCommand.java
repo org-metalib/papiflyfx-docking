@@ -20,8 +20,9 @@ import java.util.Objects;
  * JavaFX adapter.</p>
  *
  * @param id stable command identifier used for lookup and persistence; hosts
- *     canonicalize by id, keep the first metadata/action surface, and refresh
- *     enabled/selected state from later provider emissions with the same id
+ *     canonicalize by id, keep the first metadata surface, and refresh
+ *     enabled/selected state plus action dispatch from later provider
+ *     emissions with the same id
  * @param label localized user-facing label
  * @param tooltip localized descriptive tooltip
  * @param smallIcon small icon handle, typically for 16x16 assets

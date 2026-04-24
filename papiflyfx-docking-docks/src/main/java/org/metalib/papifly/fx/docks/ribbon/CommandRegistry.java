@@ -25,13 +25,15 @@ import java.util.Set;
  *
  * <h2>Identity semantics</h2>
  * <p>{@link #canonicalize(PapiflyCommand)} is the primary entry point. The
- * first command with a given identifier wins for stable command metadata and
- * action dispatch: subsequent calls with the same identifier return the
- * original instance. Runtime state is refreshed on every call by projecting the
- * incoming {@code enabled} / {@code selected}
+ * first command with a given identifier wins for stable command metadata, and
+ * subsequent calls with the same identifier return that canonical instance.
+ * Runtime state is refreshed on every call by projecting the incoming
+ * {@code enabled} / {@code selected}
  * {@link org.metalib.papifly.fx.api.ribbon.BoolState} snapshots onto the
- * canonical command. This lets providers rebuild specs from the current
- * context without leaking replacement command instances into rendered UI.</p>
+ * canonical command. Action dispatch is refreshed from the latest provider
+ * emission through an internal delegating callback so providers can rebuild
+ * context-bound callbacks without leaking replacement command instances into
+ * rendered UI.</p>
  *
  * <h2>Lifecycle</h2>
  * <p>The registry is intentionally not thread-safe. It is owned by
@@ -75,16 +77,37 @@ public final class CommandRegistry {
         Objects.requireNonNull(command, "command");
         PapiflyCommand existing = commands.get(command.id());
         if (existing != null) {
-            projectRuntimeState(existing, command);
+            projectRuntimeSurface(existing, command);
             return existing;
         }
-        commands.put(command.id(), command);
-        return command;
+        PapiflyCommand canonical = createCanonicalCommand(command);
+        commands.put(canonical.id(), canonical);
+        return canonical;
     }
 
-    private static void projectRuntimeState(PapiflyCommand canonical, PapiflyCommand incoming) {
+    private static PapiflyCommand createCanonicalCommand(PapiflyCommand command) {
+        if (command.action() instanceof RefreshableAction) {
+            return command;
+        }
+        return new PapiflyCommand(
+            command.id(),
+            command.label(),
+            command.tooltip(),
+            command.smallIcon(),
+            command.largeIcon(),
+            command.enabled(),
+            command.selected(),
+            new RefreshableAction(command.action())
+        );
+    }
+
+    private static void projectRuntimeSurface(PapiflyCommand canonical, PapiflyCommand incoming) {
         canonical.enabled().set(incoming.enabled().get());
         canonical.selected().set(incoming.selected().get());
+        if (canonical.action() instanceof RefreshableAction refreshable
+            && canonical.action() != incoming.action()) {
+            refreshable.replace(incoming.action());
+        }
     }
 
     /**
@@ -201,5 +224,22 @@ public final class CommandRegistry {
      */
     public void clear() {
         commands.clear();
+    }
+
+    private static final class RefreshableAction implements Runnable {
+        private Runnable delegate;
+
+        private RefreshableAction(Runnable delegate) {
+            this.delegate = Objects.requireNonNull(delegate, "delegate");
+        }
+
+        @Override
+        public void run() {
+            delegate.run();
+        }
+
+        private void replace(Runnable delegate) {
+            this.delegate = Objects.requireNonNull(delegate, "delegate");
+        }
     }
 }

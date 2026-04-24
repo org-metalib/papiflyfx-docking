@@ -22,6 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.metalib.papifly.fx.docks.ribbon.RibbonTestSupport.contextWithType;
+import static org.metalib.papifly.fx.docks.ribbon.RibbonTestSupport.settleFx;
+import static org.metalib.papifly.fx.docks.ribbon.RibbonTestSupport.tabIds;
 
 /**
  * Phase 2 invariants — command registry identity stability, QAT restore with
@@ -48,7 +51,7 @@ class RibbonCommandRegistryFxTest {
         ribbon = new Ribbon(ribbonManager);
         stage.setScene(new Scene(ribbon, 1100, 300));
         stage.show();
-        settle();
+        settleFx();
     }
 
     @Test
@@ -57,10 +60,10 @@ class RibbonCommandRegistryFxTest {
             () -> ribbonManager.getCommandRegistry().find(CMD_HOME_SAVE).orElseThrow());
 
         FxTestUtil.runFx(() -> ribbonManager.setContext(
-            new RibbonContext(null, null, CONTEXTUAL_CONTENT_TYPE, Map.of())));
-        settle();
+            contextWithType(CONTEXTUAL_CONTENT_TYPE)));
+        settleFx();
         FxTestUtil.runFx(() -> ribbonManager.setContext(RibbonContext.empty()));
-        settle();
+        settleFx();
 
         PapiflyCommand afterRefreshes = FxTestUtil.callFx(
             () -> ribbonManager.getCommandRegistry().find(CMD_HOME_SAVE).orElseThrow());
@@ -76,7 +79,7 @@ class RibbonCommandRegistryFxTest {
             ribbonManager.setContext(new RibbonContext(null, null, CONTEXTUAL_CONTENT_TYPE, Map.of()));
             ribbonManager.getQuickAccessCommandIds().setAll(CMD_HOME_SAVE, CMD_MD_PREVIEW);
         });
-        settle();
+        settleFx();
 
         RibbonSessionData state = FxTestUtil.callFx(ribbon::captureSessionState);
         assertTrue(state.quickAccessCommandIds().contains(CMD_MD_PREVIEW),
@@ -91,7 +94,7 @@ class RibbonCommandRegistryFxTest {
             ribbonManager.refresh();
             ribbon.restoreSessionState(state);
         });
-        settle();
+        settleFx();
         // After restore, only the currently resolvable command appears in the
         // derived view while both identifiers remain pinned.
         assertEquals(List.of(CMD_HOME_SAVE, CMD_MD_PREVIEW),
@@ -103,8 +106,8 @@ class RibbonCommandRegistryFxTest {
         // When the contextual tab becomes visible again, the contextual
         // command resolves and the derived view updates automatically.
         FxTestUtil.runFx(() -> ribbonManager.setContext(
-            new RibbonContext(null, null, CONTEXTUAL_CONTENT_TYPE, Map.of())));
-        settle();
+            contextWithType(CONTEXTUAL_CONTENT_TYPE)));
+        settleFx();
         assertEquals(List.of(CMD_HOME_SAVE, CMD_MD_PREVIEW),
             FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream()
                 .map(PapiflyCommand::id).toList()));
@@ -114,7 +117,7 @@ class RibbonCommandRegistryFxTest {
     void qatRestore_toleratesCompletelyUnknownCommandIds() {
         FxTestUtil.runFx(() -> ribbonManager.getQuickAccessCommandIds()
             .setAll(CMD_HOME_SAVE, "phase2.ghost"));
-        settle();
+        settleFx();
 
         RibbonSessionData state = FxTestUtil.callFx(ribbon::captureSessionState);
 
@@ -122,7 +125,7 @@ class RibbonCommandRegistryFxTest {
             ribbonManager.getQuickAccessCommandIds().clear();
             ribbon.restoreSessionState(state);
         });
-        settle();
+        settleFx();
 
         // Unknown identifiers survive in the list but do not render.
         assertTrue(FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommandIds().contains("phase2.ghost")));
@@ -130,9 +133,20 @@ class RibbonCommandRegistryFxTest {
             .anyMatch(cmd -> "phase2.ghost".equals(cmd.id()))));
     }
 
-    private static void settle() {
-        FxTestUtil.waitForFxEvents();
-        FxTestUtil.waitForFxEvents();
+    @Test
+    void rapidContextChurnInSingleFxTurnSettlesToFinalContext() {
+        FxTestUtil.runFx(() -> {
+            ribbonManager.setContext(contextWithType(CONTEXTUAL_CONTENT_TYPE));
+            ribbon.setSelectedTabId("markdown");
+            ribbonManager.setContext(contextWithType("phase2.code"));
+            ribbonManager.setContext(RibbonContext.empty());
+        });
+        settleFx();
+
+        assertEquals(List.of("home"), tabIds(ribbonManager));
+        assertEquals("home", FxTestUtil.callFx(ribbon::getSelectedTabId));
+        assertTrue(FxTestUtil.callFx(() -> ribbonManager.getCommandRegistry().contains(CMD_HOME_SAVE)));
+        assertFalse(FxTestUtil.callFx(() -> ribbonManager.getCommandRegistry().contains(CMD_MD_PREVIEW)));
     }
 
     private static final class ContextualProvider implements RibbonProvider {

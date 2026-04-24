@@ -482,7 +482,7 @@ public class RibbonManager {
             }
             LOG.warning(() -> "Duplicate ribbon command id '" + incoming.id()
                 + "'; first command metadata wins ('" + existing.label()
-                + "'), projecting runtime state from ignored metadata ('" + incoming.label() + "')");
+                + "'), projecting runtime state/action from ignored metadata ('" + incoming.label() + "')");
             telemetry.commandIdCollision(incoming.id(), existing.label(), incoming.label());
         });
     }

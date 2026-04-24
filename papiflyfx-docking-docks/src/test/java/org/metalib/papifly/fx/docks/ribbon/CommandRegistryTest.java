@@ -5,6 +5,7 @@ import org.metalib.papifly.fx.api.ribbon.MutableBoolState;
 import org.metalib.papifly.fx.api.ribbon.PapiflyCommand;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -16,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CommandRegistryTest {
 
     @Test
-    void canonicalize_returnsFirstRegisteredInstanceForId() {
+    void canonicalize_returnsStableCanonicalInstanceForId() {
         CommandRegistry registry = new CommandRegistry();
         PapiflyCommand first = PapiflyCommand.of("save", "Save", () -> {
         });
@@ -26,8 +27,8 @@ class CommandRegistryTest {
         PapiflyCommand registered = registry.canonicalize(first);
         PapiflyCommand reRegistered = registry.canonicalize(second);
 
-        assertSame(first, registered);
-        assertSame(first, reRegistered);
+        assertSame(registered, reRegistered);
+        assertEquals("Save", registered.label());
         assertNotSame(second, reRegistered);
         assertEquals(1, registry.size());
     }
@@ -63,10 +64,26 @@ class CommandRegistryTest {
         PapiflyCommand first = registry.canonicalize(disabled);
         PapiflyCommand second = registry.canonicalize(enabled);
 
-        assertSame(disabled, first);
-        assertSame(disabled, second);
+        assertSame(first, second);
         assertTrue(canonicalEnabled.get());
         assertTrue(canonicalSelected.get());
+    }
+
+    @Test
+    void canonicalize_refreshesActionDispatchFromLatestEmission() {
+        CommandRegistry registry = new CommandRegistry();
+        AtomicInteger firstExecutions = new AtomicInteger();
+        AtomicInteger secondExecutions = new AtomicInteger();
+        PapiflyCommand first = PapiflyCommand.of("refresh", "Refresh", firstExecutions::incrementAndGet);
+        PapiflyCommand second = PapiflyCommand.of("refresh", "Refresh", secondExecutions::incrementAndGet);
+
+        PapiflyCommand canonical = registry.canonicalize(first);
+        canonical.execute();
+        registry.canonicalize(second);
+        canonical.execute();
+
+        assertEquals(1, firstExecutions.get());
+        assertEquals(1, secondExecutions.get());
     }
 
     @Test
@@ -85,7 +102,7 @@ class CommandRegistryTest {
 
         assertEquals(Set.of("save", "undo", "redo"), registry.ids());
         assertEquals(3, registry.size());
-        assertEquals(save, registry.commands().iterator().next());
+        assertEquals(save.id(), registry.commands().iterator().next().id());
     }
 
     @Test
@@ -117,7 +134,7 @@ class CommandRegistryTest {
         });
         registry.canonicalize(save);
 
-        assertSame(save, registry.unregister("save").orElseThrow());
+        assertEquals(save.id(), registry.unregister("save").orElseThrow().id());
         assertTrue(registry.isEmpty());
         assertTrue(registry.unregister("save").isEmpty());
     }

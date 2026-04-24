@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.metalib.papifly.fx.docks.ribbon.RibbonTestSupport.settleFx;
 
 @ExtendWith(ApplicationExtension.class)
 class RibbonFloatingContextFxTest {
@@ -69,7 +70,7 @@ class RibbonFloatingContextFxTest {
         RibbonDockHost host = new RibbonDockHost(dockManager, ribbonManager, ribbon);
         stage.setScene(new Scene(host, 1100, 700));
         stage.show();
-        settle();
+        settleFx();
     }
 
     @AfterEach
@@ -86,7 +87,7 @@ class RibbonFloatingContextFxTest {
             .orElse(false)));
 
         FxTestUtil.runFx(() -> dockManager.floatLeaf(floatingLeaf));
-        settle();
+        settleFx();
 
         RibbonContext context = FxTestUtil.callFx(dockManager::getRibbonContext);
         assertEquals(FLOATING_CONTENT_ID, context.activeContentId());
@@ -113,11 +114,6 @@ class RibbonFloatingContextFxTest {
         pane.setMinSize(0, 0);
         pane.setPrefSize(420, 260);
         return pane;
-    }
-
-    private static void settle() {
-        FxTestUtil.waitForFxEvents();
-        FxTestUtil.waitForFxEvents();
     }
 
     private interface FloatingActions {

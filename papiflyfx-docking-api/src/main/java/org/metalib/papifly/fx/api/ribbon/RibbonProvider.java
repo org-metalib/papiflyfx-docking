@@ -17,9 +17,9 @@ import java.util.List;
  * the groups into the first provider's tab metadata: the first label/order
  * wins, contextual styling is ORed across contributions, and runtimes should
  * emit diagnostics for conflicting label/order metadata. Command identifiers
- * follow the same first-metadata-wins rule for labels, icons, tooltips, and
- * action dispatch while runtime {@link BoolState} values are refreshed from
- * the latest provider emission. Prefer a dotted namespace such as
+ * follow the same first-metadata-wins rule for labels, icons, and tooltips
+ * while runtime {@link BoolState} values and action dispatch are refreshed
+ * from the latest provider emission. Prefer a dotted namespace such as
  * {@code <module>.ribbon.<action>} for command ids.</p>
  *
  * <p>Providers should fail closed. Runtime hosts are expected to isolate
