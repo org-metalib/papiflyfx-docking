@@ -13,6 +13,9 @@ This directory records future Ribbon 6 candidates that would require a dedicated
 ## Canonical Artifact
 
 - [ribbon-6-design.md](ribbon-6-design.md) - command contract split, boolean state replacement, control extensibility, `RibbonManager` decomposition, and future customization/session policy.
+- [plan.md](plan.md) - implementation phases, invariants, validation expectations, and acceptance criteria derived from the design note.
+- [progress.md](progress.md) - phase tracker and handoff notes for future implementation sessions.
+- [prompt.md](prompt.md) - ready-to-use @core-architect session starter for implementing the plan.
 
 ## Current Baseline Link
 
