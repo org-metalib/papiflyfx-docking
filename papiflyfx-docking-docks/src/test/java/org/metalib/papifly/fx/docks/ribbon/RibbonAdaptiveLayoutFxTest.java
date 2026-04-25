@@ -11,6 +11,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.SVGPath;
@@ -175,12 +176,45 @@ class RibbonAdaptiveLayoutFxTest {
         assertTrue(darkStyle.contains("rgba(45, 45, 45"), darkStyle);
         assertTrue(FxTestUtil.callFx(() -> popup.getStyleClass().contains("pf-ribbon-menu-popup")));
 
+        Label optionLabel = robot.lookup(node ->
+            node instanceof Label label
+                && "Option One".equals(label.getText())
+                && label.isVisible()
+        ).queryAs(Label.class);
+        Region menuItem = FxTestUtil.callFx(() ->
+            assertInstanceOf(Region.class, findAncestor(optionLabel, parent -> parent.getStyleClass().contains("menu-item"))));
+        String restingBackground = FxTestUtil.callFx(() -> menuItem.getBackground().getFills().toString());
+
+        robot.moveTo(optionLabel);
+        settleFx();
+
+        String hoverBackground = FxTestUtil.callFx(() -> menuItem.getBackground().getFills().toString());
+        assertNotEquals(restingBackground, hoverBackground);
+
         FxTestUtil.runFx(() -> ribbon.themeProperty().set(Theme.light()));
         settleFx();
 
         String lightStyle = FxTestUtil.callFx(popup::getStyle);
         assertTrue(lightStyle.contains("rgba(220, 220, 220"), lightStyle);
         assertNotEquals(darkStyle, lightStyle);
+
+        Label optionTwoLabel = robot.lookup(node ->
+            node instanceof Label label
+                && "Option Two".equals(label.getText())
+                && label.isVisible()
+        ).queryAs(Label.class);
+        Region lightMenuItem = FxTestUtil.callFx(() ->
+            assertInstanceOf(Region.class, findAncestor(optionTwoLabel, parent -> parent.getStyleClass().contains("menu-item"))));
+        String lightRestingBackground = FxTestUtil.callFx(() -> lightMenuItem.getBackground().getFills().toString());
+        String lightRestingBorder = FxTestUtil.callFx(() -> lightMenuItem.getBorder().getStrokes().toString());
+
+        robot.moveTo(optionTwoLabel);
+        settleFx();
+
+        String lightHoverBackground = FxTestUtil.callFx(() -> lightMenuItem.getBackground().getFills().toString());
+        String lightHoverBorder = FxTestUtil.callFx(() -> lightMenuItem.getBorder().getStrokes().toString());
+        assertNotEquals(lightRestingBackground, lightHoverBackground);
+        assertNotEquals(lightRestingBorder, lightHoverBorder);
     }
 
     @Test

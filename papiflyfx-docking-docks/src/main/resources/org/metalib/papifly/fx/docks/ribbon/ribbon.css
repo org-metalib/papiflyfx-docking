@@ -313,34 +313,54 @@
     -fx-padding: 4px;
 }
 
+.pf-ribbon-menu-popup .menu-item,
 .pf-ribbon-menu-item {
     -fx-background-color: transparent;
+    -fx-background-radius: 6px;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 0 3px;
+    -fx-border-radius: 6px;
     -fx-padding: 6px 10px 6px 10px;
 }
 
+.pf-ribbon-menu-popup .menu-item:focused,
+.pf-ribbon-menu-popup .menu-item:hover,
 .pf-ribbon-menu-item:focused,
 .pf-ribbon-menu-item:hover {
-    -fx-background-color: -pf-ui-surface-control-hover;
+    -fx-background-color: -pf-ui-surface-selected;
+    -fx-border-color: transparent transparent transparent -pf-ui-accent;
 }
 
+.pf-ribbon-menu-popup .menu-item:armed,
 .pf-ribbon-menu-item:armed {
-    -fx-background-color: -pf-ui-surface-control-pressed;
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-border-color: transparent transparent transparent -pf-ui-accent;
 }
 
+.pf-ribbon-menu-popup .menu-item > .label,
 .pf-ribbon-menu-item > .label {
     -fx-text-fill: -pf-ui-text-primary;
 }
 
-.pf-ribbon-menu-item:disabled > .label {
-    -fx-text-fill: -pf-ui-text-disabled;
+.pf-ribbon-menu-popup .menu-item:disabled,
+.pf-ribbon-menu-item:disabled {
     -fx-opacity: 1.0;
 }
 
+.pf-ribbon-menu-popup .menu-item:disabled > .label,
+.pf-ribbon-menu-item:disabled > .label {
+    -fx-text-fill: -pf-ui-text-disabled;
+}
+
+.pf-ribbon-menu-popup .menu-item .pf-ribbon-svg-path,
+.pf-ribbon-menu-popup .menu-item .pf-ribbon-octicon,
 .pf-ribbon-menu-item .pf-ribbon-svg-path,
 .pf-ribbon-menu-item .pf-ribbon-octicon {
     -fx-fill: -pf-ui-text-primary;
 }
 
+.pf-ribbon-menu-popup .menu-item:disabled .pf-ribbon-svg-path,
+.pf-ribbon-menu-popup .menu-item:disabled .pf-ribbon-octicon,
 .pf-ribbon-menu-item:disabled .pf-ribbon-svg-path,
 .pf-ribbon-menu-item:disabled .pf-ribbon-octicon {
     -fx-fill: -pf-ui-text-disabled;
