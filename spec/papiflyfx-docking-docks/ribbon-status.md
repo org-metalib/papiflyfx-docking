@@ -1,6 +1,6 @@
 # Ribbon Current Status
 
-**Status:** current as of Ribbon 9 side-placement implementation
+**Status:** current as of Ribbon 10 side-toolbar implementation
 **Lead:** @spec-steward
 **Required reviewers for future changes:** @core-architect, @feature-dev, @ops-engineer, @qa-engineer; add @ui-ux-designer for visual/accessibility behavior
 
@@ -8,12 +8,13 @@ This is the canonical status entry point for the PapiflyFX ribbon stream. Dated 
 
 ## Current Baseline
 
-Ribbon 9 is the current implemented baseline. It keeps the Ribbon 6 runtime decisions and adds host-configurable ribbon placement:
+Ribbon 10 is the current implemented baseline. It keeps the Ribbon 6 runtime decisions, preserves the Ribbon 9 placement/session API, and renders side placements through a compact toolbar rail:
 
 - `RibbonPlacement` supports `TOP`, `LEFT`, `RIGHT`, and `BOTTOM`.
 - `RibbonDockHost` and `Ribbon` expose `placementProperty()`, `getPlacement()`, and `setPlacement(...)`.
 - `TOP` remains the default for existing hosts and saved sessions without placement.
-- Left and right placements render a vertical edge tab strip plus an inner command content pane while keeping providers placement-agnostic.
+- Left and right placements render a compact outside side-toolbar rail with QAT commands and tab entries; selected-tab commands open in a transient popover over dock content instead of a persistent wide pane.
+- Minimized side placement keeps the rail visible and suppresses popover activation without clearing the persisted minimized flag.
 - `CommandRegistry` keeps stable command identity and first metadata while refreshing enabled state, toggle selected state, and action dispatch from later provider emissions.
 - JavaFX command bindings are disposable, including rebuilt controls, QAT buttons, launchers, collapsed popups, and cache eviction paths.
 - Provider failures, duplicate tab ids, and duplicate command metadata conflicts are diagnostic and test-observable.
@@ -61,6 +62,7 @@ Future customization policy is design-only in [Ribbon 6 design](2026-04-23-0-rib
 | [Ribbon 5](2026-04-23-0-ribbon-5/README.md) | Closed consolidated follow-up | Closed runtime/accessibility/context/test/docs findings from the multi-role review. |
 | [Ribbon 6](2026-04-23-0-ribbon-6/README.md) | Implemented compatibility break | Splits action/toggle commands, introduces subscription boolean state, centralizes control strategies, and starts `RibbonManager` decomposition. |
 | [Ribbon 9](2026-04-25-0-ribbon-9/README.md) | Implemented side placement | Adds host-configurable top/bottom/left/right placement, side-ribbon layout, placement persistence, and SamplesApp comparison coverage. |
+| [Ribbon 10](2026-04-25-0-ribbon-10/README.md) | Implemented side toolbar | Replaces the Ribbon 9 persistent side command pane with a compact side rail plus transient command popovers while preserving placement/session compatibility. |
 
 ## Completed Ribbon 5 Fixes
 

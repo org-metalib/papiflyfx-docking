@@ -11,6 +11,7 @@ import javafx.collections.ListChangeListener;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.Bounds;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.PopupControl;
 import javafx.scene.control.ScrollPane;
@@ -60,10 +61,9 @@ public class Ribbon extends VBox {
     private final BorderPane header = new BorderPane();
     private final HBox headerActions = new HBox();
     private final HBox sideChrome = new HBox();
-    private final VBox sideEdgeStrip = new VBox(8.0);
-    private final StackPane sideContentPane = new StackPane();
-    private final StackPane sideFlyoutPane = new StackPane();
-    private final Region sideEdgeSpacer = new Region();
+    private final VBox sideToolbar = new VBox(6.0);
+    private final StackPane sidePopoverPane = new StackPane();
+    private final Region sideToolbarSpacer = new Region();
     private final Comparator<RibbonGroup> collapseOrderComparator =
         Comparator.comparingInt((RibbonGroup group) -> group.getSpec().collapseOrder())
             .thenComparing((RibbonGroup group) -> group.getSpec().order(), Comparator.reverseOrder())
@@ -80,7 +80,8 @@ public class Ribbon extends VBox {
     private RibbonManager manager;
     private boolean adaptiveLayoutRequested;
     private boolean minimizedTabPanelShowing;
-    private PopupControl sideFlyout;
+    private PopupControl sidePopover;
+    private Node sidePopoverOwner;
     private RibbonLayoutTelemetry layoutTelemetry = RibbonLayoutTelemetry.noop();
 
     /**
@@ -128,12 +129,11 @@ public class Ribbon extends VBox {
         HBox.setHgrow(tabStrip, Priority.ALWAYS);
 
         sideChrome.getStyleClass().add("pf-ribbon-side-chrome");
-        sideEdgeStrip.getStyleClass().add("pf-ribbon-side-edge-strip");
-        sideEdgeStrip.setAlignment(Pos.TOP_CENTER);
-        sideContentPane.getStyleClass().add("pf-ribbon-side-content-pane");
-        sideFlyoutPane.getStyleClass().addAll("pf-ribbon-side-content-pane", "pf-ribbon-side-flyout");
+        sideToolbar.getStyleClass().addAll("pf-ribbon-side-toolbar", "pf-ribbon-side-edge-strip");
+        sideToolbar.setAlignment(Pos.TOP_CENTER);
+        sidePopoverPane.getStyleClass().addAll("pf-ribbon-side-toolbar-popover", "pf-ribbon-side-content-pane", "pf-ribbon-side-flyout");
         VBox.setVgrow(tabStrip, Priority.ALWAYS);
-        VBox.setVgrow(sideEdgeSpacer, Priority.ALWAYS);
+        VBox.setVgrow(sideToolbarSpacer, Priority.ALWAYS);
 
         getChildren().addAll(header, groupScroller);
 
@@ -329,6 +329,7 @@ public class Ribbon extends VBox {
 
     private void refreshQuickAccessToolbar() {
         quickAccessToolbar.getCommands().setAll(manager.getQuickAccessCommands());
+        refreshSideToolbar();
     }
 
     private void refreshTabs() {
@@ -337,6 +338,7 @@ public class Ribbon extends VBox {
         if (rebuildGroups()) {
             requestAdaptiveLayout();
         }
+        refreshSideToolbar();
     }
 
     private void ensureSelectedTab() {
@@ -381,28 +383,24 @@ public class Ribbon extends VBox {
 
     private void updateMinimizedState() {
         boolean vertical = isVerticalPlacement();
-        boolean bodyVisible = !isMinimized() || minimizedTabPanelShowing;
-        if (vertical && isMinimized()) {
-            bodyVisible = false;
-        }
-        groupScroller.setManaged(bodyVisible);
-        groupScroller.setVisible(bodyVisible);
-        sideContentPane.setManaged(!vertical || bodyVisible);
-        sideContentPane.setVisible(!vertical || bodyVisible);
+        boolean bodyVisible = !vertical && (!isMinimized() || minimizedTabPanelShowing);
+        boolean sidePopoverVisible = vertical && sidePopover != null && sidePopover.isShowing();
+        groupScroller.setManaged(bodyVisible || sidePopoverVisible);
+        groupScroller.setVisible(bodyVisible || sidePopoverVisible);
         String actionLabel = isMinimized() ? "Expand ribbon" : "Collapse ribbon";
         minimizeButton.setText("");
         minimizeButton.setGraphic(createMinimizeGraphic(isMinimized()));
         minimizeButton.setAccessibleText(actionLabel);
         minimizeButton.setTooltip(new Tooltip(actionLabel));
         if (!isMinimized()) {
-            hideSideFlyout();
+            hideSidePopover();
             requestAdaptiveLayout();
         }
     }
 
     private void toggleMinimized() {
         minimizedTabPanelShowing = false;
-        hideSideFlyout();
+        hideSidePopover();
         setMinimized(!isMinimized());
     }
 
@@ -410,16 +408,15 @@ public class Ribbon extends VBox {
         if (!isMinimized()) {
             return;
         }
+        if (isVerticalPlacement()) {
+            return;
+        }
         minimizedTabPanelShowing = true;
         if (rebuildGroups()) {
             requestAdaptiveLayout();
         }
         updateMinimizedState();
-        if (isVerticalPlacement()) {
-            showSideFlyout();
-        } else {
-            requestAdaptiveLayout();
-        }
+        requestAdaptiveLayout();
     }
 
     private StackPane createMinimizeGraphic(boolean minimized) {
@@ -437,8 +434,8 @@ public class Ribbon extends VBox {
 
     private void applyTheme(Theme theme) {
         setStyle(RibbonThemeSupport.themeVariables(theme));
-        if (sideFlyoutPane != null) {
-            sideFlyoutPane.setStyle(RibbonThemeSupport.themeVariables(theme));
+        if (sidePopoverPane != null) {
+            sidePopoverPane.setStyle(RibbonThemeSupport.themeVariables(theme));
         }
     }
 
@@ -557,7 +554,7 @@ public class Ribbon extends VBox {
         getStyleClass().add(isVerticalPlacement() ? "pf-ribbon-orientation-vertical" : "pf-ribbon-orientation-horizontal");
 
         minimizedTabPanelShowing = false;
-        hideSideFlyout();
+        hideSidePopover();
         if (isVerticalPlacement()) {
             configureVerticalPlacement(resolvedPlacement);
         } else {
@@ -570,13 +567,13 @@ public class Ribbon extends VBox {
     }
 
     private void configureHorizontalPlacement() {
-        hideSideFlyout();
+        hideSidePopover();
         headerActions.getChildren().setAll(minimizeButton);
         header.setLeft(quickAccessToolbar);
         header.setCenter(tabStrip);
         header.setRight(headerActions);
-        sideContentPane.getChildren().clear();
-        sideFlyoutPane.getChildren().clear();
+        sideToolbar.getChildren().clear();
+        sidePopoverPane.getChildren().clear();
         tabStrip.setRibbonOrientation(Orientation.HORIZONTAL);
         groupRow.setOrientation(Orientation.HORIZONTAL);
         groupRow.setHgap(12.0);
@@ -593,7 +590,6 @@ public class Ribbon extends VBox {
         header.setLeft(null);
         header.setCenter(null);
         header.setRight(null);
-        tabStrip.setRibbonOrientation(Orientation.VERTICAL);
         groupRow.setOrientation(Orientation.VERTICAL);
         groupRow.setHgap(10.0);
         groupRow.setVgap(10.0);
@@ -602,16 +598,9 @@ public class Ribbon extends VBox {
         groupScroller.setFitToWidth(true);
         groupScroller.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         groupScroller.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        sideFlyoutPane.getChildren().clear();
-        if (!sideContentPane.getChildren().equals(List.of(groupScroller))) {
-            sideContentPane.getChildren().setAll(groupScroller);
-        }
-        sideEdgeStrip.getChildren().setAll(quickAccessToolbar, tabStrip, sideEdgeSpacer, minimizeButton);
-        if (resolvedPlacement == RibbonPlacement.LEFT) {
-            sideChrome.getChildren().setAll(sideEdgeStrip, sideContentPane);
-        } else {
-            sideChrome.getChildren().setAll(sideContentPane, sideEdgeStrip);
-        }
+        sidePopoverPane.getChildren().clear();
+        refreshSideToolbar();
+        sideChrome.getChildren().setAll(sideToolbar);
         getChildren().setAll(sideChrome);
     }
 
@@ -624,67 +613,129 @@ public class Ribbon extends VBox {
         return resolvedPlacement == RibbonPlacement.LEFT || resolvedPlacement == RibbonPlacement.RIGHT;
     }
 
-    private void showSideFlyout() {
-        if (!isVerticalPlacement() || !isMinimized()) {
+    private void refreshSideToolbar() {
+        if (!isVerticalPlacement() || manager == null) {
             return;
         }
-        PopupControl flyout = sideFlyout();
-        updateSideFlyoutTheme();
-        sideContentPane.getChildren().clear();
-        if (!sideFlyoutPane.getChildren().equals(List.of(groupScroller))) {
-            sideFlyoutPane.getChildren().setAll(groupScroller);
+        sideToolbar.getChildren().forEach(RibbonControlFactory::dispose);
+        List<Node> railItems = new java.util.ArrayList<>();
+        manager.getQuickAccessCommands().stream()
+            .filter(Objects::nonNull)
+            .map(command -> (Node) RibbonControlFactory.createSideToolbarCommandButton(command, manager.getClassLoader()))
+            .forEach(railItems::add);
+        if (!railItems.isEmpty() && !manager.getTabs().isEmpty()) {
+            Region separator = new Region();
+            separator.getStyleClass().add("pf-ribbon-side-toolbar-separator");
+            railItems.add(separator);
+        }
+        manager.getTabs().stream()
+            .filter(Objects::nonNull)
+            .map(this::createSideTabButton)
+            .forEach(railItems::add);
+        railItems.add(sideToolbarSpacer);
+        railItems.add(minimizeButton);
+        sideToolbar.getChildren().setAll(railItems);
+    }
+
+    private Button createSideTabButton(RibbonTabSpec tab) {
+        Button button = new Button();
+        button.getStyleClass().addAll("pf-ribbon-side-toolbar-button", "pf-ribbon-side-toolbar-tab");
+        if (tab.contextual()) {
+            button.getStyleClass().add("pf-ribbon-tab-contextual");
+        }
+        button.setText("");
+        button.setMnemonicParsing(false);
+        button.setGraphic(RibbonControlFactory.createSideToolbarGlyph(tab.label()));
+        button.setAccessibleText(tab.label());
+        button.setTooltip(new Tooltip(tab.label()));
+        button.setOnAction(event -> activateSideTab(tab.id(), button));
+        return button;
+    }
+
+    private void activateSideTab(String tabId, Node owner) {
+        if (!isVerticalPlacement()) {
+            return;
+        }
+        setSelectedTabId(tabId);
+        if (isMinimized()) {
+            hideSidePopover();
+            return;
+        }
+        if (rebuildGroups()) {
+            requestAdaptiveLayout();
+        }
+        showSidePopover(owner);
+    }
+
+    private void showSidePopover(Node owner) {
+        if (!isVerticalPlacement() || isMinimized()) {
+            return;
+        }
+        PopupControl popover = sidePopover();
+        if (popover.isShowing()) {
+            popover.hide();
+        }
+        sidePopoverOwner = owner;
+        updateSidePopoverTheme();
+        if (!sidePopoverPane.getChildren().equals(List.of(groupScroller))) {
+            sidePopoverPane.getChildren().setAll(groupScroller);
         }
         groupScroller.setManaged(true);
         groupScroller.setVisible(true);
-        requestAdaptiveLayout();
         Bounds screenBounds = localToScreen(getBoundsInLocal());
         if (screenBounds == null) {
             return;
         }
-        double flyoutWidth = 284.0;
+        double flyoutWidth = 320.0;
         double x = getPlacement() == RibbonPlacement.RIGHT
             ? screenBounds.getMinX() - flyoutWidth
             : screenBounds.getMaxX();
-        flyout.setPrefWidth(flyoutWidth);
-        flyout.show(this, x, screenBounds.getMinY());
-        sideFlyoutPane.requestFocus();
+        popover.setPrefWidth(flyoutWidth);
+        popover.show(this, x, screenBounds.getMinY() + 8.0);
+        requestAdaptiveLayout();
+        sidePopoverPane.requestFocus();
     }
 
-    private PopupControl sideFlyout() {
-        if (sideFlyout == null) {
-            UiStyleSupport.ensureCommonStylesheetLoaded(sideFlyoutPane);
-            UiStyleSupport.ensureStylesheetLoaded(sideFlyoutPane, STYLESHEET);
-            updateSideFlyoutTheme();
-            sideFlyout = new PopupControl();
-            sideFlyout.setAutoFix(true);
-            sideFlyout.setAutoHide(true);
-            sideFlyout.setHideOnEscape(true);
-            sideFlyout.getScene().setRoot(sideFlyoutPane);
-            sideFlyout.setOnHidden(event -> {
+    private PopupControl sidePopover() {
+        if (sidePopover == null) {
+            UiStyleSupport.ensureCommonStylesheetLoaded(sidePopoverPane);
+            UiStyleSupport.ensureStylesheetLoaded(sidePopoverPane, STYLESHEET);
+            updateSidePopoverTheme();
+            sidePopover = new PopupControl();
+            sidePopover.setAutoFix(true);
+            sidePopover.setAutoHide(true);
+            sidePopover.setHideOnEscape(true);
+            sidePopover.getScene().setRoot(sidePopoverPane);
+            sidePopover.setOnHidden(event -> {
                 minimizedTabPanelShowing = false;
-                if (isVerticalPlacement()) {
-                    sideContentPane.getChildren().clear();
+                if (sidePopoverPane.getChildren().contains(groupScroller)) {
+                    sidePopoverPane.getChildren().clear();
                 }
-                if (tabStrip.getScene() != null) {
-                    tabStrip.requestFocus();
+                groupScroller.setManaged(false);
+                groupScroller.setVisible(false);
+                Node focusTarget = sidePopoverOwner == null ? sideToolbar : sidePopoverOwner;
+                sidePopoverOwner = null;
+                if (focusTarget.getScene() != null) {
+                    focusTarget.requestFocus();
                 }
             });
         }
-        return sideFlyout;
+        return sidePopover;
     }
 
-    private void hideSideFlyout() {
-        if (sideFlyout != null) {
-            sideFlyout.hide();
+    private void hideSidePopover() {
+        if (sidePopover != null) {
+            sidePopover.hide();
         }
-        sideFlyoutPane.getChildren().clear();
-        if (isVerticalPlacement() && !sideContentPane.getChildren().equals(List.of(groupScroller))) {
-            sideContentPane.getChildren().setAll(groupScroller);
+        sidePopoverPane.getChildren().clear();
+        if (isVerticalPlacement()) {
+            groupScroller.setManaged(false);
+            groupScroller.setVisible(false);
         }
     }
 
-    private void updateSideFlyoutTheme() {
-        sideFlyoutPane.setStyle(RibbonThemeSupport.themeVariables(theme.get()));
+    private void updateSidePopoverTheme() {
+        sidePopoverPane.setStyle(RibbonThemeSupport.themeVariables(theme.get()));
     }
 
     private RibbonGroup nextGroupToShrink(List<RibbonGroup> groups) {

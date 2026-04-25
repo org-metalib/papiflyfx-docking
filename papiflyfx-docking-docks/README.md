@@ -90,7 +90,11 @@ dockManager.restoreSessionFromString(json);
 
 `RibbonDockHost` and `Ribbon` expose `placementProperty()`, `getPlacement()`,
 and `setPlacement(...)`. Supported placements are `TOP`, `BOTTOM`, `LEFT`, and
-`RIGHT`; providers stay placement-agnostic.
+`RIGHT`; providers stay placement-agnostic. `LEFT` and `RIGHT` render a compact
+outside side-toolbar rail with QAT commands and tab entries, and show selected
+tab commands through a transient popover over the dock content instead of a
+persistent wide command pane. Minimized side placement keeps the rail visible
+and suppresses popover activation while preserving the persisted minimized flag.
 
 Persisted ribbon state now lives under the namespaced dock-session extension
 payload `extensions.ribbon`:

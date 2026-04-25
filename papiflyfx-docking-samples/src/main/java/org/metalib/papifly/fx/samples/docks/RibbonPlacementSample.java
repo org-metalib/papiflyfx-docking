@@ -23,7 +23,8 @@ import org.metalib.papifly.fx.samples.docks.ribbon.SampleRibbonProvider;
 import java.util.List;
 
 /**
- * Compares top and side ribbon placement using the same sample commands.
+ * Compares the top ribbon and compact side-toolbar placement using the same
+ * sample commands.
  */
 public class RibbonPlacementSample implements SampleScene {
 

@@ -5,7 +5,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.control.ToggleButton;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -46,7 +46,10 @@ class RibbonPlacementFxTest {
         group.addLeaf(dockManager.createLeaf("Editor", new StackPane(new Label("Editor"))));
         dockManager.setRoot(group);
 
-        ribbon = new Ribbon(new RibbonManager(List.of(new PlacementProvider())));
+        RibbonManager ribbonManager = new RibbonManager(List.of(new PlacementProvider()));
+        ribbonManager.addQuickAccessCommand(RibbonCommand.of("placement.save-all", "Save All", () -> {
+        }));
+        ribbon = new Ribbon(ribbonManager);
         host = new RibbonDockHost(dockManager, ribbon.getManager(), ribbon);
         stage.setScene(new Scene(host, 900, 520));
         stage.show();
@@ -72,44 +75,117 @@ class RibbonPlacementFxTest {
     }
 
     @Test
-    void sidePlacementUsesOutsideTabStripAndVerticalClasses() {
+    void sidePlacementUsesCompactRailAndFallbackGlyphs() {
         FxTestUtil.runFx(() -> host.setPlacement(RibbonPlacement.LEFT));
         settle();
 
         assertTrue(FxTestUtil.callFx(() -> ribbon.getStyleClass().contains("pf-ribbon-placement-left")));
         assertTrue(FxTestUtil.callFx(() -> ribbon.getStyleClass().contains("pf-ribbon-orientation-vertical")));
-        ToggleButton home = FxTestUtil.callFx(() -> findDescendant(
+        assertTrue(FxTestUtil.callFx(() -> ribbon.lookup(".pf-ribbon-side-content-pane") == null));
+
+        Button saveAll = FxTestUtil.callFx(() -> findDescendant(
             ribbon,
-            ToggleButton.class,
-            button -> "Home".equals(button.getText()) && button.getStyleClass().contains("pf-ribbon-side-tab")
+            Button.class,
+            button -> "Save All".equals(button.getAccessibleText())
+                && button.getStyleClass().contains("pf-ribbon-side-toolbar-command")
         ));
-        assertEquals("Home", home.getText());
+        assertEquals("", saveAll.getText());
+        assertEquals("Save All", saveAll.getAccessibleText());
+        assertTrue(FxTestUtil.callFx(() -> saveAll.getGraphic() != null));
+        assertTrue(FxTestUtil.callFx(() -> saveAll.getTooltip() != null && "Save All".equals(saveAll.getTooltip().getText())));
+
+        Button home = FxTestUtil.callFx(() -> findDescendant(
+            ribbon,
+            Button.class,
+            button -> "Home".equals(button.getAccessibleText())
+                && button.getStyleClass().contains("pf-ribbon-side-toolbar-tab")
+        ));
+        assertEquals("", home.getText());
         assertEquals("Home", home.getAccessibleText());
+        assertTrue(FxTestUtil.callFx(() -> home.getGraphic() != null));
         assertTrue(FxTestUtil.callFx(() -> home.getTooltip() != null && "Home".equals(home.getTooltip().getText())));
     }
 
     @Test
-    void minimizedSideActivationKeepsFlagAndRevealsCommands(FxRobot robot) {
+    void sideActivationShowsTransientCommandPopover(FxRobot robot) {
+        FxTestUtil.runFx(() -> host.setPlacement(RibbonPlacement.LEFT));
+        settle();
+
+        Button tools = robot.lookup(node ->
+            node instanceof Button button
+                && "Tools".equals(button.getAccessibleText())
+                && button.getStyleClass().contains("pf-ribbon-side-toolbar-tab")
+                && button.isVisible()
+        ).queryAs(Button.class);
+        robot.clickOn(tools);
+        settle();
+
+        assertFalse(FxTestUtil.callFx(ribbon::isMinimized));
+        assertEquals("tools", FxTestUtil.callFx(ribbon::getSelectedTabId));
+        Button command = robot.lookup(node ->
+            node instanceof Button button
+                && "Tools Action".equals(button.getText())
+                && button.isVisible()
+        ).queryAs(Button.class);
+        assertEquals("Tools Action", FxTestUtil.callFx(command::getText));
+    }
+
+    @Test
+    void minimizedSideActivationKeepsFlagAndSuppressesPopover(FxRobot robot) {
         FxTestUtil.runFx(() -> {
             host.setPlacement(RibbonPlacement.LEFT);
             ribbon.setMinimized(true);
         });
         settle();
 
-        ScrollPane scroller = FxTestUtil.callFx(() -> (ScrollPane) ribbon.lookup(".pf-ribbon-scroll"));
-        assertFalse(FxTestUtil.callFx(scroller::isVisible));
+        ScrollPane scroller = FxTestUtil.callFx(() -> findDescendant(ribbon, ScrollPane.class, pane -> true));
+        assertTrue(scroller == null || !FxTestUtil.callFx(scroller::isVisible));
 
-        ToggleButton tools = robot.lookup(node ->
-            node instanceof ToggleButton toggleButton
-                && "Tools".equals(toggleButton.getText())
-                && toggleButton.isVisible()
-        ).queryAs(ToggleButton.class);
+        Button tools = robot.lookup(node ->
+            node instanceof Button button
+                && "Tools".equals(button.getAccessibleText())
+                && button.getStyleClass().contains("pf-ribbon-side-toolbar-tab")
+                && button.isVisible()
+        ).queryAs(Button.class);
         robot.clickOn(tools);
         settle();
 
         assertTrue(FxTestUtil.callFx(ribbon::isMinimized));
-        assertTrue(FxTestUtil.callFx(scroller::isVisible));
+        assertTrue(scroller == null || !FxTestUtil.callFx(scroller::isVisible));
         assertEquals("tools", FxTestUtil.callFx(ribbon::getSelectedTabId));
+        assertTrue(robot.lookup(node ->
+            node instanceof Button button
+                && "Tools Action".equals(button.getText())
+                && button.isVisible()
+        ).queryAll().isEmpty());
+    }
+
+    @Test
+    void minimizedSideKeyboardActivationSuppressesPopover(FxRobot robot) {
+        FxTestUtil.runFx(() -> {
+            host.setPlacement(RibbonPlacement.RIGHT);
+            ribbon.setMinimized(true);
+        });
+        settle();
+
+        Button home = robot.lookup(node ->
+            node instanceof Button button
+                && "Home".equals(button.getAccessibleText())
+                && button.getStyleClass().contains("pf-ribbon-side-toolbar-tab")
+                && button.isVisible()
+        ).queryAs(Button.class);
+        FxTestUtil.runFx(home::requestFocus);
+        robot.type(KeyCode.SPACE);
+        settle();
+
+        assertSame(ribbon, FxTestUtil.callFx(host::getRight));
+        assertTrue(FxTestUtil.callFx(ribbon::isMinimized));
+        assertEquals("home", FxTestUtil.callFx(ribbon::getSelectedTabId));
+        assertTrue(robot.lookup(node ->
+            node instanceof Button button
+                && "Home Action".equals(button.getText())
+                && button.isVisible()
+        ).queryAll().isEmpty());
     }
 
     private void assertPlacement(RibbonPlacement placement, RegionAccessor accessor) {

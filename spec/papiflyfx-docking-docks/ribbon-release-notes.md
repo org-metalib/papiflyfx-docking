@@ -50,6 +50,16 @@ Ribbon 9 adds host-configurable placement without changing provider contracts:
 - Side placements keep a readable vertical tab strip on the outside edge and render selected-tab command groups in the inner pane.
 - The SamplesApp catalog includes `Ribbon Placement` for deterministic `TOP` and `LEFT` comparison.
 
+## Ribbon 10 Side Toolbar Notes
+
+Ribbon 10 keeps the Ribbon 9 placement API and session contract, but changes
+the side-placement interaction model:
+
+- `LEFT` and `RIGHT` render a compact outside side-toolbar rail by default.
+- The side rail includes QAT commands and tab entries with compact fallback glyphs, tooltips, and accessible names.
+- Activating a side tab opens selected-tab command groups in a transient popover over dock content.
+- Minimized side placement keeps the rail visible and suppresses mouse/keyboard popover activation without clearing the minimized flag.
+
 ## Ribbon 5 Completed Follow-Up Notes
 
 Ribbon 5 closed the review loop with non-breaking runtime, provider, test, and documentation work:

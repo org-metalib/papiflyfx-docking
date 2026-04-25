@@ -136,6 +136,8 @@ class SamplesSmokeTest {
         assertNotNull(leftHost[0]);
         assertTrue(topHost[0].getPlacement() == RibbonPlacement.TOP);
         assertTrue(leftHost[0].getPlacement() == RibbonPlacement.LEFT);
+        assertNotNull(stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_HOST_ID + " .pf-ribbon-side-toolbar"));
+        assertNull(stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_HOST_ID + " .pf-ribbon-side-content-pane"));
         assertNull(uncaughtException, "Exception during RibbonPlacementSample build: " + uncaughtException);
     }
 

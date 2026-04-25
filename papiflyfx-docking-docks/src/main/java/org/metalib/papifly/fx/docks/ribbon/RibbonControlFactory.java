@@ -74,6 +74,21 @@ final class RibbonControlFactory {
         return button;
     }
 
+    static Button createSideToolbarCommandButton(RibbonCommand command, ClassLoader classLoader) {
+        Button button = new Button();
+        button.getStyleClass().addAll("pf-ribbon-side-toolbar-button", "pf-ribbon-side-toolbar-command");
+        configureCommand(button, command, true, true, classLoader);
+        if (button.getTooltip() == null) {
+            button.setTooltip(new Tooltip(command.label()));
+        }
+        button.setOnAction(event -> command.execute());
+        return button;
+    }
+
+    static Node createSideToolbarGlyph(String label) {
+        return createFallbackGlyph(label, SMALL_ICON_SIZE);
+    }
+
     static void dispose(Node node) {
         JavaFxCommandBindings.dispose(node);
     }
@@ -315,13 +330,12 @@ final class RibbonControlFactory {
         ClassLoader classLoader
     ) {
         Node graphic = createGraphic(label, smallIcon, largeIcon, compact, allowFallbackGlyph, classLoader);
-        boolean hasIconHandle = smallIcon != null || largeIcon != null;
         labeled.setGraphic(graphic);
         labeled.setMnemonicParsing(false);
 
         if (compact) {
-            labeled.setText(hasIconHandle ? "" : label);
-            labeled.setContentDisplay(hasIconHandle ? ContentDisplay.GRAPHIC_ONLY : ContentDisplay.LEFT);
+            labeled.setText(graphic == null ? label : "");
+            labeled.setContentDisplay(graphic == null ? ContentDisplay.LEFT : ContentDisplay.GRAPHIC_ONLY);
         } else {
             labeled.setText(label);
             labeled.setWrapText(true);
@@ -361,8 +375,8 @@ final class RibbonControlFactory {
             }
         }
 
-        if (allowFallbackGlyph && !compact) {
-            return createFallbackGlyph(label, LARGE_ICON_SIZE);
+        if (allowFallbackGlyph) {
+            return createFallbackGlyph(label, compact ? SMALL_ICON_SIZE : LARGE_ICON_SIZE);
         }
 
         return null;

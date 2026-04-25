@@ -173,10 +173,10 @@
     -fx-background-color: -fx-ribbon-background;
     -fx-border-color: transparent -pf-ui-border-subtle transparent transparent;
     -fx-border-width: 0 1 0 0;
-    -fx-padding: 0 7px 8px 7px;
-    -fx-min-width: 96px;
-    -fx-pref-width: 96px;
-    -fx-max-width: 96px;
+    -fx-padding: 8px 6px 8px 6px;
+    -fx-min-width: 52px;
+    -fx-pref-width: 52px;
+    -fx-max-width: 52px;
 }
 
 .pf-ribbon-placement-right .pf-ribbon-side-edge-strip {
@@ -186,15 +186,80 @@
 
 .pf-ribbon-side-content-pane {
     -fx-background-color: -fx-ribbon-background-subtle;
-    -fx-min-width: 236px;
-    -fx-pref-width: 284px;
-    -fx-max-width: 340px;
+    -fx-min-width: 284px;
+    -fx-pref-width: 320px;
+    -fx-max-width: 380px;
 }
 
 .pf-ribbon-side-flyout {
     -fx-border-color: -pf-ui-border-default;
     -fx-border-width: 1;
     -fx-effect: dropshadow(gaussian, -fx-ribbon-shadow, 22, 0.22, 0, 8);
+}
+
+.pf-ribbon-side-toolbar {
+    -fx-alignment: top-center;
+    -fx-spacing: 6px;
+}
+
+.pf-ribbon-side-toolbar-button {
+    -fx-min-width: 36px;
+    -fx-pref-width: 36px;
+    -fx-max-width: 36px;
+    -fx-min-height: 36px;
+    -fx-pref-height: 36px;
+    -fx-max-height: 36px;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-border-radius: 7px;
+    -fx-background-radius: 7px;
+    -fx-padding: 0;
+    -fx-content-display: graphic-only;
+}
+
+.pf-ribbon-side-toolbar-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-side-toolbar-button:armed {
+    -fx-background-color: -pf-ui-surface-control-pressed;
+}
+
+.pf-ribbon-side-toolbar-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ribbon-side-toolbar-command {
+    -fx-border-color: -pf-ui-border-subtle;
+}
+
+.pf-ribbon-side-toolbar-tab {
+    -fx-border-color: transparent;
+}
+
+.pf-ribbon-side-toolbar-tab.pf-ribbon-tab-contextual {
+    -fx-background-color: -fx-ribbon-contextual-background;
+}
+
+.pf-ribbon-side-toolbar-tab.pf-ribbon-tab-contextual:hover {
+    -fx-background-color: -fx-ribbon-contextual-selected;
+}
+
+.pf-ribbon-side-toolbar-separator {
+    -fx-background-color: -pf-ui-border-subtle;
+    -fx-min-width: 28px;
+    -fx-pref-width: 28px;
+    -fx-max-width: 28px;
+    -fx-min-height: 1px;
+    -fx-pref-height: 1px;
+    -fx-max-height: 1px;
+}
+
+.pf-ribbon-side-toolbar-popover {
+    -fx-background-radius: 10px;
+    -fx-border-radius: 10px;
+    -fx-padding: 0;
 }
 
 .pf-ribbon-qat-button {
