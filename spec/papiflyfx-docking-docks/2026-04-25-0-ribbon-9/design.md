@@ -54,6 +54,8 @@ public void setPlacement(RibbonPlacement placement);
 
 Applications may specify the host placement before showing the scene, through configuration, or through an application-level preference. When specified, the host should render the ribbon on that side; when omitted, the host renders the ribbon on top.
 
+Placement is host-configurable for Ribbon 9. The built-in ribbon chrome should not add a user-facing placement switch command in this slice.
+
 ## Layout Model
 
 | Placement | Host Region | Ribbon Orientation | Primary Scroll Axis |
@@ -63,15 +65,31 @@ Applications may specify the host placement before showing the scene, through co
 | `LEFT` | `BorderPane.left` | Vertical | Vertical |
 | `RIGHT` | `BorderPane.right` | Vertical | Vertical |
 
-Top and bottom placements keep the current ribbon structure: QAT, tabs, collapse button, then command groups.
+Top and bottom placements keep the current ribbon structure: QAT, tabs, collapse button, then command groups. Bottom placement mirrors top header ordering instead of moving QAT nearest the content edge.
 
-Left and right placements should use a vertical command surface:
+Left and right placements should preserve the ribbon concept rather than becoming a generic sidebar. The side ribbon is split into two vertical surfaces:
 
-1. Header area stacks QAT, tab strip, and collapse button in a compact vertical column.
-2. Tabs are arranged vertically, not rotated text.
-3. Groups stack vertically and scroll on the Y axis.
-4. Command controls keep readable horizontal labels where space permits; do not rotate text.
+1. **Edge tab strip:** a narrow strip on the outside edge of the host. For `RIGHT`, the strip sits at the far right; for `LEFT`, it sits at the far left. It contains the QAT affordance, tab toggles, and collapse/expand control.
+2. **Inner content pane:** a wider panel between dock content and the edge tab strip. It renders the selected tab's command groups.
+
+For `RIGHT`, the visual order is dock content, command content pane, then edge tab strip. For `LEFT`, the order mirrors that: edge tab strip, command content pane, then dock content.
+
+Side placement behavior:
+
+1. Tabs are arranged vertically in the edge strip, but labels must remain readable and non-rotated. Use icon-first or icon-plus-short-label tab buttons with tooltips and accessible names; do not require provider-specific tab icon APIs for this slice.
+2. Groups stack vertically in the inner content pane and scroll on the Y axis when content exceeds available height.
+3. Group titles move from the bottom footer pattern used by horizontal ribbons to the top of each side group, reading as section headers or dividers such as `Front Matter` and `Shortcodes`.
+4. Large command buttons span the available content-pane width. Smaller controls may wrap in a `FlowPane` or `TilePane` grid inside the group.
 5. Adaptive group reduction uses available height for vertical placements instead of width.
+6. The side content pane should use a theme token for constrained width with responsive min/pref/max values, while the edge tab strip remains compact.
+
+### Side Ribbon Collapsed Mode
+
+Side placement collapse should reduce only the inner content pane and keep the edge tab strip visible. This preserves a compact side rail while freeing horizontal workspace.
+
+When minimized and the user activates a tab in the edge strip, the selected tab's content pane should appear as a temporary overlay flyout over the dock content. This activation must not flip the persisted minimized flag.
+
+This is the side-placement equivalent of Ribbon 8 minimized tab activation: users can inspect and invoke selected-tab commands transiently while the saved minimized state remains `true`.
 
 ## Minimized Behavior
 
@@ -81,8 +99,8 @@ Minimized state remains one boolean across all placements.
 | --- | --- |
 | `TOP` | Header row only |
 | `BOTTOM` | Header row only at bottom |
-| `LEFT` | Header column only |
-| `RIGHT` | Header column only |
+| `LEFT` | Edge tab strip only; command content appears transiently on tab activation |
+| `RIGHT` | Edge tab strip only; command content appears transiently on tab activation |
 
 Activating a tab while minimized should reveal the selected tab command panel without flipping the persisted minimized flag, matching the Ribbon 8 behavior.
 
@@ -100,7 +118,9 @@ For horizontal placements, the extent is width. For vertical placements, the ext
 2. Ties collapse from higher visual order down.
 3. Restore happens in the reverse order.
 
-Vertical placements should prefer `MEDIUM` and `SMALL` controls that avoid text clipping rather than forcing large cards into a narrow rail.
+Vertical placements should prefer `MEDIUM` and `SMALL` controls that avoid text clipping rather than forcing large cards into a narrow rail. Group rendering should be orientation-aware: horizontal ribbons keep group labels in the existing footer location, while side ribbons place group labels at the top of the group.
+
+Accordion-style group collapse is in scope for side placement because vertical content can grow long. It should collapse group sections without requiring provider-specific metadata or side-specific provider SPI.
 
 ## Persistence
 
@@ -135,18 +155,19 @@ Add orientation classes:
 
 The side placements need explicit CSS for:
 
-1. Header column spacing and alignment.
-2. Vertical tab strip width, selected/focused states, and contextual accents.
+1. Edge tab strip width, spacing, selected/focused states, contextual accents, and tooltip affordances.
+2. Inner content-pane width budgets with min/pref/max constraints.
 3. Vertical group scroller padding and scroll-bar policy.
-4. Group width budgets for side rails.
-5. Menu/split-button label and arrow contrast in side placement.
+4. Side group header styling at the top of each group.
+5. Full-width large command buttons and wrapped grid treatment for smaller controls.
+6. Menu/split-button label and arrow contrast in side placement.
 
 ## Accessibility
 
 1. The selected tab remains a toggle in the same toggle group.
-2. Focus order should move through QAT, tabs, collapse button, then visible commands for the active placement.
+2. Focus order should move through QAT, tabs, collapse button, then visible commands for the active placement. In side placement, the edge tab strip is first-class keyboard chrome and must remain reachable while the content pane is collapsed.
 3. Focus indicators must remain visible on all four sides.
-4. No labels should be rotated; screen-reader text and visible text should stay aligned.
+4. No labels should be rotated; screen-reader text and visible text should stay aligned. Icon-first tabs require accessible text and tooltips that expose the full tab label.
 5. Minimized tab activation must not strand focus in an empty command panel.
 
 ## SamplesApp Demo
@@ -162,8 +183,10 @@ The demo should stay deterministic and local-only. It should not require externa
 
 Sample validation should include `SamplesSmokeTest` coverage that the demo is registered in the catalog and can be built headlessly. Add focused sample assertions if the implementation exposes stable node ids or placement properties that can be checked without brittle visual assumptions.
 
-## Open Questions
+## Decisions
 
-1. Should placement be user-changeable through a built-in ribbon command or only host-configurable?
-2. Should vertical side ribbons default to a fixed width or derive width from the largest visible group?
-3. Should bottom placement render QAT before tabs, matching top, or nearest the content edge?
+1. Placement is host-configurable only for Ribbon 9. No built-in ribbon command switches placement.
+2. Side ribbon command content pane width is controlled by a theme token, with responsive min/pref/max constraints.
+3. Bottom placement mirrors top header ordering.
+4. Minimized side tab activation reveals command content through an overlay flyout.
+5. Side group sections use accordion-style collapse in Ribbon 9.
