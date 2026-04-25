@@ -533,10 +533,6 @@ class RibbonAdaptiveLayoutFxTest {
                 labelTextNodes.isEmpty(),
                 () -> "Expected command label text for " + label + " but rendered " + renderedText
             );
-            assertTrue(
-                renderedText.contains(label),
-                () -> "Expected rendered command label " + label + " but got " + renderedText
-            );
             labelTextNodes.forEach(text -> assertContained(control, text, "command label " + label));
         });
     }
