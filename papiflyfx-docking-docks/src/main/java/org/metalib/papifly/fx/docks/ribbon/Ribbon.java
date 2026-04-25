@@ -11,10 +11,13 @@ import javafx.collections.ListChangeListener;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
 import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
@@ -47,7 +50,7 @@ public class Ribbon extends VBox {
     private final RibbonTabStrip tabStrip = new RibbonTabStrip();
     private final HBox groupRow = new HBox(12.0);
     private final ScrollPane groupScroller = new ScrollPane(groupRow);
-    private final Button minimizeButton = new Button("Collapse");
+    private final Button minimizeButton = new Button();
     private final BorderPane header = new BorderPane();
     private final HBox headerActions = new HBox();
     private final Comparator<RibbonGroup> collapseOrderComparator =
@@ -65,6 +68,7 @@ public class Ribbon extends VBox {
 
     private RibbonManager manager;
     private boolean adaptiveLayoutRequested;
+    private boolean minimizedTabPanelShowing;
     private RibbonLayoutTelemetry layoutTelemetry = RibbonLayoutTelemetry.noop();
 
     /**
@@ -96,9 +100,10 @@ public class Ribbon extends VBox {
         groupScroller.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> requestAdaptiveLayout());
 
         tabStrip.selectedTabIdProperty().bindBidirectional(selectedTabId);
+        tabStrip.setOnTabActivated(this::showMinimizedTabPanel);
 
         minimizeButton.getStyleClass().addAll("pf-ui-compact-action-button", "pf-ribbon-collapse-button");
-        minimizeButton.setOnAction(event -> setMinimized(!isMinimized()));
+        minimizeButton.setOnAction(event -> toggleMinimized());
 
         header.getStyleClass().add("pf-ribbon-header");
         headerActions.getStyleClass().add("pf-ribbon-header-actions");
@@ -150,6 +155,9 @@ public class Ribbon extends VBox {
      * @param minimized minimized flag
      */
     public void setMinimized(boolean minimized) {
+        if (this.minimized.get() != minimized) {
+            minimizedTabPanelShowing = false;
+        }
         this.minimized.set(minimized);
     }
 
@@ -295,7 +303,7 @@ public class Ribbon extends VBox {
     }
 
     private boolean rebuildGroups() {
-        if (isMinimized() || manager == null || manager.getTabs().isEmpty()) {
+        if (manager == null || manager.getTabs().isEmpty()) {
             if (!groupRow.getChildren().isEmpty()) {
                 groupRow.getChildren().clear();
                 return true;
@@ -321,12 +329,43 @@ public class Ribbon extends VBox {
     }
 
     private void updateMinimizedState() {
-        groupScroller.setManaged(!isMinimized());
-        groupScroller.setVisible(!isMinimized());
-        minimizeButton.setText(isMinimized() ? "Expand" : "Collapse");
+        boolean bodyVisible = !isMinimized() || minimizedTabPanelShowing;
+        groupScroller.setManaged(bodyVisible);
+        groupScroller.setVisible(bodyVisible);
+        String actionLabel = isMinimized() ? "Expand ribbon" : "Collapse ribbon";
+        minimizeButton.setText("");
+        minimizeButton.setGraphic(createMinimizeGraphic(isMinimized()));
+        minimizeButton.setAccessibleText(actionLabel);
+        minimizeButton.setTooltip(new Tooltip(actionLabel));
         if (!isMinimized()) {
             requestAdaptiveLayout();
         }
+    }
+
+    private void toggleMinimized() {
+        minimizedTabPanelShowing = false;
+        setMinimized(!isMinimized());
+    }
+
+    private void showMinimizedTabPanel(String tabId) {
+        if (!isMinimized()) {
+            return;
+        }
+        minimizedTabPanelShowing = true;
+        if (rebuildGroups()) {
+            requestAdaptiveLayout();
+        }
+        updateMinimizedState();
+        requestAdaptiveLayout();
+    }
+
+    private StackPane createMinimizeGraphic(boolean minimized) {
+        SVGPath icon = new SVGPath();
+        icon.setContent(minimized ? "M3,6 L8,11 L13,6" : "M3,10 L8,5 L13,10");
+        icon.getStyleClass().add("pf-ribbon-collapse-icon");
+        StackPane wrapper = new StackPane(icon);
+        wrapper.getStyleClass().add("pf-ribbon-collapse-icon-wrap");
+        return wrapper;
     }
 
     private void applyTheme(Theme theme) {
@@ -350,7 +389,7 @@ public class Ribbon extends VBox {
     }
 
     private void requestAdaptiveLayout() {
-        if (adaptiveLayoutRequested || isMinimized()) {
+        if (adaptiveLayoutRequested || (isMinimized() && !minimizedTabPanelShowing)) {
             return;
         }
         adaptiveLayoutRequested = true;

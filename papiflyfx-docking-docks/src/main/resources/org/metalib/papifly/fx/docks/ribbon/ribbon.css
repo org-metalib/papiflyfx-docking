@@ -21,7 +21,48 @@
 }
 
 .pf-ribbon-collapse-button {
+    -fx-min-width: -pf-ui-control-height-compact;
+    -fx-pref-width: -pf-ui-control-height-compact;
+    -fx-max-width: -pf-ui-control-height-compact;
+    -fx-min-height: -pf-ui-control-height-compact;
+    -fx-pref-height: -pf-ui-control-height-compact;
+    -fx-max-height: -pf-ui-control-height-compact;
     -fx-background-color: transparent;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 0;
+}
+
+.pf-ribbon-collapse-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-collapse-button:armed {
+    -fx-background-color: -pf-ui-surface-control-pressed;
+}
+
+.pf-ribbon-collapse-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ribbon-collapse-icon-wrap {
+    -fx-min-width: 16px;
+    -fx-pref-width: 16px;
+    -fx-max-width: 16px;
+    -fx-min-height: 16px;
+    -fx-pref-height: 16px;
+    -fx-max-height: 16px;
+    -fx-alignment: center;
+}
+
+.pf-ribbon-collapse-icon {
+    -fx-fill: transparent;
+    -fx-stroke: -pf-ui-text-primary;
+    -fx-stroke-width: 2;
+    -fx-stroke-line-cap: round;
+    -fx-stroke-line-join: round;
 }
 
 .pf-ribbon-tab-strip {
@@ -234,6 +275,26 @@
 .pf-ribbon-menu-button:disabled {
     -fx-text-fill: -pf-ui-text-disabled;
     -fx-opacity: 1.0;
+}
+
+.pf-ribbon-menu-button > .label,
+.pf-ribbon-split-button > .label {
+    -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-menu-button > .arrow-button > .arrow,
+.pf-ribbon-split-button > .arrow-button > .arrow {
+    -fx-background-color: -pf-ui-text-primary;
+}
+
+.pf-ribbon-menu-button:disabled > .label,
+.pf-ribbon-split-button:disabled > .label {
+    -fx-text-fill: -pf-ui-text-disabled;
+}
+
+.pf-ribbon-menu-button:disabled > .arrow-button > .arrow,
+.pf-ribbon-split-button:disabled > .arrow-button > .arrow {
+    -fx-background-color: -pf-ui-text-disabled;
 }
 
 .pf-ribbon-control-large {

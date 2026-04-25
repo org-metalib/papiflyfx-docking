@@ -9,10 +9,12 @@ import javafx.scene.control.ButtonBase;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Text;
@@ -94,6 +96,80 @@ class RibbonAdaptiveLayoutFxTest {
         stage.show();
         settleFx();
         telemetry.clear();
+    }
+
+    @Test
+    void ribbonCollapseControlIsIconOnlyAndKeepsAccessibleState(FxRobot robot) {
+        Button collapseButton = FxTestUtil.callFx(() -> findDescendant(
+            ribbon,
+            Button.class,
+            button -> button.getStyleClass().contains("pf-ribbon-collapse-button")
+        ));
+        assertNotNull(collapseButton);
+
+        assertEquals("", FxTestUtil.callFx(collapseButton::getText));
+        assertEquals("Collapse ribbon", FxTestUtil.callFx(collapseButton::getAccessibleText));
+        assertNotNull(FxTestUtil.callFx(collapseButton::getGraphic));
+        assertNotNull(FxTestUtil.callFx(() -> findDescendant(
+            assertInstanceOf(Parent.class, collapseButton.getGraphic()),
+            SVGPath.class,
+            icon -> icon.getStyleClass().contains("pf-ribbon-collapse-icon")
+        )));
+
+        robot.clickOn(collapseButton);
+        settleFx();
+
+        assertTrue(FxTestUtil.callFx(ribbon::isMinimized));
+        assertEquals("", FxTestUtil.callFx(collapseButton::getText));
+        assertEquals("Expand ribbon", FxTestUtil.callFx(collapseButton::getAccessibleText));
+        assertNotNull(FxTestUtil.callFx(collapseButton::getGraphic));
+    }
+
+    @Test
+    void minimizedTabActivationShowsRenderedCommandPanel(FxRobot robot) {
+        FxTestUtil.runFx(() -> {
+            tabs.set(twoTabRibbonTabs());
+            manager.refresh();
+        });
+        settleFx();
+
+        Button collapseButton = FxTestUtil.callFx(() -> findDescendant(
+            ribbon,
+            Button.class,
+            button -> button.getStyleClass().contains("pf-ribbon-collapse-button")
+        ));
+        assertNotNull(collapseButton);
+        ScrollPane groupScroller = FxTestUtil.callFx(() -> findDescendant(
+            ribbon,
+            ScrollPane.class,
+            scroller -> scroller.getStyleClass().contains("pf-ribbon-scroll")
+        ));
+        assertNotNull(groupScroller);
+
+        robot.clickOn(collapseButton);
+        settleFx();
+
+        assertTrue(FxTestUtil.callFx(ribbon::isMinimized));
+        assertFalse(FxTestUtil.callFx(groupScroller::isVisible));
+
+        ButtonBase toolsTab = robot.lookup(node ->
+            node instanceof ButtonBase button
+                && "Tools".equals(button.getText())
+                && button.isVisible()
+        ).queryAs(ButtonBase.class);
+        robot.clickOn(toolsTab);
+        settleFx();
+
+        assertTrue(FxTestUtil.callFx(ribbon::isMinimized));
+        assertTrue(FxTestUtil.callFx(groupScroller::isVisible));
+        assertEquals("tools", FxTestUtil.callFx(ribbon::getSelectedTabId));
+        assertTrue(FxTestUtil.callFx(() -> ribbon.getRenderedGroups().stream()
+            .anyMatch(group -> group.getSpec().id().equals("delta"))));
+        assertNotNull(robot.lookup(node ->
+            node instanceof ButtonBase button
+                && "Delta One".equals(button.getText())
+                && button.isVisible()
+        ).queryAs(ButtonBase.class));
     }
 
     @Test
@@ -183,12 +259,12 @@ class RibbonAdaptiveLayoutFxTest {
         ).queryAs(Label.class);
         Region menuItem = FxTestUtil.callFx(() ->
             assertInstanceOf(Region.class, findAncestor(optionLabel, parent -> parent.getStyleClass().contains("menu-item"))));
-        String restingBackground = FxTestUtil.callFx(() -> menuItem.getBackground().getFills().toString());
+        String restingBackground = FxTestUtil.callFx(() -> backgroundDescription(menuItem));
 
         robot.moveTo(optionLabel);
         settleFx();
 
-        String hoverBackground = FxTestUtil.callFx(() -> menuItem.getBackground().getFills().toString());
+        String hoverBackground = FxTestUtil.callFx(() -> backgroundDescription(menuItem));
         assertNotEquals(restingBackground, hoverBackground);
 
         FxTestUtil.runFx(() -> ribbon.themeProperty().set(Theme.light()));
@@ -205,14 +281,14 @@ class RibbonAdaptiveLayoutFxTest {
         ).queryAs(Label.class);
         Region lightMenuItem = FxTestUtil.callFx(() ->
             assertInstanceOf(Region.class, findAncestor(optionTwoLabel, parent -> parent.getStyleClass().contains("menu-item"))));
-        String lightRestingBackground = FxTestUtil.callFx(() -> lightMenuItem.getBackground().getFills().toString());
-        String lightRestingBorder = FxTestUtil.callFx(() -> lightMenuItem.getBorder().getStrokes().toString());
+        String lightRestingBackground = FxTestUtil.callFx(() -> backgroundDescription(lightMenuItem));
+        String lightRestingBorder = FxTestUtil.callFx(() -> borderDescription(lightMenuItem));
 
         robot.moveTo(optionTwoLabel);
         settleFx();
 
-        String lightHoverBackground = FxTestUtil.callFx(() -> lightMenuItem.getBackground().getFills().toString());
-        String lightHoverBorder = FxTestUtil.callFx(() -> lightMenuItem.getBorder().getStrokes().toString());
+        String lightHoverBackground = FxTestUtil.callFx(() -> backgroundDescription(lightMenuItem));
+        String lightHoverBorder = FxTestUtil.callFx(() -> borderDescription(lightMenuItem));
         assertNotEquals(lightRestingBackground, lightHoverBackground);
         assertNotEquals(lightRestingBorder, lightHoverBorder);
     }
@@ -360,6 +436,7 @@ class RibbonAdaptiveLayoutFxTest {
         assertCommandLabelContained("clipboard", "Copy");
         assertCommandLabelContained("clipboard", "Duplicate");
         assertCommandLabelContained("layout", "Pin Preview");
+        assertMenuButtonTextReadable("layout", "Presets");
         assertGroupCaptionContained("clipboard", "Clipboard");
         assertGroupCaptionContained("layout", "Layout");
 
@@ -375,6 +452,7 @@ class RibbonAdaptiveLayoutFxTest {
         assertCommandLabelContained("clipboard", "Copy");
         assertCommandLabelContained("clipboard", "Duplicate");
         assertCommandLabelContained("layout", "Pin Preview");
+        assertMenuButtonTextReadable("layout", "Presets");
         assertGroupCaptionContained("clipboard", "Clipboard");
         assertGroupCaptionContained("layout", "Layout");
     }
@@ -429,6 +507,28 @@ class RibbonAdaptiveLayoutFxTest {
         });
     }
 
+    private void assertMenuButtonTextReadable(String groupId, String label) {
+        FxTestUtil.runFx(() -> {
+            RibbonGroup ribbonGroup = group(groupId);
+            MenuButton control = findDescendant(
+                ribbonGroup,
+                MenuButton.class,
+                button -> label.equals(button.getText())
+            );
+            assertNotNull(control, "Expected menu control for " + label);
+            Text text = findDescendant(control, Text.class, node -> label.equals(node.getText()));
+            assertNotNull(text, "Expected menu label text for " + label);
+            control.applyCss();
+            Paint fill = text.getFill();
+            assertInstanceOf(Color.class, fill, "Expected CSS-resolved text fill for " + label);
+            Color color = (Color) fill;
+            assertTrue(
+                color.getBrightness() >= 0.55,
+                () -> "Expected readable menu text for " + label + " but got " + color
+            );
+        });
+    }
+
     private void assertGroupCaptionContained(String groupId, String caption) {
         FxTestUtil.runFx(() -> {
             RibbonGroup ribbonGroup = group(groupId);
@@ -452,6 +552,16 @@ class RibbonAdaptiveLayoutFxTest {
                 && childBounds.getMaxY() <= ownerBounds.getMaxY() + tolerance,
             () -> description + " vertical bounds " + childBounds + " exceed owner bounds " + ownerBounds
         );
+    }
+
+    private static String backgroundDescription(Region region) {
+        region.applyCss();
+        return region.getBackground() == null ? "<none>" : region.getBackground().getFills().toString();
+    }
+
+    private static String borderDescription(Region region) {
+        region.applyCss();
+        return region.getBorder() == null ? "<none>" : region.getBorder().getStrokes().toString();
     }
 
     private static <T extends Node> T findDescendant(Parent root, Class<T> type, Predicate<T> predicate) {
@@ -598,11 +708,41 @@ class RibbonAdaptiveLayoutFxTest {
                     null,
                     List.of(
                         new RibbonToggleSpec(RibbonToggleCommand.of("pin-preview", "Pin Preview", RibbonBooleanState.mutable(false), () -> {})),
-                        new RibbonButtonSpec(RibbonCommand.of("presets", "Presets", () -> {}))
+                        new RibbonMenuSpec(
+                            "presets",
+                            "Presets",
+                            "Presets",
+                            null,
+                            null,
+                            List.of(
+                                RibbonCommand.of("two-column", "Two Column", () -> {}),
+                                RibbonCommand.of("wide-preview", "Wide Preview", () -> {})
+                            )
+                        )
                     )
                 )
             )
         ));
+    }
+
+    private List<RibbonTabSpec> twoTabRibbonTabs() {
+        RibbonTabSpec home = defaultTabs().getFirst();
+        RibbonTabSpec tools = new RibbonTabSpec(
+            "tools",
+            "Tools",
+            10,
+            false,
+            ribbonContext -> true,
+            List.of(new RibbonGroupSpec(
+                "delta",
+                "Delta",
+                0,
+                0,
+                null,
+                List.of(new RibbonButtonSpec(RibbonCommand.of("delta-1", "Delta One", () -> {})))
+            ))
+        );
+        return List.of(home, tools);
     }
 
     private List<RibbonTabSpec> menuTabs() {

@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * Horizontal selector for ribbon tabs.
@@ -28,6 +29,8 @@ public class RibbonTabStrip extends HBox {
     private final Map<String, TabRenderState> renderedTabs = new LinkedHashMap<>();
 
     private RibbonLayoutTelemetry telemetry = RibbonLayoutTelemetry.noop();
+    private Consumer<String> tabActivated = tabId -> {
+    };
 
     /**
      * Creates an empty ribbon tab strip.
@@ -78,6 +81,11 @@ public class RibbonTabStrip extends HBox {
 
     void setLayoutTelemetry(RibbonLayoutTelemetry telemetry) {
         this.telemetry = telemetry == null ? RibbonLayoutTelemetry.noop() : telemetry;
+    }
+
+    void setOnTabActivated(Consumer<String> tabActivated) {
+        this.tabActivated = tabActivated == null ? tabId -> {
+        } : tabActivated;
     }
 
     private void rebuild() {
@@ -137,7 +145,10 @@ public class RibbonTabStrip extends HBox {
         if (button.getToggleGroup() != toggleGroup) {
             button.setToggleGroup(toggleGroup);
         }
-        button.setOnAction(event -> setSelectedTabId(tab.id()));
+        button.setOnAction(event -> {
+            setSelectedTabId(tab.id());
+            tabActivated.accept(tab.id());
+        });
     }
 
     private record TabRenderState(String label, boolean contextual, ToggleButton button) {
