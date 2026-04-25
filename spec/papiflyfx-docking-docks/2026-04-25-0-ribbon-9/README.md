@@ -15,3 +15,5 @@ and session persistence.
 ## Documents
 
 - [design.md](design.md) - target UX, API shape, layout model, persistence, and constraints.
+- [plan.md](plan.md) - phased implementation plan and validation expectations.
+- [progress.md](progress.md) - planning and implementation status.

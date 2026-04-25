@@ -13,6 +13,7 @@
 - [2026-04-25] Created `plan.md` with implementation phases for API/session contract, host/ribbon layout, adaptive styling, accessibility, documentation, and validation.
 - [2026-04-25] Recorded this initial progress tracker for handoff into implementation.
 - [2026-04-25] Added the `SamplesApp` demo requirement to `design.md` and `plan.md`: a deterministic catalog demo should compare `TOP` and `LEFT` ribbon hosts.
+- [2026-04-25] Created `prompt.md` for starting the Ribbon 9 implementation session with `@core-architect` as lead.
 
 ## Current Understanding
 
