@@ -149,6 +149,19 @@ The side placements need explicit CSS for:
 4. No labels should be rotated; screen-reader text and visible text should stay aligned.
 5. Minimized tab activation must not strand focus in an empty command panel.
 
+## SamplesApp Demo
+
+Add a `SamplesApp` catalog demo that makes the placement behavior easy to inspect without custom setup.
+
+The demo should show two ribbon hosts side by side or through a compact switcher:
+
+1. A default `TOP` ribbon host that demonstrates compatibility with the existing ribbon shell.
+2. A `LEFT` ribbon host using the same sample provider data so users can compare orientation, tab readability, command grouping, QAT behavior, and minimized activation.
+
+The demo should stay deterministic and local-only. It should not require external services, authentication, or network access. The top and left examples should use the same ribbon tabs and representative command controls so placement differences are visible without provider-specific behavior.
+
+Sample validation should include `SamplesSmokeTest` coverage that the demo is registered in the catalog and can be built headlessly. Add focused sample assertions if the implementation exposes stable node ids or placement properties that can be checked without brittle visual assumptions.
+
 ## Open Questions
 
 1. Should placement be user-changeable through a built-in ribbon command or only host-configurable?
