@@ -65,6 +65,7 @@ class RibbonSessionPersistenceFxTest {
         FxTestUtil.runFx(() -> {
             ribbonManager.getQuickAccessCommandIds().setAll(CMD_SAVE, CMD_PREVIEW);
             ribbon.setSelectedTabId(TAB_HUGO);
+            ribbon.setPlacement(RibbonPlacement.LEFT);
             ribbon.setMinimized(true);
         });
         settle();
@@ -77,10 +78,12 @@ class RibbonSessionPersistenceFxTest {
         assertFalse(sessionMap.containsKey("ribbon"));
         assertEquals("hugo", ribbonExtension.get("selectedTabId"));
         assertEquals(List.of(CMD_SAVE, CMD_PREVIEW), ribbonExtension.get("quickAccessCommandIds"));
+        assertEquals("LEFT", ribbonExtension.get("placement"));
 
         FxTestUtil.runFx(() -> {
             ribbon.setMinimized(false);
             ribbon.setSelectedTabId(TAB_HOME);
+            ribbon.setPlacement(RibbonPlacement.TOP);
             ribbonManager.getQuickAccessCommandIds().clear();
             dockManager.restoreSessionFromString(json);
         });
@@ -88,10 +91,48 @@ class RibbonSessionPersistenceFxTest {
 
         assertTrue(FxTestUtil.callFx(ribbon::isMinimized));
         assertEquals(TAB_HUGO, FxTestUtil.callFx(ribbon::getSelectedTabId));
+        assertEquals(RibbonPlacement.LEFT, FxTestUtil.callFx(ribbon::getPlacement));
         assertEquals(
             List.of(CMD_SAVE, CMD_PREVIEW),
             FxTestUtil.callFx(() -> ribbonManager.getQuickAccessCommands().stream().map(RibbonCommand::id).toList())
         );
+    }
+
+    @Test
+    void restore_missingPlacementDefaultsToTopWithoutDroppingOtherRibbonState() {
+        String json = FxTestUtil.callFx(() -> {
+            ribbonManager.getQuickAccessCommandIds().setAll(CMD_SAVE, CMD_PREVIEW);
+            ribbon.setSelectedTabId(TAB_HUGO);
+            ribbon.setPlacement(RibbonPlacement.RIGHT);
+            ribbon.setMinimized(true);
+            return dockManager.saveSessionToString();
+        });
+
+        Map<String, Object> sessionMap = persistence.getSerializer().fromJson(json);
+        Map<String, Object> extensions = castMap(sessionMap.get("extensions"));
+        Map<String, Object> ribbonExtension = castMap(extensions.get("ribbon"));
+        ribbonExtension.remove("placement");
+        String missingPlacementJson = persistence.getSerializer().toJson(sessionMap);
+
+        FxTestUtil.runFx(() -> {
+            ribbon.setMinimized(false);
+            ribbon.setSelectedTabId(TAB_HOME);
+            ribbon.setPlacement(RibbonPlacement.LEFT);
+            ribbonManager.getQuickAccessCommandIds().clear();
+            dockManager.restoreSessionFromString(missingPlacementJson);
+        });
+        settle();
+
+        assertTrue(FxTestUtil.callFx(ribbon::isMinimized));
+        assertEquals(TAB_HUGO, FxTestUtil.callFx(ribbon::getSelectedTabId));
+        assertEquals(RibbonPlacement.TOP, FxTestUtil.callFx(ribbon::getPlacement));
+        assertEquals(List.of(CMD_SAVE, CMD_PREVIEW), FxTestUtil.callFx(() -> List.copyOf(ribbonManager.getQuickAccessCommandIds())));
+    }
+
+    @Test
+    void restore_unknownAndMalformedPlacementDefaultToTopOnly() {
+        assertPlacementFallbackOnly("SIDEWAYS");
+        assertPlacementFallbackOnly(Boolean.TRUE);
     }
 
     @Test
@@ -156,6 +197,36 @@ class RibbonSessionPersistenceFxTest {
     @SuppressWarnings("unchecked")
     private static Map<String, Object> castMap(Object value) {
         return (Map<String, Object>) value;
+    }
+
+    private void assertPlacementFallbackOnly(Object placementValue) {
+        String json = FxTestUtil.callFx(() -> {
+            ribbonManager.getQuickAccessCommandIds().setAll(CMD_SAVE, CMD_PREVIEW);
+            ribbon.setSelectedTabId(TAB_HUGO);
+            ribbon.setPlacement(RibbonPlacement.BOTTOM);
+            ribbon.setMinimized(true);
+            return dockManager.saveSessionToString();
+        });
+
+        Map<String, Object> sessionMap = persistence.getSerializer().fromJson(json);
+        Map<String, Object> extensions = castMap(sessionMap.get("extensions"));
+        Map<String, Object> ribbonExtension = castMap(extensions.get("ribbon"));
+        ribbonExtension.put("placement", placementValue);
+        String modifiedJson = persistence.getSerializer().toJson(sessionMap);
+
+        FxTestUtil.runFx(() -> {
+            ribbon.setMinimized(false);
+            ribbon.setSelectedTabId(TAB_HOME);
+            ribbon.setPlacement(RibbonPlacement.LEFT);
+            ribbonManager.getQuickAccessCommandIds().clear();
+            dockManager.restoreSessionFromString(modifiedJson);
+        });
+        settle();
+
+        assertTrue(FxTestUtil.callFx(ribbon::isMinimized));
+        assertEquals(TAB_HUGO, FxTestUtil.callFx(ribbon::getSelectedTabId));
+        assertEquals(RibbonPlacement.TOP, FxTestUtil.callFx(ribbon::getPlacement));
+        assertEquals(List.of(CMD_SAVE, CMD_PREVIEW), FxTestUtil.callFx(() -> List.copyOf(ribbonManager.getQuickAccessCommandIds())));
     }
 
     private static void settle() {

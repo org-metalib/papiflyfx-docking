@@ -82,10 +82,15 @@ captured/restored through the same dock session payload automatically.
 DockManager dockManager = new DockManager();
 RibbonManager ribbonManager = new RibbonManager(); // ServiceLoader providers
 RibbonDockHost host = new RibbonDockHost(dockManager, ribbonManager, new Ribbon());
+host.setPlacement(RibbonPlacement.LEFT); // Optional; TOP is the compatibility default
 
 String json = dockManager.saveSessionToString();
 dockManager.restoreSessionFromString(json);
 ```
+
+`RibbonDockHost` and `Ribbon` expose `placementProperty()`, `getPlacement()`,
+and `setPlacement(...)`. Supported placements are `TOP`, `BOTTOM`, `LEFT`, and
+`RIGHT`; providers stay placement-agnostic.
 
 Persisted ribbon state now lives under the namespaced dock-session extension
 payload `extensions.ribbon`:
@@ -93,10 +98,12 @@ payload `extensions.ribbon`:
 - `extensions.ribbon.minimized`
 - `extensions.ribbon.selectedTabId`
 - `extensions.ribbon.quickAccessCommandIds`
+- `extensions.ribbon.placement`
 
 Ribbon contributors and hosts should keep tab and command identifiers stable
 once published. Selected-tab restore and Quick Access Toolbar persistence are
-ID-first and depend on those stable identifiers.
+ID-first and depend on those stable identifiers. Missing, unknown, or malformed
+placement values restore as `TOP` without dropping the other valid ribbon state.
 
 ### Extension contributors
 

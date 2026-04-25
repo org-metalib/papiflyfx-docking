@@ -29,14 +29,26 @@ Current persisted ribbon payload:
 - `extensions.ribbon.minimized`
 - `extensions.ribbon.selectedTabId`
 - `extensions.ribbon.quickAccessCommandIds`
+- `extensions.ribbon.placement`
 
 Compatibility behavior:
 
 - Missing `extensions.ribbon` means no ribbon shell state to restore.
 - QAT ids remain pinned by id; unresolved ids can resolve later when providers contribute matching commands.
 - Unknown fields under `extensions.ribbon` are ignored on decode.
-- Malformed known fields remain strict for the ribbon extension and are isolated from core layout restore.
+- Missing, unknown, or malformed `extensions.ribbon.placement` restores as `TOP` without dropping minimized state, selected tab id, or QAT ids.
+- Other malformed known fields remain strict for the ribbon extension and are isolated from core layout restore.
 - Unknown customization fields are not preserved on save in Ribbon 5 because the runtime recaptures known shell state only.
+
+## Ribbon 9 Placement Notes
+
+Ribbon 9 adds host-configurable placement without changing provider contracts:
+
+- `RibbonPlacement` supports `TOP`, `LEFT`, `RIGHT`, and `BOTTOM`.
+- `RibbonDockHost` and `Ribbon` expose `placementProperty()`, `getPlacement()`, and `setPlacement(...)`.
+- Existing hosts default to `TOP`.
+- Side placements keep a readable vertical tab strip on the outside edge and render selected-tab command groups in the inner pane.
+- The SamplesApp catalog includes `Ribbon Placement` for deterministic `TOP` and `LEFT` comparison.
 
 ## Ribbon 5 Completed Follow-Up Notes
 

@@ -1,6 +1,6 @@
 # Ribbon Current Status
 
-**Status:** current as of Ribbon 6 compatibility implementation
+**Status:** current as of Ribbon 9 side-placement implementation
 **Lead:** @spec-steward
 **Required reviewers for future changes:** @core-architect, @feature-dev, @ops-engineer, @qa-engineer; add @ui-ux-designer for visual/accessibility behavior
 
@@ -8,8 +8,12 @@ This is the canonical status entry point for the PapiflyFX ribbon stream. Dated 
 
 ## Current Baseline
 
-Ribbon 6 is the current implemented baseline. It keeps the Ribbon 5 runtime decisions and adds the planned compatibility split:
+Ribbon 9 is the current implemented baseline. It keeps the Ribbon 6 runtime decisions and adds host-configurable ribbon placement:
 
+- `RibbonPlacement` supports `TOP`, `LEFT`, `RIGHT`, and `BOTTOM`.
+- `RibbonDockHost` and `Ribbon` expose `placementProperty()`, `getPlacement()`, and `setPlacement(...)`.
+- `TOP` remains the default for existing hosts and saved sessions without placement.
+- Left and right placements render a vertical edge tab strip plus an inner command content pane while keeping providers placement-agnostic.
 - `CommandRegistry` keeps stable command identity and first metadata while refreshing enabled state, toggle selected state, and action dispatch from later provider emissions.
 - JavaFX command bindings are disposable, including rebuilt controls, QAT buttons, launchers, collapsed popups, and cache eviction paths.
 - Provider failures, duplicate tab ids, and duplicate command metadata conflicts are diagnostic and test-observable.
@@ -38,10 +42,11 @@ Current ribbon state is a dock-session extension under `extensions.ribbon`:
 - `extensions.ribbon.minimized`
 - `extensions.ribbon.selectedTabId`
 - `extensions.ribbon.quickAccessCommandIds`
+- `extensions.ribbon.placement`
 
 QAT persistence is id-first. Hosts persist `RibbonManager#getQuickAccessCommandIds()`; `getQuickAccessCommands()` is derived from currently contributed commands and is not the source of truth. A contextual command id may remain pinned while hidden and resolve again when the provider later contributes the command.
 
-Current decode behavior reads known fields and ignores unknown fields under `extensions.ribbon`. Malformed known fields are strict for the ribbon extension and should be logged/isolated without aborting core dock-session restore. The current runtime does not preserve unknown ribbon customization fields across save because capture writes the known runtime state only.
+Current decode behavior reads known fields and ignores unknown fields under `extensions.ribbon`. Missing, unknown, or malformed placement values fall back to `TOP` only and do not invalidate minimized state, selected tab id, or QAT ids. Other malformed known fields remain strict for the ribbon extension and should be logged/isolated without aborting core dock-session restore. The current runtime does not preserve unknown ribbon customization fields across save because capture writes the known runtime state only.
 
 Future customization policy is design-only in [Ribbon 6 design](2026-04-23-0-ribbon-6/ribbon-6-design.md): keep `extensions.ribbon`, preserve QAT id-first semantics, ignore unknown fields on decode, keep malformed known fields strict/isolated, and define unknown customization round-trip policy before any customization UI/schema ships.
 
@@ -55,6 +60,7 @@ Future customization policy is design-only in [Ribbon 6 design](2026-04-23-0-rib
 | [Ribbon 4](2026-04-23-0-ribbon-4/README.md) | Implemented samples | Added GitHub and Hugo ribbon sample demos and headless sample coverage. |
 | [Ribbon 5](2026-04-23-0-ribbon-5/README.md) | Closed consolidated follow-up | Closed runtime/accessibility/context/test/docs findings from the multi-role review. |
 | [Ribbon 6](2026-04-23-0-ribbon-6/README.md) | Implemented compatibility break | Splits action/toggle commands, introduces subscription boolean state, centralizes control strategies, and starts `RibbonManager` decomposition. |
+| [Ribbon 9](2026-04-25-0-ribbon-9/README.md) | Implemented side placement | Adds host-configurable top/bottom/left/right placement, side-ribbon layout, placement persistence, and SamplesApp comparison coverage. |
 
 ## Completed Ribbon 5 Fixes
 

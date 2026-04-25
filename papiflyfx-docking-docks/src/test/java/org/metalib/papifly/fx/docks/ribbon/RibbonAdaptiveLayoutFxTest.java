@@ -373,6 +373,24 @@ class RibbonAdaptiveLayoutFxTest {
     }
 
     @Test
+    void verticalPlacementUsesHeightForAdaptiveCollapseAndRestore() {
+        FxTestUtil.runFx(() -> {
+            ribbon.setPlacement(RibbonPlacement.LEFT);
+            host.setPrefSize(360, 520);
+            host.setMaxSize(360, 520);
+            ribbon.setPrefSize(360, 520);
+            ribbon.setMaxSize(360, 520);
+            host.applyCss();
+            host.layout();
+        });
+        settleFx();
+
+        shrinkHeightUntil(() -> group("alpha").getSizeMode() == RibbonGroupSizeMode.COLLAPSED, 480.0, 420.0, 360.0, 300.0, 240.0, 190.0);
+        assertEquals(RibbonGroupSizeMode.COLLAPSED, group("alpha").getSizeMode());
+        assertPriorityOrder();
+    }
+
+    @Test
     void repeatedRefreshWithIdenticalTabsProducesOnlyCacheHits() {
         FxTestUtil.runFx(manager::refresh);
         settleFx();
@@ -630,6 +648,33 @@ class RibbonAdaptiveLayoutFxTest {
             }
         }
         assertTrue(condition.getAsBoolean(), "Ribbon did not reach the expected adaptive state");
+    }
+
+    private void shrinkHeightUntil(BooleanSupplier condition, double... heights) {
+        for (double height : heights) {
+            resizeHeightTo(height);
+            if (condition.getAsBoolean()) {
+                return;
+            }
+        }
+        assertTrue(condition.getAsBoolean(), "Ribbon did not reach the expected vertical adaptive state");
+    }
+
+    private void resizeHeightTo(double height) {
+        FxTestUtil.runFx(() -> {
+            host.setPrefHeight(height);
+            host.setMaxHeight(height);
+            ribbon.setPrefHeight(height);
+            ribbon.setMaxHeight(height);
+            host.applyCss();
+            host.layout();
+        });
+        settleFx();
+        FxTestUtil.runFx(() -> {
+            host.applyCss();
+            host.layout();
+        });
+        settleFx();
     }
 
     private List<RibbonTabSpec> defaultTabs() {

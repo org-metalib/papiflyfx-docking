@@ -10,11 +10,6 @@ public enum RibbonPlacement {
     TOP,
 
     /**
-     * Render the ribbon below dock content.
-     */
-    BOTTOM,
-
-    /**
      * Render the ribbon to the left of dock content.
      */
     LEFT,
@@ -22,7 +17,12 @@ public enum RibbonPlacement {
     /**
      * Render the ribbon to the right of dock content.
      */
-    RIGHT;
+    RIGHT,
+
+    /**
+     * Render the ribbon below dock content.
+     */
+    BOTTOM;
 
     /**
      * Normalizes nullable placement input to the compatibility default.

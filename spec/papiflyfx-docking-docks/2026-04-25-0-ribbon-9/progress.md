@@ -1,9 +1,9 @@
 # Progress - Ribbon Side Placement
 
-**Status:** Planning complete, implementation not started  
-**Lead Agent:** @core-architect  
-**Design Support:** @ui-ux-designer  
-**Validation:** @qa-engineer  
+**Status:** Implemented and validated
+**Lead Agent:** @core-architect
+**Design Support:** @ui-ux-designer
+**Validation:** @qa-engineer
 **Spec Steward:** @spec-steward
 
 ## Progress
@@ -26,6 +26,18 @@
   - bottom placement mirrors top header ordering
   - minimized side tab activation uses an overlay flyout
   - side group sections use accordion-style collapse in Ribbon 9
+- [2026-04-25] Implemented `RibbonPlacement` support across `RibbonDockHost`, `Ribbon`, ribbon session payloads, and tolerant placement decode.
+- [2026-04-25] Added host region switching for `TOP`, `BOTTOM`, `LEFT`, and `RIGHT` while keeping dock content in the center and `TOP` as the default.
+- [2026-04-25] Added side-ribbon internals:
+  - outside edge tab strip for `LEFT` and `RIGHT`
+  - mirrored tab-strip/content-pane ordering
+  - readable non-rotated side tab labels with accessible text and tooltips
+  - top-positioned group headers in vertical placement
+  - side minimized activation through a transient auto-hide command flyout without clearing the minimized flag
+  - axis-aware adaptive collapse using width for horizontal placement and height for vertical placement
+- [2026-04-25] Added placement/orientation CSS classes and side-ribbon styling scoped to existing `-pf-ui-*` and `-fx-ribbon-*` token vocabulary.
+- [2026-04-25] Added deterministic `SamplesApp` catalog demo `Ribbon Placement` comparing `TOP` and `LEFT` hosts with the same `SampleRibbonProvider` commands.
+- [2026-04-25] Updated module/status/release documentation for the placement API and `extensions.ribbon.placement` session field.
 
 ## Current Understanding
 
@@ -39,33 +51,44 @@ The highest-risk areas are session compatibility, axis-aware adaptive layout, fo
 
 | Phase | Lead | Status | Notes |
 | --- | --- | --- | --- |
-| Phase 1 - API And Session Contract | @core-architect | Not started | Add placement API and tolerant persistence |
-| Phase 2 - Host And Ribbon Layout | @core-architect | Not started | Move host region and add vertical ribbon structure |
-| Phase 3 - Adaptive Layout And Styling | @core-architect / @ui-ux-designer | Not started | Make sizing axis-aware and add tokenized CSS for edge strip/content pane side layout |
-| Phase 4 - Accessibility, Docs, And Closure | @spec-steward | Not started | Add SamplesApp top/left demo, validate keyboard/focus behavior, and update docs |
+| Phase 1 - API And Session Contract | @core-architect | Complete | Placement API and tolerant persistence implemented with compatibility coverage |
+| Phase 2 - Host And Ribbon Layout | @core-architect | Complete | Host region switching, side edge strip, side content pane, and minimized flyout implemented |
+| Phase 3 - Adaptive Layout And Styling | @core-architect / @ui-ux-designer | Complete | Axis-aware sizing and tokenized side-ribbon CSS added |
+| Phase 4 - Accessibility, Docs, And Closure | @spec-steward | Complete | SamplesApp demo, smoke coverage, docs, and validation notes updated |
 
 ## Next Tasks
 
-1. Inspect current `RibbonDockHost`, `Ribbon`, session state contributor, adaptive layout tests, and ribbon CSS.
-2. During Phase 2, design the side placement internals around an outside edge tab strip, theme-token content pane, overlay flyout, and accordion group sections.
-3. Start Phase 1 with `RibbonPlacement`, placement properties, and session restore compatibility tests.
-4. During closure, add a `SamplesApp` catalog demo comparing top and left ribbon hosts plus smoke coverage for registration/build.
+1. Required reviewer handoff:
+   - `@ui-ux-designer`: review side edge strip, flyout, side group header styling, focus/hover states, and token use.
+   - `@qa-engineer`: review placement/session/adaptive/flyout/sample coverage and headless warnings.
+   - `@spec-steward`: review documentation closure and definition-of-done alignment.
+   - `@ops-engineer`: review only the SamplesApp catalog/demo wiring if sample ownership requires it.
 
 ## Validation
 
-No implementation validation has been run yet. Planning created docs only.
-
-Recommended validation after implementation:
+Validation run on 2026-04-25:
 
 ```bash
-./mvnw -pl papiflyfx-docking-docks -am -Dtest=Ribbon*Test,Ribbon*FxTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test
-./mvnw -pl papiflyfx-docking-samples -am -Dtest=*Ribbon*FxTest,SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test
+./mvnw -pl papiflyfx-docking-docks -am '-Dtest=Ribbon*Test,Ribbon*FxTest' -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test
+./mvnw -pl papiflyfx-docking-samples -am '-Dtest=*Ribbon*FxTest,SamplesSmokeTest' -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test
 git diff --check
 ```
 
-## Open Risks
+Results:
 
-- Vertical ribbons need a concrete theme token name and default value for content-pane width before CSS and adaptive sizing can be finalized.
-- Overlay flyout positioning and focus return need explicit TestFX coverage.
-- Accordion-style side group collapse must be implemented without provider API changes and needs focus/state coverage.
-- Focus traversal in minimized side placement requires explicit TestFX coverage to avoid empty command panels or stranded focus.
+- Docks ribbon suite: 44 tests, 0 failures, 0 errors.
+- Samples ribbon/smoke suite: 19 tests, 0 failures, 0 errors.
+- `git diff --check`: clean.
+
+Observed non-failing headless logs:
+
+- Existing malformed SVG fallback warning from `RibbonAdaptiveLayoutFxTest#brokenSvgFallsBackToRasterWithoutThrowing`.
+- Existing intentional provider/session warnings from negative-path tests.
+- Sandbox socket warnings from sample media/Hugo server probing in `SamplesSmokeTest`.
+- Intermittent Monocle render-thread `Too small int buffer size` warnings; Surefire still completed successfully.
+
+## Open Risks / Follow-Ups
+
+- Side flyout placement and focus return have focused coverage through minimized activation tests, but `@ui-ux-designer` should still visually review the flyout position in an interactive run.
+- Side group collapse uses the existing adaptive collapsed-group affordance without provider metadata. A richer user-controlled accordion affordance can be refined later if design wants manual group expansion independent of adaptive size mode.
+- Monocle emitted non-failing render-thread warnings during headless tests; `@qa-engineer` should decide whether to track this as general TestFX infrastructure noise.

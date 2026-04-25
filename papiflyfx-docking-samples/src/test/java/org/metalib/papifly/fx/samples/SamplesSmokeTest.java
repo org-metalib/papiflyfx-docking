@@ -17,9 +17,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
+import org.metalib.papifly.fx.docks.ribbon.RibbonDockHost;
+import org.metalib.papifly.fx.docks.ribbon.RibbonPlacement;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.samples.catalog.SampleCatalog;
 import org.metalib.papifly.fx.samples.docks.PersistSample;
+import org.metalib.papifly.fx.samples.docks.RibbonPlacementSample;
 import org.metalib.papifly.fx.samples.docks.TabGroupSample;
 import org.metalib.papifly.fx.samples.login.LoginSample;
 import org.metalib.papifly.fx.login.core.DefaultAuthSessionBroker;
@@ -105,6 +108,35 @@ class SamplesSmokeTest {
 
         assertTrue(titles.contains("GitHub Ribbon"));
         assertTrue(titles.contains("Hugo Ribbon"));
+        assertTrue(titles.contains("Ribbon Placement"));
+    }
+
+    @Test
+    void ribbonPlacementSampleBuildsTopAndLeftHosts() {
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        RibbonPlacementSample sample = new RibbonPlacementSample();
+
+        runFx(() -> {
+            Node content = sample.build(stage, themeProperty);
+            StackPane root = (StackPane) stage.getScene().getRoot();
+            root.getChildren().setAll(content);
+            root.applyCss();
+            root.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        RibbonDockHost[] topHost = new RibbonDockHost[1];
+        RibbonDockHost[] leftHost = new RibbonDockHost[1];
+        runFx(() -> {
+            topHost[0] = (RibbonDockHost) stage.getScene().lookup("#" + RibbonPlacementSample.TOP_HOST_ID);
+            leftHost[0] = (RibbonDockHost) stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_HOST_ID);
+        });
+
+        assertNotNull(topHost[0]);
+        assertNotNull(leftHost[0]);
+        assertTrue(topHost[0].getPlacement() == RibbonPlacement.TOP);
+        assertTrue(leftHost[0].getPlacement() == RibbonPlacement.LEFT);
+        assertNull(uncaughtException, "Exception during RibbonPlacementSample build: " + uncaughtException);
     }
 
     @Test

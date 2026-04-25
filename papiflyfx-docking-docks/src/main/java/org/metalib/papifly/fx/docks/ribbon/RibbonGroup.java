@@ -54,6 +54,7 @@ public class RibbonGroup extends VBox {
     private RibbonLayoutTelemetry telemetry;
     private PopupControl collapsedPopup;
     private VBox collapsedPopupRoot;
+    private Orientation orientation = Orientation.HORIZONTAL;
 
     /**
      * Creates a ribbon group for the supplied spec.
@@ -164,7 +165,22 @@ public class RibbonGroup extends VBox {
      * @return estimated width in pixels
      */
     public double estimateWidth(RibbonGroupSizeMode mode) {
+        return estimateExtent(mode, Orientation.HORIZONTAL);
+    }
+
+    /**
+     * Estimates the primary-axis extent for the requested size mode.
+     *
+     * @param mode size mode to estimate
+     * @param orientation ribbon orientation
+     * @return estimated extent in pixels
+     */
+    public double estimateExtent(RibbonGroupSizeMode mode, Orientation orientation) {
         RibbonGroupSizeMode resolvedMode = mode == null ? RibbonGroupSizeMode.LARGE : mode;
+        Orientation resolvedOrientation = orientation == null ? Orientation.HORIZONTAL : orientation;
+        if (resolvedOrientation == Orientation.VERTICAL) {
+            return estimateHeight(resolvedMode);
+        }
         if (resolvedMode == RibbonGroupSizeMode.COLLAPSED) {
             return RibbonControlFactory.preferredControlWidth(RibbonGroupSizeMode.COLLAPSED) + GROUP_HORIZONTAL_PADDING;
         }
@@ -172,6 +188,27 @@ public class RibbonGroup extends VBox {
         return (columns * RibbonControlFactory.preferredControlWidth(resolvedMode))
             + (Math.max(0, columns - 1) * RibbonControlFactory.controlGap())
             + GROUP_HORIZONTAL_PADDING;
+    }
+
+    void setRibbonOrientation(Orientation orientation) {
+        Orientation resolvedOrientation = orientation == null ? Orientation.HORIZONTAL : orientation;
+        if (this.orientation == resolvedOrientation) {
+            return;
+        }
+        this.orientation = resolvedOrientation;
+        getStyleClass().removeAll("pf-ribbon-group-horizontal", "pf-ribbon-group-vertical");
+        getStyleClass().add(resolvedOrientation == Orientation.VERTICAL
+            ? "pf-ribbon-group-vertical"
+            : "pf-ribbon-group-horizontal");
+        controlsPane.setOrientation(Orientation.HORIZONTAL);
+        if (resolvedOrientation == Orientation.VERTICAL) {
+            getChildren().setAll(footer, contentPane);
+        } else {
+            getChildren().setAll(contentPane, footer);
+        }
+        if (getSizeMode() != RibbonGroupSizeMode.COLLAPSED) {
+            renderControlsForMode(getSizeMode(), RibbonLayoutTelemetry.RebuildReason.STRUCTURAL);
+        }
     }
 
     void setLayoutTelemetry(RibbonLayoutTelemetry telemetry) {
@@ -259,12 +296,32 @@ public class RibbonGroup extends VBox {
     }
 
     private int columnsFor(RibbonGroupSizeMode mode) {
+        if (orientation == Orientation.VERTICAL && mode == RibbonGroupSizeMode.LARGE) {
+            return 1;
+        }
         return switch (mode) {
             case LARGE -> Math.min(spec.controls().size(), 3);
             case MEDIUM -> Math.min(spec.controls().size(), 2);
             case SMALL -> Math.min(spec.controls().size(), 3);
             case COLLAPSED -> 1;
         };
+    }
+
+    private double estimateHeight(RibbonGroupSizeMode mode) {
+        if (mode == RibbonGroupSizeMode.COLLAPSED) {
+            return 72.0;
+        }
+        int columns = Math.max(1, columnsFor(mode));
+        int rows = (int) Math.ceil(spec.controls().size() / (double) columns);
+        double controlHeight = switch (mode) {
+            case LARGE -> 88.0;
+            case MEDIUM -> 68.0;
+            case SMALL -> 36.0;
+            case COLLAPSED -> 56.0;
+        };
+        return (rows * controlHeight)
+            + (Math.max(0, rows - 1) * RibbonControlFactory.controlGap())
+            + 58.0;
     }
 
     private double wrapLengthFor(RibbonGroupSizeMode mode) {

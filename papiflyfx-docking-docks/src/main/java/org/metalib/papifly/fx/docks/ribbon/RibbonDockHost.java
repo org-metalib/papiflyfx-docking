@@ -1,5 +1,7 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.layout.BorderPane;
 import org.metalib.papifly.fx.docks.DockManager;
 import org.metalib.papifly.fx.docks.DockSessionStateContributor;
@@ -16,6 +18,7 @@ public class RibbonDockHost extends BorderPane {
     private final RibbonManager ribbonManager;
     private final Ribbon ribbon;
     private final DockSessionStateContributor<RibbonSessionData> sessionStateContributor;
+    private final ObjectProperty<RibbonPlacement> placement = new SimpleObjectProperty<>(this, "placement", RibbonPlacement.TOP);
 
     /**
      * Creates a host with default ribbon shell/runtime instances.
@@ -51,8 +54,37 @@ public class RibbonDockHost extends BorderPane {
         }
         this.dockManager.registerSessionStateContributor(sessionStateContributor);
 
-        setTop(this.ribbon);
+        this.ribbon.placementProperty().bindBidirectional(this.placement);
+        this.placement.addListener((obs, oldPlacement, newPlacement) -> applyPlacement(newPlacement));
+        applyPlacement(this.placement.get());
         setCenter(this.dockManager.getRootPane());
+    }
+
+    /**
+     * Returns the ribbon placement property.
+     *
+     * @return ribbon placement property
+     */
+    public ObjectProperty<RibbonPlacement> placementProperty() {
+        return placement;
+    }
+
+    /**
+     * Returns the side where the ribbon is hosted.
+     *
+     * @return current placement, defaulting to {@link RibbonPlacement#TOP}
+     */
+    public RibbonPlacement getPlacement() {
+        return RibbonPlacement.normalize(placement.get());
+    }
+
+    /**
+     * Updates the side where the ribbon is hosted.
+     *
+     * @param placement requested placement, or {@code null} for {@link RibbonPlacement#TOP}
+     */
+    public void setPlacement(RibbonPlacement placement) {
+        this.placement.set(RibbonPlacement.normalize(placement));
     }
 
     /**
@@ -80,6 +112,24 @@ public class RibbonDockHost extends BorderPane {
      */
     public Ribbon getRibbon() {
         return ribbon;
+    }
+
+    private void applyPlacement(RibbonPlacement requestedPlacement) {
+        RibbonPlacement resolvedPlacement = RibbonPlacement.normalize(requestedPlacement);
+        clearRibbonRegions();
+        switch (resolvedPlacement) {
+            case TOP -> setTop(ribbon);
+            case BOTTOM -> setBottom(ribbon);
+            case LEFT -> setLeft(ribbon);
+            case RIGHT -> setRight(ribbon);
+        }
+    }
+
+    private void clearRibbonRegions() {
+        setTop(null);
+        setBottom(null);
+        setLeft(null);
+        setRight(null);
     }
 
     /**

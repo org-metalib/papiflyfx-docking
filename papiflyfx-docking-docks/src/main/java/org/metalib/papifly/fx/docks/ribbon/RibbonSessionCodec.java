@@ -13,6 +13,7 @@ final class RibbonSessionCodec implements DockSessionExtensionCodec<RibbonSessio
     private static final String MINIMIZED_KEY = "minimized";
     private static final String SELECTED_TAB_ID_KEY = "selectedTabId";
     private static final String QUICK_ACCESS_COMMAND_IDS_KEY = "quickAccessCommandIds";
+    private static final String PLACEMENT_KEY = "placement";
     private static final String EXTENSION_PATH = "extensions." + RibbonSessionStateContributor.EXTENSION_NAMESPACE;
 
     @Override
@@ -25,6 +26,7 @@ final class RibbonSessionCodec implements DockSessionExtensionCodec<RibbonSessio
         if (!state.quickAccessCommandIds().isEmpty()) {
             payload.put(QUICK_ACCESS_COMMAND_IDS_KEY, state.quickAccessCommandIds());
         }
+        payload.put(PLACEMENT_KEY, state.placement().name());
         return payload;
     }
 
@@ -36,7 +38,20 @@ final class RibbonSessionCodec implements DockSessionExtensionCodec<RibbonSessio
         boolean minimized = optionalBoolean(payload, MINIMIZED_KEY, false);
         String selectedTabId = optionalString(payload, SELECTED_TAB_ID_KEY);
         List<String> quickAccessCommandIds = optionalStringList(payload, QUICK_ACCESS_COMMAND_IDS_KEY);
-        return new RibbonSessionData(minimized, selectedTabId, quickAccessCommandIds);
+        RibbonPlacement placement = optionalPlacement(payload, PLACEMENT_KEY);
+        return new RibbonSessionData(minimized, selectedTabId, quickAccessCommandIds, placement);
+    }
+
+    private RibbonPlacement optionalPlacement(Map<String, Object> payload, String key) {
+        Object value = payload.get(key);
+        if (!(value instanceof String stringValue)) {
+            return RibbonPlacement.TOP;
+        }
+        try {
+            return RibbonPlacement.valueOf(stringValue.trim());
+        } catch (IllegalArgumentException ex) {
+            return RibbonPlacement.TOP;
+        }
     }
 
     private boolean optionalBoolean(Map<String, Object> payload, String key, boolean defaultValue) {

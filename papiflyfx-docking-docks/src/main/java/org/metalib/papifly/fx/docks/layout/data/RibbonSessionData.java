@@ -1,5 +1,7 @@
 package org.metalib.papifly.fx.docks.layout.data;
 
+import org.metalib.papifly.fx.docks.ribbon.RibbonPlacement;
+
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -10,12 +12,25 @@ import java.util.Objects;
  * @param minimized whether the ribbon shell is minimized
  * @param selectedTabId selected ribbon tab identifier
  * @param quickAccessCommandIds command identifiers rendered in the Quick Access Toolbar
+ * @param placement ribbon host placement
  */
 public record RibbonSessionData(
     boolean minimized,
     String selectedTabId,
-    List<String> quickAccessCommandIds
+    List<String> quickAccessCommandIds,
+    RibbonPlacement placement
 ) {
+
+    /**
+     * Creates a ribbon session payload with the compatibility default placement.
+     *
+     * @param minimized whether the ribbon shell is minimized
+     * @param selectedTabId selected ribbon tab identifier
+     * @param quickAccessCommandIds command identifiers rendered in the Quick Access Toolbar
+     */
+    public RibbonSessionData(boolean minimized, String selectedTabId, List<String> quickAccessCommandIds) {
+        this(minimized, selectedTabId, quickAccessCommandIds, RibbonPlacement.TOP);
+    }
 
     /**
      * Creates a ribbon session payload.
@@ -23,6 +38,7 @@ public record RibbonSessionData(
      * @param minimized whether the ribbon shell is minimized
      * @param selectedTabId selected ribbon tab identifier
      * @param quickAccessCommandIds command identifiers rendered in the Quick Access Toolbar
+     * @param placement ribbon host placement
      */
     public RibbonSessionData {
         selectedTabId = selectedTabId == null || selectedTabId.isBlank() ? null : selectedTabId;
@@ -33,5 +49,6 @@ public record RibbonSessionData(
                 .filter(id -> !id.isEmpty())
                 .toList()
         ));
+        placement = RibbonPlacement.normalize(placement);
     }
 }

@@ -5,6 +5,21 @@
     -fx-spacing: 0;
 }
 
+.pf-ribbon-placement-bottom {
+    -fx-border-color: -pf-ui-border-default transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+.pf-ribbon-placement-left {
+    -fx-border-color: transparent -pf-ui-border-default transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+.pf-ribbon-placement-right {
+    -fx-border-color: transparent transparent transparent -pf-ui-border-default;
+    -fx-border-width: 0 0 0 1;
+}
+
 .pf-ribbon-header {
     -fx-background-color: -fx-ribbon-background;
     -fx-border-color: transparent transparent -pf-ui-border-subtle transparent;
@@ -71,6 +86,13 @@
     -fx-padding: 0 0 0 12px;
 }
 
+.pf-ribbon-tab-strip-vertical {
+    -fx-alignment: top-center;
+    -fx-padding: 8px 0 8px 0;
+    -fx-min-width: 86px;
+    -fx-pref-width: 86px;
+}
+
 .pf-ribbon-tab {
     -fx-background-color: transparent;
     -fx-border-color: transparent transparent transparent transparent;
@@ -79,6 +101,24 @@
     -fx-background-radius: 4px 4px 0 0;
     -fx-border-radius: 4px 4px 0 0;
     -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-side-tab {
+    -fx-min-width: 72px;
+    -fx-pref-width: 72px;
+    -fx-max-width: 72px;
+    -fx-min-height: 34px;
+    -fx-pref-height: 34px;
+    -fx-border-width: 0 0 0 3;
+    -fx-background-radius: 4px;
+    -fx-border-radius: 4px;
+    -fx-padding: 5px 7px 5px 7px;
+    -fx-alignment: center;
+}
+
+.pf-ribbon-side-tab:selected,
+.pf-ribbon-tab-contextual.pf-ribbon-side-tab:selected {
+    -fx-border-color: transparent transparent transparent -fx-ribbon-accent;
 }
 
 .pf-ribbon-tab:hover {
@@ -119,6 +159,44 @@
     -fx-spacing: 6px;
 }
 
+.pf-ribbon-orientation-vertical .pf-ribbon-qat {
+    -fx-alignment: center;
+    -fx-padding: 8px 0 0 0;
+}
+
+.pf-ribbon-side-chrome {
+    -fx-background-color: -fx-ribbon-background;
+    -fx-spacing: 0;
+}
+
+.pf-ribbon-side-edge-strip {
+    -fx-background-color: -fx-ribbon-background;
+    -fx-border-color: transparent -pf-ui-border-subtle transparent transparent;
+    -fx-border-width: 0 1 0 0;
+    -fx-padding: 0 7px 8px 7px;
+    -fx-min-width: 96px;
+    -fx-pref-width: 96px;
+    -fx-max-width: 96px;
+}
+
+.pf-ribbon-placement-right .pf-ribbon-side-edge-strip {
+    -fx-border-color: transparent transparent transparent -pf-ui-border-subtle;
+    -fx-border-width: 0 0 0 1;
+}
+
+.pf-ribbon-side-content-pane {
+    -fx-background-color: -fx-ribbon-background-subtle;
+    -fx-min-width: 236px;
+    -fx-pref-width: 284px;
+    -fx-max-width: 340px;
+}
+
+.pf-ribbon-side-flyout {
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, -fx-ribbon-shadow, 22, 0.22, 0, 8);
+}
+
 .pf-ribbon-qat-button {
     -fx-min-height: -pf-ui-control-height-compact;
     -fx-pref-height: -pf-ui-control-height-compact;
@@ -153,6 +231,14 @@
 .pf-ribbon-groups {
     -fx-alignment: top-left;
     -fx-padding: 12px 10px 10px 10px;
+}
+
+.pf-ribbon-orientation-vertical .pf-ribbon-groups {
+    -fx-padding: 10px;
+}
+
+.pf-ribbon-orientation-vertical .pf-ribbon-scroll {
+    -fx-padding: 0;
 }
 
 .pf-ribbon-group {
@@ -193,6 +279,26 @@
     -fx-min-height: 28px;
     -fx-pref-height: 28px;
     -fx-padding: 6px 0 3px 0;
+}
+
+.pf-ribbon-group-vertical {
+    -fx-min-width: 210px;
+    -fx-pref-width: 248px;
+    -fx-max-width: 300px;
+}
+
+.pf-ribbon-group-vertical .pf-ribbon-group-footer {
+    -fx-border-color: transparent transparent -pf-ui-border-subtle transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 2px 0 7px 0;
+}
+
+.pf-ribbon-group-vertical .pf-ribbon-control-large,
+.pf-ribbon-group-vertical .pf-ribbon-split-button,
+.pf-ribbon-group-vertical .pf-ribbon-menu-button {
+    -fx-min-width: 184px;
+    -fx-pref-width: 206px;
+    -fx-max-width: 260px;
 }
 
 .pf-ribbon-group-label {

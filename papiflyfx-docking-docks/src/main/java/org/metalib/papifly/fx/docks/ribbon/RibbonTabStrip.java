@@ -5,10 +5,12 @@ import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 
 import java.util.ArrayList;
@@ -21,12 +23,13 @@ import java.util.function.Consumer;
 /**
  * Horizontal selector for ribbon tabs.
  */
-public class RibbonTabStrip extends HBox {
+public class RibbonTabStrip extends FlowPane {
 
     private final ObservableList<RibbonTabSpec> tabs = FXCollections.observableArrayList();
     private final ToggleGroup toggleGroup = new ToggleGroup();
     private final StringProperty selectedTabId = new SimpleStringProperty();
     private final Map<String, TabRenderState> renderedTabs = new LinkedHashMap<>();
+    private Orientation orientation = Orientation.HORIZONTAL;
 
     private RibbonLayoutTelemetry telemetry = RibbonLayoutTelemetry.noop();
     private Consumer<String> tabActivated = tabId -> {
@@ -38,9 +41,25 @@ public class RibbonTabStrip extends HBox {
     public RibbonTabStrip() {
         getStyleClass().add("pf-ribbon-tab-strip");
         setAlignment(Pos.CENTER_LEFT);
-        setSpacing(4.0);
+        setHgap(4.0);
+        setVgap(4.0);
         tabs.addListener((ListChangeListener<RibbonTabSpec>) change -> rebuild());
         selectedTabId.addListener((obs, oldValue, newValue) -> syncSelection());
+    }
+
+    void setRibbonOrientation(Orientation orientation) {
+        Orientation resolvedOrientation = orientation == null ? Orientation.HORIZONTAL : orientation;
+        if (this.orientation == resolvedOrientation) {
+            return;
+        }
+        this.orientation = resolvedOrientation;
+        setOrientation(resolvedOrientation);
+        setAlignment(resolvedOrientation == Orientation.VERTICAL ? Pos.TOP_CENTER : Pos.CENTER_LEFT);
+        getStyleClass().removeAll("pf-ribbon-tab-strip-horizontal", "pf-ribbon-tab-strip-vertical");
+        getStyleClass().add(resolvedOrientation == Orientation.VERTICAL
+            ? "pf-ribbon-tab-strip-vertical"
+            : "pf-ribbon-tab-strip-horizontal");
+        rebuild();
     }
 
     /**
@@ -95,10 +114,10 @@ public class RibbonTabStrip extends HBox {
             TabRenderState existing = renderedTabs.get(tab.id());
             if (existing != null) {
                 telemetry.nodeCacheHit(RibbonLayoutTelemetry.CacheKind.TAB, tab.id());
-                if (!existing.matches(tab)) {
+                if (!existing.matches(tab, orientation)) {
                     telemetry.tabRebuild(tab.id(), RibbonLayoutTelemetry.RebuildReason.STRUCTURAL);
                     configureButton(existing.button(), tab);
-                    renderedTabs.put(tab.id(), new TabRenderState(tab.label(), tab.contextual(), existing.button()));
+                    renderedTabs.put(tab.id(), new TabRenderState(tab.label(), tab.contextual(), orientation, existing.button()));
                 }
                 desiredButtons.add(existing.button());
                 continue;
@@ -108,7 +127,7 @@ public class RibbonTabStrip extends HBox {
             telemetry.tabRebuild(tab.id(), RibbonLayoutTelemetry.RebuildReason.INITIAL);
             ToggleButton button = new ToggleButton();
             configureButton(button, tab);
-            renderedTabs.put(tab.id(), new TabRenderState(tab.label(), tab.contextual(), button));
+            renderedTabs.put(tab.id(), new TabRenderState(tab.label(), tab.contextual(), orientation, button));
             desiredButtons.add(button);
         }
         if (!getChildren().equals(desiredButtons)) {
@@ -139,9 +158,14 @@ public class RibbonTabStrip extends HBox {
         button.setText(tab.label());
         button.getProperties().put(RibbonTabSpec.class.getName(), tab.id());
         button.getStyleClass().setAll("toggle-button", "pf-ribbon-tab");
+        if (orientation == Orientation.VERTICAL) {
+            button.getStyleClass().add("pf-ribbon-side-tab");
+        }
         if (tab.contextual()) {
             button.getStyleClass().add("pf-ribbon-tab-contextual");
         }
+        button.setAccessibleText(tab.label());
+        button.setTooltip(new Tooltip(tab.label()));
         if (button.getToggleGroup() != toggleGroup) {
             button.setToggleGroup(toggleGroup);
         }
@@ -151,9 +175,9 @@ public class RibbonTabStrip extends HBox {
         });
     }
 
-    private record TabRenderState(String label, boolean contextual, ToggleButton button) {
-        boolean matches(RibbonTabSpec tab) {
-            return Objects.equals(label, tab.label()) && contextual == tab.contextual();
+    private record TabRenderState(String label, boolean contextual, Orientation orientation, ToggleButton button) {
+        boolean matches(RibbonTabSpec tab, Orientation currentOrientation) {
+            return Objects.equals(label, tab.label()) && contextual == tab.contextual() && orientation == currentOrientation;
         }
     }
 }
