@@ -29,18 +29,6 @@ Ribbon placement must become a host-level layout choice without forcing feature 
 - Detachable/floating ribbon windows.
 - Gallery controls or keytips.
 
-## Samples App Direction
-
-`SamplesApp` should be refactored to use the ribbon interface as a first-class sample discovery surface. The application should be able to expose available samples as ribbon tabs, groups, menus, or commands while still preserving the existing catalog data model.
-
-Expected behavior:
-
-1. Sample categories map naturally to ribbon tabs or groups.
-2. Individual samples are launched through ribbon commands.
-3. The ribbon placement selector can be demonstrated from the samples app.
-4. The existing sample list/catalog remains available as a fallback or secondary navigation aid until the ribbon workflow is proven.
-5. Sample command labels, menu labels, and placement controls remain readable in all four placements.
-
 ## Public API Shape
 
 Add a small enum in `papiflyfx-docking-docks`:
@@ -166,5 +154,3 @@ The side placements need explicit CSS for:
 1. Should placement be user-changeable through a built-in ribbon command or only host-configurable?
 2. Should vertical side ribbons default to a fixed width or derive width from the largest visible group?
 3. Should bottom placement render QAT before tabs, matching top, or nearest the content edge?
-4. Should samples expose placement switching in a toolbar, settings panel, separate sample scene, or the new samples ribbon itself?
-5. Should `SamplesApp` eventually replace the existing catalog navigation with ribbon navigation, or keep both permanently?
