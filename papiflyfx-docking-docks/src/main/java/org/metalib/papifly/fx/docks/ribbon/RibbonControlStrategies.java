@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
+import javafx.beans.value.ObservableValue;
 import javafx.scene.Node;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
@@ -10,6 +11,7 @@ import org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonSplitButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
+import org.metalib.papifly.fx.docking.api.Theme;
 
 import java.util.List;
 import java.util.Objects;
@@ -112,7 +114,12 @@ final class RibbonControlStrategies {
         };
     }
 
-    static Optional<Node> createGroupControl(RibbonControlSpec spec, ClassLoader classLoader, RibbonGroupSizeMode mode) {
+    static Optional<Node> createGroupControl(
+        RibbonControlSpec spec,
+        ClassLoader classLoader,
+        RibbonGroupSizeMode mode,
+        ObservableValue<Theme> theme
+    ) {
         return switch (spec.kind()) {
             case BUTTON -> spec instanceof RibbonButtonSpec button
                 ? Optional.of(RibbonControlFactory.createButton(button.command(), classLoader, mode))
@@ -121,10 +128,10 @@ final class RibbonControlStrategies {
                 ? Optional.of(RibbonControlFactory.createToggleButton(toggle.command(), classLoader, mode))
                 : Optional.empty();
             case SPLIT_BUTTON -> spec instanceof RibbonSplitButtonSpec splitButton
-                ? Optional.of(RibbonControlFactory.createSplitButton(splitButton, classLoader, mode))
+                ? Optional.of(RibbonControlFactory.createSplitButton(splitButton, classLoader, mode, theme))
                 : Optional.empty();
             case MENU -> spec instanceof RibbonMenuSpec menu
-                ? Optional.of(RibbonControlFactory.createMenuButton(menu, classLoader, mode))
+                ? Optional.of(RibbonControlFactory.createMenuButton(menu, classLoader, mode, theme))
                 : Optional.empty();
             case UNKNOWN -> Optional.empty();
         };

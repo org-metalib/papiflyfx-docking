@@ -1,10 +1,13 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
 import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
@@ -14,6 +17,7 @@ import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.StackPane;
+import javafx.stage.WindowEvent;
 import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonControlSpec;
@@ -23,6 +27,8 @@ import org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonSplitButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonToggleSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand;
+import org.metalib.papifly.fx.docking.api.Theme;
+import org.metalib.papifly.fx.ui.UiStyleSupport;
 
 import java.util.List;
 import java.util.Locale;
@@ -41,12 +47,23 @@ final class RibbonControlFactory {
     private static final double SMALL_CONTROL_WIDTH = 36.0;
     private static final double COLLAPSED_GROUP_BUTTON_WIDTH = 56.0;
     private static final double CONTROL_GAP = 8.0;
+    private static final String RIBBON_MENU_POPUP_CONFIGURED = "pf-ribbon-menu-popup-configured";
+
     private RibbonControlFactory() {
     }
 
-    static Node createGroupControl(RibbonControlSpec spec, ClassLoader classLoader, RibbonGroupSizeMode mode) {
-        return RibbonControlStrategies.createGroupControl(spec, classLoader, mode)
+    static Node createGroupControl(
+        RibbonControlSpec spec,
+        ClassLoader classLoader,
+        RibbonGroupSizeMode mode,
+        ObservableValue<Theme> theme
+    ) {
+        return RibbonControlStrategies.createGroupControl(spec, classLoader, mode, theme)
             .orElseGet(() -> new Label());
+    }
+
+    static Node createGroupControl(RibbonControlSpec spec, ClassLoader classLoader, RibbonGroupSizeMode mode) {
+        return createGroupControl(spec, classLoader, mode, null);
     }
 
     static Button createQuickAccessButton(RibbonCommand command, ClassLoader classLoader) {
@@ -110,16 +127,27 @@ final class RibbonControlFactory {
         return toggle;
     }
 
-    static SplitMenuButton createSplitButton(RibbonSplitButtonSpec spec, ClassLoader classLoader, RibbonGroupSizeMode mode) {
+    static SplitMenuButton createSplitButton(
+        RibbonSplitButtonSpec spec,
+        ClassLoader classLoader,
+        RibbonGroupSizeMode mode,
+        ObservableValue<Theme> theme
+    ) {
         SplitMenuButton splitButton = new SplitMenuButton();
         splitButton.getStyleClass().add("pf-ribbon-split-button");
         configureGroupCommand(splitButton, spec.primaryCommand(), classLoader, mode);
-        splitButton.getItems().setAll(createMenuItems(spec.secondaryCommands(), classLoader));
+        splitButton.getItems().setAll(createMenuItems(spec.secondaryCommands(), classLoader, theme));
         splitButton.setOnAction(event -> spec.primaryCommand().execute());
+        configureMenuPopup(splitButton, theme);
         return splitButton;
     }
 
-    static MenuButton createMenuButton(RibbonMenuSpec spec, ClassLoader classLoader, RibbonGroupSizeMode mode) {
+    static MenuButton createMenuButton(
+        RibbonMenuSpec spec,
+        ClassLoader classLoader,
+        RibbonGroupSizeMode mode,
+        ObservableValue<Theme> theme
+    ) {
         MenuButton menuButton = new MenuButton();
         menuButton.getStyleClass().add("pf-ribbon-menu-button");
         configureGroupMetadata(
@@ -131,23 +159,68 @@ final class RibbonControlFactory {
             classLoader,
             mode
         );
-        menuButton.getItems().setAll(createMenuItems(spec.items(), classLoader));
+        menuButton.getItems().setAll(createMenuItems(spec.items(), classLoader, theme));
+        configureMenuPopup(menuButton, theme);
         return menuButton;
     }
 
-    private static List<MenuItem> createMenuItems(List<RibbonCommand> commands, ClassLoader classLoader) {
+    private static List<MenuItem> createMenuItems(
+        List<RibbonCommand> commands,
+        ClassLoader classLoader,
+        ObservableValue<Theme> theme
+    ) {
         return commands.stream()
-            .map(command -> createMenuItem(command, classLoader))
+            .map(command -> createMenuItem(command, classLoader, theme))
             .toList();
     }
 
-    private static MenuItem createMenuItem(RibbonCommand command, ClassLoader classLoader) {
+    private static MenuItem createMenuItem(RibbonCommand command, ClassLoader classLoader, ObservableValue<Theme> theme) {
         MenuItem item = new MenuItem(command.label());
+        item.getStyleClass().add("pf-ribbon-menu-item");
         Node graphic = createGraphic(command.label(), command.smallIcon(), command.largeIcon(), true, false, classLoader);
         item.setGraphic(graphic);
         JavaFxCommandBindings.bindDisabledToNot(item, command.enabled());
         item.setOnAction(event -> command.execute());
+        item.parentPopupProperty().addListener((obs, oldPopup, newPopup) -> configureContextMenu(newPopup, theme));
         return item;
+    }
+
+    private static void configureMenuPopup(MenuButton menuButton, ObservableValue<Theme> theme) {
+        menuButton.showingProperty().addListener((obs, wasShowing, isShowing) -> {
+            if (!isShowing) {
+                return;
+            }
+            menuButton.getItems().forEach(item -> configureContextMenu(item.getParentPopup(), theme));
+        });
+    }
+
+    private static void configureContextMenu(ContextMenu popup, ObservableValue<Theme> theme) {
+        if (popup == null) {
+            return;
+        }
+        if (!popup.getStyleClass().contains("pf-ribbon-menu-popup")) {
+            popup.getStyleClass().add("pf-ribbon-menu-popup");
+        }
+        applyContextMenuTheme(popup, theme);
+        if (Boolean.TRUE.equals(popup.getProperties().get(RIBBON_MENU_POPUP_CONFIGURED))) {
+            return;
+        }
+        popup.getProperties().put(RIBBON_MENU_POPUP_CONFIGURED, Boolean.TRUE);
+        popup.addEventHandler(WindowEvent.WINDOW_SHOWN, event -> applyContextMenuTheme(popup, theme));
+        if (theme != null) {
+            ChangeListener<Theme> listener = (obs, oldTheme, newTheme) -> applyContextMenuTheme(popup, theme);
+            theme.addListener(listener);
+        }
+    }
+
+    private static void applyContextMenuTheme(ContextMenu popup, ObservableValue<Theme> theme) {
+        Theme resolvedTheme = theme == null || theme.getValue() == null ? Theme.dark() : theme.getValue();
+        popup.setStyle(RibbonThemeSupport.themeVariables(resolvedTheme));
+        if (popup.getScene() != null && popup.getScene().getRoot() != null) {
+            UiStyleSupport.ensureCommonStylesheetLoaded(popup.getScene().getRoot());
+            UiStyleSupport.ensureStylesheetLoaded(popup.getScene().getRoot(), Ribbon.STYLESHEET);
+            popup.getScene().getRoot().setStyle(RibbonThemeSupport.themeVariables(resolvedTheme));
+        }
     }
 
     private static void configureGroupCommand(

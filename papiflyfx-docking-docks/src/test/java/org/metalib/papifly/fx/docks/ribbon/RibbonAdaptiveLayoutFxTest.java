@@ -6,7 +6,9 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
@@ -23,6 +25,7 @@ import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonButtonSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonIconHandle;
+import org.metalib.papifly.fx.api.ribbon.RibbonMenuSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonProvider;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonToggleCommand;
@@ -147,6 +150,37 @@ class RibbonAdaptiveLayoutFxTest {
 
         assertNotEquals(darkRibbonStyle, FxTestUtil.callFx(ribbon::getStyle));
         assertNotEquals(darkPopupStyle, FxTestUtil.callFx(popupRoot::getStyle));
+    }
+
+    @Test
+    void menuPopupBackgroundTracksDarkAndLightRibbonThemes(FxRobot robot) {
+        FxTestUtil.runFx(() -> {
+            tabs.set(menuTabs());
+            manager.refresh();
+        });
+        resizeTo(1200.0);
+
+        MenuButton menuButton = robot.lookup(node ->
+            node instanceof MenuButton button
+                && "Options".equals(button.getText())
+                && button.isVisible()
+        ).queryAs(MenuButton.class);
+
+        robot.clickOn(menuButton);
+        settleFx();
+
+        ContextMenu popup = FxTestUtil.callFx(() -> menuButton.getItems().getFirst().getParentPopup());
+        assertNotNull(popup);
+        String darkStyle = FxTestUtil.callFx(popup::getStyle);
+        assertTrue(darkStyle.contains("rgba(45, 45, 45"), darkStyle);
+        assertTrue(FxTestUtil.callFx(() -> popup.getStyleClass().contains("pf-ribbon-menu-popup")));
+
+        FxTestUtil.runFx(() -> ribbon.themeProperty().set(Theme.light()));
+        settleFx();
+
+        String lightStyle = FxTestUtil.callFx(popup::getStyle);
+        assertTrue(lightStyle.contains("rgba(220, 220, 220"), lightStyle);
+        assertNotEquals(darkStyle, lightStyle);
     }
 
     @Test
@@ -534,6 +568,34 @@ class RibbonAdaptiveLayoutFxTest {
                     )
                 )
             )
+        ));
+    }
+
+    private List<RibbonTabSpec> menuTabs() {
+        return List.of(new RibbonTabSpec(
+            "home",
+            "Home",
+            0,
+            false,
+            ribbonContext -> true,
+            List.of(new RibbonGroupSpec(
+                "menus",
+                "Menus",
+                0,
+                0,
+                null,
+                List.of(new RibbonMenuSpec(
+                    "options-menu",
+                    "Options",
+                    "Options",
+                    null,
+                    null,
+                    List.of(
+                        RibbonCommand.of("options-one", "Option One", () -> {}),
+                        RibbonCommand.of("options-two", "Option Two", () -> {})
+                    )
+                ))
+            ))
         ));
     }
 

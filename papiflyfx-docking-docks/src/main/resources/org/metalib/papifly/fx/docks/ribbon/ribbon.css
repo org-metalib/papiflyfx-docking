@@ -302,6 +302,50 @@
     -fx-effect: dropshadow(gaussian, -fx-ribbon-shadow, 20, 0.20, 0, 8);
 }
 
+.pf-ribbon-menu-popup,
+.pf-ribbon-menu-popup.context-menu,
+.pf-ribbon-menu-popup .context-menu {
+    -fx-background-color: -fx-ribbon-background-subtle;
+    -fx-background-radius: 8px;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-padding: 4px;
+}
+
+.pf-ribbon-menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 6px 10px 6px 10px;
+}
+
+.pf-ribbon-menu-item:focused,
+.pf-ribbon-menu-item:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-menu-item:armed {
+    -fx-background-color: -pf-ui-surface-control-pressed;
+}
+
+.pf-ribbon-menu-item > .label {
+    -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-menu-item:disabled > .label {
+    -fx-text-fill: -pf-ui-text-disabled;
+    -fx-opacity: 1.0;
+}
+
+.pf-ribbon-menu-item .pf-ribbon-svg-path,
+.pf-ribbon-menu-item .pf-ribbon-octicon {
+    -fx-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-menu-item:disabled .pf-ribbon-svg-path,
+.pf-ribbon-menu-item:disabled .pf-ribbon-octicon {
+    -fx-fill: -pf-ui-text-disabled;
+}
+
 .pf-ribbon-popup-group {
     -fx-background-color: transparent;
 }

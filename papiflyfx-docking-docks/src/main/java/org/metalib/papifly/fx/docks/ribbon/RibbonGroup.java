@@ -366,7 +366,7 @@ public class RibbonGroup extends VBox {
             return cached;
         }
         telemetry.nodeCacheMiss(RibbonLayoutTelemetry.CacheKind.CONTROL, controlCacheId(key));
-        Node rebuilt = RibbonControlFactory.createGroupControl(control, classLoader, mode);
+        Node rebuilt = RibbonControlFactory.createGroupControl(control, classLoader, mode, theme);
         controlNodeCache.put(key, rebuilt);
         controlSignatures.put(control.id(), signature);
         telemetry.controlRebuild(control.id(), reason);
