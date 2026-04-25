@@ -14,11 +14,12 @@ Ribbon placement must become a host-level layout choice without forcing feature 
 ## Goals
 
 1. Support `TOP`, `LEFT`, `RIGHT`, and `BOTTOM` ribbon placements.
-2. Keep `TOP` as the default and preserve current behavior for existing hosts.
-3. Keep ribbon providers placement-agnostic; tabs, groups, controls, QAT ids, and contextual visibility remain unchanged.
-4. Preserve session state for minimized flag, selected tab, Quick Access Toolbar ids, and the new placement value.
-5. Keep orientation styling tokenized through `-pf-ui-*` and `-fx-ribbon-*` variables.
-6. Maintain keyboard accessibility and readable labels in each placement.
+2. Let each application host specify which side should contain the ribbon: top, bottom, left, or right.
+3. Keep `TOP` as the default and preserve current behavior for existing hosts.
+4. Keep ribbon providers placement-agnostic; tabs, groups, controls, QAT ids, and contextual visibility remain unchanged.
+5. Preserve session state for minimized flag, selected tab, Quick Access Toolbar ids, and the new placement value.
+6. Keep orientation styling tokenized through `-pf-ui-*` and `-fx-ribbon-*` variables.
+7. Maintain keyboard accessibility and readable labels in each placement.
 
 ## Non-Goals
 
@@ -27,6 +28,18 @@ Ribbon placement must become a host-level layout choice without forcing feature 
 - Customizable per-tab placement.
 - Detachable/floating ribbon windows.
 - Gallery controls or keytips.
+
+## Samples App Direction
+
+`SamplesApp` should be refactored to use the ribbon interface as a first-class sample discovery surface. The application should be able to expose available samples as ribbon tabs, groups, menus, or commands while still preserving the existing catalog data model.
+
+Expected behavior:
+
+1. Sample categories map naturally to ribbon tabs or groups.
+2. Individual samples are launched through ribbon commands.
+3. The ribbon placement selector can be demonstrated from the samples app.
+4. The existing sample list/catalog remains available as a fallback or secondary navigation aid until the ribbon workflow is proven.
+5. Sample command labels, menu labels, and placement controls remain readable in all four placements.
 
 ## Public API Shape
 
@@ -50,6 +63,8 @@ public void setPlacement(RibbonPlacement placement);
 ```
 
 `RibbonDockHost` owns where the ribbon sits relative to the dock content. `Ribbon` owns how its header, tab strip, group scroller, and command groups adapt to the selected placement.
+
+Applications may specify the host placement before showing the scene, through configuration, or through an application-level preference. When specified, the host should render the ribbon on that side; when omitted, the host renders the ribbon on top.
 
 ## Layout Model
 
@@ -151,4 +166,5 @@ The side placements need explicit CSS for:
 1. Should placement be user-changeable through a built-in ribbon command or only host-configurable?
 2. Should vertical side ribbons default to a fixed width or derive width from the largest visible group?
 3. Should bottom placement render QAT before tabs, matching top, or nearest the content edge?
-4. Should samples expose placement switching in a toolbar, settings panel, or separate sample scene?
+4. Should samples expose placement switching in a toolbar, settings panel, separate sample scene, or the new samples ribbon itself?
+5. Should `SamplesApp` eventually replace the existing catalog navigation with ribbon navigation, or keep both permanently?

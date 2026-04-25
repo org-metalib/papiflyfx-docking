@@ -7,7 +7,7 @@
 
 ## Scope
 
-Implement host-configurable ribbon placement for top, left, right, and bottom sides while keeping existing top placement behavior compatible.
+Implement host-configurable ribbon placement for top, left, right, and bottom sides while keeping existing top placement behavior compatible. Applications must be able to specify which side hosts the ribbon; the dock host applies that placement and falls back to top when no placement is specified.
 
 ## Affected Modules
 
@@ -23,6 +23,7 @@ Implement host-configurable ribbon placement for top, left, right, and bottom si
   - ribbon TestFX suites
 - `papiflyfx-docking-samples`
   - sample scene or sample controls that demonstrate placement switching
+  - `SamplesApp` refactor so the ribbon can expose available samples
 - `spec/papiflyfx-docking-docks`
   - update provider-authoring/session docs after implementation
 
@@ -31,12 +32,14 @@ Implement host-configurable ribbon placement for top, left, right, and bottom si
 1. Add `RibbonPlacement` enum in `org.metalib.papifly.fx.docks.ribbon`.
 2. Add `placementProperty()`, `getPlacement()`, and `setPlacement(...)` to `Ribbon`.
 3. Add matching placement property to `RibbonDockHost`.
-4. Bind or forward host placement into the hosted `Ribbon`.
-5. Default null placement to `RibbonPlacement.TOP`.
+4. Add a constructor or builder path that lets an application specify the initial `RibbonPlacement` when creating the host.
+5. Bind or forward host placement into the hosted `Ribbon`.
+6. Default null or omitted placement to `RibbonPlacement.TOP`.
 
 Acceptance:
 
 - Existing constructors still render top placement.
+- Applications can explicitly request top, bottom, left, or right placement from host setup.
 - Existing ribbon tests pass without source changes outside expected assertions.
 
 ## Phase 2 - Host Layout
@@ -101,12 +104,17 @@ Acceptance:
 1. Add a sample placement switcher to `RibbonShellSample` or create a focused side-placement sample.
 2. Include all four placements.
 3. Include a menu button, split button, contextual tab, QAT commands, minimized mode, and theme switching in the sample.
-4. Keep the sample programmatic; no FXML.
+4. Refactor `SamplesApp` so available samples can be surfaced through ribbon tabs, groups, menus, or commands.
+5. Reuse `SampleCatalog`/`SampleScene` metadata as the source of truth for ribbon sample commands.
+6. Keep the existing catalog navigation available until the ribbon sample workflow has parity.
+7. Keep the sample programmatic; no FXML.
 
 Acceptance:
 
 - A reviewer can manually inspect top, bottom, left, and right placements from the samples app.
 - The sample demonstrates minimized tab activation on each side.
+- Available samples are discoverable and launchable from the ribbon interface.
+- The samples ribbon reflects the same available sample set as the existing catalog.
 
 ## Test Plan
 
@@ -126,6 +134,10 @@ Add or extend focused tests:
    - unknown placement falls back to top.
 4. Existing tests
    - keep current top-placement tests passing.
+5. `SamplesSmokeTest`
+   - available samples can still be enumerated;
+   - sample ribbon commands are present for representative categories;
+   - launching a sample through the ribbon uses the same sample scene path as catalog navigation.
 
 ## Validation Commands
 
@@ -150,4 +162,5 @@ git diff --check
 3. Placement persists and restores.
 4. All four placements are covered by focused FX tests.
 5. Samples expose the feature for manual review.
-6. Provider-authoring/session docs are updated.
+6. `SamplesApp` can use the ribbon interface to show and launch available samples.
+7. Provider-authoring/session docs are updated.
