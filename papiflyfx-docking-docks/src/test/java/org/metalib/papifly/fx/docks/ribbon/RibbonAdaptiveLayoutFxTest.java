@@ -620,7 +620,9 @@ class RibbonAdaptiveLayoutFxTest {
         List<Text> matches = new ArrayList<>();
         collectDescendants(root, Text.class, text -> {
             String value = normalizeWhitespace(text.getText());
-            return !value.isBlank() && (label.equals(value) || label.contains(value));
+            String expandedValue = removeEllipsis(value);
+            return !expandedValue.isBlank()
+                && (label.equals(value) || label.contains(value) || label.startsWith(expandedValue));
         }, matches);
         return matches;
     }
@@ -652,6 +654,13 @@ class RibbonAdaptiveLayoutFxTest {
 
     private static String normalizeWhitespace(String value) {
         return value == null ? "" : value.replaceAll("\\s+", " ").trim();
+    }
+
+    private static String removeEllipsis(String value) {
+        return normalizeWhitespace(value)
+            .replace("...", "")
+            .replace("\u2026", "")
+            .trim();
     }
 
     private static Parent findAncestor(Node child, Predicate<Parent> predicate) {
