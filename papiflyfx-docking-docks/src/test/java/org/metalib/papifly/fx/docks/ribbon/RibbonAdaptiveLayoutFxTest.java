@@ -43,6 +43,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -60,9 +62,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ExtendWith(ApplicationExtension.class)
 class RibbonAdaptiveLayoutFxTest {
 
-    private static final String SAMPLE_PNG_URI = Path.of(
-        "/Users/igor/github/ikatraev/mixhawkmusic-ws/github/papiflyfx-docking/target/papiflyfx-docking/papiflyfx-docking-samples/src/main/resources/sample-media/sample.png"
-    ).toUri().toString();
+    private static final byte[] SAMPLE_PNG_BYTES = Base64.getDecoder().decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    );
 
     private final AtomicInteger alphaExecutions = new AtomicInteger();
     private final AtomicReference<List<RibbonTabSpec>> tabs = new AtomicReference<>();
@@ -478,14 +480,16 @@ class RibbonAdaptiveLayoutFxTest {
     @Test
     void brokenSvgFallsBackToRasterWithoutThrowing() throws IOException {
         Path brokenSvg = Files.createTempFile("ribbon-icon", ".svg");
+        Path rasterIcon = Files.createTempFile("ribbon-icon", ".png");
         try {
             Files.writeString(brokenSvg, "<svg><path d=\"broken", StandardCharsets.UTF_8);
+            Files.write(rasterIcon, SAMPLE_PNG_BYTES);
             RibbonCommand command = RibbonCommand.of(
                 "icon-test",
                 "Icon Test",
                 "Icon Test",
                 RibbonIconHandle.of(brokenSvg.toUri().toString()),
-                RibbonIconHandle.of(SAMPLE_PNG_URI),
+                RibbonIconHandle.of(rasterIcon.toUri().toString()),
                 null,
                 () -> {
                 }
@@ -498,6 +502,7 @@ class RibbonAdaptiveLayoutFxTest {
             assertInstanceOf(ImageView.class, button.getGraphic());
         } finally {
             Files.deleteIfExists(brokenSvg);
+            Files.deleteIfExists(rasterIcon);
         }
     }
 
@@ -519,9 +524,20 @@ class RibbonAdaptiveLayoutFxTest {
                 button -> label.equals(button.getText())
             );
             assertNotNull(control, "Expected command control for " + label);
-            Text text = findDescendant(control, Text.class, node -> label.equals(node.getText()));
-            assertNotNull(text, "Expected command label text for " + label);
-            assertContained(control, text, "command label " + label);
+            control.applyCss();
+            control.layout();
+
+            List<Text> labelTextNodes = labelTextNodes(control, label);
+            String renderedText = normalizedRenderedText(control);
+            assertFalse(
+                labelTextNodes.isEmpty(),
+                () -> "Expected command label text for " + label + " but rendered " + renderedText
+            );
+            assertTrue(
+                renderedText.contains(label),
+                () -> "Expected rendered command label " + label + " but got " + renderedText
+            );
+            labelTextNodes.forEach(text -> assertContained(control, text, "command label " + label));
         });
     }
 
@@ -598,6 +614,44 @@ class RibbonAdaptiveLayoutFxTest {
             }
         }
         return null;
+    }
+
+    private static List<Text> labelTextNodes(Parent root, String label) {
+        List<Text> matches = new ArrayList<>();
+        collectDescendants(root, Text.class, text -> {
+            String value = normalizeWhitespace(text.getText());
+            return !value.isBlank() && (label.equals(value) || label.contains(value));
+        }, matches);
+        return matches;
+    }
+
+    private static String normalizedRenderedText(Parent root) {
+        List<Text> texts = new ArrayList<>();
+        collectDescendants(root, Text.class, text -> !normalizeWhitespace(text.getText()).isBlank(), texts);
+        return normalizeWhitespace(String.join(" ", texts.stream().map(Text::getText).toList()));
+    }
+
+    private static <T extends Node> void collectDescendants(
+        Parent root,
+        Class<T> type,
+        Predicate<T> predicate,
+        List<T> matches
+    ) {
+        for (Node child : root.getChildrenUnmodifiable()) {
+            if (type.isInstance(child)) {
+                T cast = type.cast(child);
+                if (predicate.test(cast)) {
+                    matches.add(cast);
+                }
+            }
+            if (child instanceof Parent parent) {
+                collectDescendants(parent, type, predicate, matches);
+            }
+        }
+    }
+
+    private static String normalizeWhitespace(String value) {
+        return value == null ? "" : value.replaceAll("\\s+", " ").trim();
     }
 
     private static Parent findAncestor(Node child, Predicate<Parent> predicate) {
