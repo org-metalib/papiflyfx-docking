@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.docks.ribbon;
 
+import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -82,6 +83,7 @@ class RibbonPlacementFxTest {
         assertTrue(FxTestUtil.callFx(() -> ribbon.getStyleClass().contains("pf-ribbon-placement-left")));
         assertTrue(FxTestUtil.callFx(() -> ribbon.getStyleClass().contains("pf-ribbon-orientation-vertical")));
         assertTrue(FxTestUtil.callFx(() -> ribbon.lookup(".pf-ribbon-side-content-pane") == null));
+        assertTrue(FxTestUtil.callFx(() -> ribbon.lookup(".pf-ribbon-collapse-button") == null));
 
         Button saveAll = FxTestUtil.callFx(() -> findDescendant(
             ribbon,
@@ -128,6 +130,79 @@ class RibbonPlacementFxTest {
                 && button.isVisible()
         ).queryAs(Button.class);
         assertEquals("Tools Action", FxTestUtil.callFx(command::getText));
+    }
+
+    @Test
+    void clickingAnotherVerticalRibbonTabSwitchesTransientCommandPopover(FxRobot robot) {
+        FxTestUtil.runFx(() -> host.setPlacement(RibbonPlacement.LEFT));
+        settle();
+
+        Button home = robot.lookup(node ->
+            node instanceof Button button
+                && "Home".equals(button.getAccessibleText())
+                && button.getStyleClass().contains("pf-ribbon-side-toolbar-tab")
+                && button.isVisible()
+        ).queryAs(Button.class);
+        Button tools = robot.lookup(node ->
+            node instanceof Button button
+                && "Tools".equals(button.getAccessibleText())
+                && button.getStyleClass().contains("pf-ribbon-side-toolbar-tab")
+                && button.isVisible()
+        ).queryAs(Button.class);
+        robot.clickOn(tools);
+        settle();
+
+        assertFalse(robot.lookup(node ->
+            node instanceof Button button
+                && "Tools Action".equals(button.getText())
+                && button.isVisible()
+        ).queryAll().isEmpty());
+
+        robot.clickOn(home);
+        settle();
+
+        assertEquals("home", FxTestUtil.callFx(ribbon::getSelectedTabId));
+        assertFalse(robot.lookup(node ->
+            node instanceof Button button
+                && "Home Action".equals(button.getText())
+                && button.isVisible()
+        ).queryAll().isEmpty());
+        assertTrue(robot.lookup(node ->
+            node instanceof Button button
+                && "Tools Action".equals(button.getText())
+                && button.isVisible()
+        ).queryAll().isEmpty());
+    }
+
+    @Test
+    void clickingLowerVerticalRibbonAreaHidesTransientCommandPopover(FxRobot robot) {
+        FxTestUtil.runFx(() -> host.setPlacement(RibbonPlacement.LEFT));
+        settle();
+
+        Button tools = robot.lookup(node ->
+            node instanceof Button button
+                && "Tools".equals(button.getAccessibleText())
+                && button.getStyleClass().contains("pf-ribbon-side-toolbar-tab")
+                && button.isVisible()
+        ).queryAs(Button.class);
+        robot.clickOn(tools);
+        settle();
+
+        assertFalse(robot.lookup(node ->
+            node instanceof Button button
+                && "Tools Action".equals(button.getText())
+                && button.isVisible()
+        ).queryAll().isEmpty());
+
+        Bounds ribbonBounds = FxTestUtil.callFx(() -> ribbon.localToScreen(ribbon.getBoundsInLocal()));
+        robot.clickOn(ribbonBounds.getMinX() + ribbonBounds.getWidth() / 2.0, ribbonBounds.getMaxY() - 12.0);
+        settle();
+
+        assertTrue(robot.lookup(node ->
+            node instanceof Button button
+                && "Tools Action".equals(button.getText())
+                && button.isVisible()
+        ).queryAll().isEmpty());
     }
 
     @Test

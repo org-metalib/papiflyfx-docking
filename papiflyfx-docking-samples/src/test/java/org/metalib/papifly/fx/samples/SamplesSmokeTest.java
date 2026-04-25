@@ -17,7 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
-import org.metalib.papifly.fx.docks.ribbon.RibbonDockHost;
+import org.metalib.papifly.fx.docks.ribbon.Ribbon;
 import org.metalib.papifly.fx.docks.ribbon.RibbonPlacement;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.samples.catalog.SampleCatalog;
@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CompletionException;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -112,7 +113,7 @@ class SamplesSmokeTest {
     }
 
     @Test
-    void ribbonPlacementSampleBuildsTopAndLeftHosts() {
+    void ribbonPlacementSampleBuildsOneDockManagerWithTopAndLeftPlacements() {
         ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
         RibbonPlacementSample sample = new RibbonPlacementSample();
 
@@ -125,19 +126,25 @@ class SamplesSmokeTest {
         });
         WaitForAsyncUtils.waitForFxEvents();
 
-        RibbonDockHost[] topHost = new RibbonDockHost[1];
-        RibbonDockHost[] leftHost = new RibbonDockHost[1];
+        Node[] host = new Node[1];
+        Ribbon[] topRibbon = new Ribbon[1];
+        Ribbon[] leftRibbon = new Ribbon[1];
         runFx(() -> {
-            topHost[0] = (RibbonDockHost) stage.getScene().lookup("#" + RibbonPlacementSample.TOP_HOST_ID);
-            leftHost[0] = (RibbonDockHost) stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_HOST_ID);
+            host[0] = stage.getScene().lookup("#" + RibbonPlacementSample.HOST_ID);
+            topRibbon[0] = (Ribbon) stage.getScene().lookup("#" + RibbonPlacementSample.TOP_RIBBON_ID);
+            leftRibbon[0] = (Ribbon) stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_RIBBON_ID);
         });
 
-        assertNotNull(topHost[0]);
-        assertNotNull(leftHost[0]);
-        assertTrue(topHost[0].getPlacement() == RibbonPlacement.TOP);
-        assertTrue(leftHost[0].getPlacement() == RibbonPlacement.LEFT);
-        assertNotNull(stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_HOST_ID + " .pf-ribbon-side-toolbar"));
-        assertNull(stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_HOST_ID + " .pf-ribbon-side-content-pane"));
+        assertNotNull(host[0]);
+        assertNotNull(topRibbon[0]);
+        assertNotNull(leftRibbon[0]);
+        assertEquals(1, stage.getScene().getRoot().lookupAll(".pf-ribbon-dock-host").size());
+        assertEquals(2, stage.getScene().getRoot().lookupAll(".pf-ribbon").size());
+        assertTrue(topRibbon[0].getPlacement() == RibbonPlacement.TOP);
+        assertTrue(leftRibbon[0].getPlacement() == RibbonPlacement.LEFT);
+        assertNotNull(stage.getScene().lookup("#" + RibbonPlacementSample.TOP_RIBBON_ID + " .pf-ribbon-header"));
+        assertNotNull(stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_RIBBON_ID + " .pf-ribbon-side-toolbar"));
+        assertNull(stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_RIBBON_ID + " .pf-ribbon-side-content-pane"));
         assertNull(uncaughtException, "Exception during RibbonPlacementSample build: " + uncaughtException);
     }
 

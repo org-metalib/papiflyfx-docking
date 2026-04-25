@@ -450,7 +450,20 @@
 
 .pf-ribbon-menu-button > .label,
 .pf-ribbon-split-button > .label {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
     -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-menu-button > .arrow-button,
+.pf-ribbon-split-button > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.pf-ribbon-split-button > .arrow-button {
+    -fx-border-color: transparent transparent transparent -pf-ui-border-subtle;
+    -fx-border-width: 0 0 0 1;
 }
 
 .pf-ribbon-menu-button > .arrow-button > .arrow,

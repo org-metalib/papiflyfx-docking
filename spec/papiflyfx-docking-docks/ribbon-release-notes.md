@@ -48,7 +48,7 @@ Ribbon 9 adds host-configurable placement without changing provider contracts:
 - `RibbonDockHost` and `Ribbon` expose `placementProperty()`, `getPlacement()`, and `setPlacement(...)`.
 - Existing hosts default to `TOP`.
 - Side placements keep a readable vertical tab strip on the outside edge and render selected-tab command groups in the inner pane.
-- The SamplesApp catalog includes `Ribbon Placement` for deterministic `TOP` and `LEFT` comparison.
+- The SamplesApp catalog includes `Ribbon Placement` with one dock manager rendered with simultaneous `TOP` and `LEFT` ribbon placements.
 
 ## Ribbon 10 Side Toolbar Notes
 

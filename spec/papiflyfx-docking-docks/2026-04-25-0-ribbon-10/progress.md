@@ -25,7 +25,10 @@
 - [2026-04-25] Added compact side-toolbar command/tab fallback glyph support, full accessible text, and tooltips for text-only rail entries.
 - [2026-04-25] Updated tokenized CSS for side-toolbar rail buttons, separators, focus/hover states, contextual tab styling, and command popover surface.
 - [2026-04-25] Updated `RibbonPlacementSample`, sample smoke coverage, runtime docs, release notes, and current ribbon status docs to describe Ribbon 10 side placement.
+- [2026-04-25] Revised `RibbonPlacementSample` to use one `DockManager` with simultaneous `TOP` and `LEFT` ribbon placements, instead of comparing two independent dock managers side by side.
 - [2026-04-25] Added focused TestFX coverage for side rail layout, fallback glyph accessibility, transient popover activation, minimized mouse suppression, minimized keyboard suppression, and right-side host placement.
+- [2026-04-25] Added side-rail dismissal behavior so blank vertical ribbon chrome hides active ribbon popups while side-tab clicks switch directly to the clicked tab's popover.
+- [2026-04-25] Removed the visible collapse/expand button from `LEFT` and `RIGHT` side rails; minimized side state remains supported for restored/programmatic state.
 
 ## Current Understanding
 
@@ -66,6 +69,8 @@ Results:
 - Docks ribbon selector: 46 tests run, 0 failures, 0 errors, 0 skipped; build success.
 - Samples ribbon/smoke selector: 19 tests run, 0 failures, 0 errors, 0 skipped; build success.
 - Targeted post-review rerun: `RibbonPlacementFxTest` 6 tests run, 0 failures, 0 errors, 0 skipped; build success.
+- Simultaneous `TOP` + `LEFT` single-DockManager sample revision rerun: `SamplesSmokeTest` 14 tests run, 0 failures, 0 errors, 0 skipped; build success.
+- Side-rail dismissal rerun: `RibbonPlacementFxTest` 8 tests run, 0 failures, 0 errors, 0 skipped; build success.
 - `git diff --check`: clean.
 
 Observed diagnostics during validation were expected existing test-path warnings: broken SVG fallback logging, deliberate provider failure logging, and malformed ribbon extension isolation logging. None failed the build.

@@ -16,6 +16,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.PopupControl;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -24,6 +25,8 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.SVGPath;
+import javafx.stage.PopupWindow;
+import javafx.stage.Window;
 import org.metalib.papifly.fx.api.ribbon.RibbonCommand;
 import org.metalib.papifly.fx.api.ribbon.RibbonGroupSpec;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
@@ -98,6 +101,7 @@ public class Ribbon extends VBox {
      */
     public Ribbon(RibbonManager manager) {
         getStyleClass().add("pf-ribbon");
+        setPickOnBounds(true);
         UiStyleSupport.ensureCommonStylesheetLoaded(this);
         UiStyleSupport.ensureStylesheetLoaded(this, STYLESHEET);
 
@@ -129,6 +133,7 @@ public class Ribbon extends VBox {
         HBox.setHgrow(tabStrip, Priority.ALWAYS);
 
         sideChrome.getStyleClass().add("pf-ribbon-side-chrome");
+        addEventFilter(MouseEvent.MOUSE_PRESSED, this::dismissRibbonPopupsFromVerticalChrome);
         sideToolbar.getStyleClass().addAll("pf-ribbon-side-toolbar", "pf-ribbon-side-edge-strip");
         sideToolbar.setAlignment(Pos.TOP_CENTER);
         sidePopoverPane.getStyleClass().addAll("pf-ribbon-side-toolbar-popover", "pf-ribbon-side-content-pane", "pf-ribbon-side-flyout");
@@ -633,7 +638,6 @@ public class Ribbon extends VBox {
             .map(this::createSideTabButton)
             .forEach(railItems::add);
         railItems.add(sideToolbarSpacer);
-        railItems.add(minimizeButton);
         sideToolbar.getChildren().setAll(railItems);
     }
 
@@ -732,6 +736,46 @@ public class Ribbon extends VBox {
             groupScroller.setManaged(false);
             groupScroller.setVisible(false);
         }
+    }
+
+    private void dismissRibbonPopupsFromVerticalChrome(MouseEvent event) {
+        if (!isVerticalPlacement()) {
+            return;
+        }
+        hideRibbonPopups();
+    }
+
+    private boolean hideRibbonPopups() {
+        boolean hidden = false;
+        if (sidePopover != null && sidePopover.isShowing()) {
+            sidePopover.hide();
+            hidden = true;
+        }
+        Window rootWindow = getScene() == null ? null : getScene().getWindow();
+        if (rootWindow == null) {
+            return hidden;
+        }
+        for (Window window : List.copyOf(Window.getWindows())) {
+            if (window instanceof PopupWindow popup
+                && popup.isShowing()
+                && isOwnedBy(window, rootWindow)) {
+                popup.hide();
+                hidden = true;
+            }
+        }
+        return hidden;
+    }
+
+    private boolean isOwnedBy(Window window, Window rootWindow) {
+        Window current = window;
+        while (current instanceof PopupWindow popup) {
+            Window owner = popup.getOwnerWindow();
+            if (owner == rootWindow) {
+                return true;
+            }
+            current = owner;
+        }
+        return current == rootWindow;
     }
 
     private void updateSidePopoverTheme() {
