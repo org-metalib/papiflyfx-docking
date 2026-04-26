@@ -32,12 +32,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class HugoPreviewPane extends BorderPane implements DisposableContent, HugoRibbonActions {
 
@@ -518,13 +520,15 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent, Hu
                 processBuilder.directory(siteRoot.toFile());
                 processBuilder.redirectErrorStream(true);
                 Process process = processBuilder.start();
-                String output = readOutput(process, 16);
+                CommandOutputCapture outputCapture = CommandOutputCapture.start(process, 16);
                 boolean finished = process.waitFor(30, TimeUnit.SECONDS);
                 if (!finished) {
                     process.destroyForcibly();
+                    outputCapture.await(Duration.ofSeconds(1));
                     publishStatusMessage("Hugo command timed out");
                     return;
                 }
+                String output = outputCapture.read(Duration.ofSeconds(1));
                 if (process.exitValue() != 0) {
                     String failure = output.isBlank() ? "Exit code " + process.exitValue() : output;
                     publishStatusMessage("Hugo command failed: " + failure);
@@ -541,19 +545,62 @@ public class HugoPreviewPane extends BorderPane implements DisposableContent, Hu
         });
     }
 
-    private static String readOutput(Process process, int maxLines) throws IOException {
-        List<String> lines = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(
-            new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null && lines.size() < maxLines) {
-                String trimmed = line.trim();
-                if (!trimmed.isEmpty()) {
-                    lines.add(trimmed);
-                }
+    private record CommandOutputCapture(
+        List<String> lines,
+        AtomicReference<IOException> failure,
+        Thread outputThread
+    ) {
+        static CommandOutputCapture start(Process process, int maxLines) {
+            List<String> lines = Collections.synchronizedList(new ArrayList<>());
+            AtomicReference<IOException> failure = new AtomicReference<>();
+            Thread outputThread = new Thread(() -> drain(process, maxLines, lines, failure), "papiflyfx-hugo-command-output");
+            outputThread.setDaemon(true);
+            outputThread.start();
+            return new CommandOutputCapture(lines, failure, outputThread);
+        }
+
+        String read(Duration timeout) throws IOException {
+            await(timeout);
+            IOException exception = failure.get();
+            if (exception != null) {
+                throw exception;
+            }
+            return snapshot();
+        }
+
+        void await(Duration timeout) {
+            try {
+                outputThread.join(Math.max(1L, timeout.toMillis()));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
             }
         }
-        return String.join(" | ", lines);
+
+        private String snapshot() {
+            synchronized (lines) {
+                return String.join(" | ", lines);
+            }
+        }
+
+        private static void drain(
+            Process process,
+            int maxLines,
+            List<String> lines,
+            AtomicReference<IOException> failure
+        ) {
+            try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String trimmed = line.trim();
+                    if (!trimmed.isEmpty() && lines.size() < maxLines) {
+                        lines.add(trimmed);
+                    }
+                }
+            } catch (IOException ex) {
+                failure.set(ex);
+            }
+        }
     }
 
     private void publishStatusMessage(String message) {

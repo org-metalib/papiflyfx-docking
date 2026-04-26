@@ -40,6 +40,13 @@ Compatibility behavior:
 - Other malformed known fields remain strict for the ribbon extension and are isolated from core layout restore.
 - Unknown customization fields are not preserved on save in Ribbon 5 because the runtime recaptures known shell state only.
 
+Dock-session schema version:
+
+- `DockSessionData.CURRENT_VERSION` is `3` for sessions written with namespaced extension payloads and ribbon placement state.
+- Version 3 sessions keep the existing core layout, floating, minimized, and maximized payload shapes, and add or continue extension-owned state under `extensions.<namespace>`.
+- Version 2-era sessions without `extensions.ribbon.placement` still restore; ribbon placement defaults to `TOP`.
+- Ribbon 1-era top-level `ribbon` payloads remain superseded by `extensions.ribbon` and are not restored as current ribbon state.
+
 ## Ribbon 9 Placement Notes
 
 Ribbon 9 adds host-configurable placement without changing provider contracts:

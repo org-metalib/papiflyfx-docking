@@ -108,6 +108,12 @@ Ribbon contributors and hosts should keep tab and command identifiers stable
 once published. Selected-tab restore and Quick Access Toolbar persistence are
 ID-first and depend on those stable identifiers. Missing, unknown, or malformed
 placement values restore as `TOP` without dropping the other valid ribbon state.
+Sessions written by the current runtime use dock-session schema version `3`.
+Version 3 keeps core layout, floating, minimized, and maximized payloads
+compatible with the existing model while using `extensions.<namespace>` for
+contributor-owned state. Older sessions without `extensions.ribbon.placement`
+restore with ribbon placement defaulted to `TOP`; historical top-level
+`ribbon` payloads are superseded by `extensions.ribbon`.
 
 ### Extension contributors
 

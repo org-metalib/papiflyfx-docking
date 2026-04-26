@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
@@ -30,6 +31,8 @@ import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -73,6 +76,62 @@ class RibbonPlacementFxTest {
         assertPlacement(RibbonPlacement.LEFT, BorderPane::getLeft);
         assertPlacement(RibbonPlacement.RIGHT, BorderPane::getRight);
         assertPlacement(RibbonPlacement.TOP, BorderPane::getTop);
+    }
+
+    @Test
+    void disposeReleasesHostOwnedBindingsAndRegions() {
+        FxTestUtil.runFx(() -> {
+            assertTrue(ribbon.themeProperty().isBound());
+            assertTrue(ribbon.getManager().contextProperty().isBound());
+
+            host.dispose();
+
+            assertFalse(ribbon.themeProperty().isBound());
+            assertFalse(ribbon.getManager().contextProperty().isBound());
+            assertNull(host.getTop());
+            assertNull(host.getBottom());
+            assertNull(host.getLeft());
+            assertNull(host.getRight());
+            assertNull(host.getCenter());
+        });
+    }
+
+    @Test
+    void tabStripPrunesRemovedTabsFromCacheAndToggleGroup() {
+        FxTestUtil.runFx(() -> {
+            RibbonTabStrip tabStrip = new RibbonTabStrip();
+            RibbonTabSpec home = lightweightTab("home", "Home", 0);
+            RibbonTabSpec tools = lightweightTab("tools", "Tools", 10);
+            tabStrip.getTabs().setAll(home, tools);
+
+            ToggleButton removed = findDescendant(tabStrip, ToggleButton.class, button -> "Tools".equals(button.getText()));
+            assertNotNull(removed);
+            assertNotNull(removed.getToggleGroup());
+
+            tabStrip.getTabs().setAll(home);
+
+            assertNull(findDescendant(tabStrip, ToggleButton.class, button -> "Tools".equals(button.getText())));
+            assertNull(removed.getToggleGroup());
+        });
+    }
+
+    private static RibbonTabSpec lightweightTab(String id, String label, int order) {
+        return new RibbonTabSpec(
+            id,
+            label,
+            order,
+            false,
+            context -> true,
+            List.of(new RibbonGroupSpec(
+                id + "-group",
+                label + " Group",
+                0,
+                0,
+                null,
+                List.of(new RibbonButtonSpec(RibbonCommand.of(id + ".command", label + " Action", () -> {
+                })))
+            ))
+        );
     }
 
     @Test

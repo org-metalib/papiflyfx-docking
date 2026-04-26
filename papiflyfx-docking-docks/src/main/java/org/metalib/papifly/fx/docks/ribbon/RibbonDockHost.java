@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.docks.ribbon;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.scene.layout.BorderPane;
 import org.metalib.papifly.fx.docks.DockManager;
 import org.metalib.papifly.fx.docks.DockSessionStateContributor;
@@ -18,7 +19,12 @@ public class RibbonDockHost extends BorderPane {
     private final RibbonManager ribbonManager;
     private final Ribbon ribbon;
     private final DockSessionStateContributor<RibbonSessionData> sessionStateContributor;
+    private final boolean ribbonThemeBoundByHost;
+    private final boolean ribbonContextBoundByHost;
+    private final ChangeListener<RibbonPlacement> placementChangeListener =
+        (obs, oldPlacement, newPlacement) -> applyPlacement(newPlacement);
     private final ObjectProperty<RibbonPlacement> placement = new SimpleObjectProperty<>(this, "placement", RibbonPlacement.TOP);
+    private boolean disposed;
 
     /**
      * Creates a host with default ribbon shell/runtime instances.
@@ -46,16 +52,22 @@ public class RibbonDockHost extends BorderPane {
         setMinSize(0, 0);
 
         this.ribbon.setManager(this.ribbonManager);
+        boolean boundTheme = false;
         if (!this.ribbon.themeProperty().isBound()) {
             this.ribbon.themeProperty().bind(this.dockManager.themeProperty());
+            boundTheme = true;
         }
+        this.ribbonThemeBoundByHost = boundTheme;
+        boolean boundContext = false;
         if (!this.ribbonManager.contextProperty().isBound()) {
             this.ribbonManager.contextProperty().bind(this.dockManager.ribbonContextProperty());
+            boundContext = true;
         }
+        this.ribbonContextBoundByHost = boundContext;
         this.dockManager.registerSessionStateContributor(sessionStateContributor);
 
         this.ribbon.placementProperty().bindBidirectional(this.placement);
-        this.placement.addListener((obs, oldPlacement, newPlacement) -> applyPlacement(newPlacement));
+        this.placement.addListener(placementChangeListener);
         applyPlacement(this.placement.get());
         setCenter(this.dockManager.getRootPane());
     }
@@ -136,6 +148,20 @@ public class RibbonDockHost extends BorderPane {
      * Unregisters host-specific bindings and session contributors.
      */
     public void dispose() {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        placement.removeListener(placementChangeListener);
+        ribbon.placementProperty().unbindBidirectional(placement);
+        if (ribbonThemeBoundByHost && ribbon.themeProperty().isBound()) {
+            ribbon.themeProperty().unbind();
+        }
+        if (ribbonContextBoundByHost && ribbonManager.contextProperty().isBound()) {
+            ribbonManager.contextProperty().unbind();
+        }
         dockManager.unregisterSessionStateContributor(sessionStateContributor);
+        clearRibbonRegions();
+        setCenter(null);
     }
 }

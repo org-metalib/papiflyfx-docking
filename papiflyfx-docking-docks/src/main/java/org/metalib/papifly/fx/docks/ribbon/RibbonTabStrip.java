@@ -14,10 +14,12 @@ import javafx.scene.layout.FlowPane;
 import org.metalib.papifly.fx.api.ribbon.RibbonTabSpec;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -110,7 +112,9 @@ public class RibbonTabStrip extends FlowPane {
     private void rebuild() {
         ensureSelection();
         List<ToggleButton> desiredButtons = new ArrayList<>(tabs.size());
+        Set<String> desiredTabIds = new LinkedHashSet<>();
         for (RibbonTabSpec tab : tabs) {
+            desiredTabIds.add(tab.id());
             TabRenderState existing = renderedTabs.get(tab.id());
             if (existing != null) {
                 telemetry.nodeCacheHit(RibbonLayoutTelemetry.CacheKind.TAB, tab.id());
@@ -130,10 +134,23 @@ public class RibbonTabStrip extends FlowPane {
             renderedTabs.put(tab.id(), new TabRenderState(tab.label(), tab.contextual(), orientation, button));
             desiredButtons.add(button);
         }
+        pruneRemovedTabs(desiredTabIds);
         if (!getChildren().equals(desiredButtons)) {
             getChildren().setAll(desiredButtons);
         }
         syncSelection();
+    }
+
+    private void pruneRemovedTabs(Set<String> desiredTabIds) {
+        renderedTabs.entrySet().removeIf(entry -> {
+            if (desiredTabIds.contains(entry.getKey())) {
+                return false;
+            }
+            ToggleButton button = entry.getValue().button();
+            button.setOnAction(null);
+            button.setToggleGroup(null);
+            return true;
+        });
     }
 
     private void ensureSelection() {
