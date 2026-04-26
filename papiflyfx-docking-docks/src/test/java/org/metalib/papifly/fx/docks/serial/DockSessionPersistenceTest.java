@@ -16,6 +16,7 @@ import org.metalib.papifly.fx.docks.layout.data.TabGroupData;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -63,6 +64,24 @@ class DockSessionPersistenceTest {
         String json = persistence.toJsonString(original);
         DockSessionData restored = persistence.fromJsonString(json);
 
+        assertEquals(original, restored);
+    }
+
+    @Test
+    void testRoundTrip_sessionWithRibbonState() {
+        DockSessionData original = buildSession()
+            .withExtension("ribbon", Map.of(
+                "minimized", true,
+                "selectedTabId", "hugo",
+                "quickAccessCommandIds", List.of("cmd.save", "cmd.preview")
+            ))
+            .withExtension("workspace", Map.of("profile", "dev"));
+
+        String json = persistence.toJsonString(original);
+        DockSessionData restored = persistence.fromJsonString(json);
+
+        assertTrue(json.contains("\"extensions\""));
+        assertTrue(json.contains("\"ribbon\""));
         assertEquals(original, restored);
     }
 

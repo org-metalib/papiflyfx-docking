@@ -11,6 +11,8 @@ IDE-style docking framework for JavaFX. Build split/tabbed layouts with drag-and
 - Minimized bar for restoring hidden panels
 - Session capture and JSON persistence
 - Content state adapters with versioned leaf content payloads
+- Ribbon shell host (`RibbonDockHost`) with ServiceLoader-driven tabs/groups
+- Ribbon state persistence (minimized state, selected tab, QAT command ids)
 - Programmatic theming (dark/light)
 
 ## Quick Start
@@ -70,6 +72,94 @@ DockManager dockManager = new DockManager();
 dockManager.restoreSessionFromString(json);
 dockManager.loadSessionFromFile(Paths.get("session.json"));
 ```
+
+### Ribbon host persistence
+
+If you mount dock content through `RibbonDockHost`, ribbon shell state is
+captured/restored through the same dock session payload automatically.
+
+```java
+DockManager dockManager = new DockManager();
+RibbonManager ribbonManager = new RibbonManager(); // ServiceLoader providers
+RibbonDockHost host = new RibbonDockHost(dockManager, ribbonManager, new Ribbon());
+host.setPlacement(RibbonPlacement.LEFT); // Optional; TOP is the compatibility default
+
+String json = dockManager.saveSessionToString();
+dockManager.restoreSessionFromString(json);
+```
+
+`RibbonDockHost` and `Ribbon` expose `placementProperty()`, `getPlacement()`,
+and `setPlacement(...)`. Supported placements are `TOP`, `BOTTOM`, `LEFT`, and
+`RIGHT`; providers stay placement-agnostic. `LEFT` and `RIGHT` render a compact
+outside side-toolbar rail with QAT commands and tab entries, and show selected
+tab commands through a transient popover over the dock content instead of a
+persistent wide command pane. Minimized side placement keeps the rail visible
+and suppresses popover activation while preserving the persisted minimized flag.
+
+Persisted ribbon state now lives under the namespaced dock-session extension
+payload `extensions.ribbon`:
+
+- `extensions.ribbon.minimized`
+- `extensions.ribbon.selectedTabId`
+- `extensions.ribbon.quickAccessCommandIds`
+- `extensions.ribbon.placement`
+
+Ribbon contributors and hosts should keep tab and command identifiers stable
+once published. Selected-tab restore and Quick Access Toolbar persistence are
+ID-first and depend on those stable identifiers. Missing, unknown, or malformed
+placement values restore as `TOP` without dropping the other valid ribbon state.
+Sessions written by the current runtime use dock-session schema version `3`.
+Version 3 keeps core layout, floating, minimized, and maximized payloads
+compatible with the existing model while using `extensions.<namespace>` for
+contributor-owned state. Older sessions without `extensions.ribbon.placement`
+restore with ribbon placement defaulted to `TOP`; historical top-level
+`ribbon` payloads are superseded by `extensions.ribbon`.
+
+### Extension contributors
+
+Dock-session extensions are contributor-owned and persist under
+`extensions.<namespace>`.
+
+- Choose one stable namespace per contributor and keep it unchanged once sessions may be persisted.
+- Encode and decode only your own payload through `DockSessionExtensionCodec`; do not add bespoke top-level session fields.
+- Malformed extension payloads are isolated to the owning contributor during restore and do not block unrelated core dock state.
+
+Typical contributor shape:
+
+```java
+class ExampleSessionContributor implements DockSessionStateContributor<ExampleState> {
+    @Override
+    public String extensionNamespace() {
+        return "example";
+    }
+
+    @Override
+    public DockSessionExtensionCodec<ExampleState> codec() {
+        return new ExampleSessionCodec();
+    }
+}
+```
+
+### Ribbon provider integration
+
+Ribbon providers should use typed capabilities for executable integrations and
+attributes for metadata/visibility decisions.
+
+- `RibbonContext#capability(Class)` resolves action interfaces such as `GitHubRibbonActions` and `HugoRibbonActions`.
+- Active content can expose one or more explicit action interfaces through `RibbonCapabilityContributor`; direct root-node `implements ActionInterface` remains supported for simple content.
+- `RibbonContextAttributes` typed keys are for dock title, content-factory id, content kind/domain, floating/maximized state, and similar metadata. Active content can publish explicit metadata through `RibbonAttributeContributor`.
+- `RibbonContextAttributes.ACTIVE_CONTENT_NODE` is a temporary compatibility bridge in the docks runtime and should not be used by new providers.
+- Provider ids and command ids must be stable because selected tabs and Quick Access Toolbar entries are persisted by id.
+
+See `../spec/papiflyfx-docking-docks/ribbon-provider-authoring.md` for ServiceLoader registration, id namespace conventions, contextual metadata guidance, QAT implications, and the provider test checklist. See `../spec/papiflyfx-docking-docks/ribbon-status.md` for the current Ribbon 1-6 status index and `../spec/papiflyfx-docking-docks/ribbon-release-notes.md` for Ribbon 2 migration notes and Ribbon 6 design-only candidates.
+
+### Command registry invariants
+
+`RibbonManager` owns the runtime `CommandRegistry`.
+
+- Command identity is canonical and registry-owned. Reuse the same command id for the same semantic action.
+- Mutate registry-backed command state on the FX thread or the single thread that drives `RibbonManager.refresh()`.
+- Steady-state refreshes rely on cache reuse and telemetry-backed invariants rather than rebuilding every tab/group/control surface.
 
 ### Restoring content with a factory
 

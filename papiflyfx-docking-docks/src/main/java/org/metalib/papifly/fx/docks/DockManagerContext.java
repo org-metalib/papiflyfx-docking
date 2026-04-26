@@ -10,6 +10,8 @@ import org.metalib.papifly.fx.docks.core.DockTabGroup;
 import org.metalib.papifly.fx.docks.layout.LayoutFactory;
 import org.metalib.papifly.fx.docks.layout.data.LayoutNode;
 
+import java.util.List;
+
 interface DockManagerContext {
 
     DockElement getRoot();
@@ -39,4 +41,6 @@ interface DockManagerContext {
     StackPane getDockingLayer();
 
     StackPane getRootStack();
+
+    List<DockSessionStateContributor<?>> getSessionStateContributors();
 }

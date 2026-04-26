@@ -98,7 +98,8 @@ final class DefaultDockSessionService implements DockSessionService {
             maximizedData = new MaximizedLeafData(leafData, toRestoreHintData(minMaxService.getMaximizeRestoreHint()));
         }
 
-        return DockSessionData.of(layout, floatingList, minimizedList, maximizedData);
+        DockSessionData session = DockSessionData.of(layout, floatingList, minimizedList, maximizedData);
+        return applySessionContributorsOnCapture(session);
     }
 
     @Override
@@ -158,6 +159,8 @@ final class DefaultDockSessionService implements DockSessionService {
                 minMaxService.addMinimizedLeaf(leaf, toRestoreHint(minimizedData.restoreHint()));
             }
         }
+
+        applySessionContributorsOnRestore(session);
     }
 
     @Override
@@ -303,5 +306,69 @@ final class DefaultDockSessionService implements DockSessionService {
             return null;
         }
         return new Rectangle2D(boundsData.x(), boundsData.y(), boundsData.width(), boundsData.height());
+    }
+
+    private DockSessionData applySessionContributorsOnCapture(DockSessionData session) {
+        DockSessionData current = session;
+        for (DockSessionStateContributor<?> contributor : context.getSessionStateContributors()) {
+            if (contributor == null || current == null) {
+                continue;
+            }
+            try {
+                current = captureContributorState(current, contributor);
+            } catch (RuntimeException exception) {
+                LOG.log(Level.WARNING, "Session contributor capture failed: " + contributorDescription(contributor), exception);
+            }
+        }
+        return current;
+    }
+
+    private void applySessionContributorsOnRestore(DockSessionData session) {
+        for (DockSessionStateContributor<?> contributor : context.getSessionStateContributors()) {
+            if (contributor == null) {
+                continue;
+            }
+            try {
+                restoreContributorState(session, contributor);
+            } catch (RuntimeException exception) {
+                LOG.log(Level.WARNING, "Session contributor restore failed: " + contributorDescription(contributor), exception);
+            }
+        }
+    }
+
+    private <T> DockSessionData captureContributorState(
+        DockSessionData session,
+        DockSessionStateContributor<T> contributor
+    ) {
+        T contributorState = contributor.captureSessionState();
+        if (contributorState == null) {
+            return session.withoutExtension(contributor.extensionNamespace());
+        }
+        Map<String, Object> payload = contributor.codec().encode(contributorState);
+        if (payload == null) {
+            throw new IllegalArgumentException(
+                "Session contributor codec returned null payload for namespace " + contributor.extensionNamespace()
+            );
+        }
+        return session.withExtension(contributor.extensionNamespace(), payload);
+    }
+
+    private <T> void restoreContributorState(
+        DockSessionData session,
+        DockSessionStateContributor<T> contributor
+    ) {
+        Map<String, Object> payload = session.extension(contributor.extensionNamespace());
+        if (payload == null) {
+            return;
+        }
+        T contributorState = contributor.codec().decode(payload);
+        if (contributorState == null) {
+            return;
+        }
+        contributor.restoreSessionState(contributorState);
+    }
+
+    private String contributorDescription(DockSessionStateContributor<?> contributor) {
+        return contributor.getClass().getName() + "[namespace=" + contributor.extensionNamespace() + "]";
     }
 }

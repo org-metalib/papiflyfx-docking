@@ -3,6 +3,7 @@ package org.metalib.papifly.fx.docks.core;
 import javafx.application.Platform;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyIntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
@@ -475,6 +476,15 @@ public class DockTabGroup implements DockElement {
      */
     public int getActiveTabIndex() {
         return activeTabIndex.get();
+    }
+
+    /**
+     * Gets the active tab index property.
+     *
+     * @return read-only active tab index property
+     */
+    public ReadOnlyIntegerProperty activeTabIndexProperty() {
+        return activeTabIndex;
     }
 
     /**

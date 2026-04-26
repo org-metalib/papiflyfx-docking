@@ -1,44 +1,63 @@
-# papiflyfx-docks
+# PapiflyFX Docks Specs
 
-This specification outlines a **Pure Programmatic UI** architecture for a JavaFX docking framework. By eschewing 
-FXML and CSS, we gain total control over the scene graph, reduce layout overhead, and ensure strict type safety.
+This directory contains docking-framework design notes, implementation plans, and delivery records. Older dated directories are preserved for traceability; use the status links below before treating an older plan as current architecture.
 
----
+## Current Ribbon Entry Points
 
-## 1. Core Component Hierarchy
+- [Ribbon current status](ribbon-status.md) - canonical status for Ribbon 1 through Ribbon 6 candidates, current implementation baseline, authoritative session shape, and carry-forward roadmap.
+- [Ribbon provider authoring](ribbon-provider-authoring.md) - provider ids, command ids, ServiceLoader registration, typed context metadata, explicit capability contribution, contextual tabs, QAT semantics, focused tests, and Maven selector flags.
+- [Ribbon release and migration notes](ribbon-release-notes.md) - Ribbon 2 breaking-change context, current Ribbon 5 session contract, and Ribbon 6 design-only migration notes.
 
-The framework will not use standard layout containers directly. Instead, it will use a **Wrapper Pattern** where every docking element is a class that manages its own internal JavaFX nodes.
+## Historical Docking Specs
 
-### Base Interface: `DockElement`
+The early docking documents in this directory describe the original docking layout concept and some constraints that have since changed. For example, the framework now uses CSS in shared UI/ribbon styling even though the first spec framed the project as "no CSS." Treat those documents as historical unless they are linked by a current status page or module README.
 
-Every entity in the docking system must implement this.
+## Ribbon Iterations
 
-* **`getNode()`**: Returns the actual JavaFX `Region`.
-* **`getMetadata()`**: Returns a `DockData` object (ID, Title, Icon, State).
-* **`serialize()`**: Returns a DTO for layout persistence.
+| Iteration | Status | Notes |
+| --- | --- | --- |
+| [Ribbon 1](2026-04-19-0-ribbon/README.md) | Historical baseline | Introduced command/ribbon SPI, runtime shell, adaptive sizing, QAT, contextual tabs, and an early top-level `ribbon` session example that is now superseded. |
+| [Ribbon 2](2026-04-20-0-ribbon-2/README.md) | Implemented breaking hardening | Established UI-neutral command/context contracts, command registry, id-first QAT, SVG icon support, and `extensions.ribbon` session persistence. |
+| [Ribbon 3](2026-04-23-0-ribbon-3/README.md) | Implemented targeted fix | Closed SamplesApp ribbon label/caption clipping with focused geometry validation. |
+| [Ribbon 4](2026-04-23-0-ribbon-4/README.md) | Implemented samples | Added GitHub and Hugo ribbon SamplesApp demos and headless coverage. |
+| [Ribbon 5](2026-04-23-0-ribbon-5/README.md) | Closed consolidated follow-up | Stabilized runtime/accessibility/provider/test docs and closed the review loop. |
+| [Ribbon 6](2026-04-23-0-ribbon-6/README.md) | Design-only | Records future breaking API/session candidates. No Ribbon 6 behavior is implemented by Ribbon 5. |
 
-### Concrete Structural Nodes
+## Session Documentation Rule
 
-1. **`DockLeaf`**: The terminal node. It contains the user’s content (a `Node`) and is wrapped in a `DockPane` (the visual container with a title bar).
-2. **`DockSplitGroup`**: Replaces the standard `SplitPane`. It manages two `DockElements` and a divider ratio.
-3. **`DockTabGroup`**: Manages a stack of `DockLeaf` objects, providing a custom tab header.
+Current ribbon session state is namespaced under `extensions.ribbon`, with:
 
----
+- `extensions.ribbon.minimized`
+- `extensions.ribbon.selectedTabId`
+- `extensions.ribbon.quickAccessCommandIds`
 
-## 2. The "Pure Code" Layout Engine
+Any historical document showing a top-level `ribbon` object describes the Ribbon 1 persistence shape and is not authoritative for current code.
 
-To avoid CSS and FXML, we use a **Recursive Composition** strategy.
+## Historical Original Docks Concept
 
-### The `LayoutFactory`
+The following section is the original docks concept text preserved for traceability. It is historical and partially superseded by the current implementation and the ribbon status links above.
 
-Since we aren't using FXML loaders, we use a static factory to assemble the UI.
+### Core Component Hierarchy
 
-* **Method:** `build(LayoutNode root)`
-* **Logic:** This method recursively traverses the data model. If it finds a `SplitData` object, it instantiates a `DockSplitGroup`; if it finds `LeafData`, it instantiates a `DockLeaf`.
+The framework will not use standard layout containers directly. Instead, it will use a wrapper pattern where every docking element is a class that manages its own internal JavaFX nodes.
 
-### Manual Styling (The `Theme` POJO)
+Base interface: `DockElement`
 
-Without CSS, styling is handled by a `Theme` record passed through the constructor chain (Dependency Injection).
+- `getNode()`: returns the actual JavaFX `Region`.
+- `getMetadata()`: returns a `DockData` object: ID, title, icon, and state.
+- `serialize()`: returns a DTO for layout persistence.
+
+Concrete structural nodes:
+
+1. `DockLeaf`: terminal node containing user content wrapped in a dock pane.
+2. `DockSplitGroup`: split container managing two `DockElement` instances and a divider ratio.
+3. `DockTabGroup`: tab stack for `DockLeaf` instances.
+
+### Pure Code Layout Engine
+
+The original concept used recursive composition and a `LayoutFactory#build(LayoutNode root)` method to instantiate split and leaf nodes from the data model.
+
+The original theming concept described a `Theme` record passed through constructors:
 
 ```java
 public record Theme(
@@ -47,55 +66,23 @@ public record Theme(
     CornerRadii cornerRadius,
     Font headerFont
 ) {}
-
 ```
 
-Each component listens to a `ThemeProperty` in the `DockManager` and updates its `Background` and `Border` objects programmatically when the theme changes.
+Current implementation details have evolved, including shared CSS token usage in UI/ribbon surfaces.
 
----
+### Interaction And Drag-And-Drop
 
-## 3. Interaction & Drag-and-Drop Specification
+The original design framed `DockManager` as the central coordinator for scene/root state and drag-and-drop. Drag initiation starts from tab mouse interaction, an overlay layer renders drop hints, and hit testing maps pointer position to the hovered dock leaf.
 
-This is the most complex logic in a programmatic implementation.
+### State Management And Serialization
 
-### The `DockManager` (The Brain)
+The original persistence concept described capture as a traversal of live split and tab groups into JSON, with restore rebuilding the node tree from layout DTOs. Current session persistence also includes content-state adapters and namespaced extension payloads such as `extensions.ribbon`.
 
-The `DockManager` maintains a reference to the `Scene` and the `RootNode`. It acts as the global event bus.
+### Original Tradeoffs
 
-### Drag-and-Drop Protocol
-
-1. **Initiation:** A mouse-press on a `DockTab` triggers the `DragManager`.
-2. **The Transparent Overlay:** A `StackPane` is used as the root of the `Scene`. The `DockingLayer` is the bottom child; the `OverlayLayer` (a transparent `Canvas`) is the top child.
-3. **Hit-Testing:** As the mouse moves, the `DragManager` calculates the coordinates relative to the `DockingLayer` and determines which `DockLeaf` is being hovered over.
-4. **The Drop Hint:**
-  * The `Canvas` draws a semi-transparent rectangle over the target area.
-  * **Logic:** Divide the target leaf into a 3x3 grid. The "North, South, East, West" sectors trigger a split; the "Center" sector triggers a tab-add.
-
----
-
-## 4. State Management & Serialization
-
-Because the UI is built programmatically, saving the state is a direct mapping of the object tree.
-
-* **Snapshots:** The `DockManager` can trigger a `capture()` call that traverses the live `DockSplitGroup` and `DockTabGroup` objects.
-* **Output:** A nested JSON structure representing the hierarchy, divider positions ( to ), and active tab indices.
-* **Restoration:** On startup, the JSON is read into a `LayoutDefinition` POJO, which the `LayoutFactory` uses to reconstruct the entire `Node` tree.
-
----
-
-## 5. Tradeoff Implementation Matrix
-
-| Challenge | Programmatic Solution |
+| Challenge | Programmatic solution |
 | --- | --- |
-| **Complexity** | Use a **Fluent API** (e.g., `DockLeaf.withTitle("Editor").content(node)`) to reduce boilerplate. |
-| **Theming** | Use JavaFX `ObjectProperty<Theme>` and bind node styles to it. |
-| **Memory** | Manually call `dispose()` on `DockLeaf` when closed to unbind listeners and free the content node. |
-| **Deep Nesting** | Implement a "Tree Flattener" that removes redundant `DockSplitGroups` (e.g., a splitter containing only one child). |
-
----
-
-## 6. Next Steps
-
-To begin the implementation, we should focus on the **Recursive Split Logic**.
-
-**Would you like me to provide a Java implementation for the `DockSplitGroup` that handles the dynamic replacement of a Leaf with a SplitPane when a drop occurs?**
+| Complexity | Fluent APIs for common leaf/content construction. |
+| Theming | Theme properties and node style updates. |
+| Memory | Explicit disposal for leaves and bound resources. |
+| Deep nesting | Tree flattening for redundant split groups. |

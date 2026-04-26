@@ -10,6 +10,8 @@ import org.metalib.papifly.fx.samples.docks.FloatingSample;
 import org.metalib.papifly.fx.samples.docks.MinimizeSample;
 import org.metalib.papifly.fx.samples.docks.NestedSplitSample;
 import org.metalib.papifly.fx.samples.docks.PersistSample;
+import org.metalib.papifly.fx.samples.docks.RibbonPlacementSample;
+import org.metalib.papifly.fx.samples.docks.RibbonShellSample;
 import org.metalib.papifly.fx.samples.docks.TabGroupSample;
 import org.metalib.papifly.fx.samples.media.HlsStreamSample;
 import org.metalib.papifly.fx.samples.media.ImageViewerSample;
@@ -20,8 +22,10 @@ import org.metalib.papifly.fx.samples.media.YouTubeEmbedSample;
 import org.metalib.papifly.fx.login.idapi.providers.GenericOidcProvider;
 import org.metalib.papifly.fx.login.idapi.providers.GitHubProvider;
 import org.metalib.papifly.fx.login.idapi.providers.GoogleProvider;
+import org.metalib.papifly.fx.samples.github.GitHubRibbonSample;
 import org.metalib.papifly.fx.samples.hugo.HugoPreviewSample;
 import org.metalib.papifly.fx.samples.github.GitHubToolbarSample;
+import org.metalib.papifly.fx.samples.hugo.HugoRibbonSample;
 import org.metalib.papifly.fx.samples.login.LoginSample;
 import org.metalib.papifly.fx.samples.settings.SettingsPanelSample;
 import org.metalib.papifly.fx.samples.tree.TreeViewNodeInfoSample;
@@ -50,6 +54,8 @@ public final class SampleCatalog {
             new FloatingSample(),
             new MinimizeSample(),
             new PersistSample(),
+            new RibbonShellSample(),
+            new RibbonPlacementSample(),
             new MarkdownEditorSample(),
             new JavaEditorSample(),
             new JavaScriptEditorSample(),
@@ -63,7 +69,9 @@ public final class SampleCatalog {
             new YouTubeEmbedSample(),
             new MediaPersistSample(),
             new HugoPreviewSample(),
+            new HugoRibbonSample(),
             new GitHubToolbarSample(),
+            new GitHubRibbonSample(),
             new LoginSample("Sign in with Google", GoogleProvider.PROVIDER_ID),
             new LoginSample("Sign in with GitHub", GitHubProvider.PROVIDER_ID),
             new LoginSample("Sign in with OIDC", GenericOidcProvider.PROVIDER_ID),

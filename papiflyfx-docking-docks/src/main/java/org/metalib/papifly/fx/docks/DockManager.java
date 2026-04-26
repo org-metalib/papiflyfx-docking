@@ -1,14 +1,23 @@
 package org.metalib.papifly.fx.docks;
 
+import javafx.beans.value.ChangeListener;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.event.EventHandler;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import org.metalib.papifly.fx.api.ribbon.RibbonContext;
+import org.metalib.papifly.fx.api.ribbon.RibbonAttributeContributor;
+import org.metalib.papifly.fx.api.ribbon.RibbonAttributeKey;
+import org.metalib.papifly.fx.api.ribbon.RibbonCapabilityContributor;
+import org.metalib.papifly.fx.api.ribbon.RibbonContextAttributes;
 import org.metalib.papifly.fx.docking.api.ContentFactory;
+import org.metalib.papifly.fx.docking.api.LeafContentData;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.docks.core.DockData;
 import org.metalib.papifly.fx.docks.core.DockElement;
@@ -27,6 +36,12 @@ import org.metalib.papifly.fx.docks.render.OverlayCanvas;
 import org.metalib.papifly.fx.docks.serial.DockSessionPersistence;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -51,8 +66,12 @@ public class DockManager {
     private final DockFloatingService floatingService;
     private final DockMinMaxService minMaxService;
     private final DockSessionService sessionService;
+    private final ObjectProperty<RibbonContext> ribbonContext;
+    private final Map<DockTabGroup, RibbonContextListenerHandle> ribbonContextListeners;
+    private final LinkedHashSet<DockSessionStateContributor<?>> sessionStateContributors;
 
     private ContentFactory contentFactory;
+    private DockTabGroup activeRibbonTabGroup;
 
     /**
      * Creates a new DockManager with default dark theme.
@@ -81,6 +100,9 @@ public class DockManager {
         Objects.requireNonNull(services, "services");
 
         this.rootElement = new SimpleObjectProperty<>();
+        this.ribbonContext = new SimpleObjectProperty<>(RibbonContext.empty());
+        this.ribbonContextListeners = new IdentityHashMap<>();
+        this.sessionStateContributors = new LinkedHashSet<>();
         this.serviceContext = new ServiceContext();
 
         dockingLayer = new StackPane();
@@ -132,6 +154,7 @@ public class DockManager {
     }
 
     private void setupDragHandlers() {
+        rootPane.addEventFilter(MouseEvent.MOUSE_PRESSED, this::updateRibbonContextFromMouseTarget);
         rootPane.addEventFilter(MouseEvent.MOUSE_DRAGGED, event -> {
             if (dragManager.hasDragContext()) {
                 dragManager.onDrag(event);
@@ -143,6 +166,19 @@ public class DockManager {
                 dragManager.endDrag(event);
             }
         });
+    }
+
+    private void updateRibbonContextFromMouseTarget(MouseEvent event) {
+        Object target = event.getTarget();
+        if (!(target instanceof Node node)) {
+            return;
+        }
+        DockTabGroup targetGroup = resolveTabGroupForNode(node);
+        if (targetGroup == null || targetGroup.getActiveTab() == null) {
+            return;
+        }
+        activeRibbonTabGroup = targetGroup;
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -190,7 +226,9 @@ public class DockManager {
         if (element != null) {
             element.setParent(null);
             dockingLayer.getChildren().add(0, element.getNode());
+            registerRibbonContextListeners(element);
         }
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -213,6 +251,7 @@ public class DockManager {
             public Void visitTabGroup(DockTabGroup tabGroup) {
                 setupTabGroupDragHandlers(tabGroup);
                 setupTabGroupButtonHandlers(tabGroup);
+                trackRibbonContext(tabGroup);
                 for (DockLeaf leaf : tabGroup.getTabs()) {
                     setupLeafCloseHandler(leaf);
                 }
@@ -320,6 +359,24 @@ public class DockManager {
     }
 
     /**
+     * Gets the current ribbon context derived from the active dock/content.
+     *
+     * @return current ribbon context
+     */
+    public RibbonContext getRibbonContext() {
+        return ribbonContext.get();
+    }
+
+    /**
+     * Gets the observable ribbon context property derived from dock activity.
+     *
+     * @return ribbon context property
+     */
+    public ObjectProperty<RibbonContext> ribbonContextProperty() {
+        return ribbonContext;
+    }
+
+    /**
      * Creates a new leaf with the given title and content.
      *
      * @param title leaf title
@@ -361,6 +418,7 @@ public class DockManager {
 
         leaf.dispose();
         floatingService.forgetRestoreHint(leaf.getMetadata().id());
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -372,6 +430,7 @@ public class DockManager {
         DockTabGroup tabGroup = new DockTabGroup(themeProperty());
         setupTabGroupDragHandlers(tabGroup);
         setupTabGroupButtonHandlers(tabGroup);
+        trackRibbonContext(tabGroup);
         return tabGroup;
     }
 
@@ -535,6 +594,57 @@ public class DockManager {
     }
 
     /**
+     * Registers a session-state contributor used during capture and restore.
+     *
+     * @param contributor contributor implementation
+     */
+    public void registerSessionStateContributor(DockSessionStateContributor<?> contributor) {
+        if (contributor == null) {
+            return;
+        }
+        String namespace = requireSessionContributorNamespace(contributor);
+        for (DockSessionStateContributor<?> existing : sessionStateContributors) {
+            if (existing != contributor && namespace.equals(requireSessionContributorNamespace(existing))) {
+                throw new IllegalArgumentException("Duplicate dock session contributor namespace: " + namespace);
+            }
+        }
+        sessionStateContributors.add(contributor);
+    }
+
+    /**
+     * Removes a previously registered session-state contributor.
+     *
+     * @param contributor contributor implementation
+     */
+    public void unregisterSessionStateContributor(DockSessionStateContributor<?> contributor) {
+        if (contributor != null) {
+            sessionStateContributors.remove(contributor);
+        }
+    }
+
+    /**
+     * Returns a snapshot of registered session-state contributors.
+     *
+     * @return registered contributors
+     */
+    public List<DockSessionStateContributor<?>> getSessionStateContributors() {
+        return List.copyOf(sessionStateContributors);
+    }
+
+    private String requireSessionContributorNamespace(DockSessionStateContributor<?> contributor) {
+        String namespace = Objects.requireNonNull(
+            contributor.extensionNamespace(),
+            "Session contributor namespace must not be null: " + contributor.getClass().getName()
+        ).trim();
+        if (namespace.isEmpty()) {
+            throw new IllegalArgumentException(
+                "Session contributor namespace must not be blank: " + contributor.getClass().getName()
+            );
+        }
+        return namespace;
+    }
+
+    /**
      * Sets up drag handlers for a tab group.
      *
      * @param tabGroup tab group to wire with drag handlers
@@ -581,6 +691,8 @@ public class DockManager {
      */
     public void floatLeaf(DockLeaf leaf) {
         floatingService.floatLeaf(leaf);
+        markFloatingRibbonGroupActive(leaf);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -592,6 +704,20 @@ public class DockManager {
      */
     public void floatLeaf(DockLeaf leaf, double x, double y) {
         floatingService.floatLeaf(leaf, x, y);
+        markFloatingRibbonGroupActive(leaf);
+        syncRibbonContextFromTree();
+    }
+
+    private void markFloatingRibbonGroupActive(DockLeaf leaf) {
+        org.metalib.papifly.fx.docks.floating.FloatingWindowManager floatingWindowManager =
+            floatingService.getFloatingWindowManager();
+        if (floatingWindowManager == null || leaf == null) {
+            return;
+        }
+        org.metalib.papifly.fx.docks.floating.FloatingDockWindow window = floatingWindowManager.getWindow(leaf);
+        if (window != null && window.getTabGroup() != null) {
+            activeRibbonTabGroup = window.getTabGroup();
+        }
     }
 
     /**
@@ -601,6 +727,7 @@ public class DockManager {
      */
     public void dockLeaf(DockLeaf leaf) {
         floatingService.dockLeaf(leaf);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -610,6 +737,7 @@ public class DockManager {
      */
     public void minimizeLeaf(DockLeaf leaf) {
         minMaxService.minimizeLeaf(leaf);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -619,6 +747,7 @@ public class DockManager {
      */
     public void restoreLeaf(DockLeaf leaf) {
         minMaxService.restoreLeaf(leaf);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -628,6 +757,7 @@ public class DockManager {
      */
     public void restoreLeaf(String leafId) {
         minMaxService.restoreLeaf(leafId);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -638,6 +768,7 @@ public class DockManager {
      */
     public void maximizeLeaf(DockLeaf leaf) {
         minMaxService.maximizeLeaf(leaf);
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -645,6 +776,7 @@ public class DockManager {
      */
     public void restoreMaximized() {
         minMaxService.restoreMaximized();
+        syncRibbonContextFromTree();
     }
 
     /**
@@ -685,9 +817,13 @@ public class DockManager {
     public void dispose() {
         mainContainer.getProperties().remove(ROOT_PANE_MANAGER_PROPERTY);
 
+        ribbonContextListeners.forEach(DockManager::detachRibbonContextListener);
+        ribbonContextListeners.clear();
+        activeRibbonTabGroup = null;
         floatingService.dispose();
         minMaxService.dispose();
         themeService.dispose();
+        sessionStateContributors.clear();
 
         DockElement root = rootElement.get();
         if (root != null) {
@@ -696,6 +832,376 @@ public class DockManager {
         rootElement.set(null);
         dockingLayer.getChildren().clear();
         contentFactory = null;
+    }
+
+    private void trackRibbonContext(DockTabGroup tabGroup) {
+        if (tabGroup == null || ribbonContextListeners.containsKey(tabGroup)) {
+            return;
+        }
+        ChangeListener<Number> activeTabListener = (obs, oldValue, newValue) -> {
+            if (tabGroup.getActiveTab() != null) {
+                activeRibbonTabGroup = tabGroup;
+            } else if (activeRibbonTabGroup == tabGroup) {
+                activeRibbonTabGroup = null;
+            }
+            syncRibbonContextFromTree();
+        };
+        EventHandler<MouseEvent> mousePressedListener = event -> {
+            if (tabGroup.getActiveTab() != null) {
+                activeRibbonTabGroup = tabGroup;
+            }
+            syncRibbonContextFromTree();
+        };
+        tabGroup.activeTabIndexProperty().addListener(activeTabListener);
+        tabGroup.getNode().addEventFilter(MouseEvent.MOUSE_PRESSED, mousePressedListener);
+        ribbonContextListeners.put(tabGroup, new RibbonContextListenerHandle(activeTabListener, mousePressedListener));
+        if (activeRibbonTabGroup == null && tabGroup.getActiveTab() != null) {
+            activeRibbonTabGroup = tabGroup;
+        }
+    }
+
+    private static void detachRibbonContextListener(DockTabGroup tabGroup, RibbonContextListenerHandle handle) {
+        if (tabGroup == null || handle == null) {
+            return;
+        }
+        if (handle.activeTabListener() != null) {
+            tabGroup.activeTabIndexProperty().removeListener(handle.activeTabListener());
+        }
+        if (handle.mousePressedListener() != null) {
+            tabGroup.getNode().removeEventFilter(MouseEvent.MOUSE_PRESSED, handle.mousePressedListener());
+        }
+    }
+
+    private void syncRibbonContextFromTree() {
+        cleanupStaleRibbonContextListeners();
+        ribbonContext.set(buildRibbonContext(resolveActiveRibbonLeaf()));
+    }
+
+    private DockLeaf resolveActiveRibbonLeaf() {
+        if (!isActiveRibbonTabGroupValid()) {
+            activeRibbonTabGroup = null;
+        }
+
+        DockTabGroup focusedGroup = resolveFocusedRibbonTabGroup();
+        if (focusedGroup != null && focusedGroup.getActiveTab() != null) {
+            activeRibbonTabGroup = focusedGroup;
+            return focusedGroup.getActiveTab();
+        }
+        DockLeaf activeLeaf = activeRibbonTabGroup == null ? null : activeRibbonTabGroup.getActiveTab();
+        if (activeLeaf != null) {
+            return activeLeaf;
+        }
+        DockElement root = rootElement.get();
+        if (root == null) {
+            return null;
+        }
+        return root.accept(new DockElementVisitor<>() {
+            @Override
+            public DockLeaf visitTabGroup(DockTabGroup tabGroup) {
+                DockLeaf groupActive = tabGroup.getActiveTab();
+                if (groupActive != null) {
+                    activeRibbonTabGroup = tabGroup;
+                }
+                return groupActive;
+            }
+
+            @Override
+            public DockLeaf visitSplitGroup(DockSplitGroup splitGroup) {
+                DockElement firstChild = splitGroup.getFirst();
+                if (firstChild != null) {
+                    DockLeaf first = firstChild.accept(this);
+                    if (first != null) {
+                        return first;
+                    }
+                }
+                DockElement secondChild = splitGroup.getSecond();
+                return secondChild == null ? null : secondChild.accept(this);
+            }
+        });
+    }
+
+    private RibbonContext buildRibbonContext(DockLeaf leaf) {
+        if (leaf == null) {
+            return RibbonContext.empty();
+        }
+
+        DockData metadata = leaf.getMetadata();
+        LeafContentData contentData = leaf.getContentData();
+        String contentId = contentData != null && contentData.contentId() != null
+            ? contentData.contentId()
+            : metadata.id();
+        String contentTypeKey = contentData != null && contentData.typeKey() != null
+            ? contentData.typeKey()
+            : leaf.getContentFactoryId();
+
+        Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put(RibbonContextAttributes.DOCK_TITLE, metadata.title());
+        attributes.put(RibbonContextAttributes.DOCK_STATE, metadata.state().name());
+        attributes.put(RibbonContextAttributes.FLOATING, floatingService.isFloating(leaf));
+        attributes.put(RibbonContextAttributes.MAXIMIZED, minMaxService.getMaximizedLeaf() == leaf);
+        if (leaf.getContentFactoryId() != null) {
+            attributes.put(RibbonContextAttributes.CONTENT_FACTORY_ID, leaf.getContentFactoryId());
+        }
+        if (leaf.getParent() != null) {
+            attributes.put(RibbonContextAttributes.DOCK_GROUP_ID, leaf.getParent().getMetadata().id());
+        }
+        if (contentData != null) {
+            attributes.put(RibbonContextAttributes.CONTENT_VERSION, contentData.version());
+            if (contentData.state() != null && !contentData.state().isEmpty()) {
+                attributes.put(RibbonContextAttributes.CONTENT_STATE, new LinkedHashMap<>(contentData.state()));
+            }
+        }
+        Map<Class<?>, Object> capabilities = new LinkedHashMap<>();
+        Node contentNode = leaf.getContent();
+        if (contentNode != null) {
+            // Ribbon 2: still expose ACTIVE_CONTENT_NODE as a transitional bridge.
+            // The deprecated attribute will be removed once provider migration completes.
+            attributes.put(RibbonContextAttributes.ACTIVE_CONTENT_NODE, contentNode);
+            contributeRibbonAttributes(attributes, contentNode);
+            registerContentCapabilities(capabilities, contentNode);
+        }
+
+        return new RibbonContext(metadata.id(), contentId, contentTypeKey, attributes, capabilities);
+    }
+
+    private static void contributeRibbonAttributes(Map<String, Object> attributes, Node contentNode) {
+        if (!(contentNode instanceof RibbonAttributeContributor contributor)) {
+            return;
+        }
+        Map<? extends RibbonAttributeKey<?>, ?> contributed = contributor.ribbonAttributes();
+        if (contributed == null || contributed.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<? extends RibbonAttributeKey<?>, ?> entry : contributed.entrySet()) {
+            putContributedAttribute(attributes, entry.getKey(), entry.getValue());
+        }
+    }
+
+    private static void putContributedAttribute(
+        Map<String, Object> attributes,
+        RibbonAttributeKey<?> key,
+        Object value
+    ) {
+        if (key == null || value == null || !key.type().isInstance(value)) {
+            return;
+        }
+        attributes.put(key.id(), value);
+    }
+
+    private static void registerContentCapabilities(Map<Class<?>, Object> capabilities, Node contentNode) {
+        capabilities.put(contentNode.getClass(), contentNode);
+        registerCapabilityInterfaces(capabilities, contentNode.getClass(), contentNode, new LinkedHashSet<>());
+        if (contentNode instanceof RibbonCapabilityContributor contributor) {
+            Map<? extends Class<?>, ?> contributed = contributor.ribbonCapabilities();
+            if (contributed != null) {
+                for (Map.Entry<? extends Class<?>, ?> entry : contributed.entrySet()) {
+                    putContributedCapability(capabilities, entry.getKey(), entry.getValue());
+                }
+            }
+        }
+    }
+
+    private static void registerCapabilityInterfaces(
+        Map<Class<?>, Object> capabilities,
+        Class<?> type,
+        Object instance,
+        LinkedHashSet<Class<?>> seen
+    ) {
+        if (type == null || type == Object.class) {
+            return;
+        }
+        for (Class<?> iface : type.getInterfaces()) {
+            registerCapabilityInterface(capabilities, iface, instance, seen);
+        }
+        registerCapabilityInterfaces(capabilities, type.getSuperclass(), instance, seen);
+    }
+
+    private static void registerCapabilityInterface(
+        Map<Class<?>, Object> capabilities,
+        Class<?> iface,
+        Object instance,
+        LinkedHashSet<Class<?>> seen
+    ) {
+        if (iface == null || !seen.add(iface) || !iface.isInstance(instance)) {
+            return;
+        }
+        capabilities.putIfAbsent(iface, instance);
+        for (Class<?> parent : iface.getInterfaces()) {
+            registerCapabilityInterface(capabilities, parent, instance, seen);
+        }
+    }
+
+    private static void putContributedCapability(Map<Class<?>, Object> capabilities, Class<?> type, Object value) {
+        if (type == null || value == null || !type.isInstance(value)) {
+            return;
+        }
+        capabilities.put(type, value);
+    }
+
+    private void cleanupStaleRibbonContextListeners() {
+        DockElement root = rootElement.get();
+        ribbonContextListeners.entrySet().removeIf(entry -> {
+            DockTabGroup group = entry.getKey();
+            if (group == null) {
+                return true;
+            }
+            boolean attachedToRoot = isTabGroupInRoot(root, group);
+            boolean floating = isTabGroupFloating(group);
+            if (attachedToRoot || floating) {
+                return false;
+            }
+            detachRibbonContextListener(group, entry.getValue());
+            if (activeRibbonTabGroup == group) {
+                activeRibbonTabGroup = null;
+            }
+            return true;
+        });
+    }
+
+    private DockTabGroup resolveFocusedRibbonTabGroup() {
+        DockTabGroup focused = findGroupForFocusOwner(rootPane.getScene());
+        if (focused != null) {
+            return focused;
+        }
+        org.metalib.papifly.fx.docks.floating.FloatingWindowManager floatingWindowManager = floatingService.getFloatingWindowManager();
+        if (floatingWindowManager == null) {
+            return null;
+        }
+        return floatingWindowManager.getFloatingWindows().stream()
+            .map(org.metalib.papifly.fx.docks.floating.FloatingDockWindow::getStage)
+            .filter(Stage::isFocused)
+            .map(Stage::getScene)
+            .map(this::findGroupForFocusOwner)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private DockTabGroup findGroupForFocusOwner(Scene scene) {
+        if (scene == null) {
+            return null;
+        }
+        Node focusOwner = scene.getFocusOwner();
+        if (focusOwner == null) {
+            return null;
+        }
+        for (DockTabGroup tabGroup : ribbonContextListeners.keySet()) {
+            if (tabGroup != null && isDescendantOf(focusOwner, tabGroup.getNode())) {
+                return tabGroup;
+            }
+        }
+        return null;
+    }
+
+    private DockTabGroup resolveTabGroupForNode(Node node) {
+        if (node == null) {
+            return null;
+        }
+        for (DockTabGroup tabGroup : ribbonContextListeners.keySet()) {
+            if (tabGroup != null && isDescendantOf(node, tabGroup.getNode())) {
+                return tabGroup;
+            }
+        }
+        return null;
+    }
+
+    private boolean isActiveRibbonTabGroupValid() {
+        if (activeRibbonTabGroup == null) {
+            return false;
+        }
+        DockLeaf activeLeaf = activeRibbonTabGroup.getActiveTab();
+        if (activeLeaf == null) {
+            return false;
+        }
+        if (floatingService.isFloating(activeLeaf)) {
+            return true;
+        }
+        return isLeafInRoot(rootElement.get(), activeLeaf);
+    }
+
+    private boolean isTabGroupFloating(DockTabGroup tabGroup) {
+        return tabGroup.getTabs().stream().anyMatch(floatingService::isFloating);
+    }
+
+    private static boolean isDescendantOf(Node node, Node ancestor) {
+        Node current = node;
+        while (current != null) {
+            if (current == ancestor) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
+    private static boolean isTabGroupInRoot(DockElement root, DockTabGroup target) {
+        if (root == null || target == null) {
+            return false;
+        }
+        return root.accept(new DockElementVisitor<>() {
+            @Override
+            public Boolean visitTabGroup(DockTabGroup tabGroup) {
+                return tabGroup == target;
+            }
+
+            @Override
+            public Boolean visitSplitGroup(DockSplitGroup splitGroup) {
+                DockElement first = splitGroup.getFirst();
+                if (first != null && first.accept(this)) {
+                    return true;
+                }
+                DockElement second = splitGroup.getSecond();
+                return second != null && second.accept(this);
+            }
+        });
+    }
+
+    private void registerRibbonContextListeners(DockElement element) {
+        if (element == null) {
+            return;
+        }
+        element.accept(new DockElementVisitor<>() {
+            @Override
+            public Void visitTabGroup(DockTabGroup tabGroup) {
+                trackRibbonContext(tabGroup);
+                return null;
+            }
+
+            @Override
+            public Void visitSplitGroup(DockSplitGroup splitGroup) {
+                registerRibbonContextListeners(splitGroup.getFirst());
+                registerRibbonContextListeners(splitGroup.getSecond());
+                return null;
+            }
+        });
+    }
+
+    private static boolean isLeafInRoot(DockElement root, DockLeaf target) {
+        if (root == null || target == null) {
+            return false;
+        }
+        return root.accept(new DockElementVisitor<>() {
+            @Override
+            public Boolean visitTabGroup(DockTabGroup tabGroup) {
+                return tabGroup.getTabs().contains(target);
+            }
+
+            @Override
+            public Boolean visitSplitGroup(DockSplitGroup splitGroup) {
+                DockElement first = splitGroup.getFirst();
+                if (first != null && first.accept(this)) {
+                    return true;
+                }
+                DockElement second = splitGroup.getSecond();
+                return second != null && second.accept(this);
+            }
+        });
+    }
+
+    private record RibbonContextListenerHandle(
+        ChangeListener<Number> activeTabListener,
+        EventHandler<MouseEvent> mousePressedListener
+    ) {
     }
 
     /**
@@ -853,6 +1359,11 @@ public class DockManager {
         @Override
         public StackPane getRootStack() {
             return rootPane;
+        }
+
+        @Override
+        public List<DockSessionStateContributor<?>> getSessionStateContributors() {
+            return new ArrayList<>(sessionStateContributors);
         }
     }
 }

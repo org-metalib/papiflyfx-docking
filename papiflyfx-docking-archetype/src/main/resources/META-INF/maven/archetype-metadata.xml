@@ -8,7 +8,7 @@
 
     <requiredProperties>
         <requiredProperty key="papiflyfxVersion">
-            <defaultValue>0.0.17-SNAPSHOT</defaultValue>
+            <defaultValue>@project.version@</defaultValue>
         </requiredProperty>
         <requiredProperty key="javaVersion">
             <defaultValue>25</defaultValue>

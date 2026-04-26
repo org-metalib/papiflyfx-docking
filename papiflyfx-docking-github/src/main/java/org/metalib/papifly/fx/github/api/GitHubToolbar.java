@@ -63,7 +63,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-public class GitHubToolbar extends HBox implements AutoCloseable {
+public class GitHubToolbar extends HBox implements GitHubRibbonActions, AutoCloseable {
 
     public static final String FACTORY_ID = "github-toolbar";
     private static final PseudoClass SHOWING_PSEUDO_CLASS = PseudoClass.getPseudoClass("showing");
@@ -233,6 +233,118 @@ public class GitHubToolbar extends HBox implements AutoCloseable {
             "owner", context().owner(),
             "repo", context().repo()
         );
+    }
+
+    @Override
+    public boolean canPull() {
+        return !viewModel.updateDisabledProperty().get();
+    }
+
+    @Override
+    public boolean canPush() {
+        return !viewModel.pushDisabledProperty().get();
+    }
+
+    @Override
+    public boolean canFetch() {
+        return canPull();
+    }
+
+    @Override
+    public boolean canCreateBranch() {
+        return viewModel.localAvailableProperty().get() && !viewModel.busyProperty().get();
+    }
+
+    @Override
+    public boolean canMerge() {
+        return false;
+    }
+
+    @Override
+    public boolean canRebase() {
+        return false;
+    }
+
+    @Override
+    public boolean canPullRequest() {
+        return !viewModel.pullRequestDisabledProperty().get();
+    }
+
+    @Override
+    public boolean canOpenIssues() {
+        return true;
+    }
+
+    @Override
+    public boolean canCommit() {
+        return !viewModel.commitDisabledProperty().get();
+    }
+
+    @Override
+    public boolean canStage() {
+        return false;
+    }
+
+    @Override
+    public boolean canDiscard() {
+        return viewModel.localAvailableProperty().get() && !viewModel.busyProperty().get();
+    }
+
+    @Override
+    public void pull() {
+        viewModel.updateRepository();
+    }
+
+    @Override
+    public void push() {
+        viewModel.push();
+    }
+
+    @Override
+    public void fetch() {
+        viewModel.updateRepository();
+    }
+
+    @Override
+    public void createBranch() {
+        onCreateBranch();
+    }
+
+    @Override
+    public void merge() {
+        viewModel.publishError("Merge is not available in the current GitHub workflow");
+    }
+
+    @Override
+    public void rebase() {
+        viewModel.publishError("Rebase is not available in the current GitHub workflow");
+    }
+
+    @Override
+    public void pullRequest() {
+        onCreatePullRequest();
+    }
+
+    @Override
+    public void issues() {
+        String remote = context().remoteUrl().toString();
+        String base = remote.endsWith("/") ? remote.substring(0, remote.length() - 1) : remote;
+        openBrowser(URI.create(base + "/issues"));
+    }
+
+    @Override
+    public void commit() {
+        onCommit();
+    }
+
+    @Override
+    public void stage() {
+        viewModel.publishError("Staging is not exposed yet in the GitHub workflow");
+    }
+
+    @Override
+    public void discard() {
+        onRollback();
     }
 
     @Override

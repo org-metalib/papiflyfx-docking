@@ -16,6 +16,7 @@ import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 
 import java.nio.file.Path;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -191,6 +192,18 @@ class DockManagerSessionPersistenceFxTest {
     }
 
     @Test
+    void testRegisterSessionStateContributor_duplicateNamespaceFailsFast() {
+        FxTestUtil.runFx(() -> dockManager.registerSessionStateContributor(new TestSessionContributor("ribbon")));
+
+        IllegalArgumentException ex = assertThrows(
+            IllegalArgumentException.class,
+            () -> FxTestUtil.runFx(() -> dockManager.registerSessionStateContributor(new TestSessionContributor("ribbon")))
+        );
+
+        assertTrue(ex.getMessage().contains("Duplicate dock session contributor namespace"));
+    }
+
+    @Test
     void testMultipleSaveLoad(@TempDir Path tempDir) {
         Path file1 = tempDir.resolve("session1.json");
         Path file2 = tempDir.resolve("session2.json");
@@ -217,5 +230,33 @@ class DockManagerSessionPersistenceFxTest {
         org.metalib.papifly.fx.docks.core.DockElement restoredRoot = FxTestUtil.callFx(dockManager::getRoot);
         assertNotNull(restoredRoot);
         assertInstanceOf(DockTabGroup.class, restoredRoot);
+    }
+
+    private static final class TestSessionContributor implements DockSessionStateContributor<String> {
+        private final String namespace;
+
+        private TestSessionContributor(String namespace) {
+            this.namespace = namespace;
+        }
+
+        @Override
+        public String extensionNamespace() {
+            return namespace;
+        }
+
+        @Override
+        public DockSessionExtensionCodec<String> codec() {
+            return new DockSessionExtensionCodec<>() {
+                @Override
+                public Map<String, Object> encode(String state) {
+                    return Map.of("value", state);
+                }
+
+                @Override
+                public String decode(Map<String, Object> payload) {
+                    return payload.get("value") instanceof String value ? value : null;
+                }
+            };
+        }
     }
 }

@@ -8,28 +8,29 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 - **Primary Domain**: `papiflyfx-docking-api`, `papiflyfx-docking-docks`.
 - **Responsibilities**:
   - Maintains the foundational docking API and its core implementation.
-  - Ensures layout serialization, floating windows, and session persistence remain robust.
+  - Ensures layout serialization, floating windows, ribbon shell behavior, and session persistence remain robust.
   - Guards the SOLID principles across the codebase.
   - Reviews and approves changes to shared contracts and SPIs.
-- **Focus Area**: `org.metalib.papifly.fx.docks`, `org.metalib.papifly.fx.api`.
+- **Focus Area**: `org.metalib.papifly.fx.docks`, `org.metalib.papifly.fx.api`, `org.metalib.papifly.fx.api.ribbon`.
 
 ### 2. Feature Developer (@feature-dev)
 - **Primary Domain**: Content modules (`code`, `tree`, `media`, `hugo`, `github`).
 - **Responsibilities**:
   - Implements new dockable content types and maintains their functional state.
-  - Ensures proper integration with `ContentFactory` and `ContentStateAdapter`.
+  - Ensures proper integration with `ContentFactory`, `ContentStateAdapter`, and feature-module `RibbonProvider` contributions where applicable.
   - Builds programmatic UI components and layout logic for feature docks.
   - Follows JavaFX best practices (no FXML).
 - **Focus Area**: `papiflyfx-docking-code`, `papiflyfx-docking-tree`, `papiflyfx-docking-media`, `papiflyfx-docking-hugo`, `papiflyfx-docking-github`.
 
 ### 3. Build & Runtime Engineer (@ops-engineer)
-- **Primary Domain**: `pom.xml`, `papiflyfx-docking-settings-api`, `papiflyfx-docking-settings`, `papiflyfx-docking-samples`.
+- **Primary Domain**: `pom.xml`, `papiflyfx-docking-bom`, `papiflyfx-docking-archetype`, `papiflyfx-docking-settings-api`, `papiflyfx-docking-settings`, `papiflyfx-docking-samples`.
 - **Responsibilities**:
   - Manages the multi-module Maven build and dependency versions.
+  - Maintains the BOM, archetype templates, and release/publishing profiles.
   - Maintains the settings runtime, persistence, and secret-store backends.
   - Ensures all modules compile and tests pass in headless mode.
   - Updates demo samples to showcase new framework features.
-- **Focus Area**: Root `pom.xml`, `papiflyfx-docking-settings`, `papiflyfx-docking-samples`.
+- **Focus Area**: Root `pom.xml`, `papiflyfx-docking-bom`, `papiflyfx-docking-archetype`, `papiflyfx-docking-settings`, `papiflyfx-docking-samples`.
 
 ### 4. Auth & Security Specialist (@auth-specialist)
 - **Primary Domain**: `papiflyfx-docking-login-idapi`, `papiflyfx-docking-login-session-api`, `papiflyfx-docking-login`.
@@ -74,11 +75,12 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 ## Agent Operating Model
 
 - Use `spec/agents/README.md` as the shared operating protocol for task routing, handoffs, review gates, and the definition of done. Supplementary resources in the same directory: `spec/agents/playbook.md` (day-to-day workflow), `spec/agents/prompts.md` (ready-to-paste session starters), and `spec/agents/cheatsheet.md` (quick routing reference).
+- When a task explicitly names an agent handle, also load the corresponding role brief in `spec/agents/<role>.md` before making ownership-sensitive changes.
 - Assign exactly one lead agent per task. Supporting agents may advise or review, but ownership stays with the lead until handoff.
 - Route work by primary domain first:
   - Docking core, layout model, serialization, shared API/SPIs: `@core-architect`
   - Content modules and dockable features: `@feature-dev`
-  - Build, settings, samples, dependency management, release readiness: `@ops-engineer`
+  - Build, BOM/archetype, settings, samples, dependency management, release readiness: `@ops-engineer`
   - Authentication, sessions, IDPs, secret handling: `@auth-specialist`
   - Theme, CSS, interaction polish, accessibility, ergonomic review: `@ui-ux-designer`
   - Test strategy, test infrastructure, coverage gaps, regression suites: `@qa-engineer`
@@ -100,24 +102,24 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 
 - Changes to `papiflyfx-docking-api` or `papiflyfx-docking-docks` require `@core-architect` review.
 - Changes involving secrets, tokens, OAuth, session storage, or authentication flows require `@auth-specialist` review.
-- Changes to build logic, dependency versions, publishing, settings persistence, or sample coverage require `@ops-engineer` review.
+- Changes to build logic, dependency versions, publishing, BOM/archetype templates, settings persistence, or sample coverage require `@ops-engineer` review.
 - Changes to theme definitions, CSS, visual interaction states, or layout ergonomics require `@ui-ux-designer` review.
 - Changes to roadmap items, plans, progress notes, or repository-level docs require `@spec-steward` review plus the owning domain agent for technical accuracy.
 - Changes to test infrastructure, headless profiles, Surefire configuration, or test utilities require `@qa-engineer` review.
 - Bug fixes should include a regression test validated by `@qa-engineer`.
-- New dockable content or restorable content flows should be reviewed by `@feature-dev` and, when shared contracts change, `@core-architect`.
+- New dockable content, restorable content flows, or feature-module ribbon contributions should be reviewed by `@feature-dev` and, when shared contracts change, `@core-architect`.
 
 ## Repository Guidelines
 
 ## Project Structure & Module Organization
 - Root Maven aggregator: `pom.xml` defines the multi-module build and shared dependency/plugin management.
 - Shared contract modules:
-  - `papiflyfx-docking-api/` - public docking/content/theme API and shared UI primitives (`org.metalib.papifly.fx.ui`: `UiMetrics`, `UiStyleSupport`, `UiCommonStyles`, `UiChip`, `UiChipToggle`, `UiChipLabel`, `UiStatusSlot`, `UiPillButton`, `ui-common.css`, `-pf-ui-*` CSS tokens).
+  - `papiflyfx-docking-api/` - public docking/content/theme API, ribbon contribution SPI (`org.metalib.papifly.fx.api.ribbon`), and shared UI primitives (`org.metalib.papifly.fx.ui`: `UiMetrics`, `UiStyleSupport`, `UiCommonStyles`, `UiChip`, `UiChipToggle`, `UiChipLabel`, `UiStatusSlot`, `UiPillButton`, `ui-common.css`, `-pf-ui-*` CSS tokens).
   - `papiflyfx-docking-settings-api/` - public settings and secret-management SPI.
   - `papiflyfx-docking-login-idapi/` - identity-provider SPI and built-in providers.
   - `papiflyfx-docking-login-session-api/` - auth session lifecycle and storage SPI.
 - Core/runtime modules:
-  - `papiflyfx-docking-docks/` - docking framework, drag/drop, floating windows, minimize/maximize, session persistence.
+  - `papiflyfx-docking-docks/` - docking framework, drag/drop, floating windows, minimize/maximize, session persistence, and ribbon shell hosting (`Ribbon`, `RibbonManager`, `RibbonDockHost`).
   - `papiflyfx-docking-settings/` - settings runtime, panel UI, JSON persistence, secret-store backends.
   - `papiflyfx-docking-login/` - authentication runtime, UI, and docking integration.
 - Content modules:
@@ -127,7 +129,10 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
   - `papiflyfx-docking-hugo/` - Hugo preview content.
   - `papiflyfx-docking-github/` - GitHub toolbar integration.
 - Runnable demos live in `papiflyfx-docking-samples/`.
-- Tests live under `src/test/java` per module. Active suites currently exist in `code`, `docks`, `github`, `hugo`, `login-idapi`, `login`, `media`, `samples`, `settings`, and `tree`.
+- Distribution/bootstrap modules:
+  - `papiflyfx-docking-bom/` - BOM for external consumers; keeps version alignment outside the reactor and intentionally excludes `papiflyfx-docking-samples`.
+  - `papiflyfx-docking-archetype/` - Maven archetype that generates a starter multi-module app with wrapper setup, CI, agent docs, and headless TestFX scaffolding.
+- Tests live under `src/test/java` per module, with archetype integration coverage under `papiflyfx-docking-archetype/src/test/resources/projects/`. Active suites currently exist in `archetype`, `code`, `docks`, `github`, `hugo`, `login-idapi`, `login`, `media`, `samples`, `settings`, and `tree`.
 - Architecture and design references live under `spec/` plus module-level `README.md` files. Notable sub-directories: `spec/papiflyfx-docking-code-lang-plugin/` (completed language-plugin SPI), `spec/papiflyfx-docking-langchain/` (LangChain4j integration research), `spec/ui-standards/` (UI standardization rollout).
 - Agent coordination references live under `spec/agents/`.
 
@@ -139,11 +144,14 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 - Explicit headless test run: `./mvnw -Dtestfx.headless=true test`
 - Focused module build/test: `./mvnw -pl papiflyfx-docking-docks -am test`
 - Single test class: `./mvnw -pl papiflyfx-docking-samples -am -Dtest=SamplesSmokeTest test`
+- Install the BOM and archetype locally for generator work: `./mvnw -pl papiflyfx-docking-bom,papiflyfx-docking-archetype -am clean install`
+- Code editor benchmarks only: `./mvnw -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dgroups=benchmark -Dsurefire.excludedGroups= test`
 - Run demos:
   - Docks demo: `./mvnw javafx:run -pl papiflyfx-docking-docks`
   - Samples app: `./mvnw javafx:run -pl papiflyfx-docking-samples`
 - The root POM defaults `testfx.headless=true`; pass `-Dtestfx.headless=false` for interactive UI runs.
 - JavaFX classifier selection is handled by OS-specific Maven profiles in the root POM; use `./mvnw`, not bare `mvn`.
+- Release/publishing profiles are opt-in in the root POM: `-Dgpg-sign.profile=yes` enables source/javadoc/signing attachments and `-Dmaven-central-publishing.profile=yes` enables Sonatype Central publishing.
 
 ## Coding Style & Naming Conventions
 - Java 25, 4-space indentation, standard JavaFX idioms.
@@ -164,6 +172,9 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 - `DockManager` overloads `setRoot(DockElement)` and `setRoot(LayoutNode)`; cast to `DockElement` if Java type inference becomes ambiguous.
 - For session restore, create a `ContentStateRegistry`, register adapters manually or use `ContentStateRegistry.fromServiceLoader()`, then call `dockManager.setContentStateRegistry(...)` before restoring layouts/sessions.
 - Restorable content should provide both a `ContentFactory` and a `ContentStateAdapter`, and the created `DockLeaf` must carry the matching `contentFactoryId`.
+- Ribbon-enabled hosts typically compose `RibbonDockHost` + `RibbonManager`; ribbon tabs are discovered through `ServiceLoader` `RibbonProvider`s such as `GitHubRibbonProvider`, `HugoRibbonProvider`, and `SampleRibbonProvider`.
+- Persist ribbon Quick Access Toolbar state through `RibbonManager#getQuickAccessCommandIds()`; `getQuickAccessCommands()` is a derived view and should not be treated as the source of truth.
+- For settings-backed restore and ServiceLoader flows, register the shared runtime once via `SettingsStateAdapter.setSharedRuntime(runtime)` and `DefaultSettingsServicesProvider.setSharedRuntime(runtime)` before session restore or settings discovery; `papiflyfx-docking-samples/src/main/java/org/metalib/papifly/fx/samples/SamplesRuntimeSupport.java` is the reference pattern.
 - Theme-aware content generally exposes `bindThemeProperty(...)`; wire it from the owning `DockManager` theme property.
 - To add a new language to the code editor, implement `LanguageSupportProvider` (in `org.metalib.papifly.fx.code.language`) and register it via `ServiceLoader` in `META-INF/services`. `LexerRegistry` and `FoldProviderRegistry` no longer exist — use `LanguageSupportRegistry.bootstrap()` or `refreshServiceProviders()` for runtime hot-load. Built-in languages (`java`, `json`, `javascript`, `markdown`, `plain-text`) are shipped by `BuiltInLanguageSupportProvider`.
 
@@ -171,6 +182,7 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 - Keep modules self-contained with explicit boundaries and dependency flow managed through Maven.
 - Manage dependency versions in parent POM properties and plugin versions in parent `pluginManagement`.
 - Manage plugin dependencies centrally in parent POMs.
+- Keep `papiflyfx-docking-samples` out of the BOM and other published-consumer dependency surfaces; it is demo-only.
 - Prefer `-pl <module> -am` for focused work so upstream dependencies build consistently.
 
 ## Testing Guidelines
@@ -178,6 +190,8 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
 - Naming: `*Test` for unit/integration tests and `*FxTest` for UI-heavy tests.
 - `papiflyfx-docking-code` uses the `benchmark` JUnit tag for benchmarks; those are excluded by default.
 - Keep UI tests deterministic and prefer headless runs in CI/sandbox environments.
+- UI-heavy modules such as `docks`, `tree`, `media`, `hugo`, `github`, `login`, and `samples` ship a `headless-tests` Maven profile activated by `-Dtestfx.headless=true`; the archetype template generates the same profile for new apps.
+- Use existing reference suites when touching shared flows: `RibbonShellSampleIntegrationFxTest` for ribbon-shell persistence/integration and `SettingsPanelFxTest` for settings UI/runtime regressions.
 - Surefire configuration, native-access flags, and JavaFX export/open arguments are already defined in module POMs; avoid reintroducing them ad hoc unless a non-Maven run requires it.
 
 ## Commit & Pull Request Guidelines

@@ -1,0 +1,657 @@
+.pf-ribbon {
+    -fx-background-color: -fx-ribbon-background;
+    -fx-border-color: transparent transparent -pf-ui-border-default transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-spacing: 0;
+}
+
+.pf-ribbon-placement-bottom {
+    -fx-border-color: -pf-ui-border-default transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+.pf-ribbon-placement-left {
+    -fx-border-color: transparent -pf-ui-border-default transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+.pf-ribbon-placement-right {
+    -fx-border-color: transparent transparent transparent -pf-ui-border-default;
+    -fx-border-width: 0 0 0 1;
+}
+
+.pf-ribbon-header {
+    -fx-background-color: -fx-ribbon-background;
+    -fx-border-color: transparent transparent -pf-ui-border-subtle transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 6px 10px 6px 10px;
+    -fx-min-height: -pf-ui-toolbar-height;
+    -fx-pref-height: -pf-ui-toolbar-height;
+    -fx-max-height: -pf-ui-toolbar-height;
+}
+
+.pf-ribbon-header-actions {
+    -fx-spacing: 8px;
+    -fx-alignment: center-right;
+}
+
+.pf-ribbon-collapse-button {
+    -fx-min-width: -pf-ui-control-height-compact;
+    -fx-pref-width: -pf-ui-control-height-compact;
+    -fx-max-width: -pf-ui-control-height-compact;
+    -fx-min-height: -pf-ui-control-height-compact;
+    -fx-pref-height: -pf-ui-control-height-compact;
+    -fx-max-height: -pf-ui-control-height-compact;
+    -fx-background-color: transparent;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 0;
+}
+
+.pf-ribbon-collapse-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-collapse-button:armed {
+    -fx-background-color: -pf-ui-surface-control-pressed;
+}
+
+.pf-ribbon-collapse-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ribbon-collapse-icon-wrap {
+    -fx-min-width: 16px;
+    -fx-pref-width: 16px;
+    -fx-max-width: 16px;
+    -fx-min-height: 16px;
+    -fx-pref-height: 16px;
+    -fx-max-height: 16px;
+    -fx-alignment: center;
+}
+
+.pf-ribbon-collapse-icon {
+    -fx-fill: transparent;
+    -fx-stroke: -pf-ui-text-primary;
+    -fx-stroke-width: 2;
+    -fx-stroke-line-cap: round;
+    -fx-stroke-line-join: round;
+}
+
+.pf-ribbon-tab-strip {
+    -fx-alignment: center-left;
+    -fx-spacing: 4px;
+    -fx-padding: 0 0 0 12px;
+}
+
+.pf-ribbon-tab-strip-vertical {
+    -fx-alignment: top-center;
+    -fx-padding: 8px 0 8px 0;
+    -fx-min-width: 86px;
+    -fx-pref-width: 86px;
+}
+
+.pf-ribbon-tab {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent transparent transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-padding: 6px 10px 6px 10px;
+    -fx-background-radius: 4px 4px 0 0;
+    -fx-border-radius: 4px 4px 0 0;
+    -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-side-tab {
+    -fx-min-width: 72px;
+    -fx-pref-width: 72px;
+    -fx-max-width: 72px;
+    -fx-min-height: 34px;
+    -fx-pref-height: 34px;
+    -fx-border-width: 0 0 0 3;
+    -fx-background-radius: 4px;
+    -fx-border-radius: 4px;
+    -fx-padding: 5px 7px 5px 7px;
+    -fx-alignment: center;
+}
+
+.pf-ribbon-side-tab:selected,
+.pf-ribbon-tab-contextual.pf-ribbon-side-tab:selected {
+    -fx-border-color: transparent transparent transparent -fx-ribbon-accent;
+}
+
+.pf-ribbon-tab:hover {
+    -fx-background-color: -fx-ribbon-tab-hover;
+}
+
+.pf-ribbon-tab:focused {
+    -fx-border-color: -pf-ui-border-focus -pf-ui-border-focus -pf-ui-border-focus -pf-ui-border-focus;
+    -fx-border-width: 1 1 2 1;
+}
+
+.pf-ribbon-tab:selected {
+    -fx-background-color: -fx-ribbon-tab-selected;
+    -fx-border-color: transparent transparent -fx-ribbon-accent transparent;
+}
+
+.pf-ribbon-tab:selected:focused {
+    -fx-border-color: -pf-ui-border-focus -pf-ui-border-focus -fx-ribbon-accent -pf-ui-border-focus;
+}
+
+.pf-ribbon-tab-contextual {
+    -fx-background-color: -fx-ribbon-contextual-background;
+}
+
+.pf-ribbon-tab-contextual:selected {
+    -fx-background-color: -fx-ribbon-contextual-selected;
+    -fx-border-color: transparent transparent -fx-ribbon-accent transparent;
+}
+
+.pf-ribbon-tab-contextual:focused,
+.pf-ribbon-tab-contextual:selected:focused {
+    -fx-background-color: -fx-ribbon-contextual-selected;
+    -fx-border-color: -pf-ui-border-focus -pf-ui-border-focus -fx-ribbon-accent -pf-ui-border-focus;
+}
+
+.pf-ribbon-qat {
+    -fx-alignment: center-left;
+    -fx-spacing: 6px;
+}
+
+.pf-ribbon-orientation-vertical .pf-ribbon-qat {
+    -fx-alignment: center;
+    -fx-padding: 8px 0 0 0;
+}
+
+.pf-ribbon-side-chrome {
+    -fx-background-color: -fx-ribbon-background;
+    -fx-spacing: 0;
+}
+
+.pf-ribbon-side-edge-strip {
+    -fx-background-color: -fx-ribbon-background;
+    -fx-border-color: transparent -pf-ui-border-subtle transparent transparent;
+    -fx-border-width: 0 1 0 0;
+    -fx-padding: 8px 6px 8px 6px;
+    -fx-min-width: 52px;
+    -fx-pref-width: 52px;
+    -fx-max-width: 52px;
+}
+
+.pf-ribbon-placement-right .pf-ribbon-side-edge-strip {
+    -fx-border-color: transparent transparent transparent -pf-ui-border-subtle;
+    -fx-border-width: 0 0 0 1;
+}
+
+.pf-ribbon-side-content-pane {
+    -fx-background-color: -fx-ribbon-background-subtle;
+    -fx-min-width: 284px;
+    -fx-pref-width: 320px;
+    -fx-max-width: 380px;
+}
+
+.pf-ribbon-side-flyout {
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, -fx-ribbon-shadow, 22, 0.22, 0, 8);
+}
+
+.pf-ribbon-side-toolbar {
+    -fx-alignment: top-center;
+    -fx-spacing: 6px;
+}
+
+.pf-ribbon-side-toolbar-button {
+    -fx-min-width: 36px;
+    -fx-pref-width: 36px;
+    -fx-max-width: 36px;
+    -fx-min-height: 36px;
+    -fx-pref-height: 36px;
+    -fx-max-height: 36px;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-border-radius: 7px;
+    -fx-background-radius: 7px;
+    -fx-padding: 0;
+    -fx-content-display: graphic-only;
+}
+
+.pf-ribbon-side-toolbar-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-side-toolbar-button:armed {
+    -fx-background-color: -pf-ui-surface-control-pressed;
+}
+
+.pf-ribbon-side-toolbar-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ribbon-side-toolbar-command {
+    -fx-border-color: -pf-ui-border-subtle;
+}
+
+.pf-ribbon-side-toolbar-tab {
+    -fx-border-color: transparent;
+}
+
+.pf-ribbon-side-toolbar-tab.pf-ribbon-tab-contextual {
+    -fx-background-color: -fx-ribbon-contextual-background;
+}
+
+.pf-ribbon-side-toolbar-tab.pf-ribbon-tab-contextual:hover {
+    -fx-background-color: -fx-ribbon-contextual-selected;
+}
+
+.pf-ribbon-side-toolbar-separator {
+    -fx-background-color: -pf-ui-border-subtle;
+    -fx-min-width: 28px;
+    -fx-pref-width: 28px;
+    -fx-max-width: 28px;
+    -fx-min-height: 1px;
+    -fx-pref-height: 1px;
+    -fx-max-height: 1px;
+}
+
+.pf-ribbon-side-toolbar-popover {
+    -fx-background-radius: 10px;
+    -fx-border-radius: 10px;
+    -fx-padding: 0;
+}
+
+.pf-ribbon-qat-button {
+    -fx-min-height: -pf-ui-control-height-compact;
+    -fx-pref-height: -pf-ui-control-height-compact;
+    -fx-max-height: -pf-ui-control-height-compact;
+    -fx-background-color: transparent;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: -pf-ui-text-primary;
+    -fx-padding: 0 8px 0 8px;
+}
+
+.pf-ribbon-qat-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-qat-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ribbon-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.pf-ribbon-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.pf-ribbon-groups {
+    -fx-alignment: top-left;
+    -fx-padding: 12px 10px 10px 10px;
+}
+
+.pf-ribbon-orientation-vertical .pf-ribbon-groups {
+    -fx-padding: 10px;
+}
+
+.pf-ribbon-orientation-vertical .pf-ribbon-scroll {
+    -fx-padding: 0;
+}
+
+.pf-ribbon-group {
+    -fx-background-color: -pf-ui-surface-panel;
+    -fx-border-color: -pf-ui-border-subtle;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 10px;
+    -fx-spacing: 8px;
+}
+
+.pf-ribbon-group-controls {
+    -fx-hgap: 8px;
+    -fx-vgap: 8px;
+}
+
+.pf-ribbon-group-large {
+    -fx-padding: 10px;
+}
+
+.pf-ribbon-group-medium {
+    -fx-padding: 9px;
+}
+
+.pf-ribbon-group-small {
+    -fx-padding: 8px;
+}
+
+.pf-ribbon-group-collapsed {
+    -fx-padding: 8px;
+    -fx-spacing: 0;
+}
+
+.pf-ribbon-group-footer {
+    -fx-border-color: -pf-ui-border-subtle transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-min-height: 28px;
+    -fx-pref-height: 28px;
+    -fx-padding: 6px 0 3px 0;
+}
+
+.pf-ribbon-group-vertical {
+    -fx-min-width: 210px;
+    -fx-pref-width: 248px;
+    -fx-max-width: 300px;
+}
+
+.pf-ribbon-group-vertical .pf-ribbon-group-footer {
+    -fx-border-color: transparent transparent -pf-ui-border-subtle transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 2px 0 7px 0;
+}
+
+.pf-ribbon-group-vertical .pf-ribbon-control-large,
+.pf-ribbon-group-vertical .pf-ribbon-split-button,
+.pf-ribbon-group-vertical .pf-ribbon-menu-button {
+    -fx-min-width: 184px;
+    -fx-pref-width: 206px;
+    -fx-max-width: 260px;
+}
+
+.pf-ribbon-group-label {
+    -fx-text-fill: -fx-ribbon-group-label-color;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.pf-ribbon-group-launcher {
+    -fx-min-width: 22px;
+    -fx-pref-width: 22px;
+    -fx-max-width: 22px;
+    -fx-min-height: 18px;
+    -fx-pref-height: 18px;
+    -fx-max-height: 18px;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -pf-ui-text-muted;
+}
+
+.pf-ribbon-group-launcher:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.pf-ribbon-group-launcher:focused {
+    -fx-border-color: -pf-ui-border-focus;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.pf-ribbon-command-button,
+.pf-ribbon-toggle-button,
+.pf-ribbon-split-button,
+.pf-ribbon-menu-button {
+    -fx-background-color: transparent;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-text-fill: -pf-ui-text-primary;
+    -fx-padding: 8px;
+    -fx-wrap-text: true;
+    -fx-alignment: center;
+    -fx-graphic-text-gap: 6px;
+}
+
+.pf-ribbon-command-button:hover,
+.pf-ribbon-toggle-button:hover,
+.pf-ribbon-split-button:hover,
+.pf-ribbon-menu-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-command-button:armed,
+.pf-ribbon-toggle-button:armed,
+.pf-ribbon-split-button:armed,
+.pf-ribbon-menu-button:armed {
+    -fx-background-color: -pf-ui-surface-control-pressed;
+}
+
+.pf-ribbon-toggle-button:selected {
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-border-color: -pf-ui-accent;
+}
+
+.pf-ribbon-command-button:focused,
+.pf-ribbon-toggle-button:focused,
+.pf-ribbon-split-button:focused,
+.pf-ribbon-menu-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ribbon-command-button:disabled,
+.pf-ribbon-toggle-button:disabled,
+.pf-ribbon-split-button:disabled,
+.pf-ribbon-menu-button:disabled {
+    -fx-text-fill: -pf-ui-text-disabled;
+    -fx-opacity: 1.0;
+}
+
+.pf-ribbon-menu-button > .label,
+.pf-ribbon-split-button > .label {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-menu-button > .arrow-button,
+.pf-ribbon-split-button > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.pf-ribbon-split-button > .arrow-button {
+    -fx-border-color: transparent transparent transparent -pf-ui-border-subtle;
+    -fx-border-width: 0 0 0 1;
+}
+
+.pf-ribbon-menu-button > .arrow-button > .arrow,
+.pf-ribbon-split-button > .arrow-button > .arrow {
+    -fx-background-color: -pf-ui-text-primary;
+}
+
+.pf-ribbon-menu-button:disabled > .label,
+.pf-ribbon-split-button:disabled > .label {
+    -fx-text-fill: -pf-ui-text-disabled;
+}
+
+.pf-ribbon-menu-button:disabled > .arrow-button > .arrow,
+.pf-ribbon-split-button:disabled > .arrow-button > .arrow {
+    -fx-background-color: -pf-ui-text-disabled;
+}
+
+.pf-ribbon-control-large {
+    -fx-min-width: 84px;
+    -fx-pref-width: 92px;
+    -fx-min-height: 88px;
+    -fx-pref-height: 88px;
+    -fx-padding: 8px;
+}
+
+.pf-ribbon-control-medium {
+    -fx-min-width: 68px;
+    -fx-pref-width: 72px;
+    -fx-max-width: 72px;
+    -fx-min-height: 68px;
+    -fx-pref-height: 68px;
+    -fx-padding: 6px;
+    -fx-font-size: 11px;
+    -fx-graphic-text-gap: 4px;
+}
+
+.pf-ribbon-control-small {
+    -fx-min-width: 36px;
+    -fx-pref-width: 36px;
+    -fx-max-width: 36px;
+    -fx-min-height: 36px;
+    -fx-pref-height: 36px;
+    -fx-max-height: 36px;
+    -fx-padding: 4px;
+}
+
+.pf-ribbon-group-collapsed-button {
+    -fx-min-width: 56px;
+    -fx-pref-width: 56px;
+    -fx-max-width: 56px;
+    -fx-min-height: 56px;
+    -fx-pref-height: 56px;
+    -fx-max-height: 56px;
+    -fx-background-color: transparent;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 6px;
+}
+
+.pf-ribbon-group-collapsed-button:hover {
+    -fx-background-color: -pf-ui-surface-control-hover;
+}
+
+.pf-ribbon-group-collapsed-button:armed {
+    -fx-background-color: -pf-ui-surface-control-pressed;
+}
+
+.pf-ribbon-group-collapsed-button:focused {
+    -fx-border-color: -pf-ui-border-focus;
+}
+
+.pf-ribbon-collapsed-popup {
+    -fx-background-color: -fx-ribbon-background-subtle;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-padding: 10px;
+    -fx-effect: dropshadow(gaussian, -fx-ribbon-shadow, 20, 0.20, 0, 8);
+}
+
+.pf-ribbon-menu-popup,
+.pf-ribbon-menu-popup.context-menu,
+.pf-ribbon-menu-popup .context-menu {
+    -fx-background-color: -fx-ribbon-background-subtle;
+    -fx-background-radius: 8px;
+    -fx-border-color: -pf-ui-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-padding: 4px;
+}
+
+.pf-ribbon-menu-popup .menu-item,
+.pf-ribbon-menu-item {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6px;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 0 3px;
+    -fx-border-radius: 6px;
+    -fx-padding: 6px 10px 6px 10px;
+}
+
+.pf-ribbon-menu-popup .menu-item:focused,
+.pf-ribbon-menu-popup .menu-item:hover,
+.pf-ribbon-menu-item:focused,
+.pf-ribbon-menu-item:hover {
+    -fx-background-color: -pf-ui-surface-selected;
+    -fx-border-color: transparent transparent transparent -pf-ui-accent;
+}
+
+.pf-ribbon-menu-popup .menu-item:armed,
+.pf-ribbon-menu-item:armed {
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-border-color: transparent transparent transparent -pf-ui-accent;
+}
+
+.pf-ribbon-menu-popup .menu-item > .label,
+.pf-ribbon-menu-item > .label {
+    -fx-text-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-menu-popup .menu-item:disabled,
+.pf-ribbon-menu-item:disabled {
+    -fx-opacity: 1.0;
+}
+
+.pf-ribbon-menu-popup .menu-item:disabled > .label,
+.pf-ribbon-menu-item:disabled > .label {
+    -fx-text-fill: -pf-ui-text-disabled;
+}
+
+.pf-ribbon-menu-popup .menu-item .pf-ribbon-svg-path,
+.pf-ribbon-menu-popup .menu-item .pf-ribbon-octicon,
+.pf-ribbon-menu-item .pf-ribbon-svg-path,
+.pf-ribbon-menu-item .pf-ribbon-octicon {
+    -fx-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-menu-popup .menu-item:disabled .pf-ribbon-svg-path,
+.pf-ribbon-menu-popup .menu-item:disabled .pf-ribbon-octicon,
+.pf-ribbon-menu-item:disabled .pf-ribbon-svg-path,
+.pf-ribbon-menu-item:disabled .pf-ribbon-octicon {
+    -fx-fill: -pf-ui-text-disabled;
+}
+
+.pf-ribbon-popup-group {
+    -fx-background-color: transparent;
+}
+
+.pf-ribbon-svg-path,
+.pf-ribbon-octicon {
+    -fx-fill: -pf-ui-text-primary;
+}
+
+.pf-ribbon-command-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-toggle-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-split-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-menu-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-qat-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-group-collapsed-button:disabled .pf-ribbon-svg-path,
+.pf-ribbon-command-button:disabled .pf-ribbon-octicon,
+.pf-ribbon-toggle-button:disabled .pf-ribbon-octicon,
+.pf-ribbon-split-button:disabled .pf-ribbon-octicon,
+.pf-ribbon-menu-button:disabled .pf-ribbon-octicon,
+.pf-ribbon-qat-button:disabled .pf-ribbon-octicon,
+.pf-ribbon-group-collapsed-button:disabled .pf-ribbon-octicon {
+    -fx-fill: -pf-ui-text-disabled;
+}
+
+.pf-ribbon-command-button:disabled .pf-ribbon-icon,
+.pf-ribbon-toggle-button:disabled .pf-ribbon-icon,
+.pf-ribbon-split-button:disabled .pf-ribbon-icon,
+.pf-ribbon-menu-button:disabled .pf-ribbon-icon,
+.pf-ribbon-qat-button:disabled .pf-ribbon-icon,
+.pf-ribbon-group-collapsed-button:disabled .pf-ribbon-icon {
+    -fx-opacity: 0.48;
+}
+
+.pf-ribbon-fallback-glyph {
+    -fx-alignment: center;
+    -fx-background-color: -pf-ui-accent-subtle;
+    -fx-border-color: -pf-ui-accent;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-text-fill: -pf-ui-text-primary;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}

@@ -17,9 +17,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.docks.core.DockLeaf;
+import org.metalib.papifly.fx.docks.ribbon.Ribbon;
+import org.metalib.papifly.fx.docks.ribbon.RibbonPlacement;
 import org.metalib.papifly.fx.docking.api.Theme;
 import org.metalib.papifly.fx.samples.catalog.SampleCatalog;
 import org.metalib.papifly.fx.samples.docks.PersistSample;
+import org.metalib.papifly.fx.samples.docks.RibbonPlacementSample;
 import org.metalib.papifly.fx.samples.docks.TabGroupSample;
 import org.metalib.papifly.fx.samples.login.LoginSample;
 import org.metalib.papifly.fx.login.core.DefaultAuthSessionBroker;
@@ -34,6 +37,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CompletionException;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -95,6 +99,53 @@ class SamplesSmokeTest {
         assertTrue(titles.contains("Sign in with GitHub"));
         assertTrue(titles.contains("Sign in with OIDC"));
         assertTrue(!titles.contains("Login Panel"));
+    }
+
+    @Test
+    void sampleCatalogIncludesProviderSpecificRibbonSamples() {
+        List<String> titles = SampleCatalog.all().stream()
+            .map(SampleScene::title)
+            .toList();
+
+        assertTrue(titles.contains("GitHub Ribbon"));
+        assertTrue(titles.contains("Hugo Ribbon"));
+        assertTrue(titles.contains("Ribbon Placement"));
+    }
+
+    @Test
+    void ribbonPlacementSampleBuildsOneDockManagerWithTopAndLeftPlacements() {
+        ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
+        RibbonPlacementSample sample = new RibbonPlacementSample();
+
+        runFx(() -> {
+            Node content = sample.build(stage, themeProperty);
+            StackPane root = (StackPane) stage.getScene().getRoot();
+            root.getChildren().setAll(content);
+            root.applyCss();
+            root.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        Node[] host = new Node[1];
+        Ribbon[] topRibbon = new Ribbon[1];
+        Ribbon[] leftRibbon = new Ribbon[1];
+        runFx(() -> {
+            host[0] = stage.getScene().lookup("#" + RibbonPlacementSample.HOST_ID);
+            topRibbon[0] = (Ribbon) stage.getScene().lookup("#" + RibbonPlacementSample.TOP_RIBBON_ID);
+            leftRibbon[0] = (Ribbon) stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_RIBBON_ID);
+        });
+
+        assertNotNull(host[0]);
+        assertNotNull(topRibbon[0]);
+        assertNotNull(leftRibbon[0]);
+        assertEquals(1, stage.getScene().getRoot().lookupAll(".pf-ribbon-dock-host").size());
+        assertEquals(2, stage.getScene().getRoot().lookupAll(".pf-ribbon").size());
+        assertTrue(topRibbon[0].getPlacement() == RibbonPlacement.TOP);
+        assertTrue(leftRibbon[0].getPlacement() == RibbonPlacement.LEFT);
+        assertNotNull(stage.getScene().lookup("#" + RibbonPlacementSample.TOP_RIBBON_ID + " .pf-ribbon-header"));
+        assertNotNull(stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_RIBBON_ID + " .pf-ribbon-side-toolbar"));
+        assertNull(stage.getScene().lookup("#" + RibbonPlacementSample.LEFT_RIBBON_ID + " .pf-ribbon-side-content-pane"));
+        assertNull(uncaughtException, "Exception during RibbonPlacementSample build: " + uncaughtException);
     }
 
     @Test
