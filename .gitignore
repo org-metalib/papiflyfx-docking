@@ -47,3 +47,4 @@ claude.json
 *.claude
 .gemini/
 gha-creds-*.json
+.gitnexus
