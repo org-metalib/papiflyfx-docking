@@ -207,7 +207,7 @@ Current examples:
 
 This project is indexed by GitNexus as **papiflyfx-docking**. Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+> If any GitNexus tool warns the index is stale, run `gitnexus analyze` in terminal first.
 
 ## Always Do
 
