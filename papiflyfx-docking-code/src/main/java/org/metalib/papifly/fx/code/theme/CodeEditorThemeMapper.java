@@ -64,6 +64,7 @@ public final class CodeEditorThemeMapper {
             textPrimary,
             base.keywordColor(),
             base.stringColor(),
+            base.jsonKeyColor(),
             base.commentColor(),
             base.numberColor(),
             textActive,

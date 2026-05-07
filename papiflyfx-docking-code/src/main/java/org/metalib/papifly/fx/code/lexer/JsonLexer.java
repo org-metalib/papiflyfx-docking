@@ -52,12 +52,16 @@ public final class JsonLexer implements Lexer {
             }
             if (ch == '"') {
                 StringContinuation continuation = continueString(text.substring(index), true);
-                addToken(tokens, index, index + continuation.endIndex(), TokenType.STRING);
+                int tokenEnd = index + continuation.endIndex();
+                TokenType type = continuation.closed() && isObjectKey(text, tokenEnd)
+                    ? TokenType.JSON_KEY
+                    : TokenType.STRING;
+                addToken(tokens, index, tokenEnd, type);
                 if (!continuation.closed()) {
                     state = STATE_STRING;
                     break;
                 }
-                index += continuation.endIndex();
+                index = tokenEnd;
                 continue;
             }
             if (isNumberStart(text, index)) {
@@ -106,6 +110,14 @@ public final class JsonLexer implements Lexer {
             }
         }
         return new StringContinuation(text.length(), false);
+    }
+
+    private boolean isObjectKey(String text, int afterStringIndex) {
+        int index = afterStringIndex;
+        while (index < text.length() && Character.isWhitespace(text.charAt(index))) {
+            index++;
+        }
+        return index < text.length() && text.charAt(index) == ':';
     }
 
     private boolean isNumberStart(String text, int index) {

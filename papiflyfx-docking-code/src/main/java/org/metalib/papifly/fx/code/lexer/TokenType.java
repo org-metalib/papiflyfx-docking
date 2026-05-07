@@ -17,6 +17,10 @@ public enum TokenType {
      */
     STRING,
     /**
+     * JSON object key token.
+     */
+    JSON_KEY,
+    /**
      * Comment token.
      */
     COMMENT,

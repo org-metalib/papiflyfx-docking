@@ -12,12 +12,13 @@ class JsonLexerTest {
     @Test
     void jsonLineIncludesStringBooleanNullNumberAndPunctuationTokens() {
         JsonLexer lexer = new JsonLexer();
-        String line = "{\"ok\": true, \"value\": 12.5, \"none\": null}";
+        String line = "{\"ok\": true, \"value\": 12.5, \"none\": null, \"name\": \"Ada\"}";
 
         LexResult result = lexer.lexLine(line, LexState.DEFAULT);
         List<TokenType> types = result.tokens().stream().map(Token::type).toList();
 
         assertTrue(types.contains(TokenType.STRING));
+        assertTrue(types.contains(TokenType.JSON_KEY));
         assertTrue(types.contains(TokenType.BOOLEAN));
         assertTrue(types.contains(TokenType.NULL_LITERAL));
         assertTrue(types.contains(TokenType.NUMBER));
@@ -35,5 +36,34 @@ class JsonLexerTest {
         LexResult second = lexer.lexLine("close\"", first.exitState());
         assertEquals(LexState.DEFAULT, second.exitState());
         assertTrue(second.tokens().stream().anyMatch(token -> token.type() == TokenType.STRING));
+    }
+
+    @Test
+    void jsonObjectKeysUseDedicatedTokenType() {
+        JsonLexer lexer = new JsonLexer();
+        String line = "{\"name\": \"Ada\", \"url\" : \"https://example.test:443\"}";
+
+        LexResult result = lexer.lexLine(line, LexState.DEFAULT);
+        List<TokenType> types = result.tokens().stream().map(Token::type).toList();
+
+        assertEquals(2, types.stream().filter(type -> type == TokenType.JSON_KEY).count());
+        assertEquals(2, types.stream().filter(type -> type == TokenType.STRING).count());
+        assertEquals(LexState.DEFAULT, result.exitState());
+    }
+
+    @Test
+    void jsonEscapedQuoteInsideKeyDoesNotEndKeyTokenEarly() {
+        JsonLexer lexer = new JsonLexer();
+        String line = "{\"a\\\"b\": \"value\"}";
+
+        LexResult result = lexer.lexLine(line, LexState.DEFAULT);
+        Token key = result.tokens().stream()
+            .filter(token -> token.type() == TokenType.JSON_KEY)
+            .findFirst()
+            .orElseThrow();
+
+        assertEquals(1, result.tokens().stream().filter(token -> token.type() == TokenType.JSON_KEY).count());
+        assertEquals("\"a\\\"b\"", line.substring(key.startColumn(), key.endColumn()));
+        assertEquals(LexState.DEFAULT, result.exitState());
     }
 }

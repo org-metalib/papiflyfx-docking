@@ -6,10 +6,10 @@ Lead: `@spec-steward`
 ## Overall Status
 
 - Phase 0: `completed`
-- Phase 1: `pending`
-- Phase 2: `pending`
-- Phase 3: `pending`
-- Phase 4: `pending`
+- Phase 1: `completed`
+- Phase 2: `completed`
+- Phase 3: `deferred`
+- Phase 4: `completed`
 
 ## Phase 0 - Analysis and Planning
 
@@ -23,32 +23,39 @@ Lead: `@spec-steward`
 
 ### Phase 1 - Token Model
 
-- [ ] Add `JSON_KEY` to `TokenType`.
-- [ ] Update `JsonLexer` to classify object-key strings.
-- [ ] Add lexer regression coverage.
+- [x] Add `JSON_KEY` to `TokenType`.
+- [x] Update `JsonLexer` to classify object-key strings.
+- [x] Add lexer regression coverage.
 
 ### Phase 2 - Theme and Rendering
 
-- [ ] Add `jsonKeyColor` to `CodeEditorTheme`.
-- [ ] Update default dark and light palettes.
-- [ ] Update `CodeEditorThemeMapper`.
-- [ ] Update `TextPass` token color routing.
-- [ ] Add theme mapper regression coverage.
+- [x] Add `jsonKeyColor` to `CodeEditorTheme`.
+- [x] Update default dark and light palettes.
+- [x] Update `CodeEditorThemeMapper`.
+- [x] Update `TextPass` token color routing.
+- [x] Add theme mapper regression coverage.
 
 ### Phase 3 - Optional Punctuation Polish
 
-- [ ] Decide whether to add `punctuationColor` in this rollout.
+- [x] Decide whether to add `punctuationColor` in this rollout.
 - [ ] Implement punctuation rendering only if accepted by `@ui-ux-designer`.
+
+Decision: deferred. This rollout keeps scope to JSON object keys and leaves punctuation color for visual review.
 
 ### Phase 4 - Validation
 
-- [ ] Run focused code-module tests.
-- [ ] Run full headless `papiflyfx-docking-code` tests.
-- [ ] Record validation results here.
+- [x] Run focused code-module tests.
+- [x] Run full headless `papiflyfx-docking-code` tests.
+- [x] Record validation results here.
 
 ## Validation
 
-Not run. This task created planning artifacts only.
+- Focused tests:
+  - `./mvnw -pl papiflyfx-docking-code -am -Dtest=JsonLexerTest,CodeEditorThemeMapperTest -Dsurefire.failIfNoSpecifiedTests=false test`
+  - Result: success (`13` tests, `0` failures, `0` errors)
+- Full headless code-module suite:
+  - `./mvnw -pl papiflyfx-docking-code -am -Dtestfx.headless=true test`
+  - Result: success (`416` tests, `0` failures, `0` errors)
 
 ## Notes
 

@@ -72,6 +72,7 @@ class CodeEditorThemeMapperTest {
         assertNotNull(dark.editorBackground());
         assertNotNull(dark.keywordColor());
         assertNotNull(dark.stringColor());
+        assertNotNull(dark.jsonKeyColor());
         assertNotNull(dark.commentColor());
         assertNotNull(dark.numberColor());
         assertNotNull(dark.caretColor());
@@ -90,6 +91,7 @@ class CodeEditorThemeMapperTest {
         assertNotNull(light.editorBackground());
         assertNotNull(light.keywordColor());
         assertNotNull(light.stringColor());
+        assertNotNull(light.jsonKeyColor());
         assertNotNull(light.commentColor());
         assertNotNull(light.numberColor());
         assertNotNull(light.caretColor());
