@@ -6,7 +6,7 @@ A dockable JavaFX code editor content type for the PapiflyFX docking framework. 
 
 - Canvas-based virtualized text rendering for large files (100k+ lines)
 - Single-caret editing with undo/redo, copy/paste, and selection
-- Incremental syntax highlighting for Java, JSON, JavaScript, Markdown, and plain text
+- Incremental syntax highlighting for Java, JSON, JavaScript, Markdown, YAML, and plain text
 - Line number gutter with marker lane (errors, warnings, breakpoints, bookmarks)
 - Find/replace overlay with regex support and go-to-line navigation
 - Shared popup/chip styling for search and go-to-line overlays
@@ -88,7 +88,7 @@ The code module follows the shared UI standardization model introduced in `papif
 |--------|-------------|
 | `setText(String)` | Sets document text content |
 | `getText()` | Returns document text |
-| `setLanguageId(String)` | Sets syntax language (`java`, `json`, `javascript`, `markdown`, `plain-text`) |
+| `setLanguageId(String)` | Sets syntax language (`java`, `json`, `javascript`, `markdown`, `yaml`, `plain-text`) |
 | `bindThemeProperty(ObjectProperty<Theme>)` | Binds to docking theme for live updates |
 | `setEditorTheme(CodeEditorTheme)` | Sets editor palette directly |
 | `captureState()` | Captures current state as `EditorStateData` |
@@ -106,6 +106,7 @@ The code module follows the shared UI standardization model introduced in `papif
 | JSON | `json` | Keys, strings, numbers, booleans, null |
 | JavaScript | `javascript` | Keywords, strings, template literals, comments, numbers |
 | Markdown | `markdown` | Headlines, lists, code blocks |
+| YAML | `yaml` | Mapping keys, strings, comments, numbers, booleans, null, block folding |
 | Plain Text | `plain-text` | No highlighting (default fallback) |
 
 ## Acceptance Metrics

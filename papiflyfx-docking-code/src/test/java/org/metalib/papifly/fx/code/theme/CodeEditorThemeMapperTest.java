@@ -105,7 +105,7 @@ class CodeEditorThemeMapperTest {
     }
 
     @Test
-    void defaultJsonKeyColorsStayDistinctFromStringValues() {
+    void defaultStructuralKeyColorsStayDistinctFromStringValues() {
         CodeEditorTheme dark = CodeEditorTheme.dark();
         assertEquals(Color.web("#9cdcfe"), dark.jsonKeyColor());
         assertNotEquals(dark.stringColor(), dark.jsonKeyColor());

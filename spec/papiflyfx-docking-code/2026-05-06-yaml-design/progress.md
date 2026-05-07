@@ -6,12 +6,12 @@ Lead: `@spec-steward`
 ## Overall Status
 
 - Phase 0: `completed`
-- Phase 1: `pending`
-- Phase 2: `pending`
-- Phase 3: `pending`
-- Phase 4: `pending`
-- Phase 5: `pending`
-- Phase 6: `pending`
+- Phase 1: `completed`
+- Phase 2: `completed`
+- Phase 3: `completed`
+- Phase 4: `completed`
+- Phase 5: `completed`
+- Phase 6: `automated-validation-completed`
 - Phase 7: `deferred` (optional polish)
 - Phase 8: `roadmap` (schema validation, captured from `1st-design-gemini.md`, not approved)
 
@@ -37,50 +37,50 @@ Lead: `@spec-steward`
 
 ### Phase 1 - Token Model
 
-- [ ] Add `YAML_KEY` to `TokenType`.
-- [ ] Add `YAML_MAPPING` and `YAML_BLOCK_SCALAR` to `FoldKind`.
+- [x] Add `YAML_KEY` to `TokenType`.
+- [x] Add `YAML_MAPPING` and `YAML_BLOCK_SCALAR` to `FoldKind`.
 
 ### Phase 2 - Lexer
 
-- [ ] Implement `YamlLexer` (`LANGUAGE_ID = "yaml"`) with default,
+- [x] Implement `YamlLexer` (`LANGUAGE_ID = "yaml"`) with default,
       double-quoted, single-quoted, and block-scalar state codes.
-- [ ] Cover comments, mapping keys, quoted/plain scalars, booleans,
+- [x] Cover comments, mapping keys, quoted/plain scalars, booleans,
       null variants, numeric forms, anchors, aliases, tags, the merge
       key, document markers, and block-scalar indicators.
-- [ ] Add `YamlLexerTest` matching the cases in `plan.md`.
+- [x] Add `YamlLexerTest` matching the cases in `plan.md`.
 
 ### Phase 3 - Folding
 
-- [ ] Implement `YamlFoldProvider` driven by per-line indent and
+- [x] Implement `YamlFoldProvider` driven by per-line indent and
       header classification (mapping header, sequence header, block
       scalar header).
-- [ ] Add `YamlFoldProviderTest` covering mapping, sequence, block
+- [x] Add `YamlFoldProviderTest` covering mapping, sequence, block
       scalar, and comment-tolerant regions.
 
 ### Phase 4 - Theme and Rendering
 
-- [ ] Route `YAML_KEY` to `CodeEditorTheme#jsonKeyColor` in
+- [x] Route `YAML_KEY` to `CodeEditorTheme#jsonKeyColor` in
       `TextPass#tokenColor(...)`.
-- [ ] Add a `CodeEditorThemeMapperTest` regression that protects the
+- [x] Add a `CodeEditorThemeMapperTest` regression that protects the
       visual distinction between mapping-key color and string/plain
       colors.
 
 ### Phase 5 - Language Registration
 
-- [ ] Register `yaml` in `BuiltInLanguageSupportProvider` with
+- [x] Register `yaml` in `BuiltInLanguageSupportProvider` with
       extensions `yaml`, `yml` and alias `yml`.
-- [ ] Add a registration smoke test (or extend an existing one) that
+- [x] Add a registration smoke test (or extend an existing one) that
       resolves YAML by id, alias, and extension.
 
 ### Phase 6 - Validation
 
-- [ ] Focused test command:
-      `./mvnw -pl papiflyfx-docking-code -am -Dtest=YamlLexerTest,YamlFoldProviderTest,JsonLexerTest,JsonFoldProviderTest,CodeEditorThemeMapperTest test`
-- [ ] Full headless suite:
+- [x] Focused test command:
+      `./mvnw -pl papiflyfx-docking-code -am -Dtest=YamlLexerTest,YamlFoldProviderTest,JsonLexerTest,JsonFoldProviderTest,CodeEditorThemeMapperTest,LanguageSupportBootstrapTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- [x] Full headless suite:
       `./mvnw -pl papiflyfx-docking-code -am -Dtestfx.headless=true test`
 - [ ] Manual spot check inside the samples app on a realistic YAML
       document.
-- [ ] Record validation results below.
+- [x] Record validation results below.
 
 ### Phase 7 - Optional Follow-ups
 
@@ -122,28 +122,32 @@ must be answered before Phase 8 enters planning.
 
 ## Validation
 
-To be filled in during Phase 6:
-
 - Focused tests:
-  - Command: _pending_
-  - Result: _pending_
+  - Command: `./mvnw -pl papiflyfx-docking-code -am -Dtest=YamlLexerTest,YamlFoldProviderTest,JsonLexerTest,JsonFoldProviderTest,CodeEditorThemeMapperTest,LanguageSupportBootstrapTest -Dsurefire.failIfNoSpecifiedTests=false test`
+  - Result: passed, 38 tests, 0 failures, 0 errors, 0 skipped
 - Full headless code-module suite:
-  - Command: _pending_
-  - Result: _pending_
+  - Command: `./mvnw -pl papiflyfx-docking-code -am -Dtestfx.headless=true test`
+  - Result: passed, 434 tests, 0 failures, 0 errors, 0 skipped
 - Manual spot check:
-  - Document: _pending_
-  - Observed: _pending_
+  - Document: not run in this implementation pass
+  - Observed: pending reviewer/manual sample-app check
 
 ## Outstanding Questions
 
 Tracked in `README.md` "Open Questions for Reviewers" (Q1–Q5). Each
 should be resolved before the corresponding phase closes:
 
-- Q1 (key color reuse) blocks Phase 4.
+- Q1 (key color reuse) resolved for the MVP by reusing
+  `CodeEditorTheme#jsonKeyColor`; dedicated YAML colors remain a
+  Phase 7 review item.
 - Q2 (block scalar state fidelity) influences Phase 2 implementation
-  detail but does not block the MVP shape.
-- Q3 (boolean variant coverage) blocks Phase 2 acceptance.
-- Q4 (golden lexer fixtures) blocks Phase 2 and 3 test scope.
+  detail but does not block the MVP shape. The implementation keeps
+  the documented `LexState` approximation.
+- Q3 (boolean variant coverage) resolved for the MVP by highlighting
+  both YAML 1.2 `true`/`false` and YAML 1.1 `yes`/`no`/`on`/`off` in
+  value position.
+- Q4 (golden lexer fixtures) resolved for this pass with a synthetic
+  super-set lexer fixture and Kubernetes-shaped folding fixture.
 - Q5 (schema discovery model) blocks Phase 8 entering planning.
 
 ## Notes

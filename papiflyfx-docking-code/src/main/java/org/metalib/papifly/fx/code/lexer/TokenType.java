@@ -21,6 +21,10 @@ public enum TokenType {
      */
     JSON_KEY,
     /**
+     * YAML mapping key token.
+     */
+    YAML_KEY,
+    /**
      * Comment token.
      */
     COMMENT,
