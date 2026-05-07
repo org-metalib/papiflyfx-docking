@@ -87,7 +87,7 @@ final class SelectionPass implements RenderPass {
         if (right <= left) {
             return;
         }
-        context.graphics().fillRect(left, renderLine.y(), right - left, context.lineHeight());
+        fillLineRect(context, renderLine, left, right - left);
     }
 
     private void paintUnwrappedRange(
@@ -123,6 +123,13 @@ final class SelectionPass implements RenderPass {
         if (right <= left) {
             return;
         }
-        context.graphics().fillRect(left, renderLine.y(), right - left, context.lineHeight());
+        fillLineRect(context, renderLine, left, right - left);
+    }
+
+    private void fillLineRect(RenderContext context, RenderLine renderLine, double x, double width) {
+        double y = Math.max(0.0, Math.round(renderLine.y()));
+        double bottom = Math.min(context.viewportHeight(), Math.round(renderLine.y() + context.lineHeight()));
+        double height = Math.max(0.0, bottom - y);
+        context.graphics().fillRect(x, y, width, height);
     }
 }

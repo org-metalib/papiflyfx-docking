@@ -113,6 +113,15 @@ class SamplesSmokeTest {
     }
 
     @Test
+    void sampleCatalogIncludesYamlEditorSample() {
+        List<String> titles = SampleCatalog.all().stream()
+            .map(SampleScene::title)
+            .toList();
+
+        assertTrue(titles.contains("YAML Editor"));
+    }
+
+    @Test
     void ribbonPlacementSampleBuildsOneDockManagerWithTopAndLeftPlacements() {
         ObjectProperty<Theme> themeProperty = new SimpleObjectProperty<>(Theme.dark());
         RibbonPlacementSample sample = new RibbonPlacementSample();
