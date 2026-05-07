@@ -105,6 +105,17 @@ class CodeEditorThemeMapperTest {
     }
 
     @Test
+    void defaultJsonKeyColorsStayDistinctFromStringValues() {
+        CodeEditorTheme dark = CodeEditorTheme.dark();
+        assertEquals(Color.web("#9cdcfe"), dark.jsonKeyColor());
+        assertNotEquals(dark.stringColor(), dark.jsonKeyColor());
+
+        CodeEditorTheme light = CodeEditorTheme.light();
+        assertEquals(Color.web("#0451a5"), light.jsonKeyColor());
+        assertNotEquals(light.stringColor(), light.jsonKeyColor());
+    }
+
+    @Test
     void customAccentColorPropagates() {
         Theme custom = Theme.of(
             new ThemeColors(
