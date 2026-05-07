@@ -59,10 +59,10 @@ Extend `TokenType` with:
 YAML_KEY
 ```
 
-`YAML_KEY` represents the key portion of a YAML mapping entry,
-including the trailing colon when contiguous (e.g. `name:`). For flow
-mappings the colon is emitted as `PUNCTUATION` separately, so
-`YAML_KEY` covers only the identifier-like span before the colon.
+`YAML_KEY` represents the key portion of a YAML mapping entry before the
+mapping colon. The colon is emitted separately as `PUNCTUATION` for both
+block and flow mappings, so `YAML_KEY` covers only the identifier-like
+span before the colon.
 
 The remaining YAML categories reuse existing token types:
 

@@ -43,7 +43,7 @@ public final class SampleCatalog {
 
     /**
      * Returns all samples in catalog display order.
-     * Categories: Docks (8 entries), Code (5 entries).
+     * Categories are represented by each sample's category metadata.
      *
      * @return ordered sample scene list
      */

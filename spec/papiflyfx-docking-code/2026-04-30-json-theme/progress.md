@@ -76,4 +76,4 @@ Decision: deferred. This rollout keeps scope to JSON object keys and leaves punc
 
 Recommended first implementation slice: `TokenType.JSON_KEY` plus `JsonLexer` classification and `TextPass` rendering. Punctuation color should remain optional until the visual review confirms it improves readability without adding noise.
 
-`git diff --check` passes for the JSON-theme files touched by this work. A repository-wide `git diff --check` currently reports an unrelated blank-line-at-EOF issue in `spec/papiflyfx-docking-code/2026-05-06-yaml-design/README.md`.
+`git diff --check` passes for the JSON-theme files touched by this work.
