@@ -15,10 +15,10 @@ class LanguageSupportBootstrapTest {
 
         assertEquals("java", registry.resolveLexer("java").languageId());
         assertEquals("javascript", registry.resolveLexer("javascript").languageId());
-        assertEquals("json", registry.resolveLexer("json").languageId());
-        assertEquals("markdown", registry.resolveLexer("markdown").languageId());
         assertEquals("plain-text", registry.resolveLexer("plain-text").languageId());
-        assertEquals("yaml", registry.resolveLexer("yaml").languageId());
+        assertEquals("plain-text", registry.resolveLexer("json").languageId());
+        assertEquals("plain-text", registry.resolveLexer("markdown").languageId());
+        assertEquals("plain-text", registry.resolveLexer("yaml").languageId());
     }
 
     @Test
@@ -36,12 +36,12 @@ class LanguageSupportBootstrapTest {
         registry.bootstrap(BootstrapOptions.defaults());
 
         assertEquals("javascript", registry.resolveLexer("js").languageId());
-        assertEquals("markdown", registry.resolveLexer("md").languageId());
-        assertEquals("yaml", registry.resolveLexer("yml").languageId());
         assertEquals("plain-text", registry.resolveLexer("txt").languageId());
         assertEquals("plain-text", registry.resolveLexer("plain").languageId());
         assertEquals("plain-text", registry.resolveLexer("plaintext").languageId());
         assertEquals("plain-text", registry.resolveLexer("text").languageId());
+        assertEquals("plain-text", registry.resolveLexer("md").languageId());
+        assertEquals("plain-text", registry.resolveLexer("yml").languageId());
     }
 
     @Test
@@ -53,11 +53,6 @@ class LanguageSupportBootstrapTest {
         assertEquals("javascript", registry.detectLanguageId("app.js").orElse(""));
         assertEquals("javascript", registry.detectLanguageId("module.mjs").orElse(""));
         assertEquals("javascript", registry.detectLanguageId("module.cjs").orElse(""));
-        assertEquals("json", registry.detectLanguageId("config.json").orElse(""));
-        assertEquals("markdown", registry.detectLanguageId("README.md").orElse(""));
-        assertEquals("markdown", registry.detectLanguageId("docs.markdown").orElse(""));
-        assertEquals("yaml", registry.detectLanguageId("application.yaml").orElse(""));
-        assertEquals("yaml", registry.detectLanguageId("workflow.yml").orElse(""));
         assertEquals("plain-text", registry.detectLanguageId("notes.txt").orElse(""));
     }
 
@@ -91,6 +86,6 @@ class LanguageSupportBootstrapTest {
         LanguageSupportRegistry defaultRegistry = LanguageSupportRegistry.defaultRegistry();
         assertEquals("java", defaultRegistry.resolveLexer("java").languageId());
         assertEquals("javascript", defaultRegistry.resolveLexer("js").languageId());
-        assertEquals("yaml", defaultRegistry.resolveLexer("yml").languageId());
+        assertEquals("plain-text", defaultRegistry.resolveLexer("yml").languageId());
     }
 }

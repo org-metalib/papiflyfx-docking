@@ -93,4 +93,4 @@ The PapiflyFX BOM is already imported. Add framework modules without version tag
 </dependency>
 ```
 
-Available modules: `papiflyfx-docking-api`, `papiflyfx-docking-docks`, `papiflyfx-docking-code`, `papiflyfx-docking-tree`, `papiflyfx-docking-media`, `papiflyfx-docking-hugo`, `papiflyfx-docking-github`, `papiflyfx-docking-settings-api`, `papiflyfx-docking-settings`, `papiflyfx-docking-login-idapi`, `papiflyfx-docking-login-session-api`, `papiflyfx-docking-login`.
+Available modules: `papiflyfx-docking-api`, `papiflyfx-docking-docks`, `papiflyfx-docking-code`, `papiflyfx-docking-code-json`, `papiflyfx-docking-code-yaml`, `papiflyfx-docking-code-markdown`, `papiflyfx-docking-tree`, `papiflyfx-docking-media`, `papiflyfx-docking-hugo`, `papiflyfx-docking-github`, `papiflyfx-docking-settings-api`, `papiflyfx-docking-settings`, `papiflyfx-docking-login-idapi`, `papiflyfx-docking-login-session-api`, `papiflyfx-docking-login`.

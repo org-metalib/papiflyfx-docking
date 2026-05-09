@@ -202,46 +202,19 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
   - screenshots or short clips for UI changes
   - notes describing how the change was run or validated
 
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
+## GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **papiflyfx-docking**. Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus. Agents may use the GitNexus MCP tools to understand code, assess impact, and navigate safely. If a GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal.
 
-> If any GitNexus tool warns the index is stale, run `gitnexus analyze` in terminal first.
+For tool usage, impact analysis, refactoring, debugging, and CLI commands see the GitNexus skill files under `.claude/skills/gitnexus/`. This section is maintained manually — the auto-injected stats block (symbol/relationship/execution-flow counts) was removed because it churned on every index refresh. Always pass `--skip-agents-md` to `npx gitnexus analyze` (e.g. `npx gitnexus analyze --skip-agents-md`) so manual runs and the Claude Code PostToolUse hook do not regenerate this file. See the matching note in `CLAUDE.md`.
 
-## Always Do
+### Preserving CLAUDE.md / AGENTS.md across re-indexes
 
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
-- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+`npx gitnexus analyze` accepts `--skip-agents-md`, which keeps the analyzer from regenerating the `CLAUDE.md` / `AGENTS.md` context files. Always use this flag here, both for manual runs and for the Claude Code PostToolUse hook that fires on `git commit` / `git merge`:
 
-## Never Do
+```bash
+# Manual re-index
+npx gitnexus analyze --skip-agents-md
+```
 
-- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
-- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
-
-## Resources
-
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/papiflyfx-docking/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/papiflyfx-docking/clusters` | All functional areas |
-| `gitnexus://repo/papiflyfx-docking/processes` | All execution flows |
-| `gitnexus://repo/papiflyfx-docking/process/{name}` | Step-by-step execution trace |
-
-## CLI
-
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-
-<!-- gitnexus:end -->
+The hook lives at `~/.claude/hooks/gitnexus/gitnexus-hook.cjs` (registered in `~/.claude/settings.json`). Edit that script to pass `--skip-agents-md` to its `npx gitnexus analyze ...` invocation so the auto-run on commit/merge no longer rewrites these files.

@@ -128,42 +128,39 @@ papiflyfx-docking-code-<lang>/
 ├── README.md
 └── src/
     ├── main/
-    │   ├── java/org/metalib/papifly/fx/code/<lang>/
-    │   │   ├── package-info.java
-    │   │   ├── <Lang>Lexer.java
+    │   ├── java/org/metalib/papifly/fx/code/lexer/
+    │   │   └── <Lang>Lexer.java
+    │   ├── java/org/metalib/papifly/fx/code/folding/
     │   │   ├── <Lang>FoldProvider.java
     │   │   └── <Lang>LanguageSupportProvider.java
     │   └── resources/
     │       └── META-INF/services/
     │           └── org.metalib.papifly.fx.code.language.LanguageSupportProvider
     └── test/
-        └── java/org/metalib/papifly/fx/code/<lang>/
-            ├── <Lang>LexerTest.java
-            └── <Lang>FoldProviderTest.java
+        └── java/org/metalib/papifly/fx/code/
+            ├── lexer/<Lang>LexerTest.java
+            └── folding/<Lang>FoldProviderTest.java
 ```
 
 ### 4.1 Package layout
 
-The new modules use language-scoped packages so each owns its own namespace
-without colliding with the core module:
+The new modules preserve the existing lexer and folding package paths:
 
-| Module                              | Package                                                    |
-| ----------------------------------- | ---------------------------------------------------------- |
-| `papiflyfx-docking-code-json`       | `org.metalib.papifly.fx.code.json`                         |
-| `papiflyfx-docking-code-yaml`       | `org.metalib.papifly.fx.code.yaml`                         |
-| `papiflyfx-docking-code-markdown`   | `org.metalib.papifly.fx.code.markdown`                     |
+| Class family | Package |
+| ------------ | ------- |
+| Lexers | `org.metalib.papifly.fx.code.lexer` |
+| Fold providers and language providers | `org.metalib.papifly.fx.code.folding` |
 
-Classes move with their package. `JsonLexer` becomes
-`org.metalib.papifly.fx.code.json.JsonLexer`; `YamlLexer` becomes
-`org.metalib.papifly.fx.code.yaml.YamlLexer`; `MarkdownLexer` becomes
-`org.metalib.papifly.fx.code.markdown.MarkdownLexer`. Their fold providers
-follow the same pattern.
+This intentionally creates split packages across Maven artifacts in the
+unnamed module path used by the build. The compatibility trade-off is
+deliberate: user code that imports
+`org.metalib.papifly.fx.code.lexer.JsonLexer` only needs the matching new
+Maven dependency, not a source import change.
 
-This is a binary-incompatible move for any consumer that imported these
-classes directly. Internal samples and tests are the only known consumers
-inside the repository — they go through the registry, not the lexer
-classes — so no code change is needed there beyond test files that move
-with the lexers.
+The fold providers remain package-private as they were before the split.
+Each `<Lang>LanguageSupportProvider` therefore lives in
+`org.metalib.papifly.fx.code.folding`, next to the fold provider it
+instantiates.
 
 `LanguageSupport.id()` values stay identical (`json`, `yaml`, `markdown`)
 so user-visible identifiers in serialized session data and theme keys do
@@ -175,10 +172,11 @@ Each module ships exactly one `LanguageSupportProvider` that returns the
 single `LanguageSupport` it owns. Example for JSON:
 
 ```java
-package org.metalib.papifly.fx.code.json;
+package org.metalib.papifly.fx.code.folding;
 
 import org.metalib.papifly.fx.code.language.LanguageSupport;
 import org.metalib.papifly.fx.code.language.LanguageSupportProvider;
+import org.metalib.papifly.fx.code.lexer.JsonLexer;
 
 import java.util.Collection;
 import java.util.List;
@@ -205,7 +203,7 @@ src/main/resources/META-INF/services/org.metalib.papifly.fx.code.language.Langua
 with a single line:
 
 ```text
-org.metalib.papifly.fx.code.json.JsonLanguageSupportProvider
+org.metalib.papifly.fx.code.folding.JsonLanguageSupportProvider
 ```
 
 YAML and Markdown providers follow the same shape. No registry changes
@@ -237,22 +235,21 @@ After the split, the core module keeps:
 
 | Source path (current)                                                          | Destination module                | Destination package                          |
 | ------------------------------------------------------------------------------ | --------------------------------- | -------------------------------------------- |
-| `lexer/JsonLexer.java`                                                         | `papiflyfx-docking-code-json`     | `org.metalib.papifly.fx.code.json`           |
-| `folding/JsonFoldProvider.java`                                                | `papiflyfx-docking-code-json`     | `org.metalib.papifly.fx.code.json`           |
-| `lexer/YamlLexer.java`                                                         | `papiflyfx-docking-code-yaml`     | `org.metalib.papifly.fx.code.yaml`           |
-| `folding/YamlFoldProvider.java`                                                | `papiflyfx-docking-code-yaml`     | `org.metalib.papifly.fx.code.yaml`           |
-| `lexer/MarkdownLexer.java`                                                     | `papiflyfx-docking-code-markdown` | `org.metalib.papifly.fx.code.markdown`       |
-| `folding/MarkdownFoldProvider.java`                                            | `papiflyfx-docking-code-markdown` | `org.metalib.papifly.fx.code.markdown`       |
-| `src/test/java/.../lexer/{Json,Yaml,Markdown}LexerTest.java`                   | matching new module               | matching new package                         |
-| `src/test/java/.../folding/{Json,Yaml,Markdown}FoldProviderTest.java`          | matching new module               | matching new package                         |
+| `lexer/JsonLexer.java`                                                         | `papiflyfx-docking-code-json`     | `org.metalib.papifly.fx.code.lexer`          |
+| `folding/JsonFoldProvider.java`                                                | `papiflyfx-docking-code-json`     | `org.metalib.papifly.fx.code.folding`        |
+| `lexer/YamlLexer.java`                                                         | `papiflyfx-docking-code-yaml`     | `org.metalib.papifly.fx.code.lexer`          |
+| `folding/YamlFoldProvider.java`                                                | `papiflyfx-docking-code-yaml`     | `org.metalib.papifly.fx.code.folding`        |
+| `lexer/MarkdownLexer.java`                                                     | `papiflyfx-docking-code-markdown` | `org.metalib.papifly.fx.code.lexer`          |
+| `folding/MarkdownFoldProvider.java`                                            | `papiflyfx-docking-code-markdown` | `org.metalib.papifly.fx.code.folding`        |
+| `src/test/java/.../lexer/{Json,Yaml,Markdown}LexerTest.java`                   | matching new module               | `org.metalib.papifly.fx.code.lexer`          |
+| `src/test/java/.../folding/{Json,Yaml,Markdown}FoldProviderTest.java`          | matching new module               | `org.metalib.papifly.fx.code.folding`        |
 
 Each new module also adds:
 
 1. A `<Lang>LanguageSupportProvider` class.
 2. A `META-INF/services/org.metalib.papifly.fx.code.language.LanguageSupportProvider`
    descriptor.
-3. A `package-info.java` declaring the package.
-4. A `README.md` describing what the module ships.
+3. A `README.md` describing what the module ships.
 
 ## 5. Theme and Token Decisions
 
@@ -466,9 +463,9 @@ external users would see if a third party depends on
 `papiflyfx-docking-code` directly.
 
 1. **Direct lexer imports** (e.g.
-   `import org.metalib.papifly.fx.code.lexer.JsonLexer;`) break at
-   compile time. Fix: add the matching new module dependency and
-   update the import to `org.metalib.papifly.fx.code.json.JsonLexer`.
+   `import org.metalib.papifly.fx.code.lexer.JsonLexer;`) continue to
+   compile after adding the matching new module dependency. The class
+   moves artifacts, not packages.
 2. **Registry usage** (e.g. `LanguageSupportRegistry.defaultRegistry()
    .resolveLexer("json")`) continues to work as long as the relevant
    module is on the classpath.
@@ -487,8 +484,9 @@ external users would see if a third party depends on
 `JsonLexerTest`, `JsonFoldProviderTest`, `YamlLexerTest`,
 `YamlFoldProviderTest`, `MarkdownLexerTest`, and `MarkdownFoldProviderTest`
 move into their respective new modules under
-`src/test/java/org/metalib/papifly/fx/code/<lang>/`. Imports update to
-the new package paths.
+their existing `org.metalib.papifly.fx.code.lexer` and
+`org.metalib.papifly.fx.code.folding` packages inside the matching new
+module.
 
 ### 9.2 New tests per language module
 

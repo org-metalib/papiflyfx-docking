@@ -73,7 +73,8 @@ template for Phases 2 and 3.
 
 - [ ] 1.1.1 Create `papiflyfx-docking-code-json/` at the repo root.
 - [ ] 1.1.2 Add the directory tree from `design.md §4`:
-      `pom.xml`, `README.md`, `src/main/java/...`, `src/main/resources/META-INF/services/`,
+      `pom.xml`, `README.md`, existing `lexer/` and `folding/`
+      packages, `src/main/resources/META-INF/services/`, and
       `src/test/java/...`.
 - [ ] 1.1.3 Copy the template `pom.xml` from `design.md §6.2`. Set
       `<artifactId>papiflyfx-docking-code-json</artifactId>` and adjust
@@ -86,13 +87,14 @@ template for Phases 2 and 3.
 ### 1.2 Move sources
 
 - [ ] 1.2.1 Move `papiflyfx-docking-code/src/main/java/org/metalib/papifly/fx/code/lexer/JsonLexer.java`
-      into `papiflyfx-docking-code-json/src/main/java/org/metalib/papifly/fx/code/json/JsonLexer.java`.
-- [ ] 1.2.2 Update its `package` declaration to
-      `org.metalib.papifly.fx.code.json`.
+      into `papiflyfx-docking-code-json/src/main/java/org/metalib/papifly/fx/code/lexer/JsonLexer.java`.
+- [ ] 1.2.2 Keep its package declaration as
+      `org.metalib.papifly.fx.code.lexer`.
 - [ ] 1.2.3 Move `JsonFoldProvider.java` from
       `papiflyfx-docking-code/.../folding/` into the new module's
-      `org.metalib.papifly.fx.code.json` package.
-- [ ] 1.2.4 Add `package-info.java` describing the new package.
+      existing `org.metalib.papifly.fx.code.folding` package.
+- [ ] 1.2.4 Preserve existing package paths so direct lexer imports only
+      need the new Maven dependency.
 - [ ] 1.2.5 Add `JsonLanguageSupportProvider.java` per the example in
       `design.md §4.2`.
 - [ ] 1.2.6 Add the `META-INF/services/org.metalib.papifly.fx.code.language.LanguageSupportProvider`
@@ -134,7 +136,8 @@ Goal: apply the Phase 1 template to YAML.
 
 - [ ] 2.1 Repeat steps 1.1.1–1.1.5 with `papiflyfx-docking-code-yaml`.
 - [ ] 2.2 Move `YamlLexer` (with `LANGUAGE_ID = "yaml"`) and
-      `YamlFoldProvider` to `org.metalib.papifly.fx.code.yaml`.
+      `YamlFoldProvider` into the new module while preserving their
+      existing `code.lexer` and `code.folding` packages.
 - [ ] 2.3 Add `YamlLanguageSupportProvider` registering id `yaml`,
       aliases `{"yml"}`, extensions `{"yaml", "yml"}`, lexer factory
       `YamlLexer::new`, fold-provider factory `YamlFoldProvider::new`.
@@ -157,8 +160,9 @@ all targeted Maven runs are green.
 Goal: apply the Phase 1 template to Markdown.
 
 - [ ] 3.1 Repeat steps 1.1.1–1.1.5 with `papiflyfx-docking-code-markdown`.
-- [ ] 3.2 Move `MarkdownLexer` and `MarkdownFoldProvider` to
-      `org.metalib.papifly.fx.code.markdown`.
+- [ ] 3.2 Move `MarkdownLexer` and `MarkdownFoldProvider` into the new
+      module while preserving their existing `code.lexer` and
+      `code.folding` packages.
 - [ ] 3.3 Add `MarkdownLanguageSupportProvider` registering id
       `markdown`, aliases `{"md"}`, extensions `{"md", "markdown"}`,
       lexer factory `MarkdownLexer::new`, fold-provider factory
@@ -236,8 +240,9 @@ Goal: a single, repeatable green-light run.
 - [ ] 6.3 Run the JSON, YAML, and Markdown editor samples in
       `SamplesApp`; capture before/after screenshots in dark and light
       themes (`@ui-ux-designer` review).
-- [ ] 6.4 `grep -R --include='*.java' 'org.metalib.papifly.fx.code.lexer.JsonLexer\|org.metalib.papifly.fx.code.lexer.YamlLexer\|org.metalib.papifly.fx.code.lexer.MarkdownLexer\|org.metalib.papifly.fx.code.folding.JsonFoldProvider\|org.metalib.papifly.fx.code.folding.YamlFoldProvider\|org.metalib.papifly.fx.code.folding.MarkdownFoldProvider' .`
-      returns zero results.
+- [ ] 6.4 `rg 'JsonLexer|YamlLexer|MarkdownLexer|JsonFoldProvider|YamlFoldProvider|MarkdownFoldProvider' papiflyfx-docking-code`
+      confirms those classes no longer live in the core module while the
+      FQNs remain available from the new language modules.
 - [ ] 6.5 `grep -R 'BuiltInLanguageSupportProvider' .` confirms the
       provider only registers `plain-text`, `java`, `javascript`.
 - [ ] 6.6 Test counts per migrated test class match the Phase 0 snapshot.

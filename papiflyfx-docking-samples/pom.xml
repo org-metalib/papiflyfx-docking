@@ -24,6 +24,21 @@
         </dependency>
         <dependency>
             <groupId>org.metalib.papifly.docking</groupId>
+            <artifactId>papiflyfx-docking-code-json</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.metalib.papifly.docking</groupId>
+            <artifactId>papiflyfx-docking-code-yaml</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.metalib.papifly.docking</groupId>
+            <artifactId>papiflyfx-docking-code-markdown</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.metalib.papifly.docking</groupId>
             <artifactId>papiflyfx-docking-tree</artifactId>
             <version>${project.version}</version>
         </dependency>

@@ -65,6 +65,8 @@ PapiflyFX framework dependencies are managed via the `papiflyfx-docking-bom` BOM
 </dependency>
 ```
 
+JSON, YAML, and Markdown code-editor support live in optional language pack modules: `papiflyfx-docking-code-json`, `papiflyfx-docking-code-yaml`, and `papiflyfx-docking-code-markdown`.
+
 ${h2} Working Conventions
 
 - Use `./mvnw`, not bare `mvn`.

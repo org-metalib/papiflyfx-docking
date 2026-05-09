@@ -89,7 +89,10 @@ sdk use java 25.0.1.fx-zulu
 
 ### Content modules
 
-- `papiflyfx-docking-code/` - canvas-based code editor with search, go-to-line, gutters, markers, and incremental lexing
+- `papiflyfx-docking-code/` - canvas-based code editor with search, go-to-line, gutters, markers, language SPI, and core Java/JavaScript/plain-text support
+- `papiflyfx-docking-code-json/` - JSON lexer, fold provider, tests, and ServiceLoader language contribution for the code editor
+- `papiflyfx-docking-code-yaml/` - YAML lexer, fold provider, tests, and ServiceLoader language contribution for the code editor
+- `papiflyfx-docking-code-markdown/` - Markdown lexer, fold provider, tests, and ServiceLoader language contribution for the code editor
 - `papiflyfx-docking-tree/` - canvas-based virtualized tree view with search overlay and theme integration
 - `papiflyfx-docking-media/` - media/image/video viewer content
 - `papiflyfx-docking-hugo/` - Hugo preview content with managed preview lifecycle
@@ -106,6 +109,7 @@ sdk use java 25.0.1.fx-zulu
 - `papiflyfx-docking-settings-api` depends on `papiflyfx-docking-api`.
 - `papiflyfx-docking-settings` depends on `settings-api`, `api`, and `docks`.
 - `papiflyfx-docking-code`, `papiflyfx-docking-hugo`, and `papiflyfx-docking-github` also depend on `settings-api`.
+- `papiflyfx-docking-code-json`, `papiflyfx-docking-code-yaml`, and `papiflyfx-docking-code-markdown` depend on `papiflyfx-docking-code` and are discovered through `ServiceLoader<LanguageSupportProvider>`.
 - `papiflyfx-docking-login-session-api` depends on `login-idapi` and `settings-api`.
 - `papiflyfx-docking-login` depends on `login-idapi`, `login-session-api`, `api`, `settings-api`, and `docks`.
 - `papiflyfx-docking-samples` pulls together the runtime/content modules for demos and smoke coverage.
@@ -169,6 +173,7 @@ Current examples:
 - Set `leaf.setContentFactoryId(...)` for any content that should survive session capture/restore.
 - Call `setOwnerStage(stage)` before relying on floating behavior; `DockManager` can resolve an attached scene window, but explicit setup is safer.
 - Content modules that only need settings SPI should depend on `papiflyfx-docking-settings-api`, not the `papiflyfx-docking-settings` runtime implementation.
+- Code editor language packs should contribute languages through `LanguageSupportProvider` and a `META-INF/services` descriptor, keeping `TokenType`, `FoldKind`, and `CodeEditorTheme` changes in `papiflyfx-docking-code`.
 - When changing dependencies or plugins, keep versions and plugin configuration centralized in the parent `pom.xml`.
 
 ## SOLID Principles
@@ -182,7 +187,7 @@ Current examples:
 ## Testing Notes
 
 - Test stack: JUnit Jupiter `5.10.2`, TestFX `4.0.18`, Monocle `21.0.2`.
-- Active test modules currently include `code`, `docks`, `github`, `hugo`, `login-idapi`, `login`, `media`, `samples`, `settings`, and `tree`.
+- Active test modules currently include `code`, `code-json`, `code-yaml`, `code-markdown`, `docks`, `github`, `hugo`, `login-idapi`, `login`, `media`, `samples`, `settings`, and `tree`.
 - `papiflyfx-docking-code` excludes `benchmark` tests by default through Surefire configuration.
 - UI-heavy modules disable the module path in Surefire and already include the necessary `--enable-native-access`, `--add-exports`, and `--add-opens` flags.
 - Several UI modules expose a `headless-tests` Maven profile activated by `-Dtestfx.headless=true`.
@@ -202,46 +207,19 @@ Current examples:
 - settings runtime docs: `papiflyfx-docking-settings/README.md`
 - login docs: `papiflyfx-docking-login/README.md`
 
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
+## GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **papiflyfx-docking**. Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus. Use the GitNexus MCP tools to understand code, assess impact, and navigate safely. If a GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal.
 
-> If any GitNexus tool warns the index is stale, run `gitnexus analyze` in terminal first.
+For tool usage, impact analysis, refactoring, debugging, and CLI commands see the GitNexus skill files under `.claude/skills/gitnexus/`. This section is maintained manually — the auto-injected stats block (symbol/relationship/execution-flow counts) was removed because it churned on every index refresh. To stop it from coming back, see `Preserving CLAUDE.md / AGENTS.md across re-indexes` below.
 
-## Always Do
+### Preserving CLAUDE.md / AGENTS.md across re-indexes
 
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
-- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+`npx gitnexus analyze` accepts `--skip-agents-md`, which keeps the analyzer from regenerating the `CLAUDE.md` / `AGENTS.md` context files. Always use this flag here, both for manual runs and for the Claude Code PostToolUse hook that fires on `git commit` / `git merge`:
 
-## Never Do
+```bash
+# Manual re-index
+npx gitnexus analyze --skip-agents-md
+```
 
-- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
-- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
-
-## Resources
-
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/papiflyfx-docking/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/papiflyfx-docking/clusters` | All functional areas |
-| `gitnexus://repo/papiflyfx-docking/processes` | All execution flows |
-| `gitnexus://repo/papiflyfx-docking/process/{name}` | Step-by-step execution trace |
-
-## CLI
-
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-
-<!-- gitnexus:end -->
+The hook lives at `~/.claude/hooks/gitnexus/gitnexus-hook.cjs` (registered in `~/.claude/settings.json`). Edit that script to pass `--skip-agents-md` to its `npx gitnexus analyze ...` invocation so the auto-run on commit/merge no longer rewrites these files.

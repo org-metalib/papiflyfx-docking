@@ -4,10 +4,7 @@ import org.metalib.papifly.fx.code.language.LanguageSupport;
 import org.metalib.papifly.fx.code.language.LanguageSupportProvider;
 import org.metalib.papifly.fx.code.lexer.JavaLexer;
 import org.metalib.papifly.fx.code.lexer.JavaScriptLexer;
-import org.metalib.papifly.fx.code.lexer.JsonLexer;
-import org.metalib.papifly.fx.code.lexer.MarkdownLexer;
 import org.metalib.papifly.fx.code.lexer.PlainTextLexer;
-import org.metalib.papifly.fx.code.lexer.YamlLexer;
 
 import java.util.Collection;
 import java.util.List;
@@ -32,22 +29,7 @@ public final class BuiltInLanguageSupportProvider implements LanguageSupportProv
                 "javascript", "JavaScript",
                 Set.of("js"), Set.of("js", "mjs", "cjs"),
                 Set.of(),
-                JavaScriptLexer::new, JavaScriptFoldProvider::new),
-            new LanguageSupport(
-                "json", "JSON",
-                Set.of(), Set.of("json"),
-                Set.of(),
-                JsonLexer::new, JsonFoldProvider::new),
-            new LanguageSupport(
-                "markdown", "Markdown",
-                Set.of("md"), Set.of("md", "markdown"),
-                Set.of(),
-                MarkdownLexer::new, MarkdownFoldProvider::new),
-            new LanguageSupport(
-                "yaml", "YAML",
-                Set.of("yml"), Set.of("yaml", "yml"),
-                Set.of(),
-                YamlLexer::new, YamlFoldProvider::new)
+                JavaScriptLexer::new, JavaScriptFoldProvider::new)
         );
     }
 }

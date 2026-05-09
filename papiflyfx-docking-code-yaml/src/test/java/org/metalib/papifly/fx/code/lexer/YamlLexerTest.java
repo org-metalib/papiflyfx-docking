@@ -148,6 +148,36 @@ class YamlLexerTest {
         assertTrue(result.tokens().stream().anyMatch(token -> token.type() == TokenType.BOOLEAN));
     }
 
+    @Test
+    void incrementalRelexPropagatesBlockScalarStateChangesToFollowingLines() {
+        CountingLexer countingLexer = new CountingLexer(new YamlLexer());
+        TokenMap baseline = IncrementalLexerEngine.relex(
+            TokenMap.empty(),
+            "script: |\n  echo hello\nnext: true",
+            0,
+            countingLexer
+        );
+        assertEquals(3, baseline.lineCount());
+        assertEquals(3, baseline.lineAt(1).entryState().code());
+        assertEquals(3, baseline.lineAt(2).entryState().code());
+
+        countingLexer.reset();
+        TokenMap updated = IncrementalLexerEngine.relex(
+            baseline,
+            "script: plain\n  echo hello\nnext: true",
+            0,
+            countingLexer
+        );
+
+        assertEquals(3, countingLexer.invocations());
+        assertEquals(LexState.DEFAULT, updated.lineAt(1).entryState());
+        assertEquals(LexState.DEFAULT, updated.lineAt(2).entryState());
+        assertEquals(
+            List.of(TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.BOOLEAN),
+            updated.lineAt(2).tokens().stream().map(Token::type).toList()
+        );
+    }
+
     private static void assertTypes(LexResult result, TokenType... expected) {
         assertEquals(List.of(expected), result.tokens().stream().map(Token::type).toList());
     }
@@ -164,5 +194,38 @@ class YamlLexerTest {
         assertEquals(contentIndent, state.blockScalarContentIndent());
         assertEquals(style, state.blockScalarStyle());
         assertEquals(chomping, state.blockScalarChomping());
+    }
+
+    private static final class CountingLexer implements Lexer {
+        private final Lexer delegate;
+        private int invocations;
+
+        private CountingLexer(Lexer delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public String languageId() {
+            return delegate.languageId();
+        }
+
+        @Override
+        public LexState initialState() {
+            return delegate.initialState();
+        }
+
+        @Override
+        public LexResult lexLine(String lineText, LexState entryState) {
+            invocations++;
+            return delegate.lexLine(lineText, entryState);
+        }
+
+        private int invocations() {
+            return invocations;
+        }
+
+        private void reset() {
+            invocations = 0;
+        }
     }
 }
