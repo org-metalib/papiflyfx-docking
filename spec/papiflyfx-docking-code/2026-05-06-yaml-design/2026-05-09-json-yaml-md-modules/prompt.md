@@ -11,7 +11,7 @@ Required reviewers: `@core-architect`, `@ops-engineer`, `@ui-ux-designer`, `@qa-
 JavaScript, JSON, Markdown, and YAML. JSON, Markdown, and YAML lexers,
 fold providers, and tests live alongside the core editor in a single Maven
 module. The pluggable language SPI introduced in
-[`spec/papiflyfx-docking-code-lang-plugin/`](../../../papiflyfx-docking-code-lang-plugin/README.md)
+[`spec/papiflyfx-docking-code-lang-plugin/`](spec/papiflyfx-docking-code-lang-plugin/README.md)
 already exposes `LanguageSupport`, `LanguageSupportProvider`, and a
 `LanguageSupportRegistry` that discovers providers via `ServiceLoader`. JSON,
 Markdown, and YAML are still registered through the in-tree
@@ -53,14 +53,14 @@ files must continue to highlight, fold, and theme exactly as they do today.
 
 ## Required deliverables in this folder
 
-- [`README.md`](README.md) — original user brief (already present).
-- [`prompt.md`](prompt.md) — this document.
-- [`design.md`](design.md) — architectural design, including module surface,
+- [`README.md`](spec/papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules/README.md) — original user brief (already present).
+- [`prompt.md`](spec/papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules/prompt.md) — this document.
+- [`design.md`](spec/papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules/design.md) — architectural design, including module surface,
   build topology, ServiceLoader wiring, theme/token decisions, and migration
   rules.
-- [`plan.md`](plan.md) — phased implementation plan with concrete tasks,
+- [`plan.md`](spec/papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules/plan.md) — phased implementation plan with concrete tasks,
   ordered for safe roll-out under the agent operating model.
-- [`progress.md`](progress.md) — status tracker per phase, decision log,
+- [`progress.md`](spec/papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules/progress.md) — status tracker per phase, decision log,
   validation log, and risks.
 
 ## Constraints from `AGENTS.md`
