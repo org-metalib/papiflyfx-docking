@@ -76,15 +76,15 @@ class YamlLexerTest {
     }
 
     @Test
-    void anchorsAliasesTagsAndMergeKeyUseOperatorTokens() {
+    void anchorsAliasesTagsAndMergeKeyUseDedicatedYamlTokens() {
         assertTypes(lexer.lexLine("base: &id001 value", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.OPERATOR, TokenType.PLAIN);
+            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.YAML_ANCHOR, TokenType.PLAIN);
         assertTypes(lexer.lexLine("copy: *id001", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.OPERATOR);
+            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.YAML_ALIAS);
         assertTypes(lexer.lexLine("type: !!str foo", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.OPERATOR, TokenType.PLAIN);
+            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.YAML_TAG, TokenType.PLAIN);
         assertTypes(lexer.lexLine("<<: *base", LexState.DEFAULT),
-            TokenType.OPERATOR, TokenType.PUNCTUATION, TokenType.OPERATOR);
+            TokenType.OPERATOR, TokenType.PUNCTUATION, TokenType.YAML_ALIAS);
     }
 
     @Test
@@ -111,13 +111,31 @@ class YamlLexerTest {
     void blockScalarIndicatorPropagatesBlockScalarState() {
         LexResult header = lexer.lexLine("script: |-", LexState.DEFAULT);
         assertTypes(header, TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.PUNCTUATION);
-        assertEquals(LexState.of(3), header.exitState());
+        assertBlockState(header.exitState(), 0, -1, '|', '-');
 
         LexResult body = lexer.lexLine("  echo hello", header.exitState());
         assertTypes(body, TokenType.PLAIN);
-        assertEquals(LexState.of(3), body.exitState());
+        assertBlockState(body.exitState(), 0, 2, '|', '-');
 
         LexResult next = lexer.lexLine("done: true", body.exitState());
+        assertTypes(next, TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.BOOLEAN);
+        assertEquals(LexState.DEFAULT, next.exitState());
+    }
+
+    @Test
+    void blockScalarStateTracksExplicitIndentStyleAndChomping() {
+        LexResult header = lexer.lexLine("script: >2+", LexState.DEFAULT);
+        assertBlockState(header.exitState(), 0, 2, '>', '+');
+
+        LexResult body = lexer.lexLine("  folded line", header.exitState());
+        assertTypes(body, TokenType.PLAIN);
+        assertBlockState(body.exitState(), 0, 2, '>', '+');
+
+        LexResult blank = lexer.lexLine("", body.exitState());
+        assertEquals(0, blank.tokens().size());
+        assertBlockState(blank.exitState(), 0, 2, '>', '+');
+
+        LexResult next = lexer.lexLine("next: false", blank.exitState());
         assertTypes(next, TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.BOOLEAN);
         assertEquals(LexState.DEFAULT, next.exitState());
     }
@@ -132,5 +150,19 @@ class YamlLexerTest {
 
     private static void assertTypes(LexResult result, TokenType... expected) {
         assertEquals(List.of(expected), result.tokens().stream().map(Token::type).toList());
+    }
+
+    private static void assertBlockState(
+        LexState state,
+        int headerIndent,
+        int contentIndent,
+        char style,
+        char chomping
+    ) {
+        assertEquals(3, state.code());
+        assertEquals(headerIndent, state.blockScalarHeaderIndent());
+        assertEquals(contentIndent, state.blockScalarContentIndent());
+        assertEquals(style, state.blockScalarStyle());
+        assertEquals(chomping, state.blockScalarChomping());
     }
 }

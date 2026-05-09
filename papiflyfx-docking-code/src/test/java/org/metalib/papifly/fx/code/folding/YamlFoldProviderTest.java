@@ -98,4 +98,59 @@ class YamlFoldProviderTest {
 
         assertTrue(recomputed.isCollapsedHeader(0));
     }
+
+    @Test
+    void detectsMultiLineFlowMappingRegion() {
+        FoldMap foldMap = provider.recompute(
+            List.of(
+                "metadata: {",
+                "  name: demo,",
+                "  labels: { app: demo }",
+                "}"
+            ),
+            TokenMap.empty(),
+            FoldMap.empty(),
+            0,
+            () -> false
+        );
+
+        assertTrue(foldMap.regions().stream().anyMatch(region ->
+            region.kind() == FoldKind.YAML_FLOW && region.startLine() == 0 && region.endLine() == 3));
+    }
+
+    @Test
+    void detectsNestedMultiLineFlowSequenceRegionAndIgnoresQuotedDelimiters() {
+        FoldMap foldMap = provider.recompute(
+            List.of(
+                "items: [",
+                "  \"not a ] close\",",
+                "  { name: demo }",
+                "] # close"
+            ),
+            TokenMap.empty(),
+            FoldMap.empty(),
+            0,
+            () -> false
+        );
+
+        assertTrue(foldMap.regions().stream().anyMatch(region ->
+            region.kind() == FoldKind.YAML_FLOW && region.startLine() == 0 && region.endLine() == 3));
+    }
+
+    @Test
+    void ignoresUnbalancedFlowDelimiters() {
+        FoldMap foldMap = provider.recompute(
+            List.of(
+                "items: [",
+                "  one",
+                "next: true"
+            ),
+            TokenMap.empty(),
+            FoldMap.empty(),
+            0,
+            () -> false
+        );
+
+        assertTrue(foldMap.regions().stream().noneMatch(region -> region.kind() == FoldKind.YAML_FLOW));
+    }
 }

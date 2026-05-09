@@ -362,13 +362,13 @@ manifest, Hugo front matter, or GitHub Actions workflow) and confirm:
 - [ ] Manual spot check of a realistic YAML document inside the
       samples app.
 
-### Phase 7 - Optional Follow-ups (Deferred)
+### Phase 7 - Optional Follow-ups
 
-- [ ] Decide whether to introduce `yamlAnchorColor` / `yamlTagColor`
+- [x] Decide whether to introduce `yamlAnchorColor` / `yamlTagColor`
       after UI/UX review.
-- [ ] Decide whether to widen `LexState` for proper block-scalar
+- [x] Decide whether to widen `LexState` for proper block-scalar
       indent tracking.
-- [ ] Decide whether flow-style folding (`{...}`, `[...]`) is worth
+- [x] Decide whether flow-style folding (`{...}`, `[...]`) is worth
       the parser-level work.
 
 ### Phase 8 - Schema Validation Pipeline (Roadmap, Not Approved)

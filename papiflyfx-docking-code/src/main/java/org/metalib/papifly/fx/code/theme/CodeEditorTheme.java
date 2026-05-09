@@ -15,6 +15,9 @@ import javafx.scene.paint.Paint;
  * @param keywordColor syntax color for keywords
  * @param stringColor syntax color for string literals
  * @param jsonKeyColor syntax color for JSON object keys
+ * @param yamlKeyColor syntax color for YAML mapping keys
+ * @param yamlAnchorColor syntax color for YAML anchors and aliases
+ * @param yamlTagColor syntax color for YAML tags
  * @param commentColor syntax color for comments
  * @param numberColor syntax color for numeric literals
  * @param caretColor caret stroke color
@@ -62,6 +65,9 @@ public record CodeEditorTheme(
     Paint keywordColor,
     Paint stringColor,
     Paint jsonKeyColor,
+    Paint yamlKeyColor,
+    Paint yamlAnchorColor,
+    Paint yamlTagColor,
     Paint commentColor,
     Paint numberColor,
     Paint caretColor,
@@ -126,6 +132,9 @@ public record CodeEditorTheme(
             Color.web("#569cd6"),   // keywordColor
             Color.web("#ce9178"),   // stringColor
             Color.web("#9cdcfe"),   // jsonKeyColor
+            Color.web("#4ec9b0"),   // yamlKeyColor
+            Color.web("#d7ba7d"),   // yamlAnchorColor
+            Color.web("#c586c0"),   // yamlTagColor
             Color.web("#6a9955"),   // commentColor
             Color.web("#b5cea8"),   // numberColor
             Color.web("#aeafad"),   // caretColor
@@ -180,6 +189,9 @@ public record CodeEditorTheme(
             Color.web("#0000ff"),   // keywordColor
             Color.web("#a31515"),   // stringColor
             Color.web("#0451a5"),   // jsonKeyColor
+            Color.web("#267f99"),   // yamlKeyColor
+            Color.web("#795e26"),   // yamlAnchorColor
+            Color.web("#af00db"),   // yamlTagColor
             Color.web("#008000"),   // commentColor
             Color.web("#098658"),   // numberColor
             Color.web("#000000"),   // caretColor

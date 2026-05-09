@@ -56,6 +56,36 @@ class IncrementalLexerEngineTest {
     }
 
     @Test
+    void relexPropagatesYamlBlockScalarStateChangesToFollowingLines() {
+        CountingLexer lexer = new CountingLexer(new YamlLexer());
+        TokenMap baseline = IncrementalLexerEngine.relex(
+            TokenMap.empty(),
+            "script: |\n  echo hello\nnext: true",
+            0,
+            lexer
+        );
+        assertEquals(3, baseline.lineCount());
+        assertEquals(3, baseline.lineAt(1).entryState().code());
+        assertEquals(3, baseline.lineAt(2).entryState().code());
+
+        lexer.reset();
+        TokenMap updated = IncrementalLexerEngine.relex(
+            baseline,
+            "script: plain\n  echo hello\nnext: true",
+            0,
+            lexer
+        );
+
+        assertEquals(3, lexer.invocations());
+        assertEquals(LexState.DEFAULT, updated.lineAt(1).entryState());
+        assertEquals(LexState.DEFAULT, updated.lineAt(2).entryState());
+        assertEquals(
+            List.of(TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.BOOLEAN),
+            updated.lineAt(2).tokens().stream().map(Token::type).toList()
+        );
+    }
+
+    @Test
     void relexHandlesNonContiguousChangesWithSameLineCount() {
         // Regression: non-contiguous edits with unchanged line count must not produce stale tokens.
         // Baseline: ["a0","a1","a2","a3"]

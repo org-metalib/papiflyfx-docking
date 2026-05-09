@@ -35,17 +35,19 @@ public final class YamlLexer implements Lexer {
         String text = lineText == null ? "" : lineText;
         List<Token> tokens = new ArrayList<>();
         int state = entryState == null ? STATE_DEFAULT : entryState.code();
+        BlockScalarState blockScalarState = state == STATE_BLOCK_SCALAR
+            ? blockScalarState(entryState)
+            : null;
         int index = 0;
 
         if (state == STATE_BLOCK_SCALAR) {
-            if (text.isBlank()) {
-                return new LexResult(tokens, LexState.DEFAULT);
-            }
-            if (leadingSpaces(text) > 0) {
+            BlockScalarLine continuation = continueBlockScalar(text, blockScalarState);
+            if (continuation.inScalar()) {
                 addToken(tokens, 0, text.length(), TokenType.PLAIN);
-                return new LexResult(tokens, LexState.of(STATE_BLOCK_SCALAR));
+                return new LexResult(tokens, blockScalarLexState(continuation.state()));
             }
             state = STATE_DEFAULT;
+            blockScalarState = null;
         }
 
         if (state == STATE_DOUBLE_QUOTED) {
@@ -106,7 +108,7 @@ public final class YamlLexer implements Lexer {
             if (ch == '&' || ch == '*') {
                 int end = scanAnchorOrAlias(text, index);
                 if (end > index + 1) {
-                    addToken(tokens, index, end, TokenType.OPERATOR);
+                    addToken(tokens, index, end, ch == '&' ? TokenType.YAML_ANCHOR : TokenType.YAML_ALIAS);
                     index = end;
                     continue;
                 }
@@ -114,7 +116,7 @@ public final class YamlLexer implements Lexer {
             if (ch == '!') {
                 int end = scanTag(text, index);
                 if (end > index + 1) {
-                    addToken(tokens, index, end, TokenType.OPERATOR);
+                    addToken(tokens, index, end, TokenType.YAML_TAG);
                     index = end;
                     continue;
                 }
@@ -135,11 +137,17 @@ public final class YamlLexer implements Lexer {
                 index = keyEnd;
                 continue;
             }
-            int blockScalarEnd = scanBlockScalarIndicator(text, index);
-            if (blockScalarEnd > index) {
-                addToken(tokens, index, blockScalarEnd, TokenType.PUNCTUATION);
+            BlockScalarIndicator blockScalar = scanBlockScalarIndicator(text, index);
+            if (blockScalar != null) {
+                addToken(tokens, index, blockScalar.endIndex(), TokenType.PUNCTUATION);
                 state = STATE_BLOCK_SCALAR;
-                index = blockScalarEnd;
+                blockScalarState = new BlockScalarState(
+                    leadingSpaces(text),
+                    blockScalar.contentIndent(),
+                    blockScalar.style(),
+                    blockScalar.chomping()
+                );
+                index = blockScalar.endIndex();
                 continue;
             }
             int numberEnd = scanNumber(text, index);
@@ -174,7 +182,9 @@ public final class YamlLexer implements Lexer {
             index = Math.max(index + 1, plainEnd);
         }
 
-        return new LexResult(tokens, LexState.of(state));
+        return new LexResult(tokens, state == STATE_BLOCK_SCALAR
+            ? blockScalarLexState(blockScalarState)
+            : LexState.of(state));
     }
 
     private static boolean isDocumentMarker(String text) {
@@ -269,19 +279,94 @@ public final class YamlLexer implements Lexer {
             : -1;
     }
 
-    private static int scanBlockScalarIndicator(String text, int start) {
+    private static BlockScalarLine continueBlockScalar(String text, BlockScalarState state) {
+        BlockScalarState effectiveState = state == null
+            ? new BlockScalarState(0, 1, '|', '\0')
+            : state;
+        if (text.isBlank()) {
+            return new BlockScalarLine(true, effectiveState);
+        }
+        int indent = leadingSpaces(text);
+        int contentIndent = effectiveState.contentIndent();
+        if (contentIndent < 0) {
+            if (indent <= effectiveState.headerIndent()) {
+                return new BlockScalarLine(false, effectiveState);
+            }
+            contentIndent = indent;
+        }
+        if (indent < contentIndent) {
+            return new BlockScalarLine(false, effectiveState);
+        }
+        return new BlockScalarLine(true, new BlockScalarState(
+            effectiveState.headerIndent(),
+            contentIndent,
+            effectiveState.style(),
+            effectiveState.chomping()
+        ));
+    }
+
+    private static LexState blockScalarLexState(BlockScalarState state) {
+        BlockScalarState effectiveState = state == null
+            ? new BlockScalarState(0, 1, '|', '\0')
+            : state;
+        return LexState.blockScalar(
+            STATE_BLOCK_SCALAR,
+            effectiveState.headerIndent(),
+            effectiveState.contentIndent(),
+            effectiveState.style(),
+            effectiveState.chomping()
+        );
+    }
+
+    private static BlockScalarState blockScalarState(LexState state) {
+        if (state == null) {
+            return new BlockScalarState(0, 1, '|', '\0');
+        }
+        int headerIndent = state.blockScalarHeaderIndent() >= 0 ? state.blockScalarHeaderIndent() : 0;
+        int contentIndent = state.blockScalarContentIndent();
+        if (contentIndent < 0 && state.blockScalarHeaderIndent() < 0) {
+            contentIndent = 1;
+        }
+        char style = state.blockScalarStyle() == '\0' ? '|' : state.blockScalarStyle();
+        return new BlockScalarState(headerIndent, contentIndent, style, state.blockScalarChomping());
+    }
+
+    private static BlockScalarIndicator scanBlockScalarIndicator(String text, int start) {
         char ch = text.charAt(start);
         if (ch != '|' && ch != '>') {
-            return -1;
+            return null;
         }
         int index = start + 1;
-        if (index < text.length() && (text.charAt(index) == '+' || text.charAt(index) == '-')) {
-            index++;
+        char chomping = '\0';
+        int indentIndicator = -1;
+        while (index < text.length()) {
+            char indicator = text.charAt(index);
+            if ((indicator == '+' || indicator == '-') && chomping == '\0') {
+                chomping = indicator;
+                index++;
+                continue;
+            }
+            if (indicator >= '1' && indicator <= '9' && indentIndicator < 0) {
+                indentIndicator = indicator - '0';
+                index++;
+                continue;
+            }
+            break;
         }
         if (index >= text.length() || Character.isWhitespace(text.charAt(index)) || text.charAt(index) == '#') {
-            return index;
+            int contentIndent = indentIndicator < 0 ? -1 : leadingSpaces(text) + indentIndicator;
+            return new BlockScalarIndicator(index, ch, chomping, contentIndent);
         }
-        return -1;
+        return null;
+    }
+
+    private record BlockScalarIndicator(int endIndex, char style, char chomping, int contentIndent) {
+    }
+
+    private record BlockScalarLine(boolean inScalar, BlockScalarState state) {
+    }
+
+    private record BlockScalarState(int headerIndent, int contentIndent, char style, char chomping) {
     }
 
     private static int scanNumber(String text, int start) {

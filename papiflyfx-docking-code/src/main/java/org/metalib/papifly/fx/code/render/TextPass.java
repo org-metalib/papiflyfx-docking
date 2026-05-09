@@ -117,7 +117,9 @@ final class TextPass implements RenderPass {
             case KEYWORD -> context.theme().keywordColor();
             case STRING -> context.theme().stringColor();
             case JSON_KEY -> context.theme().jsonKeyColor();
-            case YAML_KEY -> context.theme().jsonKeyColor();
+            case YAML_KEY -> context.theme().yamlKeyColor();
+            case YAML_ANCHOR, YAML_ALIAS -> context.theme().yamlAnchorColor();
+            case YAML_TAG -> context.theme().yamlTagColor();
             case COMMENT -> context.theme().commentColor();
             case NUMBER -> context.theme().numberColor();
             case BOOLEAN -> context.theme().booleanColor();

@@ -3,7 +3,9 @@ package org.metalib.papifly.fx.code.folding;
 import org.metalib.papifly.fx.code.lexer.TokenMap;
 import org.metalib.papifly.fx.code.lexer.YamlLexer;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
@@ -43,6 +45,7 @@ final class YamlFoldProvider implements FoldProvider {
                 addIndentedRegion(regions, infos, lineIndex, info.indent());
             }
         }
+        addFlowRegions(regions, safeLines, cancelled, baseline);
 
         FoldMap baseMap = new FoldMap(regions);
         Set<Integer> preserved = baseline == null ? Set.of() : baseline.collapsedHeaderLines();
@@ -85,6 +88,99 @@ final class YamlFoldProvider implements FoldProvider {
         }
         if (endLine > startLine) {
             regions.add(new FoldRegion(startLine, endLine, FoldKind.YAML_BLOCK_SCALAR, depthForIndent(indent), false));
+        }
+    }
+
+    private static void addFlowRegions(
+        List<FoldRegion> regions,
+        List<String> lines,
+        BooleanSupplier cancelled,
+        FoldMap baseline
+    ) {
+        Deque<FlowStart> stack = new ArrayDeque<>();
+        for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
+            if (cancelled != null && cancelled.getAsBoolean()) {
+                regions.clear();
+                regions.addAll(baseline == null ? List.of() : baseline.regions());
+                return;
+            }
+            scanFlowDelimiters(lines.get(lineIndex), lineIndex, stack, regions);
+        }
+    }
+
+    private static void scanFlowDelimiters(
+        String line,
+        int lineIndex,
+        Deque<FlowStart> stack,
+        List<FoldRegion> regions
+    ) {
+        String text = line == null ? "" : line;
+        boolean inSingle = false;
+        boolean inDouble = false;
+        boolean escaped = false;
+        for (int index = 0; index < text.length(); index++) {
+            char ch = text.charAt(index);
+            if (inDouble) {
+                if (escaped) {
+                    escaped = false;
+                    continue;
+                }
+                if (ch == '\\') {
+                    escaped = true;
+                    continue;
+                }
+                if (ch == '"') {
+                    inDouble = false;
+                }
+                continue;
+            }
+            if (inSingle) {
+                if (ch == '\'' && index + 1 < text.length() && text.charAt(index + 1) == '\'') {
+                    index++;
+                    continue;
+                }
+                if (ch == '\'') {
+                    inSingle = false;
+                }
+                continue;
+            }
+            if (ch == '#') {
+                break;
+            }
+            if (ch == '"') {
+                inDouble = true;
+                continue;
+            }
+            if (ch == '\'') {
+                inSingle = true;
+                continue;
+            }
+            if (ch == '{' || ch == '[') {
+                stack.push(new FlowStart(lineIndex, ch, stack.size() + 1));
+                continue;
+            }
+            if (ch == '}' || ch == ']') {
+                closeFlowRegion(regions, stack, lineIndex, ch);
+            }
+        }
+    }
+
+    private static void closeFlowRegion(
+        List<FoldRegion> regions,
+        Deque<FlowStart> stack,
+        int lineIndex,
+        char closing
+    ) {
+        char expectedOpening = closing == '}' ? '{' : '[';
+        while (!stack.isEmpty()) {
+            FlowStart start = stack.pop();
+            if (start.opening() != expectedOpening) {
+                continue;
+            }
+            if (lineIndex > start.lineIndex()) {
+                regions.add(new FoldRegion(start.lineIndex(), lineIndex, FoldKind.YAML_FLOW, start.depth(), false));
+            }
+            return;
         }
     }
 
@@ -217,5 +313,8 @@ final class YamlFoldProvider implements FoldProvider {
     }
 
     private record LineInfo(int indent, LineKind kind) {
+    }
+
+    private record FlowStart(int lineIndex, char opening, int depth) {
     }
 }

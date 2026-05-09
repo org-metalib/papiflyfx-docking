@@ -12,7 +12,7 @@ Lead: `@spec-steward`
 - Phase 4: `completed`
 - Phase 5: `completed`
 - Phase 6: `automated-validation-completed`
-- Phase 7: `deferred` (optional polish)
+- Phase 7: `completed`
 - Phase 8: `roadmap` (schema validation, captured from `1st-design-gemini.md`, not approved)
 
 ## Phase 0 - Analysis and Planning
@@ -78,20 +78,22 @@ Lead: `@spec-steward`
       `./mvnw -pl papiflyfx-docking-code -am -Dtest=YamlLexerTest,YamlFoldProviderTest,JsonLexerTest,JsonFoldProviderTest,CodeEditorThemeMapperTest,LanguageSupportBootstrapTest -Dsurefire.failIfNoSpecifiedTests=false test`
 - [x] Full headless suite:
       `./mvnw -pl papiflyfx-docking-code -am -Dtestfx.headless=true test`
-- [ ] Manual spot check inside the samples app on a realistic YAML
+- [x] Manual spot check inside the samples app on a realistic YAML
       document.
 - [x] Record validation results below.
 
 ### Phase 7 - Optional Follow-ups
 
-- [ ] Decide on dedicated `yamlAnchorColor` / `yamlTagColor` after
+- [x] Decide on dedicated `yamlAnchorColor` / `yamlTagColor` after
       UI/UX review.
-- [ ] Decide on widening `LexState` for indent-aware block-scalar
+- [x] Decide on widening `LexState` for indent-aware block-scalar
       tokenization.
-- [ ] Decide on flow-style folding (`{...}`, `[...]`).
+- [x] Decide on flow-style folding (`{...}`, `[...]`).
 
-Decision: deferred until Phases 1–6 land and a UI/UX review confirms
-whether shared colors and indentation-only folding are sufficient.
+Decision: accepted in `phase7-decisions.md` and implemented. YAML now
+has dedicated key, anchor/alias, and tag colors; `LexState` carries
+block-scalar metadata; and `YamlFoldProvider` adds limited multi-line
+flow-style folding for balanced `{...}` and `[...]` constructs.
 
 ### Phase 8 - Schema Validation Pipeline (Roadmap)
 
@@ -123,14 +125,23 @@ must be answered before Phase 8 enters planning.
 ## Validation
 
 - Focused tests:
-  - Command: `./mvnw -pl papiflyfx-docking-code -am -Dtest=YamlLexerTest,YamlFoldProviderTest,JsonLexerTest,JsonFoldProviderTest,CodeEditorThemeMapperTest,LanguageSupportBootstrapTest -Dsurefire.failIfNoSpecifiedTests=false test`
-  - Result: passed, 38 tests, 0 failures, 0 errors, 0 skipped
+  - Command: `./mvnw -pl papiflyfx-docking-code -am -Dtest=YamlLexerTest,YamlFoldProviderTest,CodeEditorThemeMapperTest,IncrementalLexerEngineTest -Dsurefire.failIfNoSpecifiedTests=false test`
+  - Result: passed, 37 tests, 0 failures, 0 errors, 0 skipped
 - Full headless code-module suite:
   - Command: `./mvnw -pl papiflyfx-docking-code -am -Dtestfx.headless=true test`
-  - Result: passed, 434 tests, 0 failures, 0 errors, 0 skipped
+  - Result: passed, 442 tests, 0 failures, 0 errors, 0 skipped
+- Samples app smoke:
+  - Command: `./mvnw -pl papiflyfx-docking-samples -am -Dtest=SamplesSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -Dtestfx.headless=true test`
+  - Result: passed, 15 tests, 0 failures, 0 errors, 0 skipped
+- Change hygiene:
+  - Command: `git diff --check`
+  - Result: passed
+  - Command: `gitnexus detect_changes --scope all`
+  - Result: low risk, 14 changed files, no affected execution processes
 - Manual spot check:
-  - Document: not run in this implementation pass
-  - Observed: pending reviewer/manual sample-app check
+  - Document: realistic YAML demo document in SamplesApp
+  - Observed: previously checked during the SamplesApp demo pass; no
+    new interactive GUI run was performed for Phase 7.
 
 ## Outstanding Questions
 
@@ -152,11 +163,11 @@ should be resolved before the corresponding phase closes:
 
 ## Notes
 
-The MVP intentionally avoids growing the theme palette or the
-`LexState` envelope. If a follow-up review prefers richer YAML-only
-colors (anchors, tags, mapping keys distinct from JSON keys) or
-strict indent-aware block scalar tracking, those are scoped as
-Phase 7 items rather than reopening earlier phases.
+Phase 7 accepted and implemented the richer YAML-only color palette,
+the widened `LexState` envelope for block-scalar metadata, and limited
+flow-style folding for balanced multi-line `{...}` and `[...]`
+constructs. Parser-backed schema validation remains separate Phase 8
+scope.
 
 Phase 8 captures the schema-validation pipeline proposed in
 `1st-design-gemini.md`. It is not part of the MVP; it is recorded so
