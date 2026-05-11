@@ -64,6 +64,10 @@ public final class CodeEditorThemeMapper {
             textPrimary,
             base.keywordColor(),
             base.stringColor(),
+            base.jsonKeyColor(),
+            base.yamlKeyColor(),
+            base.yamlAnchorColor(),
+            base.yamlTagColor(),
             base.commentColor(),
             base.numberColor(),
             textActive,
@@ -102,7 +106,8 @@ public final class CodeEditorThemeMapper {
             base.searchOverlayNoResultsBorder(),
             shadow,
             accent,
-            base.searchOverlayErrorBackground()
+            base.searchOverlayErrorBackground(),
+            base.syntaxScopeColors()
         );
     }
 

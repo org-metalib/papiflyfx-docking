@@ -19,7 +19,9 @@ final class BackgroundPass implements RenderPass {
     public void renderLine(RenderContext context, RenderLine renderLine) {
         GraphicsContext gc = context.graphics();
         gc.setFill(context.theme().editorBackground());
-        gc.fillRect(0, renderLine.y(), context.effectiveTextWidth(), context.lineHeight());
+        double y = Math.max(0.0, renderLine.y() - 1.0);
+        double height = Math.min(context.viewportHeight() - y, context.lineHeight() + 2.0);
+        gc.fillRect(0, y, context.effectiveTextWidth(), height);
         paintCurrentLineHighlight(context, renderLine);
     }
 

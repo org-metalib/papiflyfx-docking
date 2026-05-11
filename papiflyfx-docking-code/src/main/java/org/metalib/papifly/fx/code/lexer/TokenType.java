@@ -17,6 +17,26 @@ public enum TokenType {
      */
     STRING,
     /**
+     * JSON object key token.
+     */
+    JSON_KEY,
+    /**
+     * YAML mapping key token.
+     */
+    YAML_KEY,
+    /**
+     * YAML anchor token, such as {@code &base}.
+     */
+    YAML_ANCHOR,
+    /**
+     * YAML alias token, such as {@code *base}.
+     */
+    YAML_ALIAS,
+    /**
+     * YAML tag token, such as {@code !!str} or {@code !Custom}.
+     */
+    YAML_TAG,
+    /**
      * Comment token.
      */
     COMMENT,

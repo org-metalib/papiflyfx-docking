@@ -72,6 +72,10 @@ class CodeEditorThemeMapperTest {
         assertNotNull(dark.editorBackground());
         assertNotNull(dark.keywordColor());
         assertNotNull(dark.stringColor());
+        assertNotNull(dark.jsonKeyColor());
+        assertNotNull(dark.yamlKeyColor());
+        assertNotNull(dark.yamlAnchorColor());
+        assertNotNull(dark.yamlTagColor());
         assertNotNull(dark.commentColor());
         assertNotNull(dark.numberColor());
         assertNotNull(dark.caretColor());
@@ -90,6 +94,10 @@ class CodeEditorThemeMapperTest {
         assertNotNull(light.editorBackground());
         assertNotNull(light.keywordColor());
         assertNotNull(light.stringColor());
+        assertNotNull(light.jsonKeyColor());
+        assertNotNull(light.yamlKeyColor());
+        assertNotNull(light.yamlAnchorColor());
+        assertNotNull(light.yamlTagColor());
         assertNotNull(light.commentColor());
         assertNotNull(light.numberColor());
         assertNotNull(light.caretColor());
@@ -100,6 +108,39 @@ class CodeEditorThemeMapperTest {
         assertNotNull(light.scrollbarThumbColor());
         assertNotNull(light.scrollbarThumbHoverColor());
         assertNotNull(light.scrollbarThumbActiveColor());
+    }
+
+    @Test
+    void paletteFactoriesIncludeDiscoveredSyntaxScopeDefaults() {
+        assertEquals(Color.web("#123456"),
+            CodeEditorTheme.dark().syntaxScopeColor(TestSyntaxStyleProvider.TEST_SCOPE).orElseThrow());
+        assertEquals(Color.web("#654321"),
+            CodeEditorTheme.light().syntaxScopeColor(TestSyntaxStyleProvider.TEST_SCOPE).orElseThrow());
+        assertEquals(Color.web("#123456"),
+            CodeEditorThemeMapper.map(Theme.dark()).syntaxScopeColor(TestSyntaxStyleProvider.TEST_SCOPE).orElseThrow());
+    }
+
+    @Test
+    void defaultStructuralKeyColorsStayDistinctFromStringValues() {
+        CodeEditorTheme dark = CodeEditorTheme.dark();
+        assertEquals(Color.web("#9cdcfe"), dark.jsonKeyColor());
+        assertEquals(Color.web("#4ec9b0"), dark.yamlKeyColor());
+        assertEquals(Color.web("#d7ba7d"), dark.yamlAnchorColor());
+        assertEquals(Color.web("#c586c0"), dark.yamlTagColor());
+        assertNotEquals(dark.stringColor(), dark.jsonKeyColor());
+        assertNotEquals(dark.jsonKeyColor(), dark.yamlKeyColor());
+        assertNotEquals(dark.editorForeground(), dark.yamlAnchorColor());
+        assertNotEquals(dark.editorForeground(), dark.yamlTagColor());
+
+        CodeEditorTheme light = CodeEditorTheme.light();
+        assertEquals(Color.web("#0451a5"), light.jsonKeyColor());
+        assertEquals(Color.web("#267f99"), light.yamlKeyColor());
+        assertEquals(Color.web("#795e26"), light.yamlAnchorColor());
+        assertEquals(Color.web("#af00db"), light.yamlTagColor());
+        assertNotEquals(light.stringColor(), light.jsonKeyColor());
+        assertNotEquals(light.jsonKeyColor(), light.yamlKeyColor());
+        assertNotEquals(light.editorForeground(), light.yamlAnchorColor());
+        assertNotEquals(light.editorForeground(), light.yamlTagColor());
     }
 
     @Test

@@ -6,7 +6,7 @@ A dockable JavaFX code editor content type for the PapiflyFX docking framework. 
 
 - Canvas-based virtualized text rendering for large files (100k+ lines)
 - Single-caret editing with undo/redo, copy/paste, and selection
-- Incremental syntax highlighting for Java, JSON, JavaScript, Markdown, and plain text
+- Incremental syntax highlighting for Java, JavaScript, and plain text, with JSON, Markdown, and YAML available as optional language packs
 - Line number gutter with marker lane (errors, warnings, breakpoints, bookmarks)
 - Find/replace overlay with regex support and go-to-line navigation
 - Shared popup/chip styling for search and go-to-line overlays
@@ -19,6 +19,26 @@ A dockable JavaFX code editor content type for the PapiflyFX docking framework. 
 <dependency>
     <groupId>org.metalib.papifly.docking</groupId>
     <artifactId>papiflyfx-docking-code</artifactId>
+    <version>${papiflyfx.version}</version>
+</dependency>
+```
+
+Add optional language packs when those languages should be highlighted and folded:
+
+```xml
+<dependency>
+    <groupId>org.metalib.papifly.docking</groupId>
+    <artifactId>papiflyfx-docking-code-json</artifactId>
+    <version>${papiflyfx.version}</version>
+</dependency>
+<dependency>
+    <groupId>org.metalib.papifly.docking</groupId>
+    <artifactId>papiflyfx-docking-code-yaml</artifactId>
+    <version>${papiflyfx.version}</version>
+</dependency>
+<dependency>
+    <groupId>org.metalib.papifly.docking</groupId>
+    <artifactId>papiflyfx-docking-code-markdown</artifactId>
     <version>${papiflyfx.version}</version>
 </dependency>
 ```
@@ -88,7 +108,7 @@ The code module follows the shared UI standardization model introduced in `papif
 |--------|-------------|
 | `setText(String)` | Sets document text content |
 | `getText()` | Returns document text |
-| `setLanguageId(String)` | Sets syntax language (`java`, `json`, `javascript`, `markdown`, `plain-text`) |
+| `setLanguageId(String)` | Sets syntax language (`plain-text`; language packs add `java`, `javascript`, `json`, `markdown`, `yaml`) |
 | `bindThemeProperty(ObjectProperty<Theme>)` | Binds to docking theme for live updates |
 | `setEditorTheme(CodeEditorTheme)` | Sets editor palette directly |
 | `captureState()` | Captures current state as `EditorStateData` |
@@ -98,15 +118,52 @@ The code module follows the shared UI standardization model introduced in `papif
 | `goToLine(int)` | Navigates to a 1-based line number |
 | `dispose()` | Releases listeners, stops workers, cleans up resources |
 
+## Language Packs
+
+The core editor owns the language SPI:
+
+- `LanguageSupport`
+- `LanguageSupportProvider`
+- `LanguageSupportRegistry`
+- `BootstrapOptions`
+- `ConflictPolicy`
+- `SyntaxStyleProvider`
+- `SyntaxStyleRegistry`
+- `LanguageEditorDefaults`
+
+`LanguageSupportRegistry.bootstrap(BootstrapOptions.defaults())` first registers the core plain-text fallback and then loads every `LanguageSupportProvider` visible through `ServiceLoader`.
+
+To add a language pack:
+
+1. Depend on `papiflyfx-docking-code`.
+2. Implement a lexer, a fold provider, language defaults, and a `LanguageSupportProvider`.
+3. Register the provider in `META-INF/services/org.metalib.papifly.fx.code.language.LanguageSupportProvider`.
+4. If the language needs semantic colors, implement `SyntaxStyleProvider` and register it in `META-INF/services/org.metalib.papifly.fx.code.theme.SyntaxStyleProvider`.
+5. Add tests that call both the provider directly and `ServiceLoader.load(...)`.
+
+`Token` can carry an optional semantic style scope. `TextPass` resolves colors in this order: contributed style scope, `TokenType` fallback, then editor foreground. `TokenType`, `FoldKind`, and compatibility `CodeEditorTheme` accessors remain in core; language-specific colors should be contributed through `SyntaxStyleProvider`.
+
+Per-language editor settings resolve through `papiflyfx-docking-settings-api` with these keys:
+
+- `editor.language.default.indentWidth`
+- `editor.language.default.insertSpaces`
+- `editor.language.default.ensureTrailingNewline`
+- `editor.language.default.trimTrailingWhitespace`
+- `editor.language.<id>.indentWidth`
+- `editor.language.<id>.insertSpaces`
+- `editor.language.<id>.ensureTrailingNewline`
+- `editor.language.<id>.trimTrailingWhitespace`
+
 ## Supported Languages
 
-| Language | ID | Highlights |
-|----------|-----|------------|
-| Java | `java` | Keywords, strings, comments, numbers, annotations |
-| JSON | `json` | Keys, strings, numbers, booleans, null |
-| JavaScript | `javascript` | Keywords, strings, template literals, comments, numbers |
-| Markdown | `markdown` | Headlines, lists, code blocks |
-| Plain Text | `plain-text` | No highlighting (default fallback) |
+| Language | ID | Module | Highlights |
+|----------|-----|--------|------------|
+| Plain Text | `plain-text` | `papiflyfx-docking-code` | No highlighting (default fallback) |
+| Java | `java` | `papiflyfx-docking-code-java` | Keywords, strings, comments, numbers, annotations |
+| JavaScript | `javascript` | `papiflyfx-docking-code-javascript` | Keywords, strings, template literals, comments, numbers |
+| JSON | `json` | `papiflyfx-docking-code-json` | Keys via `json.key`, strings, numbers, booleans, null |
+| Markdown | `markdown` | `papiflyfx-docking-code-markdown` | `markdown.headline`, `markdown.list-item`, `markdown.code-block` |
+| YAML | `yaml` | `papiflyfx-docking-code-yaml` | `yaml.key`, anchors, aliases, tags, scalar tokens, block folding |
 
 ## Acceptance Metrics
 
@@ -123,7 +180,7 @@ Measured on macOS (Apple Silicon), headless mode, 100k-line synthetic Java file:
 
 ```bash
 # Regular tests (excludes benchmarks)
-./mvnw -pl papiflyfx-docking-code,papiflyfx-docking-docks -am -Dtestfx.headless=true test
+./mvnw -pl papiflyfx-docking-code,papiflyfx-docking-code-java,papiflyfx-docking-code-javascript,papiflyfx-docking-code-json,papiflyfx-docking-code-yaml,papiflyfx-docking-code-markdown,papiflyfx-docking-docks -am -Dtestfx.headless=true test
 
 # Benchmarks only
 ./mvnw -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dgroups=benchmark -Dsurefire.excludedGroups= test

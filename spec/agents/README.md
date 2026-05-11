@@ -35,7 +35,7 @@ The repository already uses a research -> plan -> implement -> validate pattern 
 ### 2. Research
 
 - Create or update `research.md` when the area is unfamiliar, risky, or architectural.
-- Capture existing extension points, constraints, and compatibility risks.
+- Capture existing extension points, constraints, the intended API-breaking-change scope, and any compatibility risks for non-API contracts such as persistence formats.
 - Document any relevant SOLID concerns before proposing changes.
 
 ### 3. Planning
@@ -48,6 +48,7 @@ The repository already uses a research -> plan -> implement -> validate pattern 
 
 - Keep edits inside the owning module when possible.
 - Prefer extension points and adapters over widening central abstractions.
+- For API and SPI design, prefer the clearest contract for the current version. Do not add compatibility shims, deprecated overloads, or legacy behavior unless backward compatibility is an explicit requirement in the task or plan.
 - Update `progress.md` as meaningful milestones are completed.
 
 ### 5. Validation
@@ -96,7 +97,7 @@ A task is done only when all of the following are true:
 - Required reviewers were consulted for ownership-sensitive changes.
 - Relevant automated checks or manual validation steps were recorded.
 - Specs, plans, progress logs, and README files reflect the final state of the change.
-- Public API/SPI changes include updated documentation and compatibility notes.
+- Public API/SPI changes include updated documentation and explicit breaking-change notes; migration guidance is only required when the task or plan calls for compatibility support.
 - Session, theme, and settings related behavior is validated when affected.
 
 ## Agent Activation Guide
@@ -117,7 +118,7 @@ When agents (or the humans operating them) disagree on approach:
 1. **Domain authority wins within its boundary.** If `@auth-specialist` and `@feature-dev` disagree on how to store a session token, `@auth-specialist` decides.
 2. **Cross-boundary disputes go to `@spec-steward`** for mediation. The steward documents the trade-offs and proposes a resolution.
 3. **If the steward cannot resolve**, the decision escalates to the human project owner. The steward captures the decision and rationale in the relevant `plan.md`.
-4. **Architectural vetoes**: `@core-architect` can veto changes that break API compatibility or violate SOLID principles. The veto must include a written rationale and a suggested alternative.
+4. **Architectural vetoes**: `@core-architect` can veto changes that preserve obsolete API shapes or add compatibility layers without an explicit requirement, or that otherwise violate SOLID principles. The veto must include a written rationale and a suggested alternative.
 
 ## Priority & Severity Classification
 

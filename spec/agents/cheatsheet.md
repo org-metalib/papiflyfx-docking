@@ -121,7 +121,7 @@ Acceptance criteria:
 Validation expectations:
 <validation-expectations>
 
-Check extension points before changing shared contracts. If implementation is appropriate, make the change and return the repository handoff block.
+Check extension points before changing shared contracts. For API and SPI design, prefer the clearest current contract and do not add compatibility shims or legacy overloads unless backward compatibility is explicitly required. If implementation is appropriate, make the change and return the repository handoff block.
 ```
 
 ### Implement A Build, Settings, Or Samples Change

@@ -1003,9 +1003,9 @@ public class Viewport extends Region {
                 dirtyLines.set(previousCaretLine);
             }
 
-            for (RenderLine renderLine : renderLines) {
-                if (dirtyLines.get(renderLine.lineIndex())) {
-                    for (RenderPass renderPass : renderPasses) {
+            for (RenderPass renderPass : renderPasses) {
+                for (RenderLine renderLine : renderLines) {
+                    if (dirtyLines.get(renderLine.lineIndex())) {
                         renderPass.renderLine(renderContext, renderLine);
                     }
                 }

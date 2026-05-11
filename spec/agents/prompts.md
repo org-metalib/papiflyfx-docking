@@ -60,7 +60,7 @@ Return:
 2. Recommended lead agent
 3. Required reviewers
 4. Impacted modules and spec/docs paths
-5. Key invariants and compatibility risks
+5. Key invariants and intended breaking-change / compatibility risks
 6. Whether this should use the fast path or full spec-first workflow
 7. Required artifacts (`research.md`, `plan.md`, `progress.md`, `validation.md`, README updates)
 8. Suggested validation strategy
@@ -139,6 +139,7 @@ Validation expectations:
 Instructions:
 - Treat `papiflyfx-docking-api` and `papiflyfx-docking-docks` as the primary ownership boundary.
 - Check whether existing extension points can solve the task before widening shared contracts.
+- For API and SPI design, prefer the clearest contract for the current version. Do not add compatibility shims, deprecated overloads, or legacy behavior unless the task explicitly requires backward compatibility.
 - If `DockManager`, layout models, or session persistence change, call out compatibility and restore risks explicitly.
 - If implementation is appropriate, make the change and close with the repository handoff contract.
 

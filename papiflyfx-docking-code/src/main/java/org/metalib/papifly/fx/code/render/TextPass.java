@@ -4,6 +4,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Paint;
 import org.metalib.papifly.fx.code.lexer.Token;
 import org.metalib.papifly.fx.code.lexer.TokenType;
+import org.metalib.papifly.fx.code.theme.CodeEditorTheme;
 
 import java.util.List;
 import java.util.Objects;
@@ -58,7 +59,7 @@ final class TextPass implements RenderPass {
             if (end <= start) {
                 continue;
             }
-            Paint color = tokenColor(context, token.type());
+            Paint color = tokenColor(context, token);
             if (samePaint(color, foreground)) {
                 if (runColor != null) {
                     drawSegment(context, text, runStart, runEnd, renderLine.y(), runColor, baseX);
@@ -109,22 +110,40 @@ final class TextPass implements RenderPass {
         return Objects.equals(a, b);
     }
 
-    private Paint tokenColor(RenderContext context, TokenType tokenType) {
+    private Paint tokenColor(RenderContext context, Token token) {
+        return resolveTokenColor(context.theme(), token);
+    }
+
+    static Paint resolveTokenColor(CodeEditorTheme theme, Token token) {
+        if (theme == null || token == null) {
+            return theme == null ? null : theme.editorForeground();
+        }
+        if (token.styleScope() != null) {
+            Paint scopedColor = theme.syntaxScopeColor(token.styleScope()).orElse(null);
+            if (scopedColor != null) {
+                return scopedColor;
+            }
+        }
+        TokenType tokenType = token.type();
         if (tokenType == null) {
-            return context.theme().editorForeground();
+            return theme.editorForeground();
         }
         return switch (tokenType) {
-            case KEYWORD -> context.theme().keywordColor();
-            case STRING -> context.theme().stringColor();
-            case COMMENT -> context.theme().commentColor();
-            case NUMBER -> context.theme().numberColor();
-            case BOOLEAN -> context.theme().booleanColor();
-            case NULL_LITERAL -> context.theme().nullLiteralColor();
-            case HEADLINE -> context.theme().headlineColor();
-            case LIST_ITEM -> context.theme().listItemColor();
-            case CODE_BLOCK -> context.theme().codeBlockColor();
-            case TEXT -> context.theme().editorForeground();
-            default -> context.theme().editorForeground();
+            case KEYWORD -> theme.keywordColor();
+            case STRING -> theme.stringColor();
+            case JSON_KEY -> theme.jsonKeyColor();
+            case YAML_KEY -> theme.yamlKeyColor();
+            case YAML_ANCHOR, YAML_ALIAS -> theme.yamlAnchorColor();
+            case YAML_TAG -> theme.yamlTagColor();
+            case COMMENT -> theme.commentColor();
+            case NUMBER -> theme.numberColor();
+            case BOOLEAN -> theme.booleanColor();
+            case NULL_LITERAL -> theme.nullLiteralColor();
+            case HEADLINE -> theme.headlineColor();
+            case LIST_ITEM -> theme.listItemColor();
+            case CODE_BLOCK -> theme.codeBlockColor();
+            case TEXT -> theme.editorForeground();
+            default -> theme.editorForeground();
         };
     }
 }

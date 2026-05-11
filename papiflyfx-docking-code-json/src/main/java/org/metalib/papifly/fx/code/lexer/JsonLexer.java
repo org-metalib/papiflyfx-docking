@@ -15,6 +15,10 @@ public final class JsonLexer implements Lexer {
      * Stable id for JSON language.
      */
     public static final String LANGUAGE_ID = "json";
+    /**
+     * Syntax style scope for JSON object keys.
+     */
+    public static final String SCOPE_JSON_KEY = "json.key";
 
     /**
      * Creates a JSON lexer instance.
@@ -52,12 +56,14 @@ public final class JsonLexer implements Lexer {
             }
             if (ch == '"') {
                 StringContinuation continuation = continueString(text.substring(index), true);
-                addToken(tokens, index, index + continuation.endIndex(), TokenType.STRING);
+                int tokenEnd = index + continuation.endIndex();
+                boolean objectKey = continuation.closed() && isObjectKey(text, tokenEnd);
+                addToken(tokens, index, tokenEnd, TokenType.STRING, objectKey ? SCOPE_JSON_KEY : null);
                 if (!continuation.closed()) {
                     state = STATE_STRING;
                     break;
                 }
-                index += continuation.endIndex();
+                index = tokenEnd;
                 continue;
             }
             if (isNumberStart(text, index)) {
@@ -108,6 +114,14 @@ public final class JsonLexer implements Lexer {
         return new StringContinuation(text.length(), false);
     }
 
+    private boolean isObjectKey(String text, int afterStringIndex) {
+        int index = afterStringIndex;
+        while (index < text.length() && Character.isWhitespace(text.charAt(index))) {
+            index++;
+        }
+        return index < text.length() && text.charAt(index) == ':';
+    }
+
     private boolean isNumberStart(String text, int index) {
         char ch = text.charAt(index);
         if (Character.isDigit(ch)) {
@@ -156,10 +170,14 @@ public final class JsonLexer implements Lexer {
     }
 
     private static void addToken(List<Token> tokens, int start, int end, TokenType type) {
+        addToken(tokens, start, end, type, null);
+    }
+
+    private static void addToken(List<Token> tokens, int start, int end, TokenType type, String styleScope) {
         if (end <= start) {
             return;
         }
-        tokens.add(new Token(start, end - start, type));
+        tokens.add(new Token(start, end - start, type, styleScope));
     }
 
     private record StringContinuation(int endIndex, boolean closed) {

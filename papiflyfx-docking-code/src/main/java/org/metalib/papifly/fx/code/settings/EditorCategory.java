@@ -29,11 +29,27 @@ public class EditorCategory implements SettingsCategory {
     private static final SettingDefinition<Boolean> AUTO_DETECT_DEFINITION = SettingDefinition
         .of("editor.autoDetectLanguage", "Auto Detect Language", SettingType.BOOLEAN, false)
         .withDescription("Detect language automatically from the file path.");
+    private static final SettingDefinition<Integer> DEFAULT_INDENT_WIDTH_DEFINITION = SettingDefinition
+        .of(defaultLanguageKey(LanguageEditorSettingsResolver.INDENT_WIDTH), "Default Indent Width", SettingType.INTEGER, 4)
+        .withDescription("Default indentation width for languages without an override.");
+    private static final SettingDefinition<Boolean> DEFAULT_INSERT_SPACES_DEFINITION = SettingDefinition
+        .of(defaultLanguageKey(LanguageEditorSettingsResolver.INSERT_SPACES), "Default Insert Spaces", SettingType.BOOLEAN, true)
+        .withDescription("Use spaces for indentation by default.");
+    private static final SettingDefinition<Boolean> DEFAULT_TRAILING_NEWLINE_DEFINITION = SettingDefinition
+        .of(defaultLanguageKey(LanguageEditorSettingsResolver.ENSURE_TRAILING_NEWLINE), "Default Trailing Newline", SettingType.BOOLEAN, true)
+        .withDescription("Prefer files ending with a newline by default.");
+    private static final SettingDefinition<Boolean> DEFAULT_TRIM_TRAILING_WHITESPACE_DEFINITION = SettingDefinition
+        .of(defaultLanguageKey(LanguageEditorSettingsResolver.TRIM_TRAILING_WHITESPACE), "Default Trim Trailing Whitespace", SettingType.BOOLEAN, true)
+        .withDescription("Prefer trimming trailing whitespace by default.");
 
     private CheckBox wordWrapBox;
     private TextField tabSizeField;
     private TextField fontSizeField;
     private CheckBox autoDetectBox;
+    private TextField defaultIndentWidthField;
+    private CheckBox defaultInsertSpacesBox;
+    private CheckBox defaultTrailingNewlineBox;
+    private CheckBox defaultTrimTrailingWhitespaceBox;
     private VBox pane;
     private boolean dirty;
 
@@ -54,7 +70,16 @@ public class EditorCategory implements SettingsCategory {
 
     @Override
     public List<SettingDefinition<?>> definitions() {
-        return List.of(WORD_WRAP_DEFINITION, TAB_SIZE_DEFINITION, FONT_SIZE_DEFINITION, AUTO_DETECT_DEFINITION);
+        return List.of(
+            WORD_WRAP_DEFINITION,
+            TAB_SIZE_DEFINITION,
+            FONT_SIZE_DEFINITION,
+            AUTO_DETECT_DEFINITION,
+            DEFAULT_INDENT_WIDTH_DEFINITION,
+            DEFAULT_INSERT_SPACES_DEFINITION,
+            DEFAULT_TRAILING_NEWLINE_DEFINITION,
+            DEFAULT_TRIM_TRAILING_WHITESPACE_DEFINITION
+        );
     }
 
     @Override
@@ -64,18 +89,30 @@ public class EditorCategory implements SettingsCategory {
             tabSizeField = compactField(new TextField());
             fontSizeField = compactField(new TextField());
             autoDetectBox = settingsCheckBox(new CheckBox("Auto detect language"));
+            defaultIndentWidthField = compactField(new TextField());
+            defaultInsertSpacesBox = settingsCheckBox(new CheckBox("Use spaces for indentation"));
+            defaultTrailingNewlineBox = settingsCheckBox(new CheckBox("Ensure trailing newline"));
+            defaultTrimTrailingWhitespaceBox = settingsCheckBox(new CheckBox("Trim trailing whitespace"));
 
             wordWrapBox.selectedProperty().addListener((obs, oldValue, newValue) -> dirty = true);
             tabSizeField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
             fontSizeField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
             autoDetectBox.selectedProperty().addListener((obs, oldValue, newValue) -> dirty = true);
+            defaultIndentWidthField.textProperty().addListener((obs, oldValue, newValue) -> dirty = true);
+            defaultInsertSpacesBox.selectedProperty().addListener((obs, oldValue, newValue) -> dirty = true);
+            defaultTrailingNewlineBox.selectedProperty().addListener((obs, oldValue, newValue) -> dirty = true);
+            defaultTrimTrailingWhitespaceBox.selectedProperty().addListener((obs, oldValue, newValue) -> dirty = true);
 
             pane = new VBox(
                 UiMetrics.SPACE_3,
                 wordWrapBox,
                 field("Tab Size", tabSizeField),
                 field("Font Size", fontSizeField),
-                autoDetectBox
+                autoDetectBox,
+                field("Default Indent Width", defaultIndentWidthField),
+                defaultInsertSpacesBox,
+                defaultTrailingNewlineBox,
+                defaultTrimTrailingWhitespaceBox
             );
             pane.setPadding(new Insets(UiMetrics.SPACE_2));
         }
@@ -89,6 +126,26 @@ public class EditorCategory implements SettingsCategory {
         context.storage().putInt(SettingScope.APPLICATION, TAB_SIZE_DEFINITION.key(), parse(tabSizeField.getText(), 4));
         context.storage().putInt(SettingScope.APPLICATION, FONT_SIZE_DEFINITION.key(), parse(fontSizeField.getText(), 12));
         context.storage().putBoolean(SettingScope.APPLICATION, AUTO_DETECT_DEFINITION.key(), autoDetectBox.isSelected());
+        context.storage().putInt(
+            SettingScope.APPLICATION,
+            DEFAULT_INDENT_WIDTH_DEFINITION.key(),
+            parse(defaultIndentWidthField.getText(), DEFAULT_INDENT_WIDTH_DEFINITION.defaultValue())
+        );
+        context.storage().putBoolean(
+            SettingScope.APPLICATION,
+            DEFAULT_INSERT_SPACES_DEFINITION.key(),
+            defaultInsertSpacesBox.isSelected()
+        );
+        context.storage().putBoolean(
+            SettingScope.APPLICATION,
+            DEFAULT_TRAILING_NEWLINE_DEFINITION.key(),
+            defaultTrailingNewlineBox.isSelected()
+        );
+        context.storage().putBoolean(
+            SettingScope.APPLICATION,
+            DEFAULT_TRIM_TRAILING_WHITESPACE_DEFINITION.key(),
+            defaultTrimTrailingWhitespaceBox.isSelected()
+        );
         context.storage().save();
         dirty = false;
     }
@@ -99,6 +156,26 @@ public class EditorCategory implements SettingsCategory {
         tabSizeField.setText(String.valueOf(context.storage().getInt(SettingScope.APPLICATION, TAB_SIZE_DEFINITION.key(), TAB_SIZE_DEFINITION.defaultValue())));
         fontSizeField.setText(String.valueOf(context.storage().getInt(SettingScope.APPLICATION, FONT_SIZE_DEFINITION.key(), FONT_SIZE_DEFINITION.defaultValue())));
         autoDetectBox.setSelected(context.storage().getBoolean(SettingScope.APPLICATION, AUTO_DETECT_DEFINITION.key(), AUTO_DETECT_DEFINITION.defaultValue()));
+        defaultIndentWidthField.setText(String.valueOf(context.storage().getInt(
+            SettingScope.APPLICATION,
+            DEFAULT_INDENT_WIDTH_DEFINITION.key(),
+            DEFAULT_INDENT_WIDTH_DEFINITION.defaultValue()
+        )));
+        defaultInsertSpacesBox.setSelected(context.storage().getBoolean(
+            SettingScope.APPLICATION,
+            DEFAULT_INSERT_SPACES_DEFINITION.key(),
+            DEFAULT_INSERT_SPACES_DEFINITION.defaultValue()
+        ));
+        defaultTrailingNewlineBox.setSelected(context.storage().getBoolean(
+            SettingScope.APPLICATION,
+            DEFAULT_TRAILING_NEWLINE_DEFINITION.key(),
+            DEFAULT_TRAILING_NEWLINE_DEFINITION.defaultValue()
+        ));
+        defaultTrimTrailingWhitespaceBox.setSelected(context.storage().getBoolean(
+            SettingScope.APPLICATION,
+            DEFAULT_TRIM_TRAILING_WHITESPACE_DEFINITION.key(),
+            DEFAULT_TRIM_TRAILING_WHITESPACE_DEFINITION.defaultValue()
+        ));
         dirty = false;
     }
 
@@ -129,5 +206,9 @@ public class EditorCategory implements SettingsCategory {
         } catch (NumberFormatException exception) {
             return defaultValue;
         }
+    }
+
+    private static String defaultLanguageKey(String settingName) {
+        return LanguageEditorSettingsResolver.DEFAULT_PREFIX + settingName;
     }
 }

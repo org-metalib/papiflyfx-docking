@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.code.lexer;
 
 import org.junit.jupiter.api.Test;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.language.TestLanguageSupportProvider;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -19,11 +20,11 @@ class IncrementalLexerPipelineTest {
 
     @Test
     void appliesJavaTokensAsynchronously() {
-        Document document = new Document("class Demo {}");
+        Document document = new Document("plugin Demo {}");
         AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
         IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(document, applied::set, Runnable::run, 5);
         try {
-            pipeline.setLanguageId("java");
+            pipeline.setLanguageId(TestLanguageSupportProvider.TEST_LANGUAGE_ID);
             assertTrue(waitFor(
                 () -> hasTokenType(applied.get(), 0, TokenType.KEYWORD),
                 Duration.ofSeconds(5)
@@ -35,19 +36,19 @@ class IncrementalLexerPipelineTest {
 
     @Test
     void keepsLatestRevisionResultAfterRapidUpdates() {
-        Document document = new Document("class A {}");
+        Document document = new Document("plugin A {}");
         AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
         IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(document, applied::set, Runnable::run, 5);
         try {
-            pipeline.setLanguageId("java");
-            document.setText("class B {}");
-            document.setText("const value = 1;");
-            pipeline.setLanguageId("javascript");
+            pipeline.setLanguageId(TestLanguageSupportProvider.TEST_LANGUAGE_ID);
+            document.setText("plugin B {}");
+            document.setText("second value = 1;");
+            pipeline.setLanguageId(TestLanguageSupportProvider.TEST_LANGUAGE_ID);
 
             assertTrue(waitFor(() -> {
                 LineTokens line = applied.get().lineAt(0);
                 return line != null
-                    && "const value = 1;".equals(line.text())
+                    && "second value = 1;".equals(line.text())
                     && hasTokenType(applied.get(), 0, TokenType.KEYWORD);
             }, Duration.ofSeconds(10)));
         } finally {
@@ -77,14 +78,14 @@ class IncrementalLexerPipelineTest {
 
     @Test
     void preservesEarliestDirtyLineAcrossRapidPendingRevisions() {
-        Document document = new Document("class A {}\nclass B {}");
+        Document document = new Document("plugin A {}\nplugin B {}");
         AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
         IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(document, applied::set, Runnable::run, 40);
         try {
-            pipeline.setLanguageId("java");
+            pipeline.setLanguageId(TestLanguageSupportProvider.TEST_LANGUAGE_ID);
             assertTrue(waitFor(() -> hasTokenType(applied.get(), 0, TokenType.KEYWORD), Duration.ofSeconds(5)));
 
-            document.replace(0, 5, "clazz");
+            document.replace(0, 6, "plain");
             int lineOneStart = document.toOffset(1, 0);
             document.insert(lineOneStart, "prefix ");
 
@@ -99,7 +100,7 @@ class IncrementalLexerPipelineTest {
 
     @Test
     void fallsBackToPlainTextForCurrentSnapshotWhenLexerThrowsAndRecovers() {
-        Document document = new Document("class Demo {}");
+        Document document = new Document("plugin Demo {}");
         AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
         AtomicBoolean failLexing = new AtomicBoolean(false);
         AtomicInteger throwLexerCalls = new AtomicInteger(0);
@@ -116,13 +117,13 @@ class IncrementalLexerPipelineTest {
             resolver
         );
         try {
-            pipeline.setLanguageId("java");
+            pipeline.setLanguageId(TestLanguageSupportProvider.TEST_LANGUAGE_ID);
             assertTrue(waitFor(
                 () -> hasTokenType(applied.get(), 0, TokenType.KEYWORD),
                 Duration.ofSeconds(5)
             ));
 
-            document.setText("class Broken {}");
+            document.setText("plugin Broken {}");
             failLexing.set(true);
             pipeline.setLanguageId("throwing");
             assertTrue(waitFor(() -> {
@@ -131,17 +132,17 @@ class IncrementalLexerPipelineTest {
                 }
                 LineTokens line = applied.get().lineAt(0);
                 return line != null
-                    && "class Broken {}".equals(line.text())
+                    && "plugin Broken {}".equals(line.text())
                     && line.tokens().isEmpty();
             }, Duration.ofSeconds(5)));
 
             failLexing.set(false);
-            document.setText("let value = 1;");
-            pipeline.setLanguageId("javascript");
+            document.setText("plugin recovered = 1;");
+            pipeline.setLanguageId(TestLanguageSupportProvider.TEST_LANGUAGE_ID);
             assertTrue(waitFor(() -> {
                 LineTokens line = applied.get().lineAt(0);
                 return line != null
-                    && "let value = 1;".equals(line.text())
+                    && "plugin recovered = 1;".equals(line.text())
                     && hasTokenType(applied.get(), 0, TokenType.KEYWORD);
             }, Duration.ofSeconds(5)));
         } finally {
@@ -151,7 +152,7 @@ class IncrementalLexerPipelineTest {
 
     @Test
     void disposeStopsApplyingTokenUpdates() {
-        Document document = new Document("class Demo {}");
+        Document document = new Document("plugin Demo {}");
         AtomicReference<TokenMap> applied = new AtomicReference<>(TokenMap.empty());
         AtomicInteger applyCount = new AtomicInteger(0);
         IncrementalLexerPipeline pipeline = new IncrementalLexerPipeline(
@@ -164,7 +165,7 @@ class IncrementalLexerPipelineTest {
             5
         );
         try {
-            pipeline.setLanguageId("java");
+            pipeline.setLanguageId(TestLanguageSupportProvider.TEST_LANGUAGE_ID);
             assertTrue(waitFor(
                 () -> hasTokenType(applied.get(), 0, TokenType.KEYWORD),
                 Duration.ofSeconds(5)

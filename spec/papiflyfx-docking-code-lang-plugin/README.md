@@ -22,3 +22,14 @@ as completed in the spec/papiflyfx-docking-code-lang-plugin/plan.md document.
 Add new spec/papiflyfx-docking-code-lang-plugin/progress.md file to track your progress.
 Do not stop until all tasks and phases are completed. do not add unnecessary comments or javadocs, do not use any or unknown types.
 continuously run typecheck to make sure you’re not introducing new issues.
+
+## Follow-up Module Split
+
+JSON, YAML, and Markdown now use this language SPI from dedicated modules. See
+[`spec/papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules/`](../papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules/)
+for the module split design, plan, and validation notes.
+
+The next staged follow-up completes the language-pack model by adding
+module-owned syntax style scopes, Java and JavaScript language packs, and
+per-language editor settings. See
+[`spec/papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules-followup/`](../papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules-followup/).

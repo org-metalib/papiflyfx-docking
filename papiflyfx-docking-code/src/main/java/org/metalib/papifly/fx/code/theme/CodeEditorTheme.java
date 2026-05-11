@@ -3,6 +3,9 @@ package org.metalib.papifly.fx.code.theme;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 
+import java.util.Map;
+import java.util.Optional;
+
 /**
  * Immutable palette for the code editor.
  * <p>
@@ -14,6 +17,10 @@ import javafx.scene.paint.Paint;
  * @param editorForeground default editor text foreground
  * @param keywordColor syntax color for keywords
  * @param stringColor syntax color for string literals
+ * @param jsonKeyColor syntax color for JSON object keys
+ * @param yamlKeyColor syntax color for YAML mapping keys
+ * @param yamlAnchorColor syntax color for YAML anchors and aliases
+ * @param yamlTagColor syntax color for YAML tags
  * @param commentColor syntax color for comments
  * @param numberColor syntax color for numeric literals
  * @param caretColor caret stroke color
@@ -53,6 +60,7 @@ import javafx.scene.paint.Paint;
  * @param searchOverlayShadowColor search overlay shadow color
  * @param searchOverlayIntegratedToggleActive integrated-toggle active state color
  * @param searchOverlayErrorBackground search overlay error-state background
+ * @param syntaxScopeColors dynamic syntax style scope colors keyed by scope id
  */
 public record CodeEditorTheme(
     // Core editor colors (from spec)
@@ -60,6 +68,10 @@ public record CodeEditorTheme(
     Paint editorForeground,
     Paint keywordColor,
     Paint stringColor,
+    Paint jsonKeyColor,
+    Paint yamlKeyColor,
+    Paint yamlAnchorColor,
+    Paint yamlTagColor,
     Paint commentColor,
     Paint numberColor,
     Paint caretColor,
@@ -110,8 +122,125 @@ public record CodeEditorTheme(
     Paint searchOverlayNoResultsBorder,
     Paint searchOverlayShadowColor,
     Paint searchOverlayIntegratedToggleActive,
-    Paint searchOverlayErrorBackground
+    Paint searchOverlayErrorBackground,
+
+    // Language-pack syntax scopes
+    Map<String, Paint> syntaxScopeColors
 ) {
+    /**
+     * Creates an editor theme with an immutable syntax-scope color map.
+     */
+    public CodeEditorTheme {
+        syntaxScopeColors = syntaxScopeColors == null || syntaxScopeColors.isEmpty()
+            ? Map.of()
+            : Map.copyOf(syntaxScopeColors);
+    }
+
+    /**
+     * Compatibility constructor for callers compiled against the fixed-palette
+     * theme shape.
+     */
+    public CodeEditorTheme(
+        Paint editorBackground,
+        Paint editorForeground,
+        Paint keywordColor,
+        Paint stringColor,
+        Paint jsonKeyColor,
+        Paint yamlKeyColor,
+        Paint yamlAnchorColor,
+        Paint yamlTagColor,
+        Paint commentColor,
+        Paint numberColor,
+        Paint caretColor,
+        Paint selectionColor,
+        Paint lineNumberColor,
+        Paint lineNumberActiveColor,
+        Paint booleanColor,
+        Paint nullLiteralColor,
+        Paint headlineColor,
+        Paint listItemColor,
+        Paint codeBlockColor,
+        Paint currentLineColor,
+        Paint searchHighlightColor,
+        Paint searchCurrentColor,
+        Paint gutterBackground,
+        Paint markerErrorColor,
+        Paint markerWarningColor,
+        Paint markerInfoColor,
+        Paint markerBreakpointColor,
+        Paint markerBookmarkColor,
+        Paint scrollbarTrackColor,
+        Paint scrollbarThumbColor,
+        Paint scrollbarThumbHoverColor,
+        Paint scrollbarThumbActiveColor,
+        Paint searchOverlayBackground,
+        Paint searchOverlayAccentBorder,
+        Paint searchOverlayControlBackground,
+        Paint searchOverlayControlBorder,
+        Paint searchOverlayPrimaryText,
+        Paint searchOverlaySecondaryText,
+        Paint searchOverlayPanelBorder,
+        Paint searchOverlayControlHoverBackground,
+        Paint searchOverlayControlActiveBackground,
+        Paint searchOverlayControlFocusedBorder,
+        Paint searchOverlayControlDisabledText,
+        Paint searchOverlayNoResultsBorder,
+        Paint searchOverlayShadowColor,
+        Paint searchOverlayIntegratedToggleActive,
+        Paint searchOverlayErrorBackground
+    ) {
+        this(
+            editorBackground,
+            editorForeground,
+            keywordColor,
+            stringColor,
+            jsonKeyColor,
+            yamlKeyColor,
+            yamlAnchorColor,
+            yamlTagColor,
+            commentColor,
+            numberColor,
+            caretColor,
+            selectionColor,
+            lineNumberColor,
+            lineNumberActiveColor,
+            booleanColor,
+            nullLiteralColor,
+            headlineColor,
+            listItemColor,
+            codeBlockColor,
+            currentLineColor,
+            searchHighlightColor,
+            searchCurrentColor,
+            gutterBackground,
+            markerErrorColor,
+            markerWarningColor,
+            markerInfoColor,
+            markerBreakpointColor,
+            markerBookmarkColor,
+            scrollbarTrackColor,
+            scrollbarThumbColor,
+            scrollbarThumbHoverColor,
+            scrollbarThumbActiveColor,
+            searchOverlayBackground,
+            searchOverlayAccentBorder,
+            searchOverlayControlBackground,
+            searchOverlayControlBorder,
+            searchOverlayPrimaryText,
+            searchOverlaySecondaryText,
+            searchOverlayPanelBorder,
+            searchOverlayControlHoverBackground,
+            searchOverlayControlActiveBackground,
+            searchOverlayControlFocusedBorder,
+            searchOverlayControlDisabledText,
+            searchOverlayNoResultsBorder,
+            searchOverlayShadowColor,
+            searchOverlayIntegratedToggleActive,
+            searchOverlayErrorBackground,
+            Map.of()
+        );
+    }
+
     /**
      * Default dark palette matching the previously hardcoded values.
      *
@@ -123,6 +252,10 @@ public record CodeEditorTheme(
             Color.web("#d4d4d4"),   // editorForeground
             Color.web("#569cd6"),   // keywordColor
             Color.web("#ce9178"),   // stringColor
+            Color.web("#9cdcfe"),   // jsonKeyColor
+            Color.web("#4ec9b0"),   // yamlKeyColor
+            Color.web("#d7ba7d"),   // yamlAnchorColor
+            Color.web("#c586c0"),   // yamlTagColor
             Color.web("#6a9955"),   // commentColor
             Color.web("#b5cea8"),   // numberColor
             Color.web("#aeafad"),   // caretColor
@@ -161,7 +294,8 @@ public record CodeEditorTheme(
             Color.web("#d16969"),   // searchOverlayNoResultsBorder
             Color.rgb(0, 0, 0, 0.25), // searchOverlayShadowColor
             Color.web("#007acc"),   // searchOverlayIntegratedToggleActive
-            Color.rgb(209, 105, 105, 0.16) // searchOverlayErrorBackground
+            Color.rgb(209, 105, 105, 0.16), // searchOverlayErrorBackground
+            SyntaxStyleRegistry.defaultRegistry().defaultColors(true)
         );
     }
 
@@ -176,6 +310,10 @@ public record CodeEditorTheme(
             Color.web("#1e1e1e"),   // editorForeground
             Color.web("#0000ff"),   // keywordColor
             Color.web("#a31515"),   // stringColor
+            Color.web("#0451a5"),   // jsonKeyColor
+            Color.web("#267f99"),   // yamlKeyColor
+            Color.web("#795e26"),   // yamlAnchorColor
+            Color.web("#af00db"),   // yamlTagColor
             Color.web("#008000"),   // commentColor
             Color.web("#098658"),   // numberColor
             Color.web("#000000"),   // caretColor
@@ -214,7 +352,77 @@ public record CodeEditorTheme(
             Color.web("#bf4f4f"),   // searchOverlayNoResultsBorder
             Color.rgb(0, 0, 0, 0.18), // searchOverlayShadowColor
             Color.web("#007acc"),   // searchOverlayIntegratedToggleActive
-            Color.rgb(191, 79, 79, 0.12) // searchOverlayErrorBackground
+            Color.rgb(191, 79, 79, 0.12), // searchOverlayErrorBackground
+            SyntaxStyleRegistry.defaultRegistry().defaultColors(false)
+        );
+    }
+
+    /**
+     * Returns the color configured for a semantic syntax style scope.
+     *
+     * @param scopeId style scope id
+     * @return configured color when present
+     */
+    public Optional<Paint> syntaxScopeColor(String scopeId) {
+        return Optional.ofNullable(syntaxScopeColors.get(SyntaxStyleRegistry.normalizeScopeId(scopeId)));
+    }
+
+    /**
+     * Returns a copy of this theme with a new syntax-scope color map.
+     *
+     * @param colors syntax-scope colors keyed by scope id
+     * @return theme with the supplied syntax-scope colors
+     */
+    public CodeEditorTheme withSyntaxScopeColors(Map<String, Paint> colors) {
+        return new CodeEditorTheme(
+            editorBackground,
+            editorForeground,
+            keywordColor,
+            stringColor,
+            jsonKeyColor,
+            yamlKeyColor,
+            yamlAnchorColor,
+            yamlTagColor,
+            commentColor,
+            numberColor,
+            caretColor,
+            selectionColor,
+            lineNumberColor,
+            lineNumberActiveColor,
+            booleanColor,
+            nullLiteralColor,
+            headlineColor,
+            listItemColor,
+            codeBlockColor,
+            currentLineColor,
+            searchHighlightColor,
+            searchCurrentColor,
+            gutterBackground,
+            markerErrorColor,
+            markerWarningColor,
+            markerInfoColor,
+            markerBreakpointColor,
+            markerBookmarkColor,
+            scrollbarTrackColor,
+            scrollbarThumbColor,
+            scrollbarThumbHoverColor,
+            scrollbarThumbActiveColor,
+            searchOverlayBackground,
+            searchOverlayAccentBorder,
+            searchOverlayControlBackground,
+            searchOverlayControlBorder,
+            searchOverlayPrimaryText,
+            searchOverlaySecondaryText,
+            searchOverlayPanelBorder,
+            searchOverlayControlHoverBackground,
+            searchOverlayControlActiveBackground,
+            searchOverlayControlFocusedBorder,
+            searchOverlayControlDisabledText,
+            searchOverlayNoResultsBorder,
+            searchOverlayShadowColor,
+            searchOverlayIntegratedToggleActive,
+            searchOverlayErrorBackground,
+            colors
         );
     }
 }

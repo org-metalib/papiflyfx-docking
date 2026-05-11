@@ -13,11 +13,14 @@ class LanguageSupportBootstrapTest {
         LanguageSupportRegistry registry = new LanguageSupportRegistry();
         registry.bootstrap(BootstrapOptions.defaults());
 
-        assertEquals("java", registry.resolveLexer("java").languageId());
-        assertEquals("javascript", registry.resolveLexer("javascript").languageId());
-        assertEquals("json", registry.resolveLexer("json").languageId());
-        assertEquals("markdown", registry.resolveLexer("markdown").languageId());
         assertEquals("plain-text", registry.resolveLexer("plain-text").languageId());
+        assertEquals(TestLanguageSupportProvider.TEST_LANGUAGE_ID,
+            registry.resolveLexer(TestLanguageSupportProvider.TEST_LANGUAGE_ID).languageId());
+        assertEquals("plain-text", registry.resolveLexer("java").languageId());
+        assertEquals("plain-text", registry.resolveLexer("javascript").languageId());
+        assertEquals("plain-text", registry.resolveLexer("json").languageId());
+        assertEquals("plain-text", registry.resolveLexer("markdown").languageId());
+        assertEquals("plain-text", registry.resolveLexer("yaml").languageId());
     }
 
     @Test
@@ -34,12 +37,14 @@ class LanguageSupportBootstrapTest {
         LanguageSupportRegistry registry = new LanguageSupportRegistry();
         registry.bootstrap(BootstrapOptions.defaults());
 
-        assertEquals("javascript", registry.resolveLexer("js").languageId());
-        assertEquals("markdown", registry.resolveLexer("md").languageId());
         assertEquals("plain-text", registry.resolveLexer("txt").languageId());
         assertEquals("plain-text", registry.resolveLexer("plain").languageId());
         assertEquals("plain-text", registry.resolveLexer("plaintext").languageId());
         assertEquals("plain-text", registry.resolveLexer("text").languageId());
+        assertEquals(TestLanguageSupportProvider.TEST_LANGUAGE_ID, registry.resolveLexer("tpl").languageId());
+        assertEquals("plain-text", registry.resolveLexer("js").languageId());
+        assertEquals("plain-text", registry.resolveLexer("md").languageId());
+        assertEquals("plain-text", registry.resolveLexer("yml").languageId());
     }
 
     @Test
@@ -47,14 +52,10 @@ class LanguageSupportBootstrapTest {
         LanguageSupportRegistry registry = new LanguageSupportRegistry();
         registry.bootstrap(BootstrapOptions.defaults());
 
-        assertEquals("java", registry.detectLanguageId("Main.java").orElse(""));
-        assertEquals("javascript", registry.detectLanguageId("app.js").orElse(""));
-        assertEquals("javascript", registry.detectLanguageId("module.mjs").orElse(""));
-        assertEquals("javascript", registry.detectLanguageId("module.cjs").orElse(""));
-        assertEquals("json", registry.detectLanguageId("config.json").orElse(""));
-        assertEquals("markdown", registry.detectLanguageId("README.md").orElse(""));
-        assertEquals("markdown", registry.detectLanguageId("docs.markdown").orElse(""));
         assertEquals("plain-text", registry.detectLanguageId("notes.txt").orElse(""));
+        assertEquals(TestLanguageSupportProvider.TEST_LANGUAGE_ID, registry.detectLanguageId("fixture.tpl").orElse(""));
+        assertEquals("", registry.detectLanguageId("Main.java").orElse(""));
+        assertEquals("", registry.detectLanguageId("app.js").orElse(""));
     }
 
     @Test
@@ -85,7 +86,8 @@ class LanguageSupportBootstrapTest {
     @Test
     void defaultRegistryIsPreBootstrapped() {
         LanguageSupportRegistry defaultRegistry = LanguageSupportRegistry.defaultRegistry();
-        assertEquals("java", defaultRegistry.resolveLexer("java").languageId());
-        assertEquals("javascript", defaultRegistry.resolveLexer("js").languageId());
+        assertEquals("plain-text", defaultRegistry.resolveLexer("java").languageId());
+        assertEquals("plain-text", defaultRegistry.resolveLexer("js").languageId());
+        assertEquals("plain-text", defaultRegistry.resolveLexer("yml").languageId());
     }
 }

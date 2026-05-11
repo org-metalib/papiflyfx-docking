@@ -5,6 +5,7 @@ import org.metalib.papifly.fx.samples.code.JavaEditorSample;
 import org.metalib.papifly.fx.samples.code.JavaScriptEditorSample;
 import org.metalib.papifly.fx.samples.code.JsonEditorSample;
 import org.metalib.papifly.fx.samples.code.MarkdownEditorSample;
+import org.metalib.papifly.fx.samples.code.YamlEditorSample;
 import org.metalib.papifly.fx.samples.docks.BasicSplitSample;
 import org.metalib.papifly.fx.samples.docks.FloatingSample;
 import org.metalib.papifly.fx.samples.docks.MinimizeSample;
@@ -42,7 +43,7 @@ public final class SampleCatalog {
 
     /**
      * Returns all samples in catalog display order.
-     * Categories: Docks (6 entries), Code (4 entries).
+     * Categories are represented by each sample's category metadata.
      *
      * @return ordered sample scene list
      */
@@ -60,6 +61,7 @@ public final class SampleCatalog {
             new JavaEditorSample(),
             new JavaScriptEditorSample(),
             new JsonEditorSample(),
+            new YamlEditorSample(),
             new TreeViewSample(),
             new TreeViewNodeInfoSample(),
             new ImageViewerSample(),

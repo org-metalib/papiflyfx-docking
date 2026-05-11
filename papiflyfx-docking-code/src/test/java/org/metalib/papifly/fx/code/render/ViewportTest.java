@@ -9,6 +9,8 @@ import javafx.util.Duration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.theme.CodeEditorThemeMapper;
+import org.metalib.papifly.fx.docking.api.Theme;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
@@ -218,6 +220,76 @@ class ViewportTest {
     }
 
     @Test
+    void movingCaretDownClearsPreviousCaretPixels() {
+        runOnFx(() -> {
+            viewport.setTheme(CodeEditorThemeMapper.map(Theme.dark()));
+            document.setText("---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: samples");
+            selectionModel.moveCaret(0, 3);
+        });
+        flushLayout();
+
+        runOnFx(() -> {
+            selectionModel.moveCaret(1, 3);
+            selectionModel.moveCaret(2, 3);
+            selectionModel.moveCaret(3, 3);
+        });
+        flushLayout();
+
+        double charWidth = viewport.getGlyphCache().getCharWidth();
+        double lineHeight = viewport.getGlyphCache().getLineHeight();
+        Color oldCaretPixel = sampleViewportPixel((int) Math.round(charWidth * 3.0 + 1.0), lineHeight / 2.0);
+        Color oldCaretBoundaryPixel = sampleViewportPixel((int) Math.round(charWidth * 3.0 + 1.0), lineHeight - 1.0);
+
+        assertTrue(colorsClose(oldCaretPixel, themeColor(false)),
+            "Moving the caret down should repaint the previous caret column with editor background");
+        assertTrue(colorsClose(oldCaretBoundaryPixel, themeColor(false)),
+            "Moving the caret down should clear caret pixels near the previous line boundary");
+    }
+
+    @Test
+    void shiftDownSelectionDoesNotLeaveBackgroundSeparatorsBetweenSelectedLines() {
+        runOnFx(() -> {
+            viewport.setTheme(CodeEditorThemeMapper.map(Theme.dark()));
+            document.setText("---\napiVersion: apps/v1\nkind: Deployment\nmetadata:");
+            selectionModel.moveCaret(0, 0);
+        });
+        flushLayout();
+
+        runOnFx(() -> {
+            selectionModel.moveCaretWithSelection(1, 0);
+            selectionModel.moveCaretWithSelection(2, 0);
+            selectionModel.moveCaretWithSelection(3, 0);
+        });
+        flushLayout();
+
+        double lineHeight = viewport.getGlyphCache().getLineHeight();
+        int sampleX = sampleContentX();
+        Color selectedLinePixel = sampleViewportPixel(sampleX, lineHeight * 1.5);
+        Color boundaryPixel = sampleViewportPixel(sampleX, Math.round(lineHeight * 2.0) - 1.0);
+
+        assertTrue(colorsClose(boundaryPixel, selectedLinePixel),
+            "Incremental Shift+Down selection should not leave seams between selected lines");
+    }
+
+    @Test
+    void selectAllDoesNotDoublePaintSelectionLineBoundaries() {
+        runOnFx(() -> {
+            viewport.setTheme(CodeEditorThemeMapper.map(Theme.dark()));
+            document.setText("---\napiVersion: apps/v1\nkind: Deployment\nmetadata:");
+            selectionModel.selectAll(document);
+        });
+        flushLayout();
+
+        double lineHeight = viewport.getGlyphCache().getLineHeight();
+        int sampleX = sampleContentX();
+        Color selectedLinePixel = sampleViewportPixel(sampleX, lineHeight * 1.5);
+        Color boundaryPixel = sampleViewportPixel(sampleX, Math.round(lineHeight * 2.0));
+
+        assertTrue(colorsClose(boundaryPixel, selectedLinePixel),
+            "Select-all should not darken line boundaries by painting translucent selection twice");
+    }
+
+    @Test
     void caretHiddenWhenBlinkInactive() {
         runOnFx(() -> {
             viewport.setCaretBlinkTimings(Duration.millis(20), Duration.millis(80));
@@ -315,6 +387,21 @@ class ViewportTest {
             color[0] = image.getPixelReader().getColor(sampleX, sampleY);
         });
         return color[0];
+    }
+
+    private Color sampleViewportPixel(int x, double y) {
+        final Color[] color = new Color[1];
+        runOnFx(() -> {
+            WritableImage image = viewport.snapshot(null, null);
+            int sampleX = Math.max(0, (int) Math.min(image.getWidth() - 2, x));
+            int sampleY = Math.max(0, (int) Math.min(image.getHeight() - 2, y));
+            color[0] = image.getPixelReader().getColor(sampleX, sampleY);
+        });
+        return color[0];
+    }
+
+    private int sampleContentX() {
+        return callOnFx(() -> (int) Math.round(viewport.getWidth() * 0.75));
     }
 
     private boolean colorsClose(Color actual, Color expected) {
