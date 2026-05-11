@@ -87,6 +87,7 @@ This repository is managed by a team of specialized AI agents. Each agent has a 
   - Specs, roadmap, planning, progress tracking, cross-cutting coordination: `@spec-steward`
 - Cross-cutting work must declare a lead plus the required reviewers before implementation starts.
 - Shared contract changes require review from the owning specialist before they are considered complete.
+- For API and SPI design, do not preserve backward compatibility with previous versions by default. Prefer the clearest contract for the current design, and add compatibility shims, deprecated overloads, or legacy behavior only when the task or plan explicitly requires them.
 - No agent should update the same file concurrently with another agent without an explicit handoff note.
 
 ## Delivery Workflow

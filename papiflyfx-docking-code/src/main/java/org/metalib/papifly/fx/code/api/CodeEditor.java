@@ -72,6 +72,12 @@ public class CodeEditor extends StackPane implements DisposableContent {
     private final BooleanProperty wordWrap = new SimpleBooleanProperty(this, "wordWrap", false);
     private final BooleanProperty autoDetectLanguage = new SimpleBooleanProperty(this, "autoDetectLanguage", false);
     private final StringProperty languageId = new SimpleStringProperty(this, "languageId", DEFAULT_LANGUAGE);
+    private final IntegerProperty indentWidth = new SimpleIntegerProperty(this, "indentWidth", 4);
+    private final BooleanProperty insertSpaces = new SimpleBooleanProperty(this, "insertSpaces", true);
+    private final BooleanProperty ensureTrailingNewline =
+        new SimpleBooleanProperty(this, "ensureTrailingNewline", true);
+    private final BooleanProperty trimTrailingWhitespace =
+        new SimpleBooleanProperty(this, "trimTrailingWhitespace", true);
 
     private List<Integer> foldedLines = List.of();
     private List<FoldRegionRef> foldedRegions = List.of();
@@ -892,6 +898,114 @@ public class CodeEditor extends StackPane implements DisposableContent {
 
     public BooleanProperty autoDetectLanguageProperty() {
         return autoDetectLanguage;
+    }
+
+    /**
+     * Returns the effective indentation width for the current language.
+     *
+     * @return indentation width in columns
+     */
+    public int getIndentWidth() {
+        return indentWidth.get();
+    }
+
+    /**
+     * Sets the effective indentation width.
+     *
+     * @param indentWidth indentation width in columns, clamped to 1-16
+     */
+    public void setIndentWidth(int indentWidth) {
+        this.indentWidth.set(Math.max(1, Math.min(16, indentWidth)));
+    }
+
+    /**
+     * Indentation width property.
+     *
+     * @return indentation width property
+     */
+    public IntegerProperty indentWidthProperty() {
+        return indentWidth;
+    }
+
+    /**
+     * Returns whether indentation should insert spaces.
+     *
+     * @return true when spaces are preferred over tab characters
+     */
+    public boolean isInsertSpaces() {
+        return insertSpaces.get();
+    }
+
+    /**
+     * Sets whether indentation should insert spaces.
+     *
+     * @param insertSpaces true to prefer spaces
+     */
+    public void setInsertSpaces(boolean insertSpaces) {
+        this.insertSpaces.set(insertSpaces);
+    }
+
+    /**
+     * Insert-spaces property.
+     *
+     * @return insert-spaces property
+     */
+    public BooleanProperty insertSpacesProperty() {
+        return insertSpaces;
+    }
+
+    /**
+     * Returns whether saved content should end with a newline.
+     *
+     * @return true when trailing newline is preferred
+     */
+    public boolean isEnsureTrailingNewline() {
+        return ensureTrailingNewline.get();
+    }
+
+    /**
+     * Sets whether saved content should end with a newline.
+     *
+     * @param ensureTrailingNewline true to prefer a trailing newline
+     */
+    public void setEnsureTrailingNewline(boolean ensureTrailingNewline) {
+        this.ensureTrailingNewline.set(ensureTrailingNewline);
+    }
+
+    /**
+     * Ensure-trailing-newline property.
+     *
+     * @return ensure-trailing-newline property
+     */
+    public BooleanProperty ensureTrailingNewlineProperty() {
+        return ensureTrailingNewline;
+    }
+
+    /**
+     * Returns whether saved content should trim trailing whitespace.
+     *
+     * @return true when trailing whitespace should be trimmed
+     */
+    public boolean isTrimTrailingWhitespace() {
+        return trimTrailingWhitespace.get();
+    }
+
+    /**
+     * Sets whether saved content should trim trailing whitespace.
+     *
+     * @param trimTrailingWhitespace true to prefer trimming trailing whitespace
+     */
+    public void setTrimTrailingWhitespace(boolean trimTrailingWhitespace) {
+        this.trimTrailingWhitespace.set(trimTrailingWhitespace);
+    }
+
+    /**
+     * Trim-trailing-whitespace property.
+     *
+     * @return trim-trailing-whitespace property
+     */
+    public BooleanProperty trimTrailingWhitespaceProperty() {
+        return trimTrailingWhitespace;
     }
 
     public boolean detectLanguageFromFilePath() {

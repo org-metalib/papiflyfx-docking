@@ -1,9 +1,8 @@
 package org.metalib.papifly.fx.code.folding;
 
+import org.metalib.papifly.fx.code.language.LanguageEditorDefaults;
 import org.metalib.papifly.fx.code.language.LanguageSupport;
 import org.metalib.papifly.fx.code.language.LanguageSupportProvider;
-import org.metalib.papifly.fx.code.lexer.JavaLexer;
-import org.metalib.papifly.fx.code.lexer.JavaScriptLexer;
 import org.metalib.papifly.fx.code.lexer.PlainTextLexer;
 
 import java.util.Collection;
@@ -19,17 +18,8 @@ public final class BuiltInLanguageSupportProvider implements LanguageSupportProv
                 "plain-text", "Plain Text",
                 Set.of("plain", "plaintext", "text", "txt"), Set.of("txt"),
                 Set.of(),
-                PlainTextLexer::new, PlainTextFoldProvider::new),
-            new LanguageSupport(
-                "java", "Java",
-                Set.of(), Set.of("java"),
-                Set.of(),
-                JavaLexer::new, JavaFoldProvider::new),
-            new LanguageSupport(
-                "javascript", "JavaScript",
-                Set.of("js"), Set.of("js", "mjs", "cjs"),
-                Set.of(),
-                JavaScriptLexer::new, JavaScriptFoldProvider::new)
+                PlainTextLexer::new, PlainTextFoldProvider::new,
+                new LanguageEditorDefaults(4, false, false, false))
         );
     }
 }

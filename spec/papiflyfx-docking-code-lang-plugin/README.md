@@ -28,3 +28,8 @@ continuously run typecheck to make sure you’re not introducing new issues.
 JSON, YAML, and Markdown now use this language SPI from dedicated modules. See
 [`spec/papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules/`](../papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules/)
 for the module split design, plan, and validation notes.
+
+The next staged follow-up completes the language-pack model by adding
+module-owned syntax style scopes, Java and JavaScript language packs, and
+per-language editor settings. See
+[`spec/papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules-followup/`](../papiflyfx-docking-code/2026-05-06-yaml-design/2026-05-09-json-yaml-md-modules-followup/).

@@ -15,7 +15,8 @@ class YamlLexerTest {
     void blockMappingLineUsesYamlKeyPunctuationAndPlainValue() {
         LexResult result = lexer.lexLine("name: Ada", LexState.DEFAULT);
 
-        assertTypes(result, TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.PLAIN);
+        assertTypes(result, TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.PLAIN);
+        assertScopeCount(result, YamlLexer.SCOPE_YAML_KEY, 1);
         assertEquals(LexState.DEFAULT, result.exitState());
     }
 
@@ -23,7 +24,7 @@ class YamlLexerTest {
     void quotedMappingValueUsesStringToken() {
         LexResult result = lexer.lexLine("name: \"Ada\"", LexState.DEFAULT);
 
-        assertTypes(result, TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.STRING);
+        assertTypes(result, TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.STRING);
         assertEquals(LexState.DEFAULT, result.exitState());
     }
 
@@ -31,27 +32,27 @@ class YamlLexerTest {
     void inlineCommentEndsLineAsComment() {
         LexResult result = lexer.lexLine("key: value # note", LexState.DEFAULT);
 
-        assertTypes(result, TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.PLAIN, TokenType.COMMENT);
+        assertTypes(result, TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.PLAIN, TokenType.COMMENT);
     }
 
     @Test
     void booleanVariantsOnlyHighlightInValuePosition() {
         assertTypes(lexer.lexLine("enabled: true", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.BOOLEAN);
+            TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.BOOLEAN);
         assertTypes(lexer.lexLine("answer: yes", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.BOOLEAN);
+            TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.BOOLEAN);
         assertTypes(lexer.lexLine("on: value", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.PLAIN);
+            TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.PLAIN);
     }
 
     @Test
     void nullVariantsOnlyHighlightInValuePosition() {
         assertTypes(lexer.lexLine("missing: null", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.NULL_LITERAL);
+            TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.NULL_LITERAL);
         assertTypes(lexer.lexLine("empty: ~", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.NULL_LITERAL);
+            TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.NULL_LITERAL);
         assertTypes(lexer.lexLine("null: value", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.PLAIN);
+            TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.PLAIN);
     }
 
     @Test
@@ -78,13 +79,16 @@ class YamlLexerTest {
     @Test
     void anchorsAliasesTagsAndMergeKeyUseDedicatedYamlTokens() {
         assertTypes(lexer.lexLine("base: &id001 value", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.YAML_ANCHOR, TokenType.PLAIN);
+            TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.IDENTIFIER, TokenType.PLAIN);
         assertTypes(lexer.lexLine("copy: *id001", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.YAML_ALIAS);
+            TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.IDENTIFIER);
         assertTypes(lexer.lexLine("type: !!str foo", LexState.DEFAULT),
-            TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.YAML_TAG, TokenType.PLAIN);
+            TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.IDENTIFIER, TokenType.PLAIN);
         assertTypes(lexer.lexLine("<<: *base", LexState.DEFAULT),
-            TokenType.OPERATOR, TokenType.PUNCTUATION, TokenType.YAML_ALIAS);
+            TokenType.OPERATOR, TokenType.PUNCTUATION, TokenType.IDENTIFIER);
+        assertScopeCount(lexer.lexLine("base: &id001", LexState.DEFAULT), YamlLexer.SCOPE_YAML_ANCHOR, 1);
+        assertScopeCount(lexer.lexLine("copy: *id001", LexState.DEFAULT), YamlLexer.SCOPE_YAML_ALIAS, 1);
+        assertScopeCount(lexer.lexLine("type: !!str", LexState.DEFAULT), YamlLexer.SCOPE_YAML_TAG, 1);
     }
 
     @Test
@@ -110,7 +114,7 @@ class YamlLexerTest {
     @Test
     void blockScalarIndicatorPropagatesBlockScalarState() {
         LexResult header = lexer.lexLine("script: |-", LexState.DEFAULT);
-        assertTypes(header, TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.PUNCTUATION);
+        assertTypes(header, TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.PUNCTUATION);
         assertBlockState(header.exitState(), 0, -1, '|', '-');
 
         LexResult body = lexer.lexLine("  echo hello", header.exitState());
@@ -118,7 +122,7 @@ class YamlLexerTest {
         assertBlockState(body.exitState(), 0, 2, '|', '-');
 
         LexResult next = lexer.lexLine("done: true", body.exitState());
-        assertTypes(next, TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.BOOLEAN);
+        assertTypes(next, TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.BOOLEAN);
         assertEquals(LexState.DEFAULT, next.exitState());
     }
 
@@ -136,7 +140,7 @@ class YamlLexerTest {
         assertBlockState(blank.exitState(), 0, 2, '>', '+');
 
         LexResult next = lexer.lexLine("next: false", blank.exitState());
-        assertTypes(next, TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.BOOLEAN);
+        assertTypes(next, TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.BOOLEAN);
         assertEquals(LexState.DEFAULT, next.exitState());
     }
 
@@ -144,7 +148,9 @@ class YamlLexerTest {
     void flowMappingKeysAreRecognized() {
         LexResult result = lexer.lexLine("{ name: Ada, enabled: true }", LexState.DEFAULT);
 
-        assertEquals(2, result.tokens().stream().filter(token -> token.type() == TokenType.YAML_KEY).count());
+        assertEquals(2, result.tokens().stream()
+            .filter(token -> YamlLexer.SCOPE_YAML_KEY.equals(token.styleScope()))
+            .count());
         assertTrue(result.tokens().stream().anyMatch(token -> token.type() == TokenType.BOOLEAN));
     }
 
@@ -173,13 +179,19 @@ class YamlLexerTest {
         assertEquals(LexState.DEFAULT, updated.lineAt(1).entryState());
         assertEquals(LexState.DEFAULT, updated.lineAt(2).entryState());
         assertEquals(
-            List.of(TokenType.YAML_KEY, TokenType.PUNCTUATION, TokenType.BOOLEAN),
+            List.of(TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.BOOLEAN),
             updated.lineAt(2).tokens().stream().map(Token::type).toList()
         );
     }
 
     private static void assertTypes(LexResult result, TokenType... expected) {
         assertEquals(List.of(expected), result.tokens().stream().map(Token::type).toList());
+    }
+
+    private static void assertScopeCount(LexResult result, String scope, long expected) {
+        assertEquals(expected, result.tokens().stream()
+            .filter(token -> scope.equals(token.styleScope()))
+            .count());
     }
 
     private static void assertBlockState(

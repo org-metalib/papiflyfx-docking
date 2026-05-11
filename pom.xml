@@ -17,6 +17,8 @@
         <module>papiflyfx-docking-settings</module>
         <module>papiflyfx-docking-docks</module>
         <module>papiflyfx-docking-code</module>
+        <module>papiflyfx-docking-code-java</module>
+        <module>papiflyfx-docking-code-javascript</module>
         <module>papiflyfx-docking-code-json</module>
         <module>papiflyfx-docking-code-yaml</module>
         <module>papiflyfx-docking-code-markdown</module>

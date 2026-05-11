@@ -57,6 +57,16 @@
             </dependency>
             <dependency>
                 <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-code-java</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
+                <artifactId>papiflyfx-docking-code-javascript</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.metalib.papifly.docking</groupId>
                 <artifactId>papiflyfx-docking-code-json</artifactId>
                 <version>${project.version}</version>
             </dependency>

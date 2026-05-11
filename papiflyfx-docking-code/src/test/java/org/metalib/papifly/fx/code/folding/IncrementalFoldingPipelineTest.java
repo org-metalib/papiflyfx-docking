@@ -2,6 +2,7 @@ package org.metalib.papifly.fx.code.folding;
 
 import org.junit.jupiter.api.Test;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.language.TestLanguageSupportProvider;
 import org.metalib.papifly.fx.code.lexer.TokenMap;
 
 import java.time.Duration;
@@ -15,7 +16,7 @@ class IncrementalFoldingPipelineTest {
 
     @Test
     void appliesLanguageSpecificFoldMapAndCollapsedHeaders() {
-        Document document = new Document("class Demo {\n  int value;\n}");
+        Document document = new Document("plugin block\n  body");
         AtomicReference<FoldMap> applied = new AtomicReference<>(FoldMap.empty());
         IncrementalFoldingPipeline pipeline = new IncrementalFoldingPipeline(
             document,
@@ -26,7 +27,7 @@ class IncrementalFoldingPipelineTest {
             5
         );
         try {
-            pipeline.setLanguageId("java");
+            pipeline.setLanguageId(TestLanguageSupportProvider.TEST_LANGUAGE_ID);
             assertTrue(waitFor(
                 () -> applied.get().regions().stream().anyMatch(region -> region.kind() == FoldKind.BRACE_BLOCK),
                 Duration.ofSeconds(2)
@@ -54,4 +55,3 @@ class IncrementalFoldingPipelineTest {
         return condition.getAsBoolean();
     }
 }
-

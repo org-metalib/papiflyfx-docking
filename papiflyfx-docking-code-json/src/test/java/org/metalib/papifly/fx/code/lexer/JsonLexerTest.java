@@ -18,7 +18,7 @@ class JsonLexerTest {
         List<TokenType> types = result.tokens().stream().map(Token::type).toList();
 
         assertTrue(types.contains(TokenType.STRING));
-        assertTrue(types.contains(TokenType.JSON_KEY));
+        assertTrue(result.tokens().stream().anyMatch(token -> JsonLexer.SCOPE_JSON_KEY.equals(token.styleScope())));
         assertTrue(types.contains(TokenType.BOOLEAN));
         assertTrue(types.contains(TokenType.NULL_LITERAL));
         assertTrue(types.contains(TokenType.NUMBER));
@@ -39,15 +39,17 @@ class JsonLexerTest {
     }
 
     @Test
-    void jsonObjectKeysUseDedicatedTokenType() {
+    void jsonObjectKeysUseSemanticStyleScope() {
         JsonLexer lexer = new JsonLexer();
         String line = "{\"name\": \"Ada\", \"url\" : \"https://example.test:443\"}";
 
         LexResult result = lexer.lexLine(line, LexState.DEFAULT);
         List<TokenType> types = result.tokens().stream().map(Token::type).toList();
 
-        assertEquals(2, types.stream().filter(type -> type == TokenType.JSON_KEY).count());
-        assertEquals(2, types.stream().filter(type -> type == TokenType.STRING).count());
+        assertEquals(2, result.tokens().stream()
+            .filter(token -> JsonLexer.SCOPE_JSON_KEY.equals(token.styleScope()))
+            .count());
+        assertEquals(4, types.stream().filter(type -> type == TokenType.STRING).count());
         assertEquals(LexState.DEFAULT, result.exitState());
     }
 
@@ -58,11 +60,13 @@ class JsonLexerTest {
 
         LexResult result = lexer.lexLine(line, LexState.DEFAULT);
         Token key = result.tokens().stream()
-            .filter(token -> token.type() == TokenType.JSON_KEY)
+            .filter(token -> JsonLexer.SCOPE_JSON_KEY.equals(token.styleScope()))
             .findFirst()
             .orElseThrow();
 
-        assertEquals(1, result.tokens().stream().filter(token -> token.type() == TokenType.JSON_KEY).count());
+        assertEquals(1, result.tokens().stream()
+            .filter(token -> JsonLexer.SCOPE_JSON_KEY.equals(token.styleScope()))
+            .count());
         assertEquals("\"a\\\"b\"", line.substring(key.startColumn(), key.endColumn()));
         assertEquals(LexState.DEFAULT, result.exitState());
     }

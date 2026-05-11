@@ -106,7 +106,8 @@ public final class CodeEditorThemeMapper {
             base.searchOverlayNoResultsBorder(),
             shadow,
             accent,
-            base.searchOverlayErrorBackground()
+            base.searchOverlayErrorBackground(),
+            base.syntaxScopeColors()
         );
     }
 

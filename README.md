@@ -110,6 +110,8 @@ papiflyfx-docking/
 ├── papiflyfx-docking-login-session-api/ # auth session SPI
 ├── papiflyfx-docking-login/       # login runtime and UI
 ├── papiflyfx-docking-code/        # code-editor docking panel
+├── papiflyfx-docking-code-java/   # Java language pack for the code editor
+├── papiflyfx-docking-code-javascript/ # JavaScript language pack for the code editor
 ├── papiflyfx-docking-code-json/   # JSON language pack for the code editor
 ├── papiflyfx-docking-code-yaml/   # YAML language pack for the code editor
 ├── papiflyfx-docking-code-markdown/ # Markdown language pack for the code editor
@@ -143,10 +145,12 @@ papiflyfx-docking/
 | `papiflyfx-docking-login-idapi` | Identity-provider SPI and built-in provider contracts |
 | `papiflyfx-docking-login-session-api` | Authentication session lifecycle and storage SPI |
 | `papiflyfx-docking-login` | Login runtime and UI integration |
-| `papiflyfx-docking-code` | Canvas-based code editor with search/go-to-line overlays, runtime theme binding, language SPI, and core Java/JavaScript/plain-text support |
-| `papiflyfx-docking-code-json` | JSON lexer, fold provider, tests, and ServiceLoader language contribution for the code editor |
-| `papiflyfx-docking-code-yaml` | YAML lexer, fold provider, tests, and ServiceLoader language contribution for the code editor |
-| `papiflyfx-docking-code-markdown` | Markdown lexer, fold provider, tests, and ServiceLoader language contribution for the code editor |
+| `papiflyfx-docking-code` | Canvas-based code editor with search/go-to-line overlays, runtime theme binding, language SPI, syntax style SPI, per-language settings resolver, and plain-text fallback |
+| `papiflyfx-docking-code-java` | Java lexer, fold provider, tests, and ServiceLoader language contribution for the code editor |
+| `papiflyfx-docking-code-javascript` | JavaScript lexer, fold provider, tests, and ServiceLoader language contribution for the code editor |
+| `papiflyfx-docking-code-json` | JSON lexer, fold provider, syntax style scopes, tests, and ServiceLoader language contribution for the code editor |
+| `papiflyfx-docking-code-yaml` | YAML lexer, fold provider, syntax style scopes, tests, and ServiceLoader language contribution for the code editor |
+| `papiflyfx-docking-code-markdown` | Markdown lexer, fold provider, syntax style scopes, tests, and ServiceLoader language contribution for the code editor |
 | `papiflyfx-docking-tree` | Canvas-based virtualized tree with search, inline info, and runtime theme binding |
 | `papiflyfx-docking-media` | Image, SVG, audio, video, and embedded viewers with theme-aware host controls |
 | `papiflyfx-docking-hugo` | Hugo preview content with theme-aware host chrome and embedded `WebView` rendering |

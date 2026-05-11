@@ -13,8 +13,30 @@ public record LanguageSupport(
     Set<String> fileExtensions,
     Set<String> customTokenScopes,
     Supplier<Lexer> lexerFactory,
-    Supplier<FoldProvider> foldProviderFactory
+    Supplier<FoldProvider> foldProviderFactory,
+    LanguageEditorDefaults editorDefaults
 ) {
+    public LanguageSupport(
+        String id,
+        String displayName,
+        Set<String> aliases,
+        Set<String> fileExtensions,
+        Set<String> customTokenScopes,
+        Supplier<Lexer> lexerFactory,
+        Supplier<FoldProvider> foldProviderFactory
+    ) {
+        this(
+            id,
+            displayName,
+            aliases,
+            fileExtensions,
+            customTokenScopes,
+            lexerFactory,
+            foldProviderFactory,
+            LanguageEditorDefaults.standard()
+        );
+    }
+
     public LanguageSupport {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("id must not be null or blank");
@@ -31,5 +53,6 @@ public record LanguageSupport(
         aliases = aliases == null ? Set.of() : Set.copyOf(aliases);
         fileExtensions = fileExtensions == null ? Set.of() : Set.copyOf(fileExtensions);
         customTokenScopes = customTokenScopes == null ? Set.of() : Set.copyOf(customTokenScopes);
+        editorDefaults = editorDefaults == null ? LanguageEditorDefaults.standard() : editorDefaults;
     }
 }

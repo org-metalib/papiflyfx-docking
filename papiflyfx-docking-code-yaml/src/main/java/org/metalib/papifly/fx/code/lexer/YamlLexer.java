@@ -18,6 +18,22 @@ public final class YamlLexer implements Lexer {
      * Stable id for YAML language.
      */
     public static final String LANGUAGE_ID = "yaml";
+    /**
+     * Syntax style scope for YAML mapping keys.
+     */
+    public static final String SCOPE_YAML_KEY = "yaml.key";
+    /**
+     * Syntax style scope for YAML anchors.
+     */
+    public static final String SCOPE_YAML_ANCHOR = "yaml.anchor";
+    /**
+     * Syntax style scope for YAML aliases.
+     */
+    public static final String SCOPE_YAML_ALIAS = "yaml.alias";
+    /**
+     * Syntax style scope for YAML tags.
+     */
+    public static final String SCOPE_YAML_TAG = "yaml.tag";
 
     /**
      * Creates a YAML lexer instance.
@@ -108,7 +124,8 @@ public final class YamlLexer implements Lexer {
             if (ch == '&' || ch == '*') {
                 int end = scanAnchorOrAlias(text, index);
                 if (end > index + 1) {
-                    addToken(tokens, index, end, ch == '&' ? TokenType.YAML_ANCHOR : TokenType.YAML_ALIAS);
+                    addToken(tokens, index, end, TokenType.IDENTIFIER,
+                        ch == '&' ? SCOPE_YAML_ANCHOR : SCOPE_YAML_ALIAS);
                     index = end;
                     continue;
                 }
@@ -116,7 +133,7 @@ public final class YamlLexer implements Lexer {
             if (ch == '!') {
                 int end = scanTag(text, index);
                 if (end > index + 1) {
-                    addToken(tokens, index, end, TokenType.YAML_TAG);
+                    addToken(tokens, index, end, TokenType.IDENTIFIER, SCOPE_YAML_TAG);
                     index = end;
                     continue;
                 }
@@ -133,7 +150,7 @@ public final class YamlLexer implements Lexer {
             }
             int keyEnd = scanYamlKey(text, index);
             if (keyEnd > index) {
-                addToken(tokens, index, keyEnd, TokenType.YAML_KEY);
+                addToken(tokens, index, keyEnd, TokenType.IDENTIFIER, SCOPE_YAML_KEY);
                 index = keyEnd;
                 continue;
             }
@@ -519,10 +536,14 @@ public final class YamlLexer implements Lexer {
     }
 
     private static void addToken(List<Token> tokens, int start, int end, TokenType type) {
+        addToken(tokens, start, end, type, null);
+    }
+
+    private static void addToken(List<Token> tokens, int start, int end, TokenType type, String styleScope) {
         if (end <= start) {
             return;
         }
-        tokens.add(new Token(start, end - start, type));
+        tokens.add(new Token(start, end - start, type, styleScope));
     }
 
     private record StringContinuation(int endIndex, boolean closed) {

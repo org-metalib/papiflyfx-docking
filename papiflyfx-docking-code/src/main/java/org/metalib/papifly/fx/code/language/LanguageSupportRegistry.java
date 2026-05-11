@@ -181,6 +181,16 @@ public final class LanguageSupportRegistry {
         return List.copyOf(supportsById.values());
     }
 
+    /**
+     * Finds registered language metadata after applying id and alias resolution.
+     *
+     * @param languageId requested language id or alias
+     * @return language support metadata when registered
+     */
+    public Optional<LanguageSupport> findLanguageSupport(String languageId) {
+        return Optional.ofNullable(supportsById.get(resolveId(languageId)));
+    }
+
     private String resolveId(String languageId) {
         String normalized = normalizeLanguageId(languageId);
         if (supportsById.containsKey(normalized)) {

@@ -33,10 +33,21 @@ The module registers `org.metalib.papifly.fx.code.folding.JsonLanguageSupportPro
 META-INF/services/org.metalib.papifly.fx.code.language.LanguageSupportProvider
 ```
 
-When this module is on the classpath, `LanguageSupportRegistry.defaultRegistry()` discovers JSON support through `ServiceLoader`.
+It also registers `org.metalib.papifly.fx.code.theme.JsonSyntaxStyleProvider`
+through `META-INF/services/org.metalib.papifly.fx.code.theme.SyntaxStyleProvider`.
+When this module is on the classpath, `LanguageSupportRegistry.defaultRegistry()`
+and `SyntaxStyleRegistry.defaultRegistry()` discover JSON support through
+`ServiceLoader`.
 
 | Language | ID | Extensions |
 |----------|----|------------|
 | JSON | `json` | `json` |
 
-`TokenType`, `FoldKind`, `CodeEditorTheme`, and token-color routing stay in `papiflyfx-docking-code`.
+Style scopes:
+
+| Scope | Dark | Light |
+|-------|------|-------|
+| `json.key` | `#9cdcfe` | `#0451a5` |
+
+Default editor settings: indent width `2`, insert spaces, ensure trailing
+newline, and trim trailing whitespace.

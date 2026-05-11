@@ -1,5 +1,6 @@
 package org.metalib.papifly.fx.code.folding;
 
+import org.metalib.papifly.fx.code.language.LanguageEditorDefaults;
 import org.metalib.papifly.fx.code.language.LanguageSupport;
 import org.metalib.papifly.fx.code.language.LanguageSupportProvider;
 import org.metalib.papifly.fx.code.lexer.JsonLexer;
@@ -15,8 +16,9 @@ public final class JsonLanguageSupportProvider implements LanguageSupportProvide
         return List.of(new LanguageSupport(
             JsonLexer.LANGUAGE_ID, "JSON",
             Set.of(), Set.of("json"),
-            Set.of(),
-            JsonLexer::new, JsonFoldProvider::new
+            Set.of(JsonLexer.SCOPE_JSON_KEY),
+            JsonLexer::new, JsonFoldProvider::new,
+            LanguageEditorDefaults.spaces(2)
         ));
     }
 }

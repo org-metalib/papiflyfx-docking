@@ -8,8 +8,20 @@ import java.util.Objects;
  * @param startColumn token start column (inclusive)
  * @param length      token length in characters
  * @param type        token category
+ * @param styleScope  optional semantic syntax style scope
  */
-public record Token(int startColumn, int length, TokenType type) {
+public record Token(int startColumn, int length, TokenType type, String styleScope) {
+
+    /**
+     * Creates a token without a semantic style scope.
+     *
+     * @param startColumn token start column (inclusive)
+     * @param length      token length in characters
+     * @param type        token category
+     */
+    public Token(int startColumn, int length, TokenType type) {
+        this(startColumn, length, type, null);
+    }
 
     /**
      * Creates a token with validated bounds and type.
@@ -22,6 +34,7 @@ public record Token(int startColumn, int length, TokenType type) {
             throw new IllegalArgumentException("length must be > 0");
         }
         type = Objects.requireNonNull(type, "type");
+        styleScope = styleScope == null || styleScope.isBlank() ? null : styleScope.trim();
     }
 
     /**

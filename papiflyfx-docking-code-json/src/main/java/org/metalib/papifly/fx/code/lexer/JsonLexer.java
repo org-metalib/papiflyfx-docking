@@ -15,6 +15,10 @@ public final class JsonLexer implements Lexer {
      * Stable id for JSON language.
      */
     public static final String LANGUAGE_ID = "json";
+    /**
+     * Syntax style scope for JSON object keys.
+     */
+    public static final String SCOPE_JSON_KEY = "json.key";
 
     /**
      * Creates a JSON lexer instance.
@@ -53,10 +57,8 @@ public final class JsonLexer implements Lexer {
             if (ch == '"') {
                 StringContinuation continuation = continueString(text.substring(index), true);
                 int tokenEnd = index + continuation.endIndex();
-                TokenType type = continuation.closed() && isObjectKey(text, tokenEnd)
-                    ? TokenType.JSON_KEY
-                    : TokenType.STRING;
-                addToken(tokens, index, tokenEnd, type);
+                boolean objectKey = continuation.closed() && isObjectKey(text, tokenEnd);
+                addToken(tokens, index, tokenEnd, TokenType.STRING, objectKey ? SCOPE_JSON_KEY : null);
                 if (!continuation.closed()) {
                     state = STATE_STRING;
                     break;
@@ -168,10 +170,14 @@ public final class JsonLexer implements Lexer {
     }
 
     private static void addToken(List<Token> tokens, int start, int end, TokenType type) {
+        addToken(tokens, start, end, type, null);
+    }
+
+    private static void addToken(List<Token> tokens, int start, int end, TokenType type, String styleScope) {
         if (end <= start) {
             return;
         }
-        tokens.add(new Token(start, end - start, type));
+        tokens.add(new Token(start, end - start, type, styleScope));
     }
 
     private record StringContinuation(int endIndex, boolean closed) {

@@ -108,7 +108,7 @@ The code module follows the shared UI standardization model introduced in `papif
 |--------|-------------|
 | `setText(String)` | Sets document text content |
 | `getText()` | Returns document text |
-| `setLanguageId(String)` | Sets syntax language (`java`, `javascript`, `plain-text`; optional packs add `json`, `markdown`, `yaml`) |
+| `setLanguageId(String)` | Sets syntax language (`plain-text`; language packs add `java`, `javascript`, `json`, `markdown`, `yaml`) |
 | `bindThemeProperty(ObjectProperty<Theme>)` | Binds to docking theme for live updates |
 | `setEditorTheme(CodeEditorTheme)` | Sets editor palette directly |
 | `captureState()` | Captures current state as `EditorStateData` |
@@ -127,28 +127,43 @@ The core editor owns the language SPI:
 - `LanguageSupportRegistry`
 - `BootstrapOptions`
 - `ConflictPolicy`
+- `SyntaxStyleProvider`
+- `SyntaxStyleRegistry`
+- `LanguageEditorDefaults`
 
-`LanguageSupportRegistry.bootstrap(BootstrapOptions.defaults())` first registers core built-ins (`plain-text`, `java`, `javascript`) and then loads every `LanguageSupportProvider` visible through `ServiceLoader`.
+`LanguageSupportRegistry.bootstrap(BootstrapOptions.defaults())` first registers the core plain-text fallback and then loads every `LanguageSupportProvider` visible through `ServiceLoader`.
 
 To add a language pack:
 
 1. Depend on `papiflyfx-docking-code`.
-2. Implement a lexer, a fold provider, and a `LanguageSupportProvider`.
+2. Implement a lexer, a fold provider, language defaults, and a `LanguageSupportProvider`.
 3. Register the provider in `META-INF/services/org.metalib.papifly.fx.code.language.LanguageSupportProvider`.
-4. Add tests that call both the provider directly and `ServiceLoader.load(LanguageSupportProvider.class)`.
+4. If the language needs semantic colors, implement `SyntaxStyleProvider` and register it in `META-INF/services/org.metalib.papifly.fx.code.theme.SyntaxStyleProvider`.
+5. Add tests that call both the provider directly and `ServiceLoader.load(...)`.
 
-The token vocabulary (`TokenType`), fold vocabulary (`FoldKind`), editor palette (`CodeEditorTheme`), and token-color routing remain in this core module.
+`Token` can carry an optional semantic style scope. `TextPass` resolves colors in this order: contributed style scope, `TokenType` fallback, then editor foreground. `TokenType`, `FoldKind`, and compatibility `CodeEditorTheme` accessors remain in core; language-specific colors should be contributed through `SyntaxStyleProvider`.
+
+Per-language editor settings resolve through `papiflyfx-docking-settings-api` with these keys:
+
+- `editor.language.default.indentWidth`
+- `editor.language.default.insertSpaces`
+- `editor.language.default.ensureTrailingNewline`
+- `editor.language.default.trimTrailingWhitespace`
+- `editor.language.<id>.indentWidth`
+- `editor.language.<id>.insertSpaces`
+- `editor.language.<id>.ensureTrailingNewline`
+- `editor.language.<id>.trimTrailingWhitespace`
 
 ## Supported Languages
 
 | Language | ID | Module | Highlights |
 |----------|-----|--------|------------|
-| Java | `java` | `papiflyfx-docking-code` | Keywords, strings, comments, numbers, annotations |
-| JavaScript | `javascript` | `papiflyfx-docking-code` | Keywords, strings, template literals, comments, numbers |
 | Plain Text | `plain-text` | `papiflyfx-docking-code` | No highlighting (default fallback) |
-| JSON | `json` | `papiflyfx-docking-code-json` | Keys, strings, numbers, booleans, null |
-| Markdown | `markdown` | `papiflyfx-docking-code-markdown` | Headlines, lists, code blocks |
-| YAML | `yaml` | `papiflyfx-docking-code-yaml` | Mapping keys, strings, comments, numbers, booleans, null, block folding |
+| Java | `java` | `papiflyfx-docking-code-java` | Keywords, strings, comments, numbers, annotations |
+| JavaScript | `javascript` | `papiflyfx-docking-code-javascript` | Keywords, strings, template literals, comments, numbers |
+| JSON | `json` | `papiflyfx-docking-code-json` | Keys via `json.key`, strings, numbers, booleans, null |
+| Markdown | `markdown` | `papiflyfx-docking-code-markdown` | `markdown.headline`, `markdown.list-item`, `markdown.code-block` |
+| YAML | `yaml` | `papiflyfx-docking-code-yaml` | `yaml.key`, anchors, aliases, tags, scalar tokens, block folding |
 
 ## Acceptance Metrics
 
@@ -165,7 +180,7 @@ Measured on macOS (Apple Silicon), headless mode, 100k-line synthetic Java file:
 
 ```bash
 # Regular tests (excludes benchmarks)
-./mvnw -pl papiflyfx-docking-code,papiflyfx-docking-code-json,papiflyfx-docking-code-yaml,papiflyfx-docking-code-markdown,papiflyfx-docking-docks -am -Dtestfx.headless=true test
+./mvnw -pl papiflyfx-docking-code,papiflyfx-docking-code-java,papiflyfx-docking-code-javascript,papiflyfx-docking-code-json,papiflyfx-docking-code-yaml,papiflyfx-docking-code-markdown,papiflyfx-docking-docks -am -Dtestfx.headless=true test
 
 # Benchmarks only
 ./mvnw -pl papiflyfx-docking-code -am -Dtestfx.headless=true -Dgroups=benchmark -Dsurefire.excludedGroups= test

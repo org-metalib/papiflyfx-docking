@@ -111,6 +111,16 @@ class CodeEditorThemeMapperTest {
     }
 
     @Test
+    void paletteFactoriesIncludeDiscoveredSyntaxScopeDefaults() {
+        assertEquals(Color.web("#123456"),
+            CodeEditorTheme.dark().syntaxScopeColor(TestSyntaxStyleProvider.TEST_SCOPE).orElseThrow());
+        assertEquals(Color.web("#654321"),
+            CodeEditorTheme.light().syntaxScopeColor(TestSyntaxStyleProvider.TEST_SCOPE).orElseThrow());
+        assertEquals(Color.web("#123456"),
+            CodeEditorThemeMapper.map(Theme.dark()).syntaxScopeColor(TestSyntaxStyleProvider.TEST_SCOPE).orElseThrow());
+    }
+
+    @Test
     void defaultStructuralKeyColorsStayDistinctFromStringValues() {
         CodeEditorTheme dark = CodeEditorTheme.dark();
         assertEquals(Color.web("#9cdcfe"), dark.jsonKeyColor());

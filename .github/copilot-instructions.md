@@ -41,6 +41,7 @@ Code style & PR tips
 - Keep changes module-scoped when possible (edit only the relevant submodule).
 - Add or update unit tests for behavioral changes. Small, focused tests are preferred.
 - When introducing JavaFX UI code, include simple non-UI unit tests if possible to keep CI stable.
+- For API or SPI design, prefer the clearest current contract and do not preserve backward compatibility with previous versions unless the task explicitly asks for it.
 
 If something looks wrong
 - If builds fail locally, run `mvn -X` for verbose Maven debug output.

@@ -12,6 +12,18 @@ public final class MarkdownLexer implements Lexer {
      * Stable id for Markdown language.
      */
     public static final String LANGUAGE_ID = "markdown";
+    /**
+     * Syntax style scope for Markdown headings.
+     */
+    public static final String SCOPE_MARKDOWN_HEADLINE = "markdown.headline";
+    /**
+     * Syntax style scope for Markdown list item markers.
+     */
+    public static final String SCOPE_MARKDOWN_LIST_ITEM = "markdown.list-item";
+    /**
+     * Syntax style scope for Markdown fenced code blocks.
+     */
+    public static final String SCOPE_MARKDOWN_CODE_BLOCK = "markdown.code-block";
 
     private static final int STATE_DEFAULT = 0;
     private static final int STATE_CODE_BLOCK = 1;
@@ -38,10 +50,10 @@ public final class MarkdownLexer implements Lexer {
                 return new LexResult(tokens, LexState.of(STATE_CODE_BLOCK));
             }
             if (text.trim().startsWith("```")) {
-                tokens.add(new Token(0, text.length(), TokenType.CODE_BLOCK));
+                tokens.add(new Token(0, text.length(), TokenType.TEXT, SCOPE_MARKDOWN_CODE_BLOCK));
                 return new LexResult(tokens, LexState.of(STATE_DEFAULT));
             } else {
-                tokens.add(new Token(0, text.length(), TokenType.CODE_BLOCK));
+                tokens.add(new Token(0, text.length(), TokenType.TEXT, SCOPE_MARKDOWN_CODE_BLOCK));
                 return new LexResult(tokens, LexState.of(STATE_CODE_BLOCK));
             }
         }
@@ -51,12 +63,12 @@ public final class MarkdownLexer implements Lexer {
         }
 
         if (text.trim().startsWith("```")) {
-            tokens.add(new Token(0, text.length(), TokenType.CODE_BLOCK));
+            tokens.add(new Token(0, text.length(), TokenType.TEXT, SCOPE_MARKDOWN_CODE_BLOCK));
             return new LexResult(tokens, LexState.of(STATE_CODE_BLOCK));
         }
 
         if (text.trim().startsWith("#")) {
-            tokens.add(new Token(0, text.length(), TokenType.HEADLINE));
+            tokens.add(new Token(0, text.length(), TokenType.TEXT, SCOPE_MARKDOWN_HEADLINE));
             return new LexResult(tokens, LexState.of(STATE_DEFAULT));
         }
 
@@ -73,7 +85,12 @@ public final class MarkdownLexer implements Lexer {
             int markerLen = isUnorderedList ? 2 : orderedDigitLen + 2; // digits + ". "
             int markerEnd = firstNonSpace + markerLen;
 
-            tokens.add(new Token(firstNonSpace, markerEnd - firstNonSpace, TokenType.LIST_ITEM));
+            tokens.add(new Token(
+                firstNonSpace,
+                markerEnd - firstNonSpace,
+                TokenType.TEXT,
+                SCOPE_MARKDOWN_LIST_ITEM
+            ));
             if (markerEnd < text.length()) {
                 lexText(text, markerEnd, tokens);
             }

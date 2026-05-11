@@ -33,10 +33,23 @@ The module registers `org.metalib.papifly.fx.code.folding.MarkdownLanguageSuppor
 META-INF/services/org.metalib.papifly.fx.code.language.LanguageSupportProvider
 ```
 
-When this module is on the classpath, `LanguageSupportRegistry.defaultRegistry()` discovers Markdown support through `ServiceLoader`.
+It also registers `org.metalib.papifly.fx.code.theme.MarkdownSyntaxStyleProvider`
+through `META-INF/services/org.metalib.papifly.fx.code.theme.SyntaxStyleProvider`.
+When this module is on the classpath, `LanguageSupportRegistry.defaultRegistry()`
+and `SyntaxStyleRegistry.defaultRegistry()` discover Markdown support through
+`ServiceLoader`.
 
 | Language | ID | Aliases | Extensions |
 |----------|----|---------|------------|
 | Markdown | `markdown` | `md` | `md`, `markdown` |
 
-`TokenType`, `FoldKind`, `CodeEditorTheme`, and token-color routing stay in `papiflyfx-docking-code`.
+Style scopes:
+
+| Scope | Dark | Light |
+|-------|------|-------|
+| `markdown.headline` | `#569cd6` | `#0000ff` |
+| `markdown.list-item` | `#9cdcfe` | `#001080` |
+| `markdown.code-block` | `#d7ba7d` | `#795e26` |
+
+Default editor settings: indent width `2`, insert spaces, ensure trailing
+newline, and trim trailing whitespace.

@@ -10,6 +10,7 @@ This repository is managed by a team of specialized AI agents defined in [`AGENT
 - **Before starting work**, identify which agent role applies (see routing rules in `AGENTS.md`). Operate within that role's primary domain and principles.
 - **Cross-cutting changes** require a named lead agent and reviewers as specified in the operating model (`spec/agents/README.md`).
 - **Shared contract changes** (`papiflyfx-docking-api`, `papiflyfx-docking-docks`, `*-settings-api`, `*-login-idapi`, `*-login-session-api`) require the owning specialist's review per the review gates.
+- **API/SPI design default**: do not try to preserve backward compatibility with previous versions unless the task or plan explicitly requires it. Prefer the clearest current contract over compatibility shims or legacy overloads.
 - **Handoffs** between agent roles must follow the handoff contract format in `spec/agents/README.md`.
 - **Priority classification** (P0–P3) and **escalation rules** in `spec/agents/README.md` govern task sequencing and conflict resolution.
 
@@ -89,7 +90,9 @@ sdk use java 25.0.1.fx-zulu
 
 ### Content modules
 
-- `papiflyfx-docking-code/` - canvas-based code editor with search, go-to-line, gutters, markers, language SPI, and core Java/JavaScript/plain-text support
+- `papiflyfx-docking-code/` - canvas-based code editor with search, go-to-line, gutters, markers, language SPI, syntax style SPI, per-language settings resolver, and plain-text fallback
+- `papiflyfx-docking-code-java/` - Java lexer/fold language pack discovered through ServiceLoader
+- `papiflyfx-docking-code-javascript/` - JavaScript lexer/fold language pack discovered through ServiceLoader
 - `papiflyfx-docking-code-json/` - JSON lexer, fold provider, tests, and ServiceLoader language contribution for the code editor
 - `papiflyfx-docking-code-yaml/` - YAML lexer, fold provider, tests, and ServiceLoader language contribution for the code editor
 - `papiflyfx-docking-code-markdown/` - Markdown lexer, fold provider, tests, and ServiceLoader language contribution for the code editor
@@ -109,7 +112,7 @@ sdk use java 25.0.1.fx-zulu
 - `papiflyfx-docking-settings-api` depends on `papiflyfx-docking-api`.
 - `papiflyfx-docking-settings` depends on `settings-api`, `api`, and `docks`.
 - `papiflyfx-docking-code`, `papiflyfx-docking-hugo`, and `papiflyfx-docking-github` also depend on `settings-api`.
-- `papiflyfx-docking-code-json`, `papiflyfx-docking-code-yaml`, and `papiflyfx-docking-code-markdown` depend on `papiflyfx-docking-code` and are discovered through `ServiceLoader<LanguageSupportProvider>`.
+- `papiflyfx-docking-code-java`, `papiflyfx-docking-code-javascript`, `papiflyfx-docking-code-json`, `papiflyfx-docking-code-yaml`, and `papiflyfx-docking-code-markdown` depend on `papiflyfx-docking-code` and are discovered through `ServiceLoader<LanguageSupportProvider>`; language-specific syntax colors use `ServiceLoader<SyntaxStyleProvider>`.
 - `papiflyfx-docking-login-session-api` depends on `login-idapi` and `settings-api`.
 - `papiflyfx-docking-login` depends on `login-idapi`, `login-session-api`, `api`, `settings-api`, and `docks`.
 - `papiflyfx-docking-samples` pulls together the runtime/content modules for demos and smoke coverage.
@@ -173,7 +176,7 @@ Current examples:
 - Set `leaf.setContentFactoryId(...)` for any content that should survive session capture/restore.
 - Call `setOwnerStage(stage)` before relying on floating behavior; `DockManager` can resolve an attached scene window, but explicit setup is safer.
 - Content modules that only need settings SPI should depend on `papiflyfx-docking-settings-api`, not the `papiflyfx-docking-settings` runtime implementation.
-- Code editor language packs should contribute languages through `LanguageSupportProvider` and a `META-INF/services` descriptor, keeping `TokenType`, `FoldKind`, and `CodeEditorTheme` changes in `papiflyfx-docking-code`.
+- Code editor language packs should contribute languages through `LanguageSupportProvider` and a `META-INF/services` descriptor. Language-specific colors should use `SyntaxStyleProvider`, and per-language defaults should be supplied through `LanguageEditorDefaults`; avoid editing `TokenType`, `FoldKind`, or `CodeEditorTheme` for each new language.
 - When changing dependencies or plugins, keep versions and plugin configuration centralized in the parent `pom.xml`.
 
 ## SOLID Principles
@@ -187,7 +190,7 @@ Current examples:
 ## Testing Notes
 
 - Test stack: JUnit Jupiter `5.10.2`, TestFX `4.0.18`, Monocle `21.0.2`.
-- Active test modules currently include `code`, `code-json`, `code-yaml`, `code-markdown`, `docks`, `github`, `hugo`, `login-idapi`, `login`, `media`, `samples`, `settings`, and `tree`.
+- Active test modules currently include `code`, `code-java`, `code-javascript`, `code-json`, `code-yaml`, `code-markdown`, `docks`, `github`, `hugo`, `login-idapi`, `login`, `media`, `samples`, `settings`, and `tree`.
 - `papiflyfx-docking-code` excludes `benchmark` tests by default through Surefire configuration.
 - UI-heavy modules disable the module path in Surefire and already include the necessary `--enable-native-access`, `--add-exports`, and `--add-opens` flags.
 - Several UI modules expose a `headless-tests` Maven profile activated by `-Dtestfx.headless=true`.

@@ -31,6 +31,23 @@ preserving source compatibility where public APIs already exist.
 Phases are sequential by default. Do not move Java / JavaScript before Phase 1
 lands, because migrated lexers should target the new style-scope token shape.
 
+## Implementation Status
+
+As of 2026-05-09, Phases 0-7 are implemented and validated. Detailed command
+results, decisions, and reviewer handoff notes are recorded in
+[`progress.md`](progress.md).
+
+| Phase | Status | Notes |
+| ----- | ------ | ----- |
+| 0 | completed | Inventory informed the final SPI and module topology. |
+| 1 | completed | Syntax style SPI and compatibility shims are in core. |
+| 2 | completed | JSON, YAML, and Markdown emit module-owned style scopes. |
+| 3 | completed | Java lives in `papiflyfx-docking-code-java`. |
+| 4 | completed | JavaScript lives in `papiflyfx-docking-code-javascript`. |
+| 5 | completed | Per-language settings resolve through settings API storage. |
+| 6 | completed | Module, BOM, samples, README, and spec docs are updated. |
+| 7 | completed | Targeted, samples, full headless, clean package, and grep audits passed. |
+
 ## Phase 0 - Pre-flight Inventory
 
 Goal: confirm this design matches the current codebase before public API work.

@@ -14,6 +14,7 @@ import org.metalib.papifly.fx.code.command.CaretRange;
 import org.metalib.papifly.fx.code.command.EditorCommand;
 import org.metalib.papifly.fx.code.command.LineEditService;
 import org.metalib.papifly.fx.code.document.Document;
+import org.metalib.papifly.fx.code.language.TestLanguageSupportProvider;
 import org.metalib.papifly.fx.code.lexer.IncrementalLexerPipeline;
 import org.metalib.papifly.fx.code.lexer.TokenType;
 import org.metalib.papifly.fx.code.search.SearchController;
@@ -707,8 +708,8 @@ class CodeEditorIntegrationTest {
     @Test
     void syntaxTokensUpdateInViewportAfterLanguageSelection() {
         runOnFx(() -> {
-            editor.setText("class Demo {}");
-            editor.setLanguageId("java");
+            editor.setText("plugin Demo {}");
+            editor.setLanguageId(TestLanguageSupportProvider.TEST_LANGUAGE_ID);
         });
         WaitForAsyncUtils.waitForFxEvents();
 

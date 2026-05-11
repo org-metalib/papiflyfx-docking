@@ -42,7 +42,7 @@ If two rows both apply, start with `@spec-steward` and make the routing decision
 | Single-module bug fix in a feature module | `@feature-dev` | `@qa-engineer` | Update existing `progress.md` or create task note if non-trivial | Targeted module test and regression scenario |
 | New dockable content or restorable content flow | `@feature-dev` | `@qa-engineer`, `@core-architect` if contracts change, `@ui-ux-designer` for user-facing UI | `research.md`, `plan.md`, `progress.md`, `validation.md` | Factory + state adapter wiring, restore round-trip, theme check |
 | Layout persistence, floating window, minimize/maximize, or shared docking behavior | `@core-architect` | `@qa-engineer`, `@ui-ux-designer` if visuals change | `research.md` when risky, `plan.md`, `progress.md`, `validation.md` | Targeted core tests plus manual or automated restore validation |
-| Public API/SPI change | Owning domain agent | `@core-architect`, `@spec-steward` | `plan.md`, compatibility notes, README/spec updates, `validation.md` | Build/tests of impacted modules and documentation update |
+| Public API/SPI change | Owning domain agent | `@core-architect`, `@spec-steward` | `plan.md`, breaking-change notes, README/spec updates, `validation.md` | Build/tests of impacted modules and documentation update |
 | Login provider, session lifecycle, secret handling | `@auth-specialist` | `@qa-engineer`, `@ui-ux-designer`, `@ops-engineer` when settings or samples change | `research.md`, `plan.md`, `progress.md`, `validation.md` | Negative-path tests, secure storage review, restore/session validation |
 | Settings runtime or persistence format change | `@ops-engineer` | `@qa-engineer`, `@auth-specialist` if secrets are involved | `plan.md`, compatibility notes, `validation.md` | Backward-compatibility check and focused module tests |
 | Sample-app wiring or demo coverage | `@ops-engineer` | Owning domain agent, `@qa-engineer` | `progress.md`, `validation.md` | Sample run path or smoke test update |
@@ -67,7 +67,7 @@ Follow this loop for all P0, P1, and most P2 work.
 ### 2. Research
 
 - Capture existing extension points before proposing central abstraction changes.
-- Note compatibility risks for API, session, settings, and theme behavior.
+- Note the intended API-breaking-change scope plus any compatibility risks for session, settings, and theme behavior.
 - Create or update `research.md` when the area is unfamiliar, risky, or architectural.
 
 ### 3. Plan
@@ -138,7 +138,7 @@ Fast path rules:
 ### Shared Contract Or Layout Change
 
 1. Lead with `@core-architect`.
-2. Start with research on extension points and compatibility risk.
+2. Start with research on extension points, intended API break scope, and any restore or serialization compatibility risk.
 3. Document session and layout invariants in `plan.md`.
 4. Review contract shape before downstream module edits spread.
 5. Validate serialization or restore behavior directly, not just compile status.

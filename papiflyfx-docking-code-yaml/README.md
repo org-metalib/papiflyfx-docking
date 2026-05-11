@@ -33,10 +33,24 @@ The module registers `org.metalib.papifly.fx.code.folding.YamlLanguageSupportPro
 META-INF/services/org.metalib.papifly.fx.code.language.LanguageSupportProvider
 ```
 
-When this module is on the classpath, `LanguageSupportRegistry.defaultRegistry()` discovers YAML support through `ServiceLoader`.
+It also registers `org.metalib.papifly.fx.code.theme.YamlSyntaxStyleProvider`
+through `META-INF/services/org.metalib.papifly.fx.code.theme.SyntaxStyleProvider`.
+When this module is on the classpath, `LanguageSupportRegistry.defaultRegistry()`
+and `SyntaxStyleRegistry.defaultRegistry()` discover YAML support through
+`ServiceLoader`.
 
 | Language | ID | Aliases | Extensions |
 |----------|----|---------|------------|
 | YAML | `yaml` | `yml` | `yaml`, `yml` |
 
-`TokenType`, `FoldKind`, `CodeEditorTheme`, and token-color routing stay in `papiflyfx-docking-code`.
+Style scopes:
+
+| Scope | Dark | Light |
+|-------|------|-------|
+| `yaml.key` | `#4ec9b0` | `#267f99` |
+| `yaml.anchor` | `#d7ba7d` | `#795e26` |
+| `yaml.alias` | `#d7ba7d` | `#795e26` |
+| `yaml.tag` | `#c586c0` | `#af00db` |
+
+Default editor settings: indent width `2`, insert spaces, ensure trailing
+newline, and trim trailing whitespace.
