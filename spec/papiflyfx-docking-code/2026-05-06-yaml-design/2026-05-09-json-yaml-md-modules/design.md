@@ -365,7 +365,7 @@ Each new module inherits from the root parent POM, depends on
     <parent>
         <groupId>org.metalib.papifly.docking</groupId>
         <artifactId>papiflyfx-docking</artifactId>
-        <version>0.0.23-SNAPSHOT</version>
+        <version>0.0.24-SNAPSHOT</version>
     </parent>
 
     <artifactId>papiflyfx-docking-code-json</artifactId>
